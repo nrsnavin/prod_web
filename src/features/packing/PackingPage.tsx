@@ -1,0 +1,190 @@
+import { useState } from "react";
+import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DataTable, Column } from "@/components/ui/DataTable";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toast";
+import { ApiError } from "@/core/http/httpClient";
+import { usePackingGrouped, usePackingByJob, usePackingMutations } from "./hooks";
+import { PackingRecord } from "./types";
+import { PackingForm } from "./PackingForm";
+
+function name(x?: { name: string } | string | null): string {
+  return typeof x === "object" && x ? x.name : "—";
+}
+
+function JobPackings({ jobId }: { jobId: string }) {
+  const { data, isLoading } = usePackingByJob(jobId);
+  const { remove } = usePackingMutations();
+  const { toast } = useToast();
+  const [deleting, setDeleting] = useState<PackingRecord | null>(null);
+
+  const columns: Column<PackingRecord>[] = [
+    { key: "elastic", header: "Elastic", render: (p) => name(p.elastic) },
+    { key: "meter", header: "Meters", align: "right", render: (p) => p.meter.toLocaleString() },
+    { key: "net", header: "Net (kg)", align: "right", render: (p) => p.netWeight ?? "—" },
+    { key: "gross", header: "Gross (kg)", align: "right", render: (p) => p.grossWeight ?? "—" },
+    { key: "checked", header: "Checked by", render: (p) => name(p.checkedBy) },
+    { key: "packed", header: "Packed by", render: (p) => name(p.packedBy) },
+    {
+      key: "date",
+      header: "Date",
+      render: (p) => (p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"),
+    },
+    {
+      key: "del",
+      header: "",
+      align: "right",
+      render: (p) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeleting(p);
+          }}
+          className="p-1.5 rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger"
+          aria-label="Delete packing"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      ),
+    },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-2">
+        {[...Array(2)].map((_, i) => (
+          <Skeleton key={i} className="h-8 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <DataTable
+        columns={columns}
+        rows={data ?? []}
+        rowKey={(p) => p._id}
+        emptyTitle="No boxes packed yet"
+      />
+      <ConfirmDialog
+        open={!!deleting}
+        title="Delete packing record?"
+        message="The packed quantity is reversed on the job."
+        confirmLabel="Delete"
+        danger
+        loading={remove.isPending}
+        onCancel={() => setDeleting(null)}
+        onConfirm={() =>
+          deleting &&
+          remove.mutate(deleting._id, {
+            onSuccess: () => {
+              setDeleting(null);
+              toast("Packing record deleted", "success");
+            },
+            onError: (e) =>
+              toast(e instanceof ApiError ? e.message : "Delete failed", "error"),
+          })
+        }
+      />
+    </>
+  );
+}
+
+export function PackingPage() {
+  const [addOpen, setAddOpen] = useState(false);
+  const [expandedJob, setExpandedJob] = useState<string | null>(null);
+  const { toast } = useToast();
+  const grouped = usePackingGrouped();
+  const { create } = usePackingMutations();
+
+  return (
+    <>
+      <PageHeader
+        title="Packing"
+        subtitle="Boxes packed per job — expand a job for its packing slips."
+        actions={
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4" /> Add packing
+          </Button>
+        }
+      />
+
+      {grouped.isError && (
+        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
+          {(grouped.error as Error).message}
+        </p>
+      )}
+
+      {grouped.isLoading ? (
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
+      ) : (grouped.data?.length ?? 0) === 0 ? (
+        <Card>
+          <EmptyState
+            title="Nothing packed yet"
+            description="Packing entries appear once jobs reach the packing stage."
+          />
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {grouped.data!.map((g) => {
+            const jobId = g.job._id ?? String(g.job.jobOrderNo);
+            const expanded = expandedJob === jobId;
+            return (
+              <Card key={jobId}>
+                <button
+                  onClick={() => setExpandedJob(expanded ? null : jobId)}
+                  className="w-full flex items-center gap-4 p-4 text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold">J-{g.job.jobOrderNo}</p>
+                    <p className="text-xs text-ink-400">{g.job.customer?.name ?? ""}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold tabular-nums">
+                      {g.totalMeters.toLocaleString()} m
+                    </p>
+                    <p className="text-xs text-ink-400">{g.totalBoxes} boxes</p>
+                  </div>
+                  {expanded ? (
+                    <ChevronUp className="h-4 w-4 text-ink-400" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-ink-400" />
+                  )}
+                </button>
+                {expanded && g.job._id && <JobPackings jobId={g.job._id} />}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add packing" width="max-w-xl">
+        <PackingForm
+          submitting={create.isPending}
+          onCancel={() => setAddOpen(false)}
+          onSubmit={(values) =>
+            create.mutate(values, {
+              onSuccess: () => {
+                setAddOpen(false);
+                toast("Packing recorded", "success");
+              },
+              onError: (e) =>
+                toast(e instanceof ApiError ? e.message : "Failed to record packing", "error"),
+            })
+          }
+        />
+      </Modal>
+    </>
+  );
+}
