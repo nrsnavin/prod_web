@@ -29,6 +29,13 @@ const MachineListPage = lazyPage(() => import("@/features/machines/MachineListPa
 const MachineDetailPage = lazyPage(() => import("@/features/machines/MachineDetailPage"), "MachineDetailPage");
 const EmployeeListPage = lazyPage(() => import("@/features/employees/EmployeeListPage"), "EmployeeListPage");
 const EmployeeDetailPage = lazyPage(() => import("@/features/employees/EmployeeDetailPage"), "EmployeeDetailPage");
+const OrderListPage = lazyPage(() => import("@/features/orders/OrderListPage"), "OrderListPage");
+const OrderDetailPage = lazyPage(() => import("@/features/orders/OrderDetailPage"), "OrderDetailPage");
+const JobListPage = lazyPage(() => import("@/features/jobs/JobListPage"), "JobListPage");
+const JobDetailPage = lazyPage(() => import("@/features/jobs/JobDetailPage"), "JobDetailPage");
+const MrpPage = lazyPage(() => import("@/features/jobs/MrpPage"), "MrpPage");
+const DcListPage = lazyPage(() => import("@/features/deliveryChallans/DcListPage"), "DcListPage");
+const DcDetailPage = lazyPage(() => import("@/features/deliveryChallans/DcDetailPage"), "DcDetailPage");
 
 function PageFallback() {
   return (
@@ -55,6 +62,9 @@ const builtPages: Record<string, JSX.Element> = {
   "/elastics": withSuspense(<ElasticListPage />),
   "/machines": withSuspense(<MachineListPage />),
   "/employees": withSuspense(<EmployeeListPage />),
+  "/orders": withSuspense(<OrderListPage />),
+  "/jobs": withSuspense(<JobListPage />),
+  "/delivery-challans": withSuspense(<DcListPage />),
 };
 
 // Detail routes that live under a nav destination.
@@ -65,6 +75,10 @@ const detailRoutes = [
   { path: "/elastics/:id", element: withSuspense(<ElasticDetailPage />) },
   { path: "/machines/:id", element: withSuspense(<MachineDetailPage />) },
   { path: "/employees/:id", element: withSuspense(<EmployeeDetailPage />) },
+  { path: "/orders/:id", element: withSuspense(<OrderDetailPage />) },
+  { path: "/jobs/:id", element: withSuspense(<JobDetailPage />) },
+  { path: "/jobs/:id/mrp", element: withSuspense(<MrpPage />) },
+  { path: "/delivery-challans/:id", element: withSuspense(<DcDetailPage />) },
 ];
 
 const featureRoutes = [

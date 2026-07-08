@@ -75,4 +75,4 @@ Role-based route guards end-to-end, empty/error states, performance pass (code s
 
 ---
 
-**Current status:** Stages 1–3 built — awaiting review/approval before Stage 4 (Order-to-Production Flow).
+**Current status:** Stages 1–4 built — awaiting review/approval before Stage 5 (Production Operations).

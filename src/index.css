@@ -17,3 +17,23 @@
     transform: translateX(100%);
   }
 }
+
+/* Print: only the .print-area content is put on paper (DC, MRP sheet). */
+@media print {
+  body {
+    background: white;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 0;
+  }
+}
