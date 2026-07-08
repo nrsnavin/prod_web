@@ -75,4 +75,4 @@ Role-based route guards end-to-end, empty/error states, performance pass (code s
 
 ---
 
-**Current status:** Stage 1 built — awaiting review/approval before Stage 2 (Dashboard & Analytics).
+**Current status:** Stages 1–2 built — awaiting review/approval before Stage 3 (Masters).
