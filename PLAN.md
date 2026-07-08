@@ -17,6 +17,16 @@ Principles borrowed from Zomato's design language, adapted for an industrial ERP
 - **Skeleton loading & micro-interactions.** Shimmer skeletons, optimistic UI on quick actions, subtle hover elevation on cards. Never a blank spinner page.
 - **Responsive, desktop-optimized.** Collapsible left sidebar + topbar shell on desktop; the same layout degrades to bottom-nav on small screens so factory tablets work too. Data-dense table view toggle on large screens (cards ↔ table).
 
+## 1b. Engineering Principles — SOLID
+
+All code follows SOLID (see `ARCHITECTURE.md` for the full mapping):
+
+- **S** — one responsibility per module: transport (`core/http`), session (`core/auth`), presentation (`components/ui`), chrome (`components/layout`), business features (`features/*`).
+- **O** — extend by configuration: nav/route/search derive from one `navigation.ts` config; resource services come from the `createCrudService` factory; UI primitives extend via variant maps and composition.
+- **L** — every resource service implements the same `CrudService<T>` contract; `HttpClient` implementations are swappable.
+- **I** — small focused interfaces: `AuthService` exposes only what auth consumers need; query hooks and mutation hooks are separate.
+- **D** — features depend on the `HttpClient`/service abstractions, never axios; env access is confined to `app/config.ts`; the HTTP layer reports 401s through an injected handler instead of importing stores.
+
 ## 2. Tech Stack
 
 | Concern | Choice |
@@ -65,4 +75,4 @@ Role-based route guards end-to-end, empty/error states, performance pass (code s
 
 ---
 
-**Current status:** Awaiting approval for Stage 1.
+**Current status:** Stage 1 built — awaiting review/approval before Stage 2 (Dashboard & Analytics).
