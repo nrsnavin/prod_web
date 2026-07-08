@@ -36,6 +36,16 @@ const JobDetailPage = lazyPage(() => import("@/features/jobs/JobDetailPage"), "J
 const MrpPage = lazyPage(() => import("@/features/jobs/MrpPage"), "MrpPage");
 const DcListPage = lazyPage(() => import("@/features/deliveryChallans/DcListPage"), "DcListPage");
 const DcDetailPage = lazyPage(() => import("@/features/deliveryChallans/DcDetailPage"), "DcDetailPage");
+const WarpingListPage = lazyPage(() => import("@/features/warping/WarpingListPage"), "WarpingListPage");
+const WarpingDetailPage = lazyPage(() => import("@/features/warping/WarpingDetailPage"), "WarpingDetailPage");
+const CoveringListPage = lazyPage(() => import("@/features/warping/CoveringListPage"), "CoveringListPage");
+const CoveringDetailPage = lazyPage(() => import("@/features/warping/CoveringDetailPage"), "CoveringDetailPage");
+const PackingPage = lazyPage(() => import("@/features/packing/PackingPage"), "PackingPage");
+const ShiftPlansPage = lazyPage(() => import("@/features/shifts/ShiftPlansPage"), "ShiftPlansPage");
+const ShiftPlanDetailPage = lazyPage(() => import("@/features/shifts/ShiftPlanDetailPage"), "ShiftPlanDetailPage");
+const ShiftVerificationPage = lazyPage(() => import("@/features/shifts/ShiftVerificationPage"), "ShiftVerificationPage");
+const ProductionViewPage = lazyPage(() => import("@/features/shifts/ProductionViewPage"), "ProductionViewPage");
+const WastagePage = lazyPage(() => import("@/features/wastage/WastagePage"), "WastagePage");
 
 function PageFallback() {
   return (
@@ -65,6 +75,13 @@ const builtPages: Record<string, JSX.Element> = {
   "/orders": withSuspense(<OrderListPage />),
   "/jobs": withSuspense(<JobListPage />),
   "/delivery-challans": withSuspense(<DcListPage />),
+  "/warping": withSuspense(<WarpingListPage />),
+  "/covering": withSuspense(<CoveringListPage />),
+  "/packing": withSuspense(<PackingPage />),
+  "/shift-plans": withSuspense(<ShiftPlansPage />),
+  "/shift-verification": withSuspense(<ShiftVerificationPage />),
+  "/production": withSuspense(<ProductionViewPage />),
+  "/wastage": withSuspense(<WastagePage />),
 };
 
 // Detail routes that live under a nav destination.
@@ -79,6 +96,9 @@ const detailRoutes = [
   { path: "/jobs/:id", element: withSuspense(<JobDetailPage />) },
   { path: "/jobs/:id/mrp", element: withSuspense(<MrpPage />) },
   { path: "/delivery-challans/:id", element: withSuspense(<DcDetailPage />) },
+  { path: "/warping/:id", element: withSuspense(<WarpingDetailPage />) },
+  { path: "/covering/:id", element: withSuspense(<CoveringDetailPage />) },
+  { path: "/shift-plans/:id", element: withSuspense(<ShiftPlanDetailPage />) },
 ];
 
 const featureRoutes = [
