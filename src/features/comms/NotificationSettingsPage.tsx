@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { notifyService } from "./api";
 
@@ -42,11 +43,7 @@ export function NotificationSettingsPage() {
         subtitle="WhatsApp/SMS alerts for critical floor events."
       />
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       {isLoading || !s ? (
         <Skeleton className="h-64 w-full" />

@@ -11,6 +11,7 @@ import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { attendanceService, AttendanceRecord } from "./api";
 import { toISODate } from "@/features/analytics/components/FilterBar";
@@ -172,11 +173,7 @@ export function AttendancePage() {
         />
       </div>
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       {isLoading ? (
         <Skeleton className="h-24 w-full mb-4" />

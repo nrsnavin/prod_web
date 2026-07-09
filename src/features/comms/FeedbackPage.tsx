@@ -10,6 +10,7 @@ import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { feedbackService, FeedbackItem } from "./api";
 
@@ -89,11 +90,7 @@ export function FeedbackPage() {
         />
       </div>
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       {isLoading ? (
         <div className="space-y-3">

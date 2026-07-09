@@ -9,6 +9,7 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { useToast } from "@/components/ui/Toast";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useEmployees, useEmployeeMutations } from "./hooks";
 import { DEPARTMENTS, Employee } from "./types";
@@ -32,11 +33,12 @@ const columns: Column<Employee>[] = [
   },
   { key: "dept", header: "Department", render: (e) => <span className="capitalize">{e.department}</span> },
   { key: "phone", header: "Phone", render: (e) => e.phoneNumber || "—" },
-  { key: "skill", header: "Skill", align: "right", render: (e) => e.skill ?? "—" },
+  { key: "skill", header: "Skill", align: "right", sort: (e) => e.skill ?? 0, render: (e) => e.skill ?? "—" },
   {
     key: "performance",
     header: "Performance",
     align: "right",
+    sort: (e) => e.performance ?? 0,
     render: (e) =>
       e.performance != null ? (
         <span className="inline-flex items-center gap-2">
@@ -102,11 +104,7 @@ export function EmployeeListPage() {
         />
       </div>
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       <Card>
         <DataTable

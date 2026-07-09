@@ -9,6 +9,7 @@ import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useOrders, useOrderMutations } from "./hooks";
 import { ORDER_STATUSES, OrderListItem, OrderStatus } from "./types";
@@ -67,11 +68,7 @@ export function OrderListPage() {
         />
       </div>
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       <Card>
         <DataTable

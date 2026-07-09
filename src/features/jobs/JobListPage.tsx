@@ -7,6 +7,7 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useJobs } from "./hooks";
 import { JOB_STATUSES, JobListItem, JobStatus } from "./types";
 import { jobStatusTone } from "./jobStatus";
@@ -73,11 +74,7 @@ export function JobListPage() {
         />
       </div>
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       <Card>
         <DataTable

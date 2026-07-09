@@ -11,6 +11,7 @@ import { DataTable, Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useDcs, useDcMutations } from "./hooks";
 import { DcStatus, DcType, DeliveryChallan } from "./types";
@@ -122,11 +123,7 @@ export function DcListPage() {
         />
       </div>
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       <Card>
         <DataTable
