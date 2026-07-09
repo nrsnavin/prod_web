@@ -1,10 +1,11 @@
-import { useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Combobox } from "@/components/ui/Combobox";
 import { useRunningMachines, useWeavingEmployees } from "./hooks";
 import { ShiftPlanFormValues } from "./types";
 
@@ -87,20 +88,27 @@ export function ShiftPlanForm({
         <div className="space-y-2">
           {fields.map((field, i) => (
             <div key={field.id} className="grid grid-cols-[1fr_1fr_36px] gap-2 items-start">
-              <Select
-                placeholder="Machine"
-                options={machineOptions}
-                error={errors.machines?.[i]?.machine?.message}
-                {...register(`machines.${i}.machine`, {
-                  onChange: (e) => onMachinePick(i, e.target.value),
-                })}
-              />
-              <Select
-                placeholder="Operator"
-                options={operatorOptions}
-                error={errors.machines?.[i]?.operator?.message}
-                {...register(`machines.${i}.operator`)}
-              />
+              <Controller control={control} name={`machines.${i}.machine`} render={({ field }) => (
+                <Combobox
+                  placeholder="Machine"
+                  options={machineOptions}
+                  error={errors.machines?.[i]?.machine?.message}
+                  value={field.value}
+                  onChange={(v) => {
+                    field.onChange(v);
+                    onMachinePick(i, v);
+                  }}
+                />
+              )} />
+              <Controller control={control} name={`machines.${i}.operator`} render={({ field }) => (
+                <Combobox
+                  placeholder="Operator"
+                  options={operatorOptions}
+                  error={errors.machines?.[i]?.operator?.message}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )} />
               <button
                 type="button"
                 onClick={() => fields.length > 1 && remove(i)}

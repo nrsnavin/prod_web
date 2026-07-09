@@ -20,6 +20,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           id={id}
+          onFocus={(e) => {
+            if (rest.type === "number") e.target.select();
+            rest.onFocus?.(e);
+          }}
           className={cn(
             "w-full h-10 px-3 rounded-lg border bg-white text-sm text-ink-900 placeholder:text-ink-400",
             "focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-colors",

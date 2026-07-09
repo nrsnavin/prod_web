@@ -1,9 +1,9 @@
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { Combobox } from "@/components/ui/Combobox";
 import { useEmployeesByDept, usePackingJobs } from "./hooks";
 import { PackingFormValues } from "./types";
 
@@ -36,6 +36,7 @@ export function PackingForm({
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     formState: { errors },
@@ -57,23 +58,29 @@ export function PackingForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="grid grid-cols-2 gap-3">
-        <Select
-          label="Job (in packing) *"
-          placeholder={jobs.isLoading ? "Loading…" : "Select job"}
-          options={(jobs.data ?? []).map((j) => ({
-            value: j._id,
-            label: `J-${j.jobOrderNo}${j.customer?.name ? ` — ${j.customer.name}` : ""}`,
-          }))}
-          error={errors.job?.message}
-          {...register("job")}
-        />
-        <Select
-          label="Elastic *"
-          placeholder="Select elastic"
-          options={elasticOptions}
-          error={errors.elastic?.message}
-          {...register("elastic")}
-        />
+        <Controller control={control} name="job" render={({ field }) => (
+          <Combobox
+            label="Job (in packing) *"
+            placeholder={jobs.isLoading ? "Loading…" : "Select job"}
+            options={(jobs.data ?? []).map((j) => ({
+              value: j._id,
+              label: `J-${j.jobOrderNo}${j.customer?.name ? ` — ${j.customer.name}` : ""}`,
+            }))}
+            error={errors.job?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )} />
+        <Controller control={control} name="elastic" render={({ field }) => (
+          <Combobox
+            label="Elastic *"
+            placeholder="Select elastic"
+            options={elasticOptions}
+            error={errors.elastic?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Input label="Meters *" type="number" step="0.01" error={errors.meter?.message} {...register("meter")} />
@@ -89,20 +96,26 @@ export function PackingForm({
         <Input label="Size" {...register("size")} />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Select
-          label="Checked by *"
-          placeholder="Select"
-          options={empOptions(checkers.data)}
-          error={errors.checkedBy?.message}
-          {...register("checkedBy")}
-        />
-        <Select
-          label="Packed by *"
-          placeholder="Select"
-          options={empOptions(packers.data)}
-          error={errors.packedBy?.message}
-          {...register("packedBy")}
-        />
+        <Controller control={control} name="checkedBy" render={({ field }) => (
+          <Combobox
+            label="Checked by *"
+            placeholder="Select"
+            options={empOptions(checkers.data)}
+            error={errors.checkedBy?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )} />
+        <Controller control={control} name="packedBy" render={({ field }) => (
+          <Combobox
+            label="Packed by *"
+            placeholder="Select"
+            options={empOptions(packers.data)}
+            error={errors.packedBy?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )} />
       </div>
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
