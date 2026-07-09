@@ -31,6 +31,11 @@ export interface TodayShiftSummary {
 export interface PendingShift {
   _id: string;
   productionMeters?: number;
+  // The values the worker/OCR submitted — populated while status is
+  // pending_verification. `productionMeters` stays 0 until an admin verifies.
+  submittedProductionMeters?: number;
+  submittedTimer?: string;
+  submittedFeedback?: string;
   timer?: string;
   submittedAt?: string;
   feedback?: string;

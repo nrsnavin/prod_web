@@ -23,8 +23,12 @@ function VerifyModal({
 }) {
   const { toast } = useToast();
   const { verify } = useShiftMutations();
-  const [meters, setMeters] = useState(String(shift.productionMeters ?? ""));
-  const [timer, setTimer] = useState(shift.timer ?? "");
+  // While pending, the entered value lives in submittedProductionMeters;
+  // canonical productionMeters stays 0 until an admin verifies.
+  const submittedMeters = shift.submittedProductionMeters ?? shift.productionMeters ?? 0;
+  const submittedTimer = shift.submittedTimer ?? shift.timer ?? "";
+  const [meters, setMeters] = useState(String(submittedMeters || ""));
+  const [timer, setTimer] = useState(submittedTimer);
   const [note, setNote] = useState("");
 
   const jobNo = shift.machine?.orderRunning?.jobOrderNo ?? shift.job?.jobOrderNo;
@@ -40,7 +44,7 @@ function VerifyModal({
             {shift.shiftPlan?.date && `· ${new Date(shift.shiftPlan.date).toLocaleDateString()}`}
           </p>
           <p className="mt-1 text-xs text-ink-400">
-            Worker submitted: {(shift.productionMeters ?? 0).toLocaleString("en-IN")} m · {shift.timer ?? "—"}
+            Submitted: {submittedMeters.toLocaleString("en-IN")} m · {submittedTimer || "—"}
           </p>
         </div>
 
@@ -151,9 +155,9 @@ export function ShiftVerificationPage() {
                 </StatusChip>
                 <div className="text-right">
                   <p className="font-bold tabular-nums">
-                    {(s.productionMeters ?? 0).toLocaleString("en-IN")} m
+                    {(s.submittedProductionMeters ?? s.productionMeters ?? 0).toLocaleString("en-IN")} m
                   </p>
-                  <p className="text-xs text-ink-400">{s.timer ?? "—"}</p>
+                  <p className="text-xs text-ink-400">{s.submittedTimer ?? s.timer ?? "—"}</p>
                 </div>
                 <Button size="sm" onClick={() => setVerifying(s)}>
                   <ShieldCheck className="h-4 w-4" /> Verify
