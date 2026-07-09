@@ -89,7 +89,7 @@ export function JobListPage() {
           emptyTitle="No jobs found"
           emptyDescription="Jobs are created from an approved order's detail page."
         />
-        <Pagination page={page} totalPages={data?.pagination.pages ?? 1} onChange={setPage} />
+        <Pagination page={page} totalPages={data?.pagination.pages ?? 1} total={data?.pagination.total} onChange={setPage} />
       </Card>
     </>
   );
