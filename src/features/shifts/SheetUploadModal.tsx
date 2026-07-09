@@ -125,7 +125,9 @@ export function SheetUploadModal({
           <div className="flex items-start gap-2 rounded-lg bg-status-infoBg px-3 py-2 text-xs text-status-info">
             <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             Claude vision reads the hand-written Production, Timer and Remarks and maps each to its
-            machine by the printed row code. You review everything before it's saved.
+            machine by the printed row code. You review everything, then it's queued for
+            verification — production updates only after you verify each shift, exactly as with
+            manual entry.
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={close}>Cancel</Button>
@@ -234,6 +236,11 @@ export function SheetUploadModal({
             </div>
           )}
 
+          <p className="text-xs text-ink-400">
+            Selected rows are queued in <span className="font-medium text-ink-600">Shift Verification</span>.
+            Production is only updated once you verify each shift.
+          </p>
+
           <div className="flex items-center justify-between">
             <button onClick={reset} className="text-sm text-ink-400 hover:text-ink-900">
               ← Upload a different file
@@ -244,7 +251,7 @@ export function SheetUploadModal({
                 {selectedCount} selected
               </span>
               <Button onClick={apply} disabled={selectedCount === 0} loading={applying}>
-                Apply to shifts
+                Send for verification
               </Button>
             </div>
           </div>
