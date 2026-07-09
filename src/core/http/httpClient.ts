@@ -6,6 +6,7 @@ import { config } from "@/app/config";
 // Swapping the transport (fetch, mock for tests) touches only this file.
 export interface HttpClient {
   get<T>(url: string, params?: Record<string, unknown>): Promise<T>;
+  getBlob(url: string, params?: Record<string, unknown>): Promise<Blob>;
   post<T>(url: string, body?: unknown): Promise<T>;
   put<T>(url: string, body?: unknown): Promise<T>;
   patch<T>(url: string, body?: unknown): Promise<T>;
@@ -71,6 +72,10 @@ class AxiosHttpClient implements HttpClient {
   async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
     const { data } = await this.instance.get<T>(url, { params });
     return data;
+  }
+  async getBlob(url: string, params?: Record<string, unknown>): Promise<Blob> {
+    const { data } = await this.instance.get(url, { params, responseType: "blob" });
+    return data as Blob;
   }
   async post<T>(url: string, body?: unknown): Promise<T> {
     const { data } = await this.instance.post<T>(url, body);
