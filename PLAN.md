@@ -75,4 +75,4 @@ Role-based route guards end-to-end, empty/error states, performance pass (code s
 
 ---
 
-**Current status:** Stages 1–5 built — awaiting review/approval before Stage 6 (HR & Payroll).
+**Current status:** All 8 stages built. The web app covers every module of the mobile ERP: dashboard, analytics, masters, order-to-production flow, floor operations, HR & payroll, communications and utilities, with role guards, error boundary, print/PDF outputs and per-module code splitting.

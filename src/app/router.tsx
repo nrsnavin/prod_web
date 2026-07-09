@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { RequireAuth } from "./guards";
@@ -46,6 +46,16 @@ const ShiftPlanDetailPage = lazyPage(() => import("@/features/shifts/ShiftPlanDe
 const ShiftVerificationPage = lazyPage(() => import("@/features/shifts/ShiftVerificationPage"), "ShiftVerificationPage");
 const ProductionViewPage = lazyPage(() => import("@/features/shifts/ProductionViewPage"), "ProductionViewPage");
 const WastagePage = lazyPage(() => import("@/features/wastage/WastagePage"), "WastagePage");
+const AttendancePage = lazyPage(() => import("@/features/hr/AttendancePage"), "AttendancePage");
+const PayrollPage = lazyPage(() => import("@/features/hr/PayrollPage"), "PayrollPage");
+const BonusPage = lazyPage(() => import("@/features/hr/BonusPage"), "BonusPage");
+const LeavePage = lazyPage(() => import("@/features/hr/LeavePage"), "LeavePage");
+const AnnouncementsPage = lazyPage(() => import("@/features/comms/AnnouncementsPage"), "AnnouncementsPage");
+const FeedbackPage = lazyPage(() => import("@/features/comms/FeedbackPage"), "FeedbackPage");
+const MachineIssuesPage = lazyPage(() => import("@/features/comms/MachineIssuesPage"), "MachineIssuesPage");
+const NotificationSettingsPage = lazyPage(() => import("@/features/comms/NotificationSettingsPage"), "NotificationSettingsPage");
+const AdvisorPage = lazyPage(() => import("@/features/comms/AdvisorPage"), "AdvisorPage");
+const DataIoPage = lazyPage(() => import("@/features/comms/DataIoPage"), "DataIoPage");
 
 function PageFallback() {
   return (
@@ -82,6 +92,16 @@ const builtPages: Record<string, JSX.Element> = {
   "/shift-verification": withSuspense(<ShiftVerificationPage />),
   "/production": withSuspense(<ProductionViewPage />),
   "/wastage": withSuspense(<WastagePage />),
+  "/attendance": withSuspense(<AttendancePage />),
+  "/payroll": withSuspense(<PayrollPage />),
+  "/bonus": withSuspense(<BonusPage />),
+  "/leave": withSuspense(<LeavePage />),
+  "/announcements": withSuspense(<AnnouncementsPage />),
+  "/feedback": withSuspense(<FeedbackPage />),
+  "/machine-issues": withSuspense(<MachineIssuesPage />),
+  "/notification-settings": withSuspense(<NotificationSettingsPage />),
+  "/advisor": withSuspense(<AdvisorPage />),
+  "/data-io": withSuspense(<DataIoPage />),
 };
 
 // Detail routes that live under a nav destination.
@@ -122,6 +142,7 @@ const router = createBrowserRouter([
     ),
     children: [{ index: true, element: <DashboardPage /> }, ...featureRoutes],
   },
+  { path: "*", element: <Navigate to="/" replace /> },
 ]);
 
 export function AppRouter() {

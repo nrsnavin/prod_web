@@ -17,6 +17,7 @@ import { useJob, useJobMutations, useJobSummary } from "./hooks";
 import { JOB_PIPELINE, JobShiftDetail, JobSummaryRow } from "./types";
 import { nextJobStatus } from "./jobStatus";
 import { MachineAssignModal } from "./MachineAssignModal";
+import { QcPanel } from "./QcPanel";
 
 function Pipeline({ status }: { status: string }) {
   const activeIdx = JOB_PIPELINE.indexOf(status as (typeof JOB_PIPELINE)[number]);
@@ -202,6 +203,8 @@ export function JobDetailPage() {
           emptyTitle="No shifts recorded yet"
         />
       </Card>
+
+      <QcPanel job={job} />
 
       {(job.wastages?.length ?? 0) > 0 && (
         <Card className="mt-4 p-5">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, TriangleAlert } from "lucide-react";
+import { Plus, TriangleAlert, ClipboardList } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useMaterials, useMaterialMutations } from "./hooks";
 import { MATERIAL_CATEGORIES, RawMaterial } from "./types";
 import { MaterialForm } from "./MaterialForm";
+import { ReorderSuggestions, StockTakeModal } from "./StockOps";
 
 const columns: Column<RawMaterial>[] = [
   {
@@ -62,23 +63,37 @@ export function MaterialListPage() {
   const [category, setCategory] = useState("all");
   const [lowStock, setLowStock] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [stockTakeOpen, setStockTakeOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const { data, isLoading, isError, error } = useMaterials({ search, category, lowStock });
   const { create } = useMaterialMutations();
 
+  const stockValue = (data ?? []).reduce((s, m) => s + m.stock * (m.price || 0), 0);
+
   return (
     <>
       <PageHeader
         title="Raw materials"
-        subtitle={data ? `${data.length} materials` : undefined}
+        subtitle={
+          data
+            ? `${data.length} materials · stock value ≈ ₹${Math.round(stockValue).toLocaleString()}`
+            : undefined
+        }
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> Add material
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => setStockTakeOpen(true)}>
+              <ClipboardList className="h-4 w-4" /> Stock take
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> Add material
+            </Button>
+          </>
         }
       />
+
+      <ReorderSuggestions />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <SearchInput value={search} onChange={setSearch} placeholder="Search materials…" className="w-full max-w-sm" />
@@ -116,6 +131,10 @@ export function MaterialListPage() {
           emptyTitle="No materials found"
         />
       </Card>
+
+      {stockTakeOpen && data && (
+        <StockTakeModal materials={data} onClose={() => setStockTakeOpen(false)} />
+      )}
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add raw material">
         <MaterialForm

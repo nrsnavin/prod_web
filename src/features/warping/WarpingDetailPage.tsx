@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Play, CheckCircle2, XCircle, Plus } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle2, XCircle, Plus, Printer, Tags } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +13,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useWarping, useWarpingPlan, useWarpingMutations } from "./hooks";
 import { ProgrammeChip, ElasticLines } from "./programmeShared";
 import { WarpingPlanForm } from "./WarpingPlanForm";
+import { WarpingProgrammeSheet, BeamLabels } from "./WarpingPrints";
 
 export function WarpingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export function WarpingDetailPage() {
   const plan = useWarpingPlan(id);
   const { start, complete, cancel } = useWarpingMutations();
   const [planOpen, setPlanOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState<null | "sheet" | "labels">(null);
 
   if (isLoading) {
     return (
@@ -56,6 +58,14 @@ export function WarpingDetailPage() {
         subtitle={warping.job?.customer?.name}
         actions={
           <>
+            <Button variant="secondary" onClick={() => setPrintOpen("sheet")}>
+              <Printer className="h-4 w-4" /> Programme
+            </Button>
+            {hasPlan && (
+              <Button variant="secondary" onClick={() => setPrintOpen("labels")}>
+                <Tags className="h-4 w-4" /> Beam labels
+              </Button>
+            )}
             {warping.status === "open" && !hasPlan && (
               <Button onClick={() => setPlanOpen(true)}>
                 <Plus className="h-4 w-4" /> Create plan
@@ -161,6 +171,19 @@ export function WarpingDetailPage() {
           )}
         </Card>
       </div>
+
+      <WarpingProgrammeSheet
+        open={printOpen === "sheet"}
+        onClose={() => setPrintOpen(null)}
+        warping={warping}
+        plan={plan.data?.plan}
+      />
+      <BeamLabels
+        open={printOpen === "labels"}
+        onClose={() => setPrintOpen(null)}
+        warping={warping}
+        plan={plan.data?.plan}
+      />
 
       <Modal open={planOpen} onClose={() => setPlanOpen(false)} title="Create warping plan" width="max-w-2xl">
         <WarpingPlanForm

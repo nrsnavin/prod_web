@@ -71,12 +71,14 @@ function InwardForm({
 }) {
   const pending = items.filter((it) => (it.received ?? 0) < it.quantity);
   const [qty, setQty] = useState<Record<string, string>>({});
+  const [lots, setLots] = useState<Record<string, string>>({});
   const [remarks, setRemarks] = useState("");
 
   const rows = pending
     .map((it) => ({
       rawMaterial: materialId(it),
       quantity: Number(qty[materialId(it)]) || 0,
+      lotNo: lots[materialId(it)]?.trim() || undefined,
     }))
     .filter((r) => r.quantity > 0);
 
@@ -91,7 +93,7 @@ function InwardForm({
           const idKey = materialId(it);
           const remaining = it.quantity - (it.received ?? 0);
           return (
-            <div key={idKey} className="grid grid-cols-[1fr_110px] gap-2 items-center">
+            <div key={idKey} className="grid grid-cols-[1fr_100px_110px] gap-2 items-center">
               <div>
                 <p className="text-sm font-medium">{materialName(it)}</p>
                 <p className="text-xs text-ink-400">
@@ -106,6 +108,11 @@ function InwardForm({
                 placeholder="Qty"
                 value={qty[idKey] ?? ""}
                 onChange={(e) => setQty((q) => ({ ...q, [idKey]: e.target.value }))}
+              />
+              <Input
+                placeholder="Lot no"
+                value={lots[idKey] ?? ""}
+                onChange={(e) => setLots((l) => ({ ...l, [idKey]: e.target.value }))}
               />
             </div>
           );
