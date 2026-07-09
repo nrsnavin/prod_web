@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { Factory } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
+import { SESSION_EXPIRED_KEY } from "@/core/auth/authStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
@@ -33,10 +34,13 @@ export function LoginPage() {
     return <Navigate to="/" replace />;
   }
 
+  const sessionExpired = sessionStorage.getItem(SESSION_EXPIRED_KEY) === "1";
+
   const onSubmit = async (values: FormValues) => {
     setServerError(null);
     try {
       await login(values);
+      sessionStorage.removeItem(SESSION_EXPIRED_KEY);
       const from = (location.state as { from?: string } | null)?.from ?? "/";
       navigate(from, { replace: true });
     } catch (err) {
@@ -79,6 +83,12 @@ export function LoginPage() {
           <p className="mt-1 text-sm text-ink-400">
             Sign in with your ERP account
           </p>
+
+          {sessionExpired && (
+            <p className="mt-3 rounded-lg bg-status-warningBg px-3 py-2 text-sm text-status-warning">
+              Your session expired — please sign in again.
+            </p>
+          )}
 
           <form
             className="mt-6 space-y-4"

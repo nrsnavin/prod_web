@@ -56,7 +56,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2 w-80">
+      <div
+        className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2 w-80"
+        role="status"
+        aria-live="polite"
+      >
         {items.map(({ id, tone, message }) => {
           const { className, Icon } = toneStyles[tone];
           return (

@@ -19,6 +19,11 @@ export interface StatusChipProps {
 }
 
 export function StatusChip({ tone = "neutral", children, className }: StatusChipProps) {
+  // Humanize machine strings so raw enums (PENDING_VERIFICATION, half_day)
+  // never reach the user.
+  if (typeof children === "string") {
+    children = children.replace(/_/g, " ");
+  }
   return (
     <span
       className={cn(
