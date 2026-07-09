@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Play, CheckCircle2, XCircle, Tags } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle2, XCircle, Tags, Printer } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,6 +11,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useCovering, useCoveringMutations } from "./hooks";
 import { ProgrammeChip, ElasticLines } from "./programmeShared";
 import { CoveringLabels } from "./CoveringLabels";
+import { CoveringProgrammeSheet } from "./CoveringProgrammeSheet";
 
 export function CoveringDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,7 @@ export function CoveringDetailPage() {
   const { data: covering, isLoading, isError, error } = useCovering(id);
   const { start, complete, cancel } = useCoveringMutations();
   const [labelsOpen, setLabelsOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -48,6 +50,9 @@ export function CoveringDetailPage() {
         subtitle={covering.job?.customer?.name}
         actions={
           <>
+            <Button variant="secondary" onClick={() => setSheetOpen(true)}>
+              <Printer className="h-4 w-4" /> Programme
+            </Button>
             <Button variant="secondary" onClick={() => setLabelsOpen(true)}>
               <Tags className="h-4 w-4" /> Labels
             </Button>
@@ -130,6 +135,7 @@ export function CoveringDetailPage() {
       </Card>
 
       <CoveringLabels open={labelsOpen} onClose={() => setLabelsOpen(false)} covering={covering} />
+      <CoveringProgrammeSheet open={sheetOpen} onClose={() => setSheetOpen(false)} covering={covering} />
     </>
   );
 }
