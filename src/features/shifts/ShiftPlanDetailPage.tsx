@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Trash2, Sun, Moon } from "lucide-react";
+import { ArrowLeft, Trash2, Sun, Moon, Download, UploadCloud } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +12,8 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useShiftPlan, useShiftMutations } from "./hooks";
 import { ShiftPlanMachineRow } from "./types";
+import { sheetService } from "./sheet";
+import { SheetUploadModal } from "./SheetUploadModal";
 
 const columns: Column<ShiftPlanMachineRow>[] = [
   { key: "machine", header: "Machine", render: (m) => <span className="font-medium">{m.machineName}</span> },
@@ -41,9 +43,24 @@ export function ShiftPlanDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { data: plan, isLoading, isError, error } = useShiftPlan(id);
+  const { data: plan, isLoading, isError, error, refetch } = useShiftPlan(id);
   const { deletePlan } = useShiftMutations();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadSheet = async () => {
+    if (!id) return;
+    setDownloading(true);
+    try {
+      const label = `production-sheet-${plan ? new Date(plan.date).toISOString().slice(0, 10) : id}-${plan?.shift ?? ""}.pdf`;
+      await sheetService.download(id, label);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Download failed", "error");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -72,9 +89,17 @@ export function ShiftPlanDetailPage() {
         }
         subtitle={plan.description}
         actions={
-          <Button variant="danger" onClick={() => setDeleteOpen(true)}>
-            <Trash2 className="h-4 w-4" /> Delete plan
-          </Button>
+          <>
+            <Button variant="secondary" onClick={downloadSheet} loading={downloading}>
+              <Download className="h-4 w-4" /> Download sheet
+            </Button>
+            <Button onClick={() => setUploadOpen(true)}>
+              <UploadCloud className="h-4 w-4" /> Upload filled sheet
+            </Button>
+            <Button variant="danger" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4" /> Delete plan
+            </Button>
+          </>
         }
       />
 
@@ -111,6 +136,15 @@ export function ShiftPlanDetailPage() {
           emptyTitle="No machines on this plan"
         />
       </Card>
+
+      {id && (
+        <SheetUploadModal
+          planId={id}
+          open={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+          onApplied={() => refetch()}
+        />
+      )}
 
       <ConfirmDialog
         open={deleteOpen}
