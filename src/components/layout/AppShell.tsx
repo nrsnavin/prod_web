@@ -3,9 +3,12 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { GlobalSearch } from "./GlobalSearch";
+import { useUiStore } from "@/core/ui/uiStore";
+import { cn } from "@/components/ui/cn";
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const [searchOpen, setSearchOpen] = useState(false);
 
   // ⌘K / Ctrl+K opens global search
@@ -26,7 +29,7 @@ export function AppShell() {
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
       />
-      <div className="lg:pl-64 flex flex-col min-h-screen">
+      <div className={cn("flex flex-col min-h-screen transition-all", collapsed ? "lg:pl-16" : "lg:pl-64")}>
         <Topbar
           onMenuClick={() => setMobileNavOpen(true)}
           onSearchClick={() => setSearchOpen(true)}

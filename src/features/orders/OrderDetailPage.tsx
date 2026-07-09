@@ -17,6 +17,7 @@ import { useOrder, useOrderMutations } from "./hooks";
 import { OrderElasticProgress, RawMaterialRequirement } from "./types";
 import { orderStatusTone, orderStatusLabel } from "./orderStatus";
 import { JobCreateForm } from "@/features/jobs/JobCreateForm";
+import { useTrackRecent } from "@/core/ui/uiStore";
 
 const elasticColumns: Column<OrderElasticProgress>[] = [
   { key: "name", header: "Elastic", render: (e) => <span className="font-medium">{e.name}</span> },
@@ -100,6 +101,7 @@ export function OrderDetailPage() {
   const { approve, cancel, startProduction, complete } = useOrderMutations();
   const [confirm, setConfirm] = useState<null | "approve" | "cancel" | "start" | "complete">(null);
   const [jobOpen, setJobOpen] = useState(false);
+  useTrackRecent("Order", `/orders/${id}`, order ? `Order #${order.orderNo} · ${order.customer?.name ?? ""}` : undefined);
 
   if (isLoading) {
     return (

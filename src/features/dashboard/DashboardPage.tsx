@@ -7,9 +7,14 @@ import { KpiTile } from "./components/KpiTile";
 import { AttendanceCard } from "./components/AttendanceCard";
 import { LowStockCard } from "./components/LowStockCard";
 import { AnnouncementsCard } from "./components/AnnouncementsCard";
+import { Link } from "react-router-dom";
+import { History } from "lucide-react";
+import { Card } from "@/components/ui/Card";
+import { useUiStore } from "@/core/ui/uiStore";
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const recent = useUiStore((s) => s.recent);
   const kpis = useDashboardKpis();
   const pendingShifts = usePendingShiftCount();
   const announcements = useActiveAnnouncements();
@@ -82,6 +87,26 @@ export function DashboardPage() {
           footer={att ? `${att.totalMarked}/${att.totalEmployees} marked` : undefined}
         />
       </div>
+
+      {recent.length > 0 && (
+        <Card className="mt-4 p-4">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-ink-400">
+            <History className="h-3.5 w-3.5" /> Recently viewed
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {recent.map((r) => (
+              <Link
+                key={r.path}
+                to={r.path}
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-sm hover:border-brand-500 hover:text-brand-600 transition-colors"
+              >
+                <span className="text-xs text-ink-400">{r.type}</span>
+                {r.label}
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <AttendanceCard data={att} loading={kpis.isLoading} />

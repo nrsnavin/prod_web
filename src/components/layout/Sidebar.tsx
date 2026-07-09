@@ -1,9 +1,10 @@
 import { NavLink } from "react-router-dom";
-import { X } from "lucide-react";
+import { X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { visibleSections } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { cn } from "@/components/ui/cn";
 import { config } from "@/app/config";
+import { useUiStore } from "@/core/ui/uiStore";
 
 export interface SidebarProps {
   mobileOpen: boolean;
@@ -13,6 +14,8 @@ export interface SidebarProps {
 export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const { user } = useAuth();
   const sections = visibleSections(user?.role);
+  const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
 
   return (
     <>
@@ -26,17 +29,18 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-ink-100 flex flex-col",
-          "transition-transform lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 bg-white border-r border-ink-100 flex flex-col",
+          "transition-all lg:translate-x-0",
+          collapsed ? "w-64 lg:w-16" : "w-64",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between h-16 px-5 border-b border-ink-100">
+        <div className={cn("flex items-center justify-between h-16 border-b border-ink-100", collapsed ? "px-5 lg:px-0 lg:justify-center" : "px-5")}>
           <div className="flex items-center gap-2">
             <span className="h-8 w-8 rounded-lg bg-brand-500 text-white grid place-items-center font-bold text-sm">
               J
             </span>
-            <span className="font-bold text-lg tracking-tight">
+            <span className={cn("font-bold text-lg tracking-tight", collapsed && "lg:hidden")}>
               {config.appName}
             </span>
           </div>
@@ -52,7 +56,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
           {sections.map((section) => (
             <div key={section.label}>
-              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
+              <p className={cn("px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-400", collapsed && "lg:hidden")}>
                 {section.label}
               </p>
               <ul className="space-y-0.5">
@@ -62,17 +66,19 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                       to={path}
                       end={path === "/"}
                       onClick={onMobileClose}
+                      title={label}
                       className={({ isActive }) =>
                         cn(
                           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                          collapsed && "lg:justify-center lg:px-0",
                           isActive
                             ? "bg-brand-50 text-brand-600"
                             : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
                         )
                       }
                     >
-                      <Icon className="h-4.5 w-4.5 h-[18px] w-[18px]" />
-                      {label}
+                      <Icon className="h-[18px] w-[18px] shrink-0" />
+                      <span className={cn(collapsed && "lg:hidden")}>{label}</span>
                     </NavLink>
                   </li>
                 ))}
@@ -80,6 +86,16 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             </div>
           ))}
         </nav>
+
+        {/* Desktop collapse toggle */}
+        <button
+          onClick={toggleSidebar}
+          className="hidden lg:flex items-center justify-center gap-2 h-11 border-t border-ink-100 text-ink-400 hover:text-ink-900 hover:bg-ink-100/60 text-sm"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          <span className={cn(collapsed && "hidden")}>Collapse</span>
+        </button>
       </aside>
     </>
   );

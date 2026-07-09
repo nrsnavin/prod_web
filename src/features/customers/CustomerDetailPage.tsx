@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useCustomer, useCustomerMutations } from "./hooks";
 import { CustomerForm } from "./CustomerForm";
+import { useTrackRecent } from "@/core/ui/uiStore";
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,7 @@ export function CustomerDetailPage() {
   const { update, deactivate } = useCustomerMutations();
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  useTrackRecent("Customer", `/customers/${id}`, customer?.name);
 
   if (isLoading) {
     return (
