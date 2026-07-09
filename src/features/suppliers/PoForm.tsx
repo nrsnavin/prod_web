@@ -1,10 +1,10 @@
-import { useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { Combobox } from "@/components/ui/Combobox";
 import { useSupplierOptions, useMaterials } from "@/features/materials/hooks";
 import { PoFormValues } from "./types";
 
@@ -58,12 +58,19 @@ export function PoForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      <Select
-        label="Supplier *"
-        placeholder="Select supplier"
-        options={(suppliers.data ?? []).map((s) => ({ value: s._id, label: s.name }))}
-        error={errors.supplier?.message}
-        {...register("supplier")}
+      <Controller
+        control={control}
+        name="supplier"
+        render={({ field }) => (
+          <Combobox
+            label="Supplier *"
+            placeholder="Select supplier"
+            options={(suppliers.data ?? []).map((s) => ({ value: s._id, label: s.name }))}
+            error={errors.supplier?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )}
       />
 
       <div>
@@ -71,11 +78,18 @@ export function PoForm({
         <div className="space-y-2">
           {fields.map((field, i) => (
             <div key={field.id} className="grid grid-cols-[1fr_90px_100px_36px] gap-2 items-start">
-              <Select
-                placeholder="Material"
-                options={materialOptions}
-                error={errors.items?.[i]?.rawMaterial?.message}
-                {...register(`items.${i}.rawMaterial`)}
+              <Controller
+                control={control}
+                name={`items.${i}.rawMaterial`}
+                render={({ field }) => (
+                  <Combobox
+                    placeholder="Material"
+                    options={materialOptions}
+                    error={errors.items?.[i]?.rawMaterial?.message}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
               />
               <Input
                 type="number"

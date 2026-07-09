@@ -1,10 +1,10 @@
-import { useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { Combobox } from "@/components/ui/Combobox";
 import { useCustomers } from "@/features/customers/hooks";
 import { useElastics } from "@/features/elastics/hooks";
 import { OrderFormValues } from "./types";
@@ -64,12 +64,19 @@ export function OrderForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <div className="grid grid-cols-2 gap-3">
-        <Select
-          label="Customer *"
-          placeholder="Select customer"
-          options={(customers.data?.customers ?? []).map((c) => ({ value: c._id, label: c.name }))}
-          error={errors.customer?.message}
-          {...register("customer")}
+        <Controller
+          control={control}
+          name="customer"
+          render={({ field }) => (
+            <Combobox
+              label="Customer *"
+              placeholder="Select customer"
+              options={(customers.data?.customers ?? []).map((c) => ({ value: c._id, label: c.name }))}
+              error={errors.customer?.message}
+              value={field.value}
+              onChange={field.onChange}
+            />
+          )}
         />
         <Input label="Customer PO ref *" error={errors.po?.message} {...register("po")} />
       </div>
@@ -84,11 +91,18 @@ export function OrderForm({
         <div className="space-y-2">
           {fields.map((field, i) => (
             <div key={field.id} className="grid grid-cols-[1fr_110px_36px] gap-2 items-start">
-              <Select
-                placeholder="Select elastic"
-                options={elasticOptions}
-                error={errors.elasticOrdered?.[i]?.elastic?.message}
-                {...register(`elasticOrdered.${i}.elastic`)}
+              <Controller
+                control={control}
+                name={`elasticOrdered.${i}.elastic`}
+                render={({ field }) => (
+                  <Combobox
+                    placeholder="Select elastic"
+                    options={elasticOptions}
+                    error={errors.elasticOrdered?.[i]?.elastic?.message}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
               />
               <Input
                 type="number"
