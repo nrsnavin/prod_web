@@ -128,7 +128,7 @@ export function PoListPage() {
           emptyTitle="No purchase orders"
           emptyDescription="Raise a PO to restock raw materials."
         />
-        <Pagination page={page} totalPages={data?.pagination.totalPages ?? 1} onChange={setPage} />
+        <Pagination page={page} totalPages={data?.pagination.totalPages ?? 1} total={data?.pagination.total} onChange={setPage} />
       </Card>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New purchase order" width="max-w-2xl">

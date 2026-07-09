@@ -90,7 +90,7 @@ export function CustomerListPage() {
           emptyTitle="No customers found"
           emptyDescription={search ? "Try a different search." : "Add your first customer to get started."}
         />
-        <Pagination page={page} totalPages={data?.pages ?? 1} onChange={setPage} />
+        <Pagination page={page} totalPages={data?.pages ?? 1} total={data?.total} onChange={setPage} />
       </Card>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add customer">

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { Combobox } from "@/components/ui/Combobox";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError, httpClient } from "@/core/http/httpClient";
 import { Machine } from "@/features/machines/types";
@@ -63,7 +64,7 @@ export function MachineAssignModal({
   return (
     <Modal open={open} onClose={onClose} title={`Assign machine — ${job.jobNo}`} width="max-w-xl">
       <div className="space-y-4">
-        <Select
+        <Combobox
           label="Free machine *"
           placeholder={machines.isLoading ? "Loading…" : "Select machine"}
           options={(machines.data ?? []).map((m) => ({
@@ -71,7 +72,7 @@ export function MachineAssignModal({
             label: `${m.ID} · ${m.manufacturer} · ${m.NoOfHead} heads`,
           }))}
           value={machineId}
-          onChange={(e) => pickMachine(e.target.value)}
+          onChange={pickMachine}
         />
 
         {selected && (

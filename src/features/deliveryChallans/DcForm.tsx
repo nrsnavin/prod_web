@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Combobox } from "@/components/ui/Combobox";
 import { useOrders } from "@/features/orders/hooks";
 import { DcFormValues } from "./types";
 import { useDcOrderInfo } from "./hooks";
@@ -113,12 +114,12 @@ export function DcForm({
           ]}
           {...register("type")}
         />
-        <Select
+        <Combobox
           label="Link to order (optional)"
           placeholder="No order — manual DC"
           options={orderOptions}
           value={orderId}
-          onChange={(e) => setOrderId(e.target.value)}
+          onChange={setOrderId}
         />
       </div>
 

@@ -100,7 +100,7 @@ export function ElasticListPage() {
           emptyTitle="No elastic products"
           emptyDescription="Create your first elastic definition with its material composition."
         />
-        <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+        <Pagination page={page} totalPages={totalPages} total={data?.total} onChange={setPage} />
       </Card>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New elastic" width="max-w-2xl">

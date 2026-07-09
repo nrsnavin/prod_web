@@ -137,7 +137,7 @@ export function DcListPage() {
           loading={isLoading}
           emptyTitle="No delivery challans"
         />
-        <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+        <Pagination page={page} totalPages={totalPages} total={data?.total} onChange={setPage} />
       </Card>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New delivery challan" width="max-w-3xl">
