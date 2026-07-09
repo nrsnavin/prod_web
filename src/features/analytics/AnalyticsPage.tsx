@@ -12,11 +12,15 @@ import { FilterBar, presetRange } from "./components/FilterBar";
 import { ProductionTrendChart, WeeklyPatternChart, DayNightSplit } from "./components/charts";
 import { MachineTable, EmployeeTable } from "./components/tables";
 import { AnomaliesList } from "./components/AnomaliesList";
+import { BreakdownPanel } from "./breakdown/BreakdownPanel";
+import { ForecastPanel } from "./breakdown/ForecastPanel";
 
-type Tab = "overview" | "machines" | "operators" | "anomalies";
+type Tab = "overview" | "breakdown" | "forecast" | "machines" | "operators" | "anomalies";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
+  { key: "breakdown", label: "Breakdown" },
+  { key: "forecast", label: "Delivery forecast" },
   { key: "machines", label: "By machine" },
   { key: "operators", label: "By operator" },
   { key: "anomalies", label: "Anomalies" },
@@ -63,15 +67,16 @@ export function AnalyticsPage() {
         subtitle="Output, efficiency and anomalies across machines and operators."
       />
 
-      <FilterBar filters={filters} onChange={setFilters} />
+      {tab !== "forecast" && <FilterBar filters={filters} onChange={setFilters} />}
 
-      {isError && (
+      {isError && tab !== "forecast" && (
         <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
           Couldn't load analytics: {(error as Error).message}
         </p>
       )}
 
-      {/* Summary stat tiles */}
+      {/* Summary stat tiles — only for the production-summary tabs */}
+      {tab !== "forecast" && tab !== "breakdown" && (
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
         <StatTile label="Total production (m)" value={fmt(s?.totalProduction)} loading={isLoading} />
         <StatTile label="Shifts" value={fmt(s?.activeShifts)} loading={isLoading} />
@@ -93,6 +98,7 @@ export function AnalyticsPage() {
           loading={otd.isLoading}
         />
       </div>
+      )}
 
       {/* Tabs */}
       <div className="mt-5 mb-4 flex gap-1 border-b border-ink-200">
@@ -160,6 +166,16 @@ export function AnalyticsPage() {
           </Card>
         </div>
       )}
+
+      {tab === "breakdown" && (
+        <BreakdownPanel
+          startDate={filters.startDate}
+          endDate={filters.endDate}
+          shift={filters.shift}
+        />
+      )}
+
+      {tab === "forecast" && <ForecastPanel />}
 
       {tab === "machines" && (
         <Card className="py-2">
