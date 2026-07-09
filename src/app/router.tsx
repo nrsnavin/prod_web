@@ -20,6 +20,7 @@ const CustomerListPage = lazyPage(() => import("@/features/customers/CustomerLis
 const CustomerDetailPage = lazyPage(() => import("@/features/customers/CustomerDetailPage"), "CustomerDetailPage");
 const SupplierListPage = lazyPage(() => import("@/features/suppliers/SupplierListPage"), "SupplierListPage");
 const PoListPage = lazyPage(() => import("@/features/suppliers/PoListPage"), "PoListPage");
+const PoCreatePage = lazyPage(() => import("@/features/suppliers/PoCreatePage"), "PoCreatePage");
 const PoDetailPage = lazyPage(() => import("@/features/suppliers/PoDetailPage"), "PoDetailPage");
 const MaterialListPage = lazyPage(() => import("@/features/materials/MaterialListPage"), "MaterialListPage");
 const MaterialDetailPage = lazyPage(() => import("@/features/materials/MaterialDetailPage"), "MaterialDetailPage");
@@ -107,6 +108,7 @@ const builtPages: Record<string, JSX.Element> = {
 // Detail routes that live under a nav destination.
 const detailRoutes = [
   { path: "/customers/:id", element: withSuspense(<CustomerDetailPage />) },
+  { path: "/purchase-orders/new", element: withSuspense(<PoCreatePage />) },
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
   { path: "/materials/:id", element: withSuspense(<MaterialDetailPage />) },
   { path: "/elastics/:id", element: withSuspense(<ElasticDetailPage />) },

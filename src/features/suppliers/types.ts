@@ -23,18 +23,31 @@ export type PoStatus = "Open" | "Partial" | "Completed";
 
 export interface PoItem {
   _id?: string;
-  rawMaterial: { _id: string; name: string; category?: string } | string;
+  rawMaterial: { _id: string; name: string; category?: string; unit?: string } | string;
   price: number;
   quantity: number;
   received?: number;
 }
 
+export interface PoSupplierRef {
+  _id: string;
+  name: string;
+  gstin?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+  contactPerson?: string;
+}
+
 export interface PurchaseOrder {
   _id: string;
   poNo: number | string;
-  supplier: { _id: string; name: string } | string;
+  supplier: PoSupplierRef | string;
   items: PoItem[];
   status: PoStatus;
+  expectedDate?: string;
+  notes?: string;
+  date?: string;
   createdAt?: string;
 }
 
@@ -56,4 +69,6 @@ export interface PoFormItem {
 export interface PoFormValues {
   supplier: string;
   items: PoFormItem[];
+  expectedDate?: string;
+  notes?: string;
 }

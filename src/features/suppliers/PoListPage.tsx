@@ -4,18 +4,14 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
-import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
-import { ApiError } from "@/core/http/httpClient";
-import { usePurchaseOrders, usePoMutations } from "./hooks";
+import { usePurchaseOrders } from "./hooks";
 import { PoStatus, PurchaseOrder } from "./types";
-import { PoForm } from "./PoForm";
 
 export const poStatusTone: Record<PoStatus, ChipTone> = {
   Open: "info",
@@ -69,12 +65,9 @@ export function PoListPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<PoStatus | "all">("all");
   const [search, setSearch] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const { data, isLoading, isError, error } = usePurchaseOrders({ page, status, search });
-  const { create } = usePoMutations();
 
   return (
     <>
@@ -82,7 +75,7 @@ export function PoListPage() {
         title="Purchase orders"
         subtitle={data ? `${data.pagination.total} POs` : undefined}
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
+          <Button onClick={() => navigate("/purchase-orders/new")}>
             <Plus className="h-4 w-4" /> New PO
           </Button>
         }
@@ -127,23 +120,6 @@ export function PoListPage() {
         />
         <Pagination page={page} totalPages={data?.pagination.totalPages ?? 1} total={data?.pagination.total} onChange={setPage} />
       </Card>
-
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New purchase order" width="max-w-2xl">
-        <PoForm
-          submitting={create.isPending}
-          onCancel={() => setCreateOpen(false)}
-          onSubmit={(values) =>
-            create.mutate(values, {
-              onSuccess: (po) => {
-                setCreateOpen(false);
-                toast(`PO #${po.poNo} created`, "success");
-              },
-              onError: (e) =>
-                toast(e instanceof ApiError ? e.message : "Failed to create PO", "error"),
-            })
-          }
-        />
-      </Modal>
     </>
   );
 }
