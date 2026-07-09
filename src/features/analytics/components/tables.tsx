@@ -41,9 +41,9 @@ export function MachineTable({ rows }: { rows: MachineStat[] }) {
                 <span className="text-ink-400">{m.manufacturer}</span>
               </td>
               <td className={num}>{m.shiftCount}</td>
-              <td className={`${num} font-semibold`}>{m.totalProduction.toLocaleString()}</td>
-              <td className={num}>{m.avgPerShift.toLocaleString()}</td>
-              <td className={num}>{m.efficiencyPerHead.toLocaleString()}</td>
+              <td className={`${num} font-semibold`}>{m.totalProduction.toLocaleString("en-IN")}</td>
+              <td className={num}>{m.avgPerShift.toLocaleString("en-IN")}</td>
+              <td className={num}>{m.efficiencyPerHead.toLocaleString("en-IN")}</td>
               <td className={num}>{m.consistencyScore}%</td>
               <td className={num}>{m.utilizationPct}%</td>
               <td className={`${td} text-center`}>
@@ -83,8 +83,8 @@ export function EmployeeTable({ rows }: { rows: EmployeeStat[] }) {
               <td className={`${td} font-medium`}>{e.name}</td>
               <td className={`${td} text-ink-600 capitalize`}>{e.department}</td>
               <td className={num}>{e.shiftCount}</td>
-              <td className={`${num} font-semibold`}>{e.totalProduction.toLocaleString()}</td>
-              <td className={num}>{e.avgPerShift.toLocaleString()}</td>
+              <td className={`${num} font-semibold`}>{e.totalProduction.toLocaleString("en-IN")}</td>
+              <td className={num}>{e.avgPerShift.toLocaleString("en-IN")}</td>
               <td className={num}>{e.consistencyScore}%</td>
               <td className={num}>
                 <span

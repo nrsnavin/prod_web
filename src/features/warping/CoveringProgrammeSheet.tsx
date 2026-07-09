@@ -85,7 +85,7 @@ export function CoveringProgrammeSheet({
                     <td className="py-1.5 px-2 text-ink-400">{i + 1}</td>
                     <td className="py-1.5 px-2 font-medium">{el?.name ?? "—"}</td>
                     <td className="py-1.5 px-2 text-right tabular-nums">
-                      {line.quantity.toLocaleString()}
+                      {line.quantity.toLocaleString("en-IN")}
                     </td>
                     <td className="py-1.5 px-2">{materialName(el?.warpSpandex)}</td>
                     <td className="py-1.5 px-2">{materialName(el?.spandexCovering)}</td>

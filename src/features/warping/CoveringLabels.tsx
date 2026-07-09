@@ -32,7 +32,7 @@ export function CoveringLabels({
                 </p>
               </div>
               <p className="text-2xl font-black tabular-nums">
-                {line.quantity.toLocaleString()} <span className="text-sm font-bold">m</span>
+                {line.quantity.toLocaleString("en-IN")} <span className="text-sm font-bold">m</span>
               </p>
               <QrImg value={`COV|J:${jobNo}|C:${covering._id}|I:${i}`} size={52} />
             </div>

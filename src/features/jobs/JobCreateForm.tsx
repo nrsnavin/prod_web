@@ -50,7 +50,7 @@ export function JobCreateForm({
               <div key={e.id} className="grid grid-cols-[1fr_120px] gap-2 items-center">
                 <div>
                   <p className="text-sm font-medium">{e.name}</p>
-                  <p className="text-xs text-ink-400">{e.pending.toLocaleString()} m pending</p>
+                  <p className="text-xs text-ink-400">{e.pending.toLocaleString("en-IN")} m pending</p>
                 </div>
                 <Input
                   type="number"

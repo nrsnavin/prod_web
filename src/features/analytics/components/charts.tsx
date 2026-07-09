@@ -32,7 +32,7 @@ function ChartTooltip({
       <p className="font-medium">{label}</p>
       {payload.map((p) => (
         <p key={p.name} className="text-ink-600 tabular-nums">
-          {p.value.toLocaleString()}
+          {p.value.toLocaleString("en-IN")}
           {unit}
         </p>
       ))}
@@ -58,7 +58,7 @@ export function ProductionTrendChart({ data }: { data: TrendPoint[] }) {
           tickLine={false}
           axisLine={false}
           width={52}
-          tickFormatter={(v: number) => v.toLocaleString()}
+          tickFormatter={(v: number) => v.toLocaleString("en-IN")}
         />
         <Tooltip
           content={<ChartTooltip unit=" m" />}
@@ -95,7 +95,7 @@ export function WeeklyPatternChart({ data }: { data: WeeklyPatternPoint[] }) {
           tickLine={false}
           axisLine={false}
           width={52}
-          tickFormatter={(v: number) => v.toLocaleString()}
+          tickFormatter={(v: number) => v.toLocaleString("en-IN")}
         />
         <Tooltip content={<ChartTooltip unit=" m avg" />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
         <Bar
@@ -133,12 +133,12 @@ export function DayNightSplit({ day, night }: { day: number; night: number }) {
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: chartTheme.series[0] }} />
           <span className="text-ink-600">Day</span>
-          <span className="font-semibold tabular-nums">{day.toLocaleString()} m</span>
+          <span className="font-semibold tabular-nums">{day.toLocaleString("en-IN")} m</span>
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: chartTheme.series[1] }} />
           <span className="text-ink-600">Night</span>
-          <span className="font-semibold tabular-nums">{night.toLocaleString()} m</span>
+          <span className="font-semibold tabular-nums">{night.toLocaleString("en-IN")} m</span>
         </span>
       </div>
     </div>

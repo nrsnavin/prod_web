@@ -38,13 +38,13 @@ const columns: Column<DeliveryChallan>[] = [
     key: "qty",
     header: "Qty",
     align: "right",
-    render: (d) => d.totalQuantity?.toLocaleString() ?? "—",
+    render: (d) => d.totalQuantity?.toLocaleString("en-IN") ?? "—",
   },
   {
     key: "amount",
     header: "Amount (₹)",
     align: "right",
-    render: (d) => d.totalAmount?.toLocaleString() ?? "—",
+    render: (d) => d.totalAmount?.toLocaleString("en-IN") ?? "—",
   },
   {
     key: "dispatch",

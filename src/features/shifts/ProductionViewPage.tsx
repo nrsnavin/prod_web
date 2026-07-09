@@ -43,7 +43,7 @@ function ShiftSlice({
     >
       {icon}
       <span className="font-medium">{label}</span>
-      <span className="tabular-nums">{(slice.production ?? 0).toLocaleString()} m</span>
+      <span className="tabular-nums">{(slice.production ?? 0).toLocaleString("en-IN")} m</span>
       <span className="text-xs text-ink-400">
         {slice.machineCount ?? 0} mc · {slice.operatorCount ?? 0} op
       </span>
@@ -75,7 +75,7 @@ const detailColumns: Column<DetailRow>[] = [
     key: "prod",
     header: "Output (m)",
     align: "right",
-    render: (d) => d.productionMeters.toLocaleString(),
+    render: (d) => d.productionMeters.toLocaleString("en-IN"),
   },
   {
     key: "status",
@@ -94,7 +94,7 @@ function ShiftDetailModal({ shiftPlanId, onClose }: { shiftPlanId: string; onClo
         <>
           <div className="grid grid-cols-4 gap-3 mb-4 text-center">
             <div>
-              <p className="text-xl font-bold tabular-nums">{data.summary.totalProduction.toLocaleString()}</p>
+              <p className="text-xl font-bold tabular-nums">{data.summary.totalProduction.toLocaleString("en-IN")}</p>
               <p className="text-xs text-ink-400">meters</p>
             </div>
             <div>
@@ -211,7 +211,7 @@ export function ProductionViewPage() {
                 </div>
                 <div className="text-right w-28">
                   <p className="text-lg font-bold tabular-nums">
-                    {day.totalProduction.toLocaleString()}
+                    {day.totalProduction.toLocaleString("en-IN")}
                   </p>
                   <p className="text-xs text-ink-400">meters</p>
                 </div>

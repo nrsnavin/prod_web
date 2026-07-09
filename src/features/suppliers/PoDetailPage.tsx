@@ -29,7 +29,7 @@ function materialId(item: PoItem): string {
 
 const itemColumns: Column<PoItem>[] = [
   { key: "mat", header: "Material", render: (it) => <span className="font-medium">{materialName(it)}</span> },
-  { key: "qty", header: "Ordered", align: "right", render: (it) => it.quantity.toLocaleString() },
+  { key: "qty", header: "Ordered", align: "right", render: (it) => it.quantity.toLocaleString("en-IN") },
   {
     key: "recv",
     header: "Received",
@@ -44,17 +44,17 @@ const itemColumns: Column<PoItem>[] = [
               style={{ width: `${Math.min(100, pct)}%` }}
             />
           </span>
-          <span className="tabular-nums">{(it.received ?? 0).toLocaleString()}</span>
+          <span className="tabular-nums">{(it.received ?? 0).toLocaleString("en-IN")}</span>
         </span>
       );
     },
   },
-  { key: "price", header: "Price (₹)", align: "right", render: (it) => it.price.toLocaleString() },
+  { key: "price", header: "Price (₹)", align: "right", render: (it) => it.price.toLocaleString("en-IN") },
   {
     key: "total",
     header: "Total (₹)",
     align: "right",
-    render: (it) => (it.price * it.quantity).toLocaleString(),
+    render: (it) => (it.price * it.quantity).toLocaleString("en-IN"),
   },
 ];
 
@@ -97,7 +97,7 @@ function InwardForm({
               <div>
                 <p className="text-sm font-medium">{materialName(it)}</p>
                 <p className="text-xs text-ink-400">
-                  {remaining.toLocaleString()} of {it.quantity.toLocaleString()} pending
+                  {remaining.toLocaleString("en-IN")} of {it.quantity.toLocaleString("en-IN")} pending
                 </p>
               </div>
               <Input
@@ -175,7 +175,7 @@ export function PoDetailPage() {
       </Link>
       <PageHeader
         title={`PO #${po.poNo}`}
-        subtitle={`${supplierName} · ₹${total.toLocaleString()}`}
+        subtitle={`${supplierName} · ₹${total.toLocaleString("en-IN")}`}
         actions={
           <>
             {po.status !== "Completed" && (
@@ -237,7 +237,7 @@ export function PoDetailPage() {
                   </p>
                 </div>
                 <span className="text-sm font-semibold tabular-nums text-status-success">
-                  +{rec.quantity.toLocaleString()}
+                  +{rec.quantity.toLocaleString("en-IN")}
                 </span>
               </li>
             ))}

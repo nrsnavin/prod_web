@@ -22,7 +22,7 @@ const columns: Column<ShiftPlanMachineRow>[] = [
     key: "production",
     header: "Output (m)",
     align: "right",
-    render: (m) => m.production.toLocaleString(),
+    render: (m) => m.production.toLocaleString("en-IN"),
   },
   {
     key: "status",
@@ -82,7 +82,7 @@ export function ShiftPlanDetailPage() {
         <Card className="p-5">
           <p className="text-sm text-ink-400">Total production</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">
-            {plan.totalProduction.toLocaleString()} m
+            {plan.totalProduction.toLocaleString("en-IN")} m
           </p>
         </Card>
         <Card className="p-5">

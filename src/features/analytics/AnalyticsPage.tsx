@@ -44,7 +44,7 @@ export function AnalyticsPage() {
 
   const { data, isLoading, isError, error } = useAnalytics(filters);
   const s = data?.summary;
-  const fmt = (n?: number) => (n ?? 0).toLocaleString();
+  const fmt = (n?: number) => (n ?? 0).toLocaleString("en-IN");
 
   // On-time delivery over the last 90 days (order-linked dispatches).
   const otd = useQuery({
@@ -149,7 +149,7 @@ export function AnalyticsPage() {
               <div>
                 <p className="text-ink-400 text-xs">Total run time</p>
                 <p className="font-semibold tabular-nums">
-                  {Math.round((s?.totalRunMinutes ?? 0) / 60).toLocaleString()} h
+                  {Math.round((s?.totalRunMinutes ?? 0) / 60).toLocaleString("en-IN")} h
                 </p>
               </div>
               <div>

@@ -35,7 +35,7 @@ const shiftColumns: Column<MachineShiftRow>[] = [
   },
   { key: "emp", header: "Operator", render: (s) => s.employee },
   { key: "runtime", header: "Runtime (min)", align: "right", render: (s) => s.runtimeMinutes },
-  { key: "output", header: "Output (m)", align: "right", render: (s) => s.outputMeters.toLocaleString() },
+  { key: "output", header: "Output (m)", align: "right", render: (s) => s.outputMeters.toLocaleString("en-IN") },
   { key: "eff", header: "Efficiency", align: "right", render: (s) => `${s.efficiency}%` },
 ];
 
@@ -202,7 +202,7 @@ export function MachineDetailPage() {
                     </span>
                     {log.cost ? (
                       <span className="ml-auto text-sm font-semibold tabular-nums">
-                        ₹{log.cost.toLocaleString()}
+                        ₹{log.cost.toLocaleString("en-IN")}
                       </span>
                     ) : null}
                   </div>

@@ -187,7 +187,7 @@ export function DcForm({
       <Input label="Remarks" {...register("remarks")} />
 
       <p className="text-sm text-ink-600 text-right">
-        Total: <span className="font-bold tabular-nums">₹{total.toLocaleString()}</span>
+        Total: <span className="font-bold tabular-nums">₹{total.toLocaleString("en-IN")}</span>
       </p>
 
       <div className="flex justify-end gap-2 pt-1">

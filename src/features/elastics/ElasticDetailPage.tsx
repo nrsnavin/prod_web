@@ -89,23 +89,23 @@ export function ElasticDetailPage() {
         <Card className="p-5">
           <p className="text-sm text-ink-400">Total cost</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">
-            {elastic.costing?.totalCost != null ? `₹${elastic.costing.totalCost.toLocaleString()}` : "—"}
+            {elastic.costing?.totalCost != null ? `₹${elastic.costing.totalCost.toLocaleString("en-IN")}` : "—"}
           </p>
           <p className="mt-1 text-xs text-ink-400">per metre</p>
         </Card>
         <Card className="p-5">
           <p className="text-sm text-ink-400">Material / conversion</p>
           <p className="mt-1 text-2xl font-bold tabular-nums">
-            {elastic.costing?.materialCost != null ? `₹${elastic.costing.materialCost.toLocaleString()}` : "—"}
+            {elastic.costing?.materialCost != null ? `₹${elastic.costing.materialCost.toLocaleString("en-IN")}` : "—"}
             <span className="text-base font-medium text-ink-400">
-              {" "}+ ₹{(elastic.costing?.conversionCost ?? 0).toLocaleString()}
+              {" "}+ ₹{(elastic.costing?.conversionCost ?? 0).toLocaleString("en-IN")}
             </span>
           </p>
         </Card>
         <Card className="p-5">
           <p className="text-sm text-ink-400">Stock produced</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">
-            {(elastic.quantityProduced ?? 0).toLocaleString()} m
+            {(elastic.quantityProduced ?? 0).toLocaleString("en-IN")} m
           </p>
         </Card>
       </div>

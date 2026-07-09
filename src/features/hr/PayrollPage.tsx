@@ -49,10 +49,10 @@ function PayslipModal({
         ["Present shifts", data.presentShifts],
         ["Absent shifts", data.absentShifts],
         ["Hourly rate", data.hourlyRate != null ? `₹${data.hourlyRate}` : undefined],
-        ["Gross earnings", data.grossEarnings != null ? `₹${Number(data.grossEarnings).toLocaleString()}` : undefined],
-        ["Bonuses", data.totalBonuses != null ? `₹${Number(data.totalBonuses).toLocaleString()}` : undefined],
-        ["Deductions", data.totalDeductions != null ? `₹${Number(data.totalDeductions).toLocaleString()}` : undefined],
-        ["Advance deduction", data.totalAdvanceDeduction != null ? `₹${Number(data.totalAdvanceDeduction).toLocaleString()}` : undefined],
+        ["Gross earnings", data.grossEarnings != null ? `₹${Number(data.grossEarnings).toLocaleString("en-IN")}` : undefined],
+        ["Bonuses", data.totalBonuses != null ? `₹${Number(data.totalBonuses).toLocaleString("en-IN")}` : undefined],
+        ["Deductions", data.totalDeductions != null ? `₹${Number(data.totalDeductions).toLocaleString("en-IN")}` : undefined],
+        ["Advance deduction", data.totalAdvanceDeduction != null ? `₹${Number(data.totalAdvanceDeduction).toLocaleString("en-IN")}` : undefined],
       ]
     : [];
 
@@ -85,7 +85,7 @@ function PayslipModal({
             <div className="flex justify-between py-3">
               <dt className="font-semibold">Net pay</dt>
               <dd className="text-xl font-bold tabular-nums">
-                ₹{Number(data.netPay ?? 0).toLocaleString()}
+                ₹{Number(data.netPay ?? 0).toLocaleString("en-IN")}
               </dd>
             </div>
           </dl>
@@ -146,14 +146,14 @@ export function PayrollPage() {
       ),
     },
     { key: "shifts", header: "Shifts (P/A)", align: "right", render: (e) => `${e.presentShifts ?? 0} / ${e.absentShifts ?? 0}` },
-    { key: "gross", header: "Gross (₹)", align: "right", render: (e) => (e.grossEarnings ?? 0).toLocaleString() },
-    { key: "bonus", header: "Bonus (₹)", align: "right", render: (e) => (e.totalBonuses ?? 0).toLocaleString() },
-    { key: "ded", header: "Deductions (₹)", align: "right", render: (e) => (e.totalDeductions ?? 0).toLocaleString() },
+    { key: "gross", header: "Gross (₹)", align: "right", render: (e) => (e.grossEarnings ?? 0).toLocaleString("en-IN") },
+    { key: "bonus", header: "Bonus (₹)", align: "right", render: (e) => (e.totalBonuses ?? 0).toLocaleString("en-IN") },
+    { key: "ded", header: "Deductions (₹)", align: "right", render: (e) => (e.totalDeductions ?? 0).toLocaleString("en-IN") },
     {
       key: "net",
       header: "Net pay (₹)",
       align: "right",
-      render: (e) => <span className="font-bold">{e.netPay.toLocaleString()}</span>,
+      render: (e) => <span className="font-bold">{e.netPay.toLocaleString("en-IN")}</span>,
     },
     {
       key: "status",
@@ -239,9 +239,9 @@ export function PayrollPage() {
           ) : (
             <div className="mb-4 grid gap-3 grid-cols-2 md:grid-cols-4">
               {[
-                { label: "Net payout", val: `₹${(s?.totalNetPay ?? 0).toLocaleString()}` },
-                { label: "Gross", val: `₹${(s?.totalGross ?? 0).toLocaleString()}` },
-                { label: "Deductions", val: `₹${(s?.totalDeductions ?? 0).toLocaleString()}` },
+                { label: "Net payout", val: `₹${(s?.totalNetPay ?? 0).toLocaleString("en-IN")}` },
+                { label: "Gross", val: `₹${(s?.totalGross ?? 0).toLocaleString("en-IN")}` },
+                { label: "Deductions", val: `₹${(s?.totalDeductions ?? 0).toLocaleString("en-IN")}` },
                 {
                   label: "Status",
                   val: `${s?.paidCount ?? 0} paid · ${s?.finalizedCount ?? 0} final · ${s?.draftCount ?? 0} draft`,
@@ -286,7 +286,7 @@ export function PayrollPage() {
                       {a.createdAt && ` · ${new Date(a.createdAt).toLocaleDateString()}`}
                     </p>
                   </div>
-                  <span className="font-bold tabular-nums">₹{a.amount.toLocaleString()}</span>
+                  <span className="font-bold tabular-nums">₹{a.amount.toLocaleString("en-IN")}</span>
                   {a.status === "pending" ? (
                     <span className="flex gap-1.5">
                       <Button

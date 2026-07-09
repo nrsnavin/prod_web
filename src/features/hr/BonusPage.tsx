@@ -53,7 +53,7 @@ export function BonusPage() {
       key: "amount",
       header: "Bonus (₹)",
       align: "right",
-      render: (r) => <span className="font-bold">{r.bonusAmount.toLocaleString()}</span>,
+      render: (r) => <span className="font-bold">{r.bonusAmount.toLocaleString("en-IN")}</span>,
     },
     {
       key: "status",
@@ -113,7 +113,7 @@ export function BonusPage() {
       ) : (
         <div className="mb-4 grid gap-3 grid-cols-2 md:grid-cols-4">
           {[
-            { label: "Total payout", val: `₹${(stats?.totalPayout ?? 0).toLocaleString()}` },
+            { label: "Total payout", val: `₹${(stats?.totalPayout ?? 0).toLocaleString("en-IN")}` },
             { label: "Records", val: stats?.totalRecords ?? 0 },
             { label: "Paid", val: stats?.paidRecords ?? 0 },
             { label: "Pending", val: stats?.pendingRecords ?? 0 },

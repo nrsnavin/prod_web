@@ -39,7 +39,7 @@ function VerifyModal({
             {shift.shiftPlan?.date && `· ${new Date(shift.shiftPlan.date).toLocaleDateString()}`}
           </p>
           <p className="mt-1 text-xs text-ink-400">
-            Worker submitted: {(shift.productionMeters ?? 0).toLocaleString()} m · {shift.timer ?? "—"}
+            Worker submitted: {(shift.productionMeters ?? 0).toLocaleString("en-IN")} m · {shift.timer ?? "—"}
           </p>
         </div>
 
@@ -154,7 +154,7 @@ export function ShiftVerificationPage() {
                 </StatusChip>
                 <div className="text-right">
                   <p className="font-bold tabular-nums">
-                    {(s.productionMeters ?? 0).toLocaleString()} m
+                    {(s.productionMeters ?? 0).toLocaleString("en-IN")} m
                   </p>
                   <p className="text-xs text-ink-400">{s.timer ?? "—"}</p>
                 </div>

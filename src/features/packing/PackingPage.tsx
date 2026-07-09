@@ -36,7 +36,7 @@ function JobPackings({
 
   const columns: Column<PackingRecord>[] = [
     { key: "elastic", header: "Elastic", render: (p) => name(p.elastic) },
-    { key: "meter", header: "Meters", align: "right", render: (p) => p.meter.toLocaleString() },
+    { key: "meter", header: "Meters", align: "right", render: (p) => p.meter.toLocaleString("en-IN") },
     { key: "net", header: "Net (kg)", align: "right", render: (p) => p.netWeight ?? "—" },
     { key: "gross", header: "Gross (kg)", align: "right", render: (p) => p.grossWeight ?? "—" },
     { key: "checked", header: "Checked by", render: (p) => name(p.checkedBy) },
@@ -183,7 +183,7 @@ export function PackingPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold tabular-nums">
-                      {g.totalMeters.toLocaleString()} m
+                      {g.totalMeters.toLocaleString("en-IN")} m
                     </p>
                     <p className="text-xs text-ink-400">{g.totalBoxes} boxes</p>
                   </div>
