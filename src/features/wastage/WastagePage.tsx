@@ -141,7 +141,7 @@ function JobWastages({ jobId }: { jobId: string }) {
             <span className="text-xs text-ink-400">₹{w.penalty} penalty</span>
           )}
           <span className="font-semibold tabular-nums text-status-danger">
-            {w.quantity.toLocaleString()} m
+            {w.quantity.toLocaleString("en-IN")} m
           </span>
         </li>
       ))}
@@ -226,7 +226,7 @@ export function WastagePage() {
                       <StatusChip tone="neutral">{j.status}</StatusChip>
                       <div className="text-right">
                         <p className="font-bold tabular-nums text-status-danger">
-                          {j.totalWastage.toLocaleString()} m
+                          {j.totalWastage.toLocaleString("en-IN")} m
                         </p>
                         <p className="text-xs text-ink-400">{j.wastageCount} entries</p>
                       </div>
@@ -270,19 +270,19 @@ export function WastagePage() {
                 <Card className="p-4">
                   <p className="text-xs text-ink-400">Total wastage</p>
                   <p className="mt-0.5 text-2xl font-bold tabular-nums text-status-danger">
-                    {analytics.data.totalWastage.toLocaleString()} m
+                    {analytics.data.totalWastage.toLocaleString("en-IN")} m
                   </p>
                 </Card>
                 <Card className="p-4">
                   <p className="text-xs text-ink-400">Entries</p>
                   <p className="mt-0.5 text-2xl font-bold tabular-nums">
-                    {analytics.data.totalCount.toLocaleString()}
+                    {analytics.data.totalCount.toLocaleString("en-IN")}
                   </p>
                 </Card>
                 <Card className="p-4">
                   <p className="text-xs text-ink-400">Penalties</p>
                   <p className="mt-0.5 text-2xl font-bold tabular-nums">
-                    ₹{analytics.data.totalPenalty.toLocaleString()}
+                    ₹{analytics.data.totalPenalty.toLocaleString("en-IN")}
                   </p>
                 </Card>
               </div>
@@ -299,7 +299,7 @@ export function WastagePage() {
                           )}
                         </span>
                         <span className="tabular-nums font-semibold">
-                          {e.total.toLocaleString()} m
+                          {e.total.toLocaleString("en-IN")} m
                           <span className="text-ink-400 font-normal"> ({e.count})</span>
                         </span>
                       </li>
@@ -316,7 +316,7 @@ export function WastagePage() {
                       <li key={i} className="flex justify-between py-2 text-sm">
                         <span>{e.name}</span>
                         <span className="tabular-nums font-semibold">
-                          {e.total.toLocaleString()} m
+                          {e.total.toLocaleString("en-IN")} m
                           <span className="text-ink-400 font-normal"> ({e.count})</span>
                         </span>
                       </li>

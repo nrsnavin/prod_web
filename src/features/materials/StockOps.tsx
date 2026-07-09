@@ -67,7 +67,7 @@ export function ReorderSuggestions() {
               </span>
             </div>
             <span className="tabular-nums text-ink-600">
-              ≈ ₹{g.estimatedValue.toLocaleString()}
+              ≈ ₹{g.estimatedValue.toLocaleString("en-IN")}
             </span>
             {g.supplierId ? (
               <Button
@@ -148,7 +148,7 @@ export function StockTakeModal({
             <div key={m._id} className="grid grid-cols-[1fr_110px_90px] gap-2 items-center text-sm">
               <div className="min-w-0">
                 <p className="font-medium truncate">{m.name}</p>
-                <p className="text-xs text-ink-400">system: {m.stock.toLocaleString()}</p>
+                <p className="text-xs text-ink-400">system: {m.stock.toLocaleString("en-IN")}</p>
               </div>
               <input
                 type="number"
@@ -167,7 +167,7 @@ export function StockTakeModal({
                       : "text-status-danger font-semibold tabular-nums"
                 }
               >
-                {diff === null ? "—" : diff === 0 ? "match" : (diff > 0 ? "+" : "") + diff.toLocaleString()}
+                {diff === null ? "—" : diff === 0 ? "match" : (diff > 0 ? "+" : "") + diff.toLocaleString("en-IN")}
               </span>
             </div>
           );

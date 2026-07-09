@@ -44,7 +44,7 @@ const columns: Column<PurchaseOrder>[] = [
     key: "value",
     header: "Value (₹)",
     align: "right",
-    render: (po) => poValue(po).toLocaleString(),
+    render: (po) => poValue(po).toLocaleString("en-IN"),
   },
   {
     key: "received",

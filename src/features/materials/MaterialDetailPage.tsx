@@ -36,11 +36,11 @@ const movementColumns: Column<StockMovement>[] = [
     render: (m) => (
       <span className={m.quantity < 0 ? "text-status-danger" : "text-status-success"}>
         {m.quantity > 0 ? "+" : ""}
-        {m.quantity.toLocaleString()}
+        {m.quantity.toLocaleString("en-IN")}
       </span>
     ),
   },
-  { key: "balance", header: "Balance", align: "right", render: (m) => m.balance?.toLocaleString() ?? "—" },
+  { key: "balance", header: "Balance", align: "right", render: (m) => m.balance?.toLocaleString("en-IN") ?? "—" },
   { key: "reason", header: "Reason / Ref", render: (m) => m.reason || m.order || "—" },
 ];
 
@@ -91,7 +91,7 @@ function AdjustStockForm({
       <p className="text-sm text-ink-600">
         New stock:{" "}
         <span className="font-semibold tabular-nums">
-          {(currentStock + adj).toLocaleString()}
+          {(currentStock + adj).toLocaleString("en-IN")}
         </span>
       </p>
       <div className="flex justify-end gap-2 pt-1">
@@ -157,17 +157,17 @@ export function MaterialDetailPage() {
         <Card className="p-5">
           <p className="text-sm text-ink-400">Current stock</p>
           <p className={`mt-1 text-3xl font-bold tabular-nums ${low ? "text-status-danger" : ""}`}>
-            {material.stock.toLocaleString()}
+            {material.stock.toLocaleString("en-IN")}
           </p>
           {low && <StatusChip tone="danger" className="mt-2">Below minimum</StatusChip>}
         </Card>
         <Card className="p-5">
           <p className="text-sm text-ink-400">Minimum stock</p>
-          <p className="mt-1 text-3xl font-bold tabular-nums">{material.minStock.toLocaleString()}</p>
+          <p className="mt-1 text-3xl font-bold tabular-nums">{material.minStock.toLocaleString("en-IN")}</p>
         </Card>
         <Card className="p-5">
           <p className="text-sm text-ink-400">Price</p>
-          <p className="mt-1 text-3xl font-bold tabular-nums">₹{material.price.toLocaleString()}</p>
+          <p className="mt-1 text-3xl font-bold tabular-nums">₹{material.price.toLocaleString("en-IN")}</p>
         </Card>
       </div>
 
@@ -183,7 +183,7 @@ export function MaterialDetailPage() {
                   : undefined,
             },
             { label: "Category", value: material.category },
-            { label: "Total consumed", value: (material.totalConsumption ?? 0).toLocaleString() },
+            { label: "Total consumed", value: (material.totalConsumption ?? 0).toLocaleString("en-IN") },
           ]}
         />
       </Card>

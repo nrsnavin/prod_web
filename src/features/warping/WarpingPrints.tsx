@@ -47,7 +47,7 @@ export function WarpingProgrammeSheet({
               <tr key={i} className="border-b border-ink-100">
                 <td className="py-1.5 px-2 font-medium">{elasticLineName(l)}</td>
                 <td className="py-1.5 px-2 text-right tabular-nums">
-                  {l.quantity.toLocaleString()}
+                  {l.quantity.toLocaleString("en-IN")}
                 </td>
               </tr>
             ))}

@@ -31,20 +31,20 @@ const columns: Column<Elastic>[] = [
     key: "weight",
     header: "Weight (g/m)",
     align: "right",
-    render: (e) => e.weight?.toLocaleString() ?? "—",
+    render: (e) => e.weight?.toLocaleString("en-IN") ?? "—",
   },
   {
     key: "stock",
     header: "Stock (m)",
     align: "right",
-    render: (e) => (e.quantityProduced ?? 0).toLocaleString(),
+    render: (e) => (e.quantityProduced ?? 0).toLocaleString("en-IN"),
   },
   {
     key: "cost",
     header: "Cost (₹/m)",
     align: "right",
     render: (e) =>
-      e.costing?.totalCost != null ? e.costing.totalCost.toLocaleString() : "—",
+      e.costing?.totalCost != null ? e.costing.totalCost.toLocaleString("en-IN") : "—",
   },
 ];
 

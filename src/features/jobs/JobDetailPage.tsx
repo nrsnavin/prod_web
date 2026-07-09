@@ -52,20 +52,20 @@ function Pipeline({ status }: { status: string }) {
 
 const summaryColumns: Column<JobSummaryRow>[] = [
   { key: "name", header: "Elastic", render: (r) => <span className="font-medium">{r.elasticName}</span> },
-  { key: "planned", header: "Planned", align: "right", render: (r) => r.planned.toLocaleString() },
-  { key: "produced", header: "Produced", align: "right", render: (r) => r.produced.toLocaleString() },
-  { key: "packed", header: "Packed", align: "right", render: (r) => r.packed.toLocaleString() },
+  { key: "planned", header: "Planned", align: "right", render: (r) => r.planned.toLocaleString("en-IN") },
+  { key: "produced", header: "Produced", align: "right", render: (r) => r.produced.toLocaleString("en-IN") },
+  { key: "packed", header: "Packed", align: "right", render: (r) => r.packed.toLocaleString("en-IN") },
   {
     key: "wasted",
     header: "Wasted",
     align: "right",
     render: (r) => (
       <span className={r.wasted > 0 ? "text-status-danger" : "text-ink-400"}>
-        {r.wasted.toLocaleString()}
+        {r.wasted.toLocaleString("en-IN")}
       </span>
     ),
   },
-  { key: "remaining", header: "Remaining", align: "right", render: (r) => r.remaining.toLocaleString() },
+  { key: "remaining", header: "Remaining", align: "right", render: (r) => r.remaining.toLocaleString("en-IN") },
   { key: "pct", header: "Packing %", align: "right", render: (r) => `${r.packingPct}%` },
 ];
 
@@ -83,7 +83,7 @@ const shiftColumns: Column<JobShiftDetail>[] = [
     key: "prod",
     header: "Output (m)",
     align: "right",
-    render: (s) => s.productionMeters.toLocaleString(),
+    render: (s) => s.productionMeters.toLocaleString("en-IN"),
   },
   { key: "status", header: "Status", render: (s) => <StatusChip tone="neutral">{s.status}</StatusChip> },
 ];
@@ -219,7 +219,7 @@ export function JobDetailPage() {
                   </p>
                 </div>
                 <span className="font-semibold tabular-nums text-status-danger">
-                  {w.quantity.toLocaleString()} m
+                  {w.quantity.toLocaleString("en-IN")} m
                 </span>
               </li>
             ))}

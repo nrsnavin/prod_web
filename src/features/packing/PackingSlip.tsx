@@ -23,7 +23,7 @@ export function PackingSlip({
 }) {
   const rows: Array<[string, string]> = [
     ["Elastic", name(record.elastic)],
-    ["Meters", `${record.meter.toLocaleString()} m`],
+    ["Meters", `${record.meter.toLocaleString("en-IN")} m`],
     ["Joints", String(record.joints ?? 0)],
     ["Stretch", record.stretch || "—"],
     ["Size", record.size || "—"],

@@ -23,7 +23,7 @@ const materialColumns: Column<MrpMaterial>[] = [
     key: "required",
     header: "Required",
     align: "right",
-    render: (m) => (m.required ?? m.quantity ?? 0).toLocaleString(),
+    render: (m) => (m.required ?? m.quantity ?? 0).toLocaleString("en-IN"),
   },
   {
     key: "stock",
@@ -35,7 +35,7 @@ const materialColumns: Column<MrpMaterial>[] = [
       const short = stock < (m.required ?? m.quantity ?? 0);
       return (
         <span className={short ? "text-status-danger font-semibold" : ""}>
-          {stock.toLocaleString()}
+          {stock.toLocaleString("en-IN")}
         </span>
       );
     },
@@ -113,7 +113,7 @@ export function MrpPage() {
             {data.elastics.map((e, i) => (
               <li key={i} className="flex justify-between py-2 text-sm">
                 <span className="font-medium">{e.name}</span>
-                <span className="tabular-nums">{e.quantity.toLocaleString()} m</span>
+                <span className="tabular-nums">{e.quantity.toLocaleString("en-IN")} m</span>
               </li>
             ))}
           </ul>

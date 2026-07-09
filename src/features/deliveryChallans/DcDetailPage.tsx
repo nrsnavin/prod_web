@@ -152,11 +152,11 @@ export function DcDetailPage() {
                     <td className="py-2">{i + 1}</td>
                     <td className="py-2 font-medium">{name}</td>
                     <td className="py-2 text-right tabular-nums">
-                      {item.quantity.toLocaleString()} {item.unit || "m"}
+                      {item.quantity.toLocaleString("en-IN")} {item.unit || "m"}
                     </td>
-                    <td className="py-2 text-right tabular-nums">{item.rate.toLocaleString()}</td>
+                    <td className="py-2 text-right tabular-nums">{item.rate.toLocaleString("en-IN")}</td>
                     <td className="py-2 text-right tabular-nums">
-                      {(item.amount ?? item.quantity * item.rate).toLocaleString()}
+                      {(item.amount ?? item.quantity * item.rate).toLocaleString("en-IN")}
                     </td>
                   </tr>
                 );
@@ -166,11 +166,11 @@ export function DcDetailPage() {
               <tr className="border-t border-ink-200 font-semibold">
                 <td className="py-2" colSpan={2}>Total</td>
                 <td className="py-2 text-right tabular-nums">
-                  {(dc.totalQuantity ?? 0).toLocaleString()}
+                  {(dc.totalQuantity ?? 0).toLocaleString("en-IN")}
                 </td>
                 <td />
                 <td className="py-2 text-right tabular-nums">
-                  ₹{(dc.totalAmount ?? 0).toLocaleString()}
+                  ₹{(dc.totalAmount ?? 0).toLocaleString("en-IN")}
                 </td>
               </tr>
             </tfoot>

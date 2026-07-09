@@ -23,7 +23,7 @@ export function ElasticLines({ lines }: { lines?: ElasticOrderedLine[] }) {
       {lines.map((l, i) => (
         <li key={i} className="flex justify-between py-2 text-sm">
           <span className="font-medium">{elasticLineName(l)}</span>
-          <span className="tabular-nums text-ink-600">{l.quantity.toLocaleString()} m</span>
+          <span className="tabular-nums text-ink-600">{l.quantity.toLocaleString("en-IN")} m</span>
         </li>
       ))}
     </ul>

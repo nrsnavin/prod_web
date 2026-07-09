@@ -44,17 +44,17 @@ const columns: Column<RawMaterial>[] = [
     align: "right",
     render: (m) => (
       <span className={cn("font-semibold", m.stock <= m.minStock && "text-status-danger")}>
-        {m.stock.toLocaleString()}
+        {m.stock.toLocaleString("en-IN")}
       </span>
     ),
   },
-  { key: "min", header: "Min stock", align: "right", render: (m) => m.minStock.toLocaleString() },
-  { key: "price", header: "Price (₹)", align: "right", render: (m) => m.price.toLocaleString() },
+  { key: "min", header: "Min stock", align: "right", render: (m) => m.minStock.toLocaleString("en-IN") },
+  { key: "price", header: "Price (₹)", align: "right", render: (m) => m.price.toLocaleString("en-IN") },
   {
     key: "consumption",
     header: "Consumed",
     align: "right",
-    render: (m) => (m.totalConsumption ?? 0).toLocaleString(),
+    render: (m) => (m.totalConsumption ?? 0).toLocaleString("en-IN"),
   },
 ];
 
@@ -78,7 +78,7 @@ export function MaterialListPage() {
         title="Raw materials"
         subtitle={
           data
-            ? `${data.length} materials · stock value ≈ ₹${Math.round(stockValue).toLocaleString()}`
+            ? `${data.length} materials · stock value ≈ ₹${Math.round(stockValue).toLocaleString("en-IN")}`
             : undefined
         }
         actions={

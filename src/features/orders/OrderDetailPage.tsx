@@ -20,7 +20,7 @@ import { JobCreateForm } from "@/features/jobs/JobCreateForm";
 
 const elasticColumns: Column<OrderElasticProgress>[] = [
   { key: "name", header: "Elastic", render: (e) => <span className="font-medium">{e.name}</span> },
-  { key: "ordered", header: "Ordered", align: "right", render: (e) => e.ordered.toLocaleString() },
+  { key: "ordered", header: "Ordered", align: "right", render: (e) => e.ordered.toLocaleString("en-IN") },
   {
     key: "produced",
     header: "Produced",
@@ -32,7 +32,7 @@ const elasticColumns: Column<OrderElasticProgress>[] = [
           <span className="h-1.5 w-16 rounded-full bg-ink-100 overflow-hidden">
             <span className="block h-full rounded-full bg-status-info" style={{ width: `${pct}%` }} />
           </span>
-          <span className="tabular-nums">{e.produced.toLocaleString()}</span>
+          <span className="tabular-nums">{e.produced.toLocaleString("en-IN")}</span>
         </span>
       );
     },
@@ -48,7 +48,7 @@ const elasticColumns: Column<OrderElasticProgress>[] = [
           <span className="h-1.5 w-16 rounded-full bg-ink-100 overflow-hidden">
             <span className="block h-full rounded-full bg-status-success" style={{ width: `${pct}%` }} />
           </span>
-          <span className="tabular-nums">{e.packed.toLocaleString()}</span>
+          <span className="tabular-nums">{e.packed.toLocaleString("en-IN")}</span>
         </span>
       );
     },
@@ -59,7 +59,7 @@ const elasticColumns: Column<OrderElasticProgress>[] = [
     align: "right",
     render: (e) => (
       <span className={e.pending > 0 ? "font-semibold" : "text-ink-400"}>
-        {e.pending.toLocaleString()}
+        {e.pending.toLocaleString("en-IN")}
       </span>
     ),
   },
@@ -77,7 +77,7 @@ const materialColumns: Column<RawMaterialRequirement>[] = [
     key: "required",
     header: "Required",
     align: "right",
-    render: (r) => (r.required ?? r.quantity ?? 0).toLocaleString(),
+    render: (r) => (r.required ?? r.quantity ?? 0).toLocaleString("en-IN"),
   },
   {
     key: "available",
@@ -87,7 +87,7 @@ const materialColumns: Column<RawMaterialRequirement>[] = [
       const avail = r.available ?? r.stock;
       if (avail == null) return "—";
       const short = avail < (r.required ?? r.quantity ?? 0);
-      return <span className={short ? "text-status-danger font-semibold" : ""}>{avail.toLocaleString()}</span>;
+      return <span className={short ? "text-status-danger font-semibold" : ""}>{avail.toLocaleString("en-IN")}</span>;
     },
   },
 ];

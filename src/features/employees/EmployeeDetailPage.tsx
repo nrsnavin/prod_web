@@ -26,7 +26,7 @@ const shiftColumns: Column<EmployeeShiftRow>[] = [
   },
   { key: "machine", header: "Machine", render: (s) => s.machine },
   { key: "runtime", header: "Runtime (min)", align: "right", render: (s) => s.runtimeMinutes },
-  { key: "output", header: "Output (m)", align: "right", render: (s) => s.outputMeters.toLocaleString() },
+  { key: "output", header: "Output (m)", align: "right", render: (s) => s.outputMeters.toLocaleString("en-IN") },
   { key: "eff", header: "Efficiency", align: "right", render: (s) => `${s.efficiency}%` },
 ];
 

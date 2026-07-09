@@ -45,7 +45,7 @@ function ShiftCard({
           <div className="mt-4 grid grid-cols-3 gap-3 text-center">
             <div>
               <p className="text-2xl font-bold tabular-nums">
-                {(summary!.production ?? 0).toLocaleString()}
+                {(summary!.production ?? 0).toLocaleString("en-IN")}
               </p>
               <p className="text-xs text-ink-400">meters</p>
             </div>
