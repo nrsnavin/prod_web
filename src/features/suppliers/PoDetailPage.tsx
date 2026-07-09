@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Copy, PackagePlus } from "lucide-react";
+import { ArrowLeft, Copy, PackagePlus, FileText } from "lucide-react";
+import { PrintModal } from "@/components/print/PrintModal";
+import { PoDocument } from "./PoDocument";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -147,6 +149,7 @@ export function PoDetailPage() {
   const { data, isLoading, isError, error } = usePurchaseOrder(id);
   const { clone, inward } = usePoMutations();
   const [inwardOpen, setInwardOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -178,6 +181,9 @@ export function PoDetailPage() {
         subtitle={`${supplierName} · ₹${total.toLocaleString("en-IN")}`}
         actions={
           <>
+            <Button variant="secondary" onClick={() => setPrintOpen(true)}>
+              <FileText className="h-4 w-4" /> View PDF
+            </Button>
             {po.status !== "Completed" && (
               <Button onClick={() => setInwardOpen(true)}>
                 <PackagePlus className="h-4 w-4" /> Record inward
@@ -244,6 +250,10 @@ export function PoDetailPage() {
           </ul>
         )}
       </Card>
+
+      <PrintModal open={printOpen} onClose={() => setPrintOpen(false)} title={`Purchase order #${po.poNo}`}>
+        <PoDocument po={po} />
+      </PrintModal>
 
       <Modal open={inwardOpen} onClose={() => setInwardOpen(false)} title="Record goods received">
         <InwardForm
