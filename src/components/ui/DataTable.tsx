@@ -33,13 +33,15 @@ const alignClass = {
 
 export function DataTable<T>({
   columns,
-  rows,
+  rows: rowsProp,
   rowKey,
   onRowClick,
   loading,
   emptyTitle = "Nothing here yet",
   emptyDescription,
 }: DataTableProps<T>) {
+  // Never crash on a missing/undefined rows prop — render empty instead.
+  const rows = rowsProp ?? [];
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<1 | -1>(1);
 
