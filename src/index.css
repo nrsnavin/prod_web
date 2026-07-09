@@ -36,4 +36,9 @@
     width: 100%;
     padding: 0;
   }
+  /* Labels & slips: never split one across pages */
+  .print-label {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

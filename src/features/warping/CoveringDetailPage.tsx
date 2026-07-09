@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Play, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle2, XCircle, Tags } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -9,12 +10,14 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useCovering, useCoveringMutations } from "./hooks";
 import { ProgrammeChip, ElasticLines } from "./programmeShared";
+import { CoveringLabels } from "./CoveringLabels";
 
 export function CoveringDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { data: covering, isLoading, isError, error } = useCovering(id);
   const { start, complete, cancel } = useCoveringMutations();
+  const [labelsOpen, setLabelsOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -45,6 +48,9 @@ export function CoveringDetailPage() {
         subtitle={covering.job?.customer?.name}
         actions={
           <>
+            <Button variant="secondary" onClick={() => setLabelsOpen(true)}>
+              <Tags className="h-4 w-4" /> Labels
+            </Button>
             {covering.status === "open" && (
               <Button
                 loading={start.isPending}
@@ -122,6 +128,8 @@ export function CoveringDetailPage() {
           <ElasticLines lines={covering.elasticPlanned} />
         </div>
       </Card>
+
+      <CoveringLabels open={labelsOpen} onClose={() => setLabelsOpen(false)} covering={covering} />
     </>
   );
 }

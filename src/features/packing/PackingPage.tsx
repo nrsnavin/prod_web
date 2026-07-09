@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, Printer } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,16 +13,26 @@ import { ApiError } from "@/core/http/httpClient";
 import { usePackingGrouped, usePackingByJob, usePackingMutations } from "./hooks";
 import { PackingRecord } from "./types";
 import { PackingForm } from "./PackingForm";
+import { PackingSlip } from "./PackingSlip";
 
 function name(x?: { name: string } | string | null): string {
   return typeof x === "object" && x ? x.name : "—";
 }
 
-function JobPackings({ jobId }: { jobId: string }) {
+function JobPackings({
+  jobId,
+  jobNo,
+  customerName,
+}: {
+  jobId: string;
+  jobNo?: number | string;
+  customerName?: string;
+}) {
   const { data, isLoading } = usePackingByJob(jobId);
   const { remove } = usePackingMutations();
   const { toast } = useToast();
   const [deleting, setDeleting] = useState<PackingRecord | null>(null);
+  const [printing, setPrinting] = useState<PackingRecord | null>(null);
 
   const columns: Column<PackingRecord>[] = [
     { key: "elastic", header: "Elastic", render: (p) => name(p.elastic) },
@@ -37,20 +47,32 @@ function JobPackings({ jobId }: { jobId: string }) {
       render: (p) => (p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"),
     },
     {
-      key: "del",
+      key: "act",
       header: "",
       align: "right",
       render: (p) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setDeleting(p);
-          }}
-          className="p-1.5 rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger"
-          aria-label="Delete packing"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <span className="inline-flex gap-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setPrinting(p);
+            }}
+            className="p-1.5 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900"
+            aria-label="Print packing slip"
+          >
+            <Printer className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleting(p);
+            }}
+            className="p-1.5 rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger"
+            aria-label="Delete packing"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </span>
       ),
     },
   ];
@@ -73,6 +95,15 @@ function JobPackings({ jobId }: { jobId: string }) {
         rowKey={(p) => p._id}
         emptyTitle="No boxes packed yet"
       />
+      {printing && (
+        <PackingSlip
+          open
+          onClose={() => setPrinting(null)}
+          record={printing}
+          jobNo={jobNo}
+          customerName={customerName}
+        />
+      )}
       <ConfirmDialog
         open={!!deleting}
         title="Delete packing record?"
@@ -162,7 +193,13 @@ export function PackingPage() {
                     <ChevronDown className="h-4 w-4 text-ink-400" />
                   )}
                 </button>
-                {expanded && g.job._id && <JobPackings jobId={g.job._id} />}
+                {expanded && g.job._id && (
+                  <JobPackings
+                    jobId={g.job._id}
+                    jobNo={g.job.jobOrderNo}
+                    customerName={g.job.customer?.name ?? undefined}
+                  />
+                )}
               </Card>
             );
           })}
