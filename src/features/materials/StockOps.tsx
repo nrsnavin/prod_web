@@ -39,15 +39,17 @@ export function ReorderSuggestions() {
       ).suppliers,
   });
   const createPo = useMutation({
-    mutationFn: (g: ReorderGroup) =>
-      poService.create({
-        supplier: g.supplierId!,
-        items: g.items.map((i) => ({
-          rawMaterial: i.materialId,
-          quantity: i.suggestedQty,
-          price: i.price,
-        })),
-      }),
+    mutationFn: (g: ReorderGroup) => {
+      // Only order lines with a real positive quantity — a zero line
+      // would be rejected by the PO endpoint.
+      const items = g.items
+        .filter((i) => i.suggestedQty > 0)
+        .map((i) => ({ rawMaterial: i.materialId, quantity: i.suggestedQty, price: i.price }));
+      if (items.length === 0) {
+        return Promise.reject(new Error("Nothing to order — set a minimum stock for these items first."));
+      }
+      return poService.create({ supplier: g.supplierId!, items });
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["purchase-orders"] }),
   });
 
@@ -81,7 +83,7 @@ export function ReorderSuggestions() {
                       navigate(`/purchase-orders/${po._id}`);
                     },
                     onError: (e) =>
-                      toast(e instanceof ApiError ? e.message : "PO creation failed", "error"),
+                      toast(e instanceof Error ? e.message : "PO creation failed", "error"),
                   })
                 }
               >
