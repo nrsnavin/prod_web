@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { lazy, Suspense } from "react";
-import { Cog, User, Building2, ClipboardList } from "lucide-react";
+import { Cog, User, Building2, ClipboardList, Cable } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/Card";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -23,6 +23,7 @@ const DIMS: { key: GroupDim; label: string; icon: typeof Cog }[] = [
   { key: "operator", label: "Operator", icon: User },
   { key: "customer", label: "Customer", icon: Building2 },
   { key: "order", label: "Order", icon: ClipboardList },
+  { key: "elastic", label: "Elastic", icon: Cable },
 ];
 
 const fmt = (n: number) => n.toLocaleString("en-IN");
