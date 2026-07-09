@@ -24,7 +24,14 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Any 401 from the API drops the session, which routes back to /login.
+// A flag lets the login page explain WHY the user landed there instead
+// of silently dumping them out.
+export const SESSION_EXPIRED_KEY = "jarvis-session-expired";
+
 setUnauthorizedHandler(() => {
   const { user, clearSession } = useAuthStore.getState();
-  if (user) clearSession();
+  if (user) {
+    sessionStorage.setItem(SESSION_EXPIRED_KEY, "1");
+    clearSession();
+  }
 });
