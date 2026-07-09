@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useMachine, useMachineMutations } from "./hooks";
 import { MachineShiftRow, MachineStatus, ServiceLogFormValues } from "./types";
+import { useTrackRecent } from "@/core/ui/uiStore";
 
 const statusTone: Record<MachineStatus, ChipTone> = {
   running: "success",
@@ -96,6 +97,7 @@ export function MachineDetailPage() {
   const { data: machine, isLoading, isError, error } = useMachine(id);
   const { setStatus, addServiceLog } = useMachineMutations();
   const [logOpen, setLogOpen] = useState(false);
+  useTrackRecent("Machine", `/machines/${id}`, machine ? `Machine ${machine.id}` : undefined);
 
   if (isLoading) {
     return (

@@ -9,12 +9,14 @@ export interface ModalProps {
   children: ReactNode;
   /** max-width utility, e.g. "max-w-lg" */
   width?: string;
+  /** Set false for non-form dialogs (search palette) so typing never triggers the discard prompt */
+  confirmDirtyClose?: boolean;
 }
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, children, width = "max-w-lg" }: ModalProps) {
+export function Modal({ open, onClose, title, children, width = "max-w-lg", confirmDirtyClose = true }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
   const restoreRef = useRef<HTMLElement | null>(null);
@@ -22,7 +24,7 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg" }: Mo
   // A stray backdrop click or Esc must not wipe a half-filled form:
   // once the user has typed anything, dismissal asks first.
   const requestClose = () => {
-    if (dirtyRef.current && !window.confirm("Discard your changes?")) return;
+    if (confirmDirtyClose && dirtyRef.current && !window.confirm("Discard your changes?")) return;
     onClose();
   };
 

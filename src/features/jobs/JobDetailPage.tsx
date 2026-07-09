@@ -18,6 +18,7 @@ import { JOB_PIPELINE, JobShiftDetail, JobSummaryRow } from "./types";
 import { nextJobStatus } from "./jobStatus";
 import { MachineAssignModal } from "./MachineAssignModal";
 import { QcPanel } from "./QcPanel";
+import { useTrackRecent } from "@/core/ui/uiStore";
 
 function Pipeline({ status }: { status: string }) {
   const activeIdx = JOB_PIPELINE.indexOf(status as (typeof JOB_PIPELINE)[number]);
@@ -97,6 +98,7 @@ export function JobDetailPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  useTrackRecent("Job", `/jobs/${id}`, job ? `${job.jobNo} · ${job.customerName}` : undefined);
 
   if (isLoading) {
     return (
