@@ -1,4 +1,5 @@
-import { ReactNode } from "react";
+import { ReactNode, useMemo, useState } from "react";
+import { ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "./Skeleton";
 import { EmptyState } from "./EmptyState";
 import { cn } from "./cn";
@@ -10,6 +11,8 @@ export interface Column<T> {
   header: string;
   align?: "left" | "right" | "center";
   render: (row: T) => ReactNode;
+  /** When set, the header becomes click-to-sort using this accessor. */
+  sort?: (row: T) => number | string;
 }
 
 export interface DataTableProps<T> {
@@ -37,6 +40,31 @@ export function DataTable<T>({
   emptyTitle = "Nothing here yet",
   emptyDescription,
 }: DataTableProps<T>) {
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<1 | -1>(1);
+
+  const sorted = useMemo(() => {
+    const col = columns.find((c) => c.key === sortKey && c.sort);
+    if (!col?.sort) return rows;
+    const acc = col.sort;
+    return [...rows].sort((a, b) => {
+      const va = acc(a);
+      const vb = acc(b);
+      const cmp =
+        typeof va === "number" && typeof vb === "number"
+          ? va - vb
+          : String(va).localeCompare(String(vb));
+      return cmp * sortDir;
+    });
+  }, [rows, columns, sortKey, sortDir]);
+
+  const toggleSort = (key: string) => {
+    if (sortKey === key) setSortDir((d) => (d === 1 ? -1 : 1));
+    else {
+      setSortKey(key);
+      setSortDir(1);
+    }
+  };
   if (loading) {
     return (
       <div className="p-5 space-y-3">
@@ -62,13 +90,31 @@ export function DataTable<T>({
                   alignClass[c.align ?? "left"]
                 )}
               >
-                {c.header}
+                {c.sort ? (
+                  <button
+                    onClick={() => toggleSort(c.key)}
+                    className={cn(
+                      "inline-flex items-center gap-1 uppercase tracking-wide hover:text-ink-900",
+                      sortKey === c.key && "text-ink-900"
+                    )}
+                  >
+                    {c.header}
+                    {sortKey === c.key &&
+                      (sortDir === 1 ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      ))}
+                  </button>
+                ) : (
+                  c.header
+                )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-ink-100">
-          {rows.map((row) => (
+          {sorted.map((row) => (
             <tr
               key={rowKey(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}

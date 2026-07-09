@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { Combobox } from "@/components/ui/Combobox";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -43,6 +43,7 @@ function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
 
   const {
     register,
+    control,
     handleSubmit,
     watch,
     formState: { errors },
@@ -73,31 +74,40 @@ function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
       className="space-y-4"
       noValidate
     >
-      <Select
-        label="Job (weaving / finishing / checking) *"
-        placeholder={jobs.isLoading ? "Loading…" : "Select job"}
-        options={(jobs.data ?? []).map((j) => ({
-          value: j._id,
-          label: `J-${j.jobOrderNo}${j.customer?.name ? ` — ${j.customer.name}` : ""} (${j.status})`,
-        }))}
-        error={errors.job?.message}
-        {...register("job")}
-      />
+      <Controller control={control} name="job" render={({ field }) => (
+        <Combobox
+          label="Job (weaving / finishing / checking) *"
+          placeholder={jobs.isLoading ? "Loading…" : "Select job"}
+          options={(jobs.data ?? []).map((j) => ({
+            value: j._id,
+            label: `J-${j.jobOrderNo}${j.customer?.name ? ` — ${j.customer.name}` : ""} (${j.status})`,
+          }))}
+          error={errors.job?.message}
+          value={field.value}
+          onChange={field.onChange}
+        />
+      )} />
       <div className="grid grid-cols-2 gap-3">
-        <Select
-          label="Elastic *"
-          placeholder="Select elastic"
-          options={elasticOptions}
-          error={errors.elastic?.message}
-          {...register("elastic")}
-        />
-        <Select
-          label="Employee *"
-          placeholder="Select employee"
-          options={(employees.data ?? []).map((e) => ({ value: e._id, label: e.name }))}
-          error={errors.employee?.message}
-          {...register("employee")}
-        />
+        <Controller control={control} name="elastic" render={({ field }) => (
+          <Combobox
+            label="Elastic *"
+            placeholder="Select elastic"
+            options={elasticOptions}
+            error={errors.elastic?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )} />
+        <Controller control={control} name="employee" render={({ field }) => (
+          <Combobox
+            label="Employee *"
+            placeholder="Select employee"
+            options={(employees.data ?? []).map((e) => ({ value: e._id, label: e.name }))}
+            error={errors.employee?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Input label="Quantity (m) *" type="number" step="0.01" error={errors.quantity?.message} {...register("quantity")} />

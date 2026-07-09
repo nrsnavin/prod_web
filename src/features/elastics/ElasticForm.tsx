@@ -1,10 +1,10 @@
-import { useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { Combobox } from "@/components/ui/Combobox";
 import { useMaterialsByCategory } from "./hooks";
 import { Elastic, ElasticFormValues, MaterialRef } from "./types";
 
@@ -91,35 +91,44 @@ export function ElasticForm({
       <p className="text-sm font-semibold text-ink-600 pt-1">Composition (weights in g/m)</p>
 
       <div className="grid grid-cols-[1fr_110px] gap-2">
-        <Select
-          label="Warp spandex *"
-          placeholder="Select rubber/spandex"
-          options={toOptions(m?.rubber)}
-          error={errors.warpSpandex?.id?.message}
-          {...register("warpSpandex.id")}
-        />
+        <Controller control={control} name="warpSpandex.id" render={({ field }) => (
+          <Combobox
+            label="Warp spandex *"
+            placeholder="Select rubber/spandex"
+            options={toOptions(m?.rubber)}
+            error={errors.warpSpandex?.id?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )} />
         <Input label="Weight" type="number" step="0.01" error={errors.warpSpandex?.weight?.message} {...register("warpSpandex.weight")} />
       </div>
 
       <div className="grid grid-cols-[1fr_110px] gap-2">
-        <Select
-          label="Spandex covering *"
-          placeholder="Select covering"
-          options={toOptions(m?.covering)}
-          error={errors.spandexCovering?.id?.message}
-          {...register("spandexCovering.id")}
-        />
+        <Controller control={control} name="spandexCovering.id" render={({ field }) => (
+          <Combobox
+            label="Spandex covering *"
+            placeholder="Select covering"
+            options={toOptions(m?.covering)}
+            error={errors.spandexCovering?.id?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )} />
         <Input label="Weight" type="number" step="0.01" error={errors.spandexCovering?.weight?.message} {...register("spandexCovering.weight")} />
       </div>
 
       <div className="grid grid-cols-[1fr_110px] gap-2">
-        <Select
-          label="Weft yarn *"
-          placeholder="Select weft"
-          options={toOptions(m?.weft)}
-          error={errors.weftYarn?.id?.message}
-          {...register("weftYarn.id")}
-        />
+        <Controller control={control} name="weftYarn.id" render={({ field }) => (
+          <Combobox
+            label="Weft yarn *"
+            placeholder="Select weft"
+            options={toOptions(m?.weft)}
+            error={errors.weftYarn?.id?.message}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )} />
         <Input label="Weight" type="number" step="0.01" error={errors.weftYarn?.weight?.message} {...register("weftYarn.weight")} />
       </div>
 
@@ -128,12 +137,15 @@ export function ElasticForm({
         <div className="space-y-2">
           {fields.map((field, i) => (
             <div key={field.id} className="grid grid-cols-[1fr_110px_36px] gap-2 items-start">
-              <Select
-                placeholder="Select warp yarn"
-                options={toOptions(m?.warp)}
-                error={errors.warpYarn?.[i]?.id?.message}
-                {...register(`warpYarn.${i}.id`)}
-              />
+              <Controller control={control} name={`warpYarn.${i}.id`} render={({ field }) => (
+                <Combobox
+                  placeholder="Select warp yarn"
+                  options={toOptions(m?.warp)}
+                  error={errors.warpYarn?.[i]?.id?.message}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )} />
               <Input
                 type="number"
                 step="0.01"

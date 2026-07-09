@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { cn } from "@/components/ui/cn";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useProductionRange, useProductionShiftDetail } from "./hooks";
 import { ProductionShiftSlice } from "./types";
 import { presetRange, toISODate } from "@/features/analytics/components/FilterBar";
@@ -174,11 +175,7 @@ export function ProductionViewPage() {
         </div>
       </Card>
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       {isLoading ? (
         <div className="space-y-3">

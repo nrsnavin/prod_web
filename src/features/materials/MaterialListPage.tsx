@@ -11,6 +11,7 @@ import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useMaterials, useMaterialMutations } from "./hooks";
 import { MATERIAL_CATEGORIES, RawMaterial } from "./types";
@@ -42,14 +43,15 @@ const columns: Column<RawMaterial>[] = [
     key: "stock",
     header: "Stock",
     align: "right",
+    sort: (m) => m.stock,
     render: (m) => (
       <span className={cn("font-semibold", m.stock <= m.minStock && "text-status-danger")}>
         {m.stock.toLocaleString("en-IN")}
       </span>
     ),
   },
-  { key: "min", header: "Min stock", align: "right", render: (m) => m.minStock.toLocaleString("en-IN") },
-  { key: "price", header: "Price (₹)", align: "right", render: (m) => m.price.toLocaleString("en-IN") },
+  { key: "min", header: "Min stock", align: "right", sort: (m) => m.minStock, render: (m) => m.minStock.toLocaleString("en-IN") },
+  { key: "price", header: "Price (₹)", align: "right", sort: (m) => m.price, render: (m) => m.price.toLocaleString("en-IN") },
   {
     key: "consumption",
     header: "Consumed",
@@ -115,11 +117,7 @@ export function MaterialListPage() {
         </button>
       </div>
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       <Card>
         <DataTable

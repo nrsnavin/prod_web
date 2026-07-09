@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { DataTable, Column } from "@/components/ui/DataTable";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useWarpings } from "./hooks";
 import { ProgrammeStatus, Warping } from "./types";
 import { ProgrammeChip, elasticLineName } from "./programmeShared";
@@ -94,11 +95,7 @@ export function WarpingListPage() {
         />
       </div>
 
-      {isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          {(error as Error).message}
-        </p>
-      )}
+      {isError && <ErrorBanner message={(error as Error).message} />}
 
       <Card>
         <DataTable
