@@ -103,9 +103,66 @@ export const productionService = {
       job?: { jobNo?: number; status?: string } | null;
     }>;
   }> {
-    const res = await httpClient.get<{ success: boolean; data: never }>(
+    // The backend returns machines/shiftType/totalRunMinutes; map it to
+    // the shape this feature consumes (details/shift/timerLabel).
+    interface BackendMachine {
+      shiftDetailId: string;
+      status: string;
+      timer?: string;
+      runMinutes?: number;
+      productionMeters?: number;
+      machine?: { machineID?: string } | null;
+      employee?: { name?: string; department?: string } | null;
+      job?: { jobNo?: number; status?: string } | null;
+    }
+    interface BackendData {
+      shiftPlanId: string;
+      dateLabel: string;
+      shiftType: "DAY" | "NIGHT";
+      description?: string;
+      totalProduction: number;
+      summary?: {
+        totalMachines?: number;
+        totalOperators?: number;
+        totalProduction?: number;
+        totalRunMinutes?: number;
+        avgEfficiency?: number;
+        status?: Record<string, number>;
+      };
+      machines?: BackendMachine[];
+    }
+    const res = await httpClient.get<{ success: boolean; data: BackendData }>(
       `/production/shift-detail/${shiftPlanId}`
     );
-    return res.data;
+    const d = res.data;
+    const minutesToLabel = (mins?: number) => {
+      const m = Math.max(0, Math.round(mins ?? 0));
+      return `${Math.floor(m / 60)}h ${m % 60}m`;
+    };
+    return {
+      shiftPlanId: d.shiftPlanId,
+      dateLabel: d.dateLabel,
+      shift: d.shiftType,
+      description: d.description,
+      totalProduction: d.totalProduction ?? 0,
+      summary: {
+        totalMachines: d.summary?.totalMachines ?? 0,
+        totalOperators: d.summary?.totalOperators ?? 0,
+        totalProduction: d.summary?.totalProduction ?? 0,
+        timerLabel: minutesToLabel(d.summary?.totalRunMinutes),
+        avgProductionPerMachine: d.summary?.avgEfficiency ?? 0,
+        statusCounts: d.summary?.status ?? {},
+      },
+      details: (d.machines ?? []).map((m) => ({
+        shiftDetailId: m.shiftDetailId,
+        status: m.status,
+        timer: m.timer ?? "—",
+        timerLabel: m.timer || minutesToLabel(m.runMinutes),
+        productionMeters: m.productionMeters ?? 0,
+        machine: m.machine ? { machineID: m.machine.machineID } : null,
+        employee: m.employee ? { name: m.employee.name, department: m.employee.department } : null,
+        job: m.job ? { jobNo: m.job.jobNo, status: m.job.status } : null,
+      })),
+    };
   },
 };
