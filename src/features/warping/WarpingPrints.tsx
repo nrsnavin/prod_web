@@ -1,4 +1,5 @@
 import { PrintModal } from "@/components/print/PrintModal";
+import { QrImg } from "@/components/print/QrImg";
 import { Warping, WarpingPlan } from "./types";
 import { elasticLineName } from "./programmeShared";
 
@@ -139,6 +140,9 @@ export function BeamLabels({
                   Date: {warping.date ? new Date(warping.date).toLocaleDateString() : "—"}
                 </p>
               </div>
+            </div>
+            <div className="shrink-0 self-center pr-3">
+              <QrImg value={`WARP|J:${jobNo}|B:${beam.beamNo ?? bi + 1}|W:${warping._id}`} size={56} />
             </div>
           </div>
         ))}

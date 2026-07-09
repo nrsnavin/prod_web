@@ -1,4 +1,5 @@
 import { PrintModal } from "@/components/print/PrintModal";
+import { QrImg } from "@/components/print/QrImg";
 import { PackingRecord } from "./types";
 
 function name(x?: { name: string } | string | null): string {
@@ -55,7 +56,10 @@ export function PackingSlip({
             ))}
           </tbody>
         </table>
-        <div className="mt-6 grid grid-cols-2 gap-4 text-xs text-ink-600">
+        <div className="mt-4 flex justify-center">
+          <QrImg value={`BOX|${record._id}|J:${jobNo ?? ""}`} size={72} />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-4 text-xs text-ink-600">
           <div className="border-t border-ink-400 pt-1">
             Checked by: {name(record.checkedBy)}
           </div>

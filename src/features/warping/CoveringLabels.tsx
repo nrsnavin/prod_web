@@ -1,4 +1,5 @@
 import { PrintModal } from "@/components/print/PrintModal";
+import { QrImg } from "@/components/print/QrImg";
 import { Covering } from "./types";
 import { elasticLineName } from "./programmeShared";
 
@@ -23,7 +24,7 @@ export function CoveringLabels({
               <span>COVERING · JOB J-{jobNo}</span>
               <span>{covering.job?.customer?.name ?? ""}</span>
             </div>
-            <div className="mt-2 flex items-end justify-between">
+            <div className="mt-2 flex items-end justify-between gap-3">
               <div>
                 <p className="text-lg font-black leading-tight">{elasticLineName(line)}</p>
                 <p className="text-sm text-ink-600 mt-0.5">
@@ -33,6 +34,7 @@ export function CoveringLabels({
               <p className="text-2xl font-black tabular-nums">
                 {line.quantity.toLocaleString()} <span className="text-sm font-bold">m</span>
               </p>
+              <QrImg value={`COV|J:${jobNo}|C:${covering._id}|I:${i}`} size={52} />
             </div>
           </div>
         ))}

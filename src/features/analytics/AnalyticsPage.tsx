@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { httpClient } from "@/core/http/httpClient";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -44,6 +46,16 @@ export function AnalyticsPage() {
   const s = data?.summary;
   const fmt = (n?: number) => (n ?? 0).toLocaleString();
 
+  // On-time delivery over the last 90 days (order-linked dispatches).
+  const otd = useQuery({
+    queryKey: ["otd-stats"],
+    queryFn: () =>
+      httpClient.get<{ otdPct: number | null; considered: number; lateCount: number }>(
+        "/dc/otd-stats",
+        { days: 90 }
+      ),
+  });
+
   return (
     <>
       <PageHeader
@@ -69,6 +81,17 @@ export function AnalyticsPage() {
         <StatTile label="Efficiency score" value={`${s?.avgEfficiencyScore ?? 0}`} loading={isLoading} />
         <StatTile label="Consistency" value={`${s?.factoryConsistency ?? 0}%`} loading={isLoading} />
         <StatTile label="Anomalies" value={fmt(s?.anomalyCount)} loading={isLoading} />
+        <StatTile
+          label="On-time delivery (90d)"
+          value={
+            otd.data?.otdPct != null
+              ? `${otd.data.otdPct}%`
+              : otd.data
+                ? "—"
+                : "…"
+          }
+          loading={otd.isLoading}
+        />
       </div>
 
       {/* Tabs */}

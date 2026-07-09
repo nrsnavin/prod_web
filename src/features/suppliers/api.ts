@@ -89,7 +89,7 @@ export const poService = {
 
   async inwardStock(
     poId: string,
-    items: Array<{ rawMaterial: string; quantity: number; inwardDate?: string; remarks?: string }>
+    items: Array<{ rawMaterial: string; quantity: number; inwardDate?: string; remarks?: string; lotNo?: string }>
   ): Promise<{ message: string; poStatus: PoStatus }> {
     const res = await httpClient.post<{
       success: boolean;
