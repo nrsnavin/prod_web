@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import {
   Plus, Sparkles, Upload, CheckCircle2, XCircle, Loader2, Camera, ShieldCheck,
+  BrainCircuit, Download, Lock,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -14,7 +15,8 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { useQcJobs, useQcRecent, useQcMutations } from "./hooks";
+import { useQcJobs, useQcRecent, useQcMutations, useTrainingReadiness } from "./hooks";
+import { qcService } from "./api";
 import { QcElasticRef, QcJob, QcResultRow } from "./types";
 
 function elasticOf(l: QcJob["elastics"][number]): QcElasticRef | null {
@@ -250,6 +252,101 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function DefectModelCard() {
+  const { data } = useTrainingReadiness();
+  const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
+
+  if (!data) return null;
+  const t = data.totals;
+
+  const exportSet = async () => {
+    setExporting(true);
+    try {
+      const res = await qcService.exportDataset();
+      const blob = new Blob([JSON.stringify(res, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `qc-defect-dataset-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+      toast(`Exported ${res.count} labelled samples`, "success");
+    } catch {
+      toast("Export failed", "error");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <Card className="mb-4 p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="flex items-center gap-2 font-semibold">
+            <BrainCircuit className="h-4 w-4 text-brand-500" /> Defect model
+            {data.ready ? (
+              <StatusChip tone="success">Ready to train</StatusChip>
+            ) : (
+              <StatusChip tone="neutral"><Lock className="mr-1 h-3 w-3" /> Collecting data</StatusChip>
+            )}
+          </h3>
+          <p className="mt-1 max-w-xl text-sm text-ink-400">{data.recommendation}</p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={exportSet}
+          loading={exporting}
+          disabled={t.labelledImages === 0}
+        >
+          <Download className="h-4 w-4" /> Export training set
+        </Button>
+      </div>
+
+      {/* Progress toward the fine-tune threshold */}
+      <div className="mt-4">
+        <div className="mb-1 flex justify-between text-xs text-ink-400">
+          <span>{t.labelledImages} labelled photos</span>
+          <span>{data.progressPct}% of {data.thresholds.MIN_SAMPLES} target</span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-ink-100">
+          <span
+            className={cn("block h-full rounded-full", data.ready ? "bg-status-success" : "bg-brand-500")}
+            style={{ width: `${data.progressPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Class distribution */}
+      {data.classes.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">
+            Label classes ({data.classesReady}/{data.thresholds.MIN_CLASSES} ready · ≥{data.thresholds.MIN_PER_CLASS} each)
+          </p>
+          <ul className="space-y-1.5">
+            {data.classes.slice(0, 6).map((c) => {
+              const pct = Math.min(100, Math.round((c.count / data.thresholds.MIN_PER_CLASS) * 100));
+              const ok = c.count >= data.thresholds.MIN_PER_CLASS;
+              return (
+                <li key={c.defectCode} className="flex items-center gap-3 text-sm">
+                  <span className="w-40 shrink-0 truncate">{c.defectCode}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-100">
+                    <span className={cn("block h-full rounded-full", ok ? "bg-status-success" : "bg-status-warning")} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="w-8 shrink-0 text-right tabular-nums text-ink-500">{c.count}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-400">
+        <Sparkles className="h-3 w-3" /> {t.aiAssistedShare}% of these were AI-assisted then verified by an inspector — the corrections are the training signal.
+      </p>
+    </Card>
+  );
+}
+
 export function QcPage() {
   const recent = useQcRecent();
   const [open, setOpen] = useState(false);
@@ -272,6 +369,8 @@ export function QcPage() {
           </Button>
         }
       />
+
+      <DefectModelCard />
 
       <div className="mb-4 grid grid-cols-3 gap-3">
         <Card className="p-4">
