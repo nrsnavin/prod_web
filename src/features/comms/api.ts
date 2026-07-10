@@ -60,6 +60,23 @@ export interface MachineIssue {
   createdAt?: string;
 }
 
+export interface MachineIssueCreate {
+  machineId: string;
+  title: string;
+  description: string;
+  severity: string;
+}
+
+export interface MachineAnomaly {
+  machineId: string;
+  machineID?: string;
+  status?: string;
+  count: number;
+  openCount: number;
+  critical: number;
+  lastIssueAt?: string;
+}
+
 export const issueService = {
   async list(status: string): Promise<MachineIssue[]> {
     const res = await httpClient.get<{ success: boolean; data: MachineIssue[] }>(
@@ -68,8 +85,12 @@ export const issueService = {
     );
     return res.data;
   },
+  create: (body: MachineIssueCreate) => httpClient.post("/machine-issue/", body),
   setStatus: (id: string, status: string, resolutionNotes?: string) =>
     httpClient.put(`/machine-issue/${id}/status`, { status, resolutionNotes }),
+  async anomalies(days = 30, threshold = 3): Promise<{ windowDays: number; threshold: number; anomalies: MachineAnomaly[] }> {
+    return httpClient.get("/machine-issue/anomalies", { days, threshold });
+  },
 };
 
 export interface NotificationSettings {
