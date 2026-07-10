@@ -28,6 +28,7 @@ import {
   BellRing,
   Sparkles,
   Database,
+  Wand2,
   LucideIcon,
 } from "lucide-react";
 
@@ -66,6 +67,7 @@ export const navSections: NavSection[] = [
   {
     label: "Production",
     items: [
+      { label: "Auto Planner", path: "/planner", icon: Wand2 },
       { label: "Warping", path: "/warping", icon: Layers },
       { label: "Covering", path: "/covering", icon: Disc3 },
       { label: "Packing", path: "/packing", icon: Package },
