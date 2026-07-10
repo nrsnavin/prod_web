@@ -30,6 +30,7 @@ import {
   Database,
   Wand2,
   ScanLine,
+  Bot,
   LucideIcon,
 } from "lucide-react";
 
@@ -109,6 +110,7 @@ export const navSections: NavSection[] = [
       { label: "Machine Issues", path: "/machine-issues", icon: Wrench },
       { label: "Notifications", path: "/notification-settings", icon: BellRing },
       { label: "AI Advisor", path: "/advisor", icon: Sparkles },
+      { label: "Ask Jarvis", path: "/assistant", icon: Bot },
     ],
   },
   {
