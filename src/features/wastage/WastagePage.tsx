@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Trash2, Sparkles, AlertTriangle, Info } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,7 @@ import {
   useWastageByJob,
   useWastageJobs,
   useWastageMutations,
+  useWastageRootCause,
 } from "./hooks";
 import { WastageFormValues } from "./types";
 
@@ -163,7 +164,7 @@ function JobWastages({ jobId }: { jobId: string }) {
 }
 
 export function WastagePage() {
-  const [tab, setTab] = useState<"jobs" | "summary">("jobs");
+  const [tab, setTab] = useState<"jobs" | "summary" | "rootCause">("jobs");
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -171,6 +172,7 @@ export function WastagePage() {
 
   const jobs = useWastageJobs(search);
   const analytics = useWastageAnalytics(days);
+  const rootCause = useWastageRootCause(days);
 
   return (
     <>
@@ -185,18 +187,18 @@ export function WastagePage() {
       />
 
       <div className="mb-4 flex gap-1 border-b border-ink-200">
-        {(["jobs", "summary"] as const).map((t) => (
+        {(["jobs", "summary", "rootCause"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px capitalize",
+              "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px",
               tab === t
                 ? "border-brand-500 text-brand-600"
                 : "border-transparent text-ink-600 hover:text-ink-900"
             )}
           >
-            {t === "jobs" ? "By job" : "Summary"}
+            {t === "jobs" ? "By job" : t === "summary" ? "Summary" : "Root cause"}
           </button>
         ))}
       </div>
@@ -339,6 +341,170 @@ export function WastagePage() {
               </div>
             </>
           ) : null}
+        </>
+      )}
+
+      {tab === "rootCause" && (
+        <>
+          <div className="mb-4 flex items-center gap-1 rounded-lg bg-ink-100 p-1 w-fit">
+            {[7, 30, 90].map((d) => (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-sm font-medium",
+                  days === d ? "bg-white shadow-sm text-ink-900" : "text-ink-600"
+                )}
+              >
+                {d}D
+              </button>
+            ))}
+          </div>
+
+          {rootCause.isLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : rootCause.data && rootCause.data.totals.count > 0 ? (
+            <>
+              <div className="grid gap-3 grid-cols-2 md:grid-cols-3 mb-4">
+                <Card className="p-4">
+                  <p className="text-xs text-ink-400">Total wastage</p>
+                  <p className="mt-0.5 text-2xl font-bold tabular-nums text-status-danger">
+                    {rootCause.data.totals.qty.toLocaleString("en-IN")} m
+                  </p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-xs text-ink-400">Entries</p>
+                  <p className="mt-0.5 text-2xl font-bold tabular-nums">
+                    {rootCause.data.totals.count.toLocaleString("en-IN")}
+                  </p>
+                </Card>
+                <Card className="p-4">
+                  <p className="text-xs text-ink-400">Penalties</p>
+                  <p className="mt-0.5 text-2xl font-bold tabular-nums">
+                    ₹{rootCause.data.totals.penalty.toLocaleString("en-IN")}
+                  </p>
+                </Card>
+              </div>
+
+              {/* AI root-cause analysis */}
+              {rootCause.data.aiSummary && (
+                <Card className="mb-4 border-l-4 border-brand-500 p-5">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand-600">
+                    <Sparkles className="h-3.5 w-3.5" /> AI root-cause analysis
+                  </p>
+                  <p className="whitespace-pre-wrap text-sm text-ink-700">{rootCause.data.aiSummary}</p>
+                </Card>
+              )}
+
+              {/* Rule-based insights */}
+              {rootCause.data.insights.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  {rootCause.data.insights.map((ins, i) => (
+                    <Card
+                      key={i}
+                      className={cn(
+                        "flex items-start gap-3 p-3 border-l-4",
+                        ins.severity === "warn" ? "border-status-warning" : "border-status-info"
+                      )}
+                    >
+                      {ins.severity === "warn" ? (
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-warning" />
+                      ) : (
+                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-status-info" />
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold">{ins.title}</p>
+                        <p className="text-sm text-ink-600">{ins.detail}</p>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card className="p-5">
+                  <h3 className="font-semibold">Top reasons</h3>
+                  <ul className="mt-2 divide-y divide-ink-100">
+                    {rootCause.data.byReason.map((r, i) => (
+                      <li key={i} className="flex justify-between gap-3 py-2 text-sm">
+                        <span className="min-w-0 truncate">{r.reason}</span>
+                        <span className="tabular-nums font-semibold shrink-0">
+                          {r.qty.toLocaleString("en-IN")} m
+                          <span className="text-ink-400 font-normal"> ({r.count})</span>
+                        </span>
+                      </li>
+                    ))}
+                    {rootCause.data.byReason.length === 0 && (
+                      <li className="py-3 text-sm text-ink-400">No data</li>
+                    )}
+                  </ul>
+                </Card>
+
+                <Card className="p-5">
+                  <h3 className="font-semibold">Reason × machine hotspots</h3>
+                  <ul className="mt-2 divide-y divide-ink-100">
+                    {rootCause.data.reasonMachine.map((h, i) => (
+                      <li key={i} className="flex justify-between gap-3 py-2 text-sm">
+                        <span className="min-w-0 truncate">
+                          {h.reason} <span className="text-ink-400">· {h.machineID}</span>
+                        </span>
+                        <span className="tabular-nums font-semibold shrink-0">
+                          {h.qty.toLocaleString("en-IN")} m
+                          <span className="text-ink-400 font-normal"> ({h.count})</span>
+                        </span>
+                      </li>
+                    ))}
+                    {rootCause.data.reasonMachine.length === 0 && (
+                      <li className="py-3 text-sm text-ink-400">No data</li>
+                    )}
+                  </ul>
+                </Card>
+
+                <Card className="p-5">
+                  <h3 className="font-semibold">By operator</h3>
+                  <ul className="mt-2 divide-y divide-ink-100">
+                    {rootCause.data.byOperator.map((o, i) => (
+                      <li key={i} className="flex justify-between gap-3 py-2 text-sm">
+                        <span className="min-w-0 truncate">
+                          {o.name}
+                          {o.department && <span className="text-ink-400"> · {o.department}</span>}
+                        </span>
+                        <span className="tabular-nums font-semibold shrink-0">
+                          {o.qty.toLocaleString("en-IN")} m
+                          <span className="text-ink-400 font-normal"> ({o.count})</span>
+                        </span>
+                      </li>
+                    ))}
+                    {rootCause.data.byOperator.length === 0 && (
+                      <li className="py-3 text-sm text-ink-400">No data</li>
+                    )}
+                  </ul>
+                </Card>
+
+                <Card className="p-5">
+                  <h3 className="font-semibold">By machine</h3>
+                  <ul className="mt-2 divide-y divide-ink-100">
+                    {rootCause.data.byMachine.map((m, i) => (
+                      <li key={i} className="flex justify-between gap-3 py-2 text-sm">
+                        <span className="min-w-0 truncate">Machine {m.machineID}</span>
+                        <span className="tabular-nums font-semibold shrink-0">
+                          {m.qty.toLocaleString("en-IN")} m
+                          <span className="text-ink-400 font-normal"> ({m.count})</span>
+                        </span>
+                      </li>
+                    ))}
+                    {rootCause.data.byMachine.length === 0 && (
+                      <li className="py-3 text-sm text-ink-400">No data</li>
+                    )}
+                  </ul>
+                </Card>
+              </div>
+            </>
+          ) : (
+            <Card>
+              <EmptyState title="No wastage in this window" description="Try a longer date range to see root-cause insights." />
+            </Card>
+          )}
         </>
       )}
 
