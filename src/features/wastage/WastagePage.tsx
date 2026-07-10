@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, ChevronDown, ChevronUp, Trash2, Sparkles, AlertTriangle, Info } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Trash2, Sparkles, AlertTriangle, Info, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +13,7 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -25,7 +26,7 @@ import {
   useWastageMutations,
   useWastageRootCause,
 } from "./hooks";
-import { WastageFormValues } from "./types";
+import { WastageFormValues, WastageRecord } from "./types";
 
 const schema = z.object({
   job: z.string().min(1, "Select job"),
@@ -123,6 +124,128 @@ function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
   );
 }
 
+function WastageEditModal({
+  record,
+  open,
+  onClose,
+}: {
+  record: WastageRecord;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const { update } = useWastageMutations();
+  const [quantity, setQuantity] = useState(String(record.quantity));
+  const [penalty, setPenalty] = useState(String(record.penalty ?? 0));
+  const [reason, setReason] = useState(record.reason ?? "");
+  const [auditReason, setAuditReason] = useState("");
+
+  const save = () => {
+    if (auditReason.trim().length < 3) {
+      toast("Give a reason (min 3 chars) for the edit", "error");
+      return;
+    }
+    if (!(Number(quantity) > 0)) {
+      toast("Quantity must be greater than 0", "error");
+      return;
+    }
+    update.mutate(
+      { id: record._id, body: { quantity: Number(quantity), penalty: Number(penalty) || 0, reason, auditReason: auditReason.trim() } },
+      {
+        onSuccess: () => { toast("Wastage updated", "success"); onClose(); },
+        onError: (e) => toast(e instanceof ApiError ? e.message : "Failed to update", "error"),
+      }
+    );
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit wastage" width="max-w-md">
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Quantity (m) *" type="number" step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+          <Input label="Penalty (₹)" type="number" step="0.01" value={penalty} onChange={(e) => setPenalty(e.target.value)} />
+        </div>
+        <Input label="Reason (cause)" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
+          <textarea
+            rows={2}
+            value={auditReason}
+            onChange={(e) => setAuditReason(e.target.value)}
+            placeholder="Why is this being changed? (recorded in the audit log)"
+            className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function WastageRow({ w }: { w: WastageRecord }) {
+  const { toast } = useToast();
+  const { remove } = useWastageMutations();
+  const [editOpen, setEditOpen] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
+
+  return (
+    <li className="flex items-center gap-3 py-2.5 text-sm">
+      <Trash2 className="h-4 w-4 text-status-danger shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium">
+          {typeof w.elastic === "object" && w.elastic ? w.elastic.name : "—"}
+        </p>
+        <p className="text-xs text-ink-400">
+          {typeof w.employee === "object" && w.employee ? w.employee.name : "—"} · {w.reason}
+          {w.createdAt && ` · ${new Date(w.createdAt).toLocaleDateString()}`}
+        </p>
+      </div>
+      {(w.penalty ?? 0) > 0 && (
+        <span className="text-xs text-ink-400">₹{w.penalty} penalty</span>
+      )}
+      <span className="font-semibold tabular-nums text-status-danger">
+        {w.quantity.toLocaleString("en-IN")} m
+      </span>
+      <button
+        onClick={() => setEditOpen(true)}
+        className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900"
+        aria-label="Edit wastage"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      <button
+        onClick={() => setDelOpen(true)}
+        className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger"
+        aria-label="Delete wastage"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+
+      <WastageEditModal record={w} open={editOpen} onClose={() => setEditOpen(false)} />
+      <ReasonDialog
+        open={delOpen}
+        onClose={() => setDelOpen(false)}
+        title="Delete wastage record"
+        description="This reverses the job's wastage counter and is recorded in the audit trail."
+        confirmLabel="Delete"
+        loading={remove.isPending}
+        onConfirm={(reason) =>
+          remove.mutate(
+            { id: w._id, auditReason: reason },
+            {
+              onSuccess: () => { toast("Wastage deleted", "success"); setDelOpen(false); },
+              onError: (e) => toast(e instanceof ApiError ? e.message : "Failed to delete", "error"),
+            }
+          )
+        }
+      />
+    </li>
+  );
+}
+
 function JobWastages({ jobId }: { jobId: string }) {
   const { data, isLoading } = useWastageByJob(jobId);
   if (isLoading) {
@@ -137,24 +260,7 @@ function JobWastages({ jobId }: { jobId: string }) {
   return (
     <ul className="divide-y divide-ink-100 px-4 pb-3">
       {(data ?? []).map((w) => (
-        <li key={w._id} className="flex items-center gap-3 py-2.5 text-sm">
-          <Trash2 className="h-4 w-4 text-status-danger shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">
-              {typeof w.elastic === "object" && w.elastic ? w.elastic.name : "—"}
-            </p>
-            <p className="text-xs text-ink-400">
-              {typeof w.employee === "object" && w.employee ? w.employee.name : "—"} · {w.reason}
-              {w.createdAt && ` · ${new Date(w.createdAt).toLocaleDateString()}`}
-            </p>
-          </div>
-          {(w.penalty ?? 0) > 0 && (
-            <span className="text-xs text-ink-400">₹{w.penalty} penalty</span>
-          )}
-          <span className="font-semibold tabular-nums text-status-danger">
-            {w.quantity.toLocaleString("en-IN")} m
-          </span>
-        </li>
+        <WastageRow key={w._id} w={w} />
       ))}
       {(data?.length ?? 0) === 0 && (
         <li className="py-3 text-sm text-ink-400">No wastage records.</li>

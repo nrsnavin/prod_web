@@ -45,4 +45,10 @@ export const wastageService = {
   },
 
   add: (body: WastageFormValues) => httpClient.post("/wastage/add-wastage", body),
+
+  update: (id: string, body: { quantity?: number; penalty?: number; reason?: string; auditReason: string }) =>
+    httpClient.put(`/wastage/${id}`, body),
+
+  remove: (id: string, auditReason: string) =>
+    httpClient.delete(`/wastage/${id}`, { auditReason }),
 };
