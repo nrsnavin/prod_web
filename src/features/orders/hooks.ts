@@ -64,5 +64,15 @@ export function useOrderMutations() {
     mutationFn: (id: string) => orderService.complete(id),
     onSuccess: invalidate,
   });
-  return { create, approve, cancel, startProduction, complete };
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<OrderFormValues> & { auditReason: string } }) =>
+      orderService.update(id, body),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: ({ id, auditReason }: { id: string; auditReason: string }) =>
+      orderService.remove(id, auditReason),
+    onSuccess: invalidate,
+  });
+  return { create, approve, cancel, startProduction, complete, update, remove };
 }

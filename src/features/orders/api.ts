@@ -26,6 +26,11 @@ export const orderService = {
     return res.orderId;
   },
 
+  update: (orderId: string, body: Partial<OrderFormValues> & { auditReason: string }) =>
+    httpClient.post("/order/update-order", { orderId, ...body }),
+  remove: (orderId: string, auditReason: string) =>
+    httpClient.post("/order/delete-order", { orderId, auditReason }),
+
   approve: (orderId: string) => httpClient.post("/order/approve", { orderId }),
   cancel: (orderId: string) => httpClient.post("/order/cancel", { orderId }),
   startProduction: (orderId: string) => httpClient.post("/order/start-production", { orderId }),

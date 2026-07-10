@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -95,14 +97,74 @@ const materialColumns: Column<RawMaterialRequirement>[] = [
   },
 ];
 
+function OrderEditModal({
+  order,
+  open,
+  onClose,
+  update,
+}: {
+  order: { _id: string; po?: string; supplyDate?: string; description?: string };
+  open: boolean;
+  onClose: () => void;
+  update: ReturnType<typeof useOrderMutations>["update"];
+}) {
+  const { toast } = useToast();
+  const [po, setPo] = useState(order.po ?? "");
+  const [supplyDate, setSupplyDate] = useState(order.supplyDate ? order.supplyDate.slice(0, 10) : "");
+  const [description, setDescription] = useState(order.description ?? "");
+  const [auditReason, setAuditReason] = useState("");
+
+  const save = () => {
+    if (auditReason.trim().length < 3) { toast("Give a reason (min 3 chars) for the edit", "error"); return; }
+    update.mutate(
+      { id: order._id, body: { po, supplyDate, description, auditReason: auditReason.trim() } },
+      {
+        onSuccess: () => { toast("Order updated", "success"); onClose(); },
+        onError: (e) => toast(e instanceof ApiError ? e.message : "Update failed", "error"),
+      }
+    );
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit order" width="max-w-lg">
+      <div className="space-y-4">
+        <p className="text-xs text-ink-400">
+          Only Open orders can be edited. To change ordered elastics, cancel and recreate the order.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Customer PO ref" value={po} onChange={(e) => setPo(e.target.value)} />
+          <Input label="Supply date" type="date" value={supplyDate} onChange={(e) => setSupplyDate(e.target.value)} />
+        </div>
+        <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
+          <textarea
+            rows={2}
+            value={auditReason}
+            onChange={(e) => setAuditReason(e.target.value)}
+            placeholder="Why is this being changed? (recorded in the audit log)"
+            className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: order, isLoading, isError, error } = useOrder(id);
-  const { approve, cancel, startProduction, complete } = useOrderMutations();
+  const { approve, cancel, startProduction, complete, update, remove } = useOrderMutations();
   const [confirm, setConfirm] = useState<null | "approve" | "cancel" | "start" | "complete">(null);
   const [jobOpen, setJobOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
   useTrackRecent("Order", `/orders/${id}`, order ? `Order #${order.orderNo} · ${order.customer?.name ?? ""}` : undefined);
 
   if (isLoading) {
@@ -179,9 +241,14 @@ export function OrderDetailPage() {
               </Button>
             )}
             {order.status === "Open" && (
-              <Button onClick={() => setConfirm("approve")}>
-                <CheckCircle2 className="h-4 w-4" /> Approve
-              </Button>
+              <>
+                <Button variant="secondary" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4" /> Edit
+                </Button>
+                <Button onClick={() => setConfirm("approve")}>
+                  <CheckCircle2 className="h-4 w-4" /> Approve
+                </Button>
+              </>
             )}
             {order.status === "Approved" && (
               <Button variant="secondary" onClick={() => setConfirm("start")}>
@@ -198,7 +265,36 @@ export function OrderDetailPage() {
                 <XCircle className="h-4 w-4" /> Cancel
               </Button>
             )}
+            {order.status === "Open" && (
+              <Button variant="danger" onClick={() => setDelOpen(true)}>
+                <Trash2 className="h-4 w-4" /> Delete
+              </Button>
+            )}
           </>
+        }
+      />
+
+      <OrderEditModal
+        order={order}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        update={update}
+      />
+      <ReasonDialog
+        open={delOpen}
+        onClose={() => setDelOpen(false)}
+        title={`Delete order #${order.orderNo}`}
+        description="The order is soft-deleted (recoverable) and recorded in the audit trail. Only Open orders with no jobs can be deleted."
+        confirmLabel="Delete order"
+        loading={remove.isPending}
+        onConfirm={(reason) =>
+          remove.mutate(
+            { id: order._id, auditReason: reason },
+            {
+              onSuccess: () => { toast("Order deleted", "success"); navigate("/orders"); },
+              onError: (e) => toast(e instanceof ApiError ? e.message : "Delete failed", "error"),
+            }
+          )
         }
       />
 
