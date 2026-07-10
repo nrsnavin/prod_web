@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layers, Plus, Pencil, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +15,7 @@ import { ElasticGroupForm } from "./ElasticGroupForm";
 // owned by this customer (global bundles are managed on the Masters page).
 export function CustomerElasticGroups({ customerId }: { customerId: string }) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { data } = useElasticGroups(customerId);
   const { create, update, remove } = useElasticGroupMutations();
   const [creating, setCreating] = useState(false);
@@ -41,13 +43,16 @@ export function CustomerElasticGroups({ customerId }: { customerId: string }) {
         <ul className="mt-3 divide-y divide-ink-100">
           {groups.map((g) => (
             <li key={g._id} className="flex items-start gap-3 py-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{g.name}</p>
+              <button
+                onClick={() => navigate(`/elastic-groups/${g._id}`)}
+                className="min-w-0 flex-1 text-left"
+              >
+                <p className="font-medium hover:text-brand-600">{g.name}</p>
                 <p className="mt-0.5 text-xs text-ink-400">
                   {g.items.map((it) => itemElasticName(it)).slice(0, 4).join(", ")}
                   {g.items.length > 4 && ` +${g.items.length - 4} more`}
                 </p>
-              </div>
+              </button>
               <span className="shrink-0 text-xs text-ink-400">{g.items.length} elastics</span>
               <button onClick={() => setEditing(g)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-900" aria-label="Edit">
                 <Pencil className="h-4 w-4" />
