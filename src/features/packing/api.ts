@@ -32,5 +32,8 @@ export const packingService = {
   },
 
   create: (body: PackingFormValues) => httpClient.post("/packing/create-packing", body),
-  remove: (id: string) => httpClient.delete(`/packing/${id}`),
+  update: (id: string, body: { meter: number; auditReason: string }) =>
+    httpClient.put(`/packing/${id}`, body),
+  remove: (id: string, auditReason: string) =>
+    httpClient.delete(`/packing/${id}`, { auditReason }),
 };

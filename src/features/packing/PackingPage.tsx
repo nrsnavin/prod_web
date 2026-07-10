@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Plus, Trash2, ChevronDown, ChevronUp, Printer } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, Printer, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Input } from "@/components/ui/Input";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -32,6 +33,7 @@ function JobPackings({
   const { remove } = usePackingMutations();
   const { toast } = useToast();
   const [deleting, setDeleting] = useState<PackingRecord | null>(null);
+  const [editing, setEditing] = useState<PackingRecord | null>(null);
   const [printing, setPrinting] = useState<PackingRecord | null>(null);
 
   const columns: Column<PackingRecord>[] = [
@@ -61,6 +63,16 @@ function JobPackings({
             aria-label="Print packing slip"
           >
             <Printer className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(p);
+            }}
+            className="p-1.5 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900"
+            aria-label="Edit packing"
+          >
+            <Pencil className="h-4 w-4" />
           </button>
           <button
             onClick={(e) => {
@@ -104,27 +116,68 @@ function JobPackings({
           customerName={customerName}
         />
       )}
-      <ConfirmDialog
+      {editing && <PackingEditModal record={editing} onClose={() => setEditing(null)} />}
+      <ReasonDialog
         open={!!deleting}
-        title="Delete packing record?"
-        message="The packed quantity is reversed on the job."
+        title="Delete packing record"
+        description="The packed quantity, stock and produced counters are reversed. Recorded in the audit trail."
         confirmLabel="Delete"
-        danger
         loading={remove.isPending}
-        onCancel={() => setDeleting(null)}
-        onConfirm={() =>
+        onClose={() => setDeleting(null)}
+        onConfirm={(reason) =>
           deleting &&
-          remove.mutate(deleting._id, {
-            onSuccess: () => {
-              setDeleting(null);
-              toast("Packing record deleted", "success");
-            },
-            onError: (e) =>
-              toast(e instanceof ApiError ? e.message : "Delete failed", "error"),
-          })
+          remove.mutate(
+            { id: deleting._id, auditReason: reason },
+            {
+              onSuccess: () => { setDeleting(null); toast("Packing record deleted", "success"); },
+              onError: (e) => toast(e instanceof ApiError ? e.message : "Delete failed", "error"),
+            }
+          )
         }
       />
     </>
+  );
+}
+
+function PackingEditModal({ record, onClose }: { record: PackingRecord; onClose: () => void }) {
+  const { update } = usePackingMutations();
+  const { toast } = useToast();
+  const [meter, setMeter] = useState(String(record.meter));
+  const [auditReason, setAuditReason] = useState("");
+
+  const save = () => {
+    if (auditReason.trim().length < 3) { toast("Give a reason (min 3 chars) for the edit", "error"); return; }
+    if (!(Number(meter) > 0)) { toast("Meters must be greater than 0", "error"); return; }
+    update.mutate(
+      { id: record._id, body: { meter: Number(meter), auditReason: auditReason.trim() } },
+      {
+        onSuccess: () => { toast("Packing updated", "success"); onClose(); },
+        onError: (e) => toast(e instanceof ApiError ? e.message : "Update failed", "error"),
+      }
+    );
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Edit packing" width="max-w-md">
+      <div className="space-y-4">
+        <Input label="Meters *" type="number" step="0.01" value={meter} onChange={(e) => setMeter(e.target.value)} />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
+          <textarea
+            rows={2}
+            value={auditReason}
+            onChange={(e) => setAuditReason(e.target.value)}
+            placeholder="Why is this being changed? (recorded in the audit log)"
+            className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
+          />
+        </div>
+        <p className="text-xs text-ink-400">Adjusting meters re-derives the job's packed quantity, stock and produced counters by the difference.</p>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
