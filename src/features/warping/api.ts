@@ -45,7 +45,36 @@ export const warpingService = {
     httpClient.put(`/warping/warpingPlan/${planId}`, body),
   deletePlan: (planId: string, auditReason: string) =>
     httpClient.delete(`/warping/warpingPlan/${planId}`, { auditReason }),
+
+  optimizeLayout: (warpingId: string, capacity = 600): Promise<OptimizedLayout> =>
+    httpClient.get<OptimizedLayout>(`/warping/optimize-layout/${warpingId}`, { capacity }),
 };
+
+export interface OptimizedBeam {
+  beamNo: number;
+  totalEnds: number;
+  fillPct: number;
+  sections: Array<{ warpYarnId: string; warpYarnName: string; ends: number }>;
+}
+
+export interface OptimizedLayout {
+  success: boolean;
+  warpingId: string;
+  jobOrderNo?: number;
+  capacity: number;
+  message?: string;
+  metrics?: {
+    beamsUsed: number;
+    baselineBeams: number;
+    beamsSaved: number;
+    totalEnds: number;
+    totalYarns: number;
+    changeovers: number;
+    fillRate: number;
+  };
+  beams?: OptimizedBeam[];
+  assumptions?: string[];
+}
 
 export const coveringService = {
   async list(params: { status: ProgrammeStatus | "all"; search: string; page: number }) {
