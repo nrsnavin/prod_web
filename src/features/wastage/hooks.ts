@@ -52,5 +52,15 @@ export function useWastageMutations() {
     mutationFn: (body: WastageFormValues) => wastageService.add(body),
     onSuccess: invalidate,
   });
-  return { add };
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { quantity?: number; penalty?: number; reason?: string; auditReason: string } }) =>
+      wastageService.update(id, body),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: ({ id, auditReason }: { id: string; auditReason: string }) =>
+      wastageService.remove(id, auditReason),
+    onSuccess: invalidate,
+  });
+  return { add, update, remove };
 }
