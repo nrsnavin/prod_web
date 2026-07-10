@@ -26,6 +26,7 @@ const MaterialListPage = lazyPage(() => import("@/features/materials/MaterialLis
 const MaterialDetailPage = lazyPage(() => import("@/features/materials/MaterialDetailPage"), "MaterialDetailPage");
 const ElasticListPage = lazyPage(() => import("@/features/elastics/ElasticListPage"), "ElasticListPage");
 const ElasticDetailPage = lazyPage(() => import("@/features/elastics/ElasticDetailPage"), "ElasticDetailPage");
+const ElasticGroupsPage = lazyPage(() => import("@/features/elasticGroups/ElasticGroupsPage"), "ElasticGroupsPage");
 const MachineListPage = lazyPage(() => import("@/features/machines/MachineListPage"), "MachineListPage");
 const MachineDetailPage = lazyPage(() => import("@/features/machines/MachineDetailPage"), "MachineDetailPage");
 const EmployeeListPage = lazyPage(() => import("@/features/employees/EmployeeListPage"), "EmployeeListPage");
@@ -81,6 +82,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/purchase-orders": withSuspense(<PoListPage />),
   "/materials": withSuspense(<MaterialListPage />),
   "/elastics": withSuspense(<ElasticListPage />),
+  "/elastic-groups": withSuspense(<ElasticGroupsPage />),
   "/machines": withSuspense(<MachineListPage />),
   "/employees": withSuspense(<EmployeeListPage />),
   "/orders": withSuspense(<OrderListPage />),

@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Layers } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { useCustomers } from "@/features/customers/hooks";
 import { useElastics } from "@/features/elastics/hooks";
+import { useElasticGroups } from "@/features/elasticGroups/hooks";
+import { itemElasticId } from "@/features/elasticGroups/types";
 import { OrderFormValues } from "./types";
 import { OrderEtaPanel } from "./OrderEtaPanel";
 
@@ -44,6 +47,7 @@ export function OrderForm({
     control,
     handleSubmit,
     watch,
+    getValues,
     formState: { errors },
   } = useForm<OrderFormValues>({
     resolver: zodResolver(schema),
@@ -56,10 +60,29 @@ export function OrderForm({
       elasticOrdered: [{ elastic: "", quantity: 0 }],
     },
   });
-  const { fields, append, remove } = useFieldArray({ control, name: "elasticOrdered" });
+  const { fields, append, remove, replace } = useFieldArray({ control, name: "elasticOrdered" });
 
   const watchedLines = watch("elasticOrdered");
   const watchedSupply = watch("supplyDate");
+  const watchedCustomer = watch("customer");
+
+  // Groups for the selected customer (plus global bundles).
+  const groups = useElasticGroups(watchedCustomer || undefined, !!watchedCustomer);
+  const [groupPick, setGroupPick] = useState("");
+
+  const addGroup = (groupId: string) => {
+    const g = groups.data?.find((x) => x._id === groupId);
+    if (!g) return;
+    const current = getValues("elasticOrdered") ?? [];
+    const existing = new Set(current.map((l) => l.elastic).filter(Boolean));
+    const toAdd = g.items
+      .map((it) => ({ elastic: itemElasticId(it), quantity: it.defaultQuantity || 0 }))
+      .filter((l) => l.elastic && !existing.has(l.elastic));
+    if (toAdd.length === 0) return;
+    const onlyEmptyRow = current.length === 1 && !current[0].elastic && !Number(current[0].quantity);
+    if (onlyEmptyRow) replace(toAdd);
+    else toAdd.forEach((l) => append(l));
+  };
 
   const elasticOptions = (elastics.data?.elastics ?? []).map((e) => ({
     value: e._id,
@@ -90,6 +113,30 @@ export function OrderForm({
         <Input label="Supply date *" type="date" error={errors.supplyDate?.message} {...register("supplyDate")} />
       </div>
       <Input label="Description" {...register("description")} />
+
+      {/* Add from an elastic group — appears once a customer is chosen */}
+      {watchedCustomer && (groups.data?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-ink-700">
+            <Layers className="h-4 w-4 text-brand-500" /> Add from group
+          </span>
+          <div className="w-64">
+            <Combobox
+              placeholder="Select a group…"
+              options={(groups.data ?? []).map((g) => ({
+                value: g._id,
+                label: `${g.name}${g.customer ? "" : " · Global"} (${g.items.length})`,
+              }))}
+              value={groupPick}
+              onChange={(v) => {
+                addGroup(v);
+                setGroupPick("");
+              }}
+            />
+          </div>
+          <span className="text-xs text-ink-400">adds all its elastics to the order</span>
+        </div>
+      )}
 
       <div>
         <p className="text-sm font-medium text-ink-600 mb-1.5">Elastics ordered *</p>
