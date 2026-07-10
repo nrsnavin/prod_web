@@ -6,6 +6,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useDeliveryForecast } from "./hooks";
 import { BulkEta } from "./types";
+import { DeliveryRiskAlerts } from "./DeliveryRiskAlerts";
 
 function fmtDate(iso?: string): string {
   if (!iso) return "—";
@@ -60,6 +61,8 @@ export function ForecastPanel() {
 
   return (
     <div className="space-y-4">
+      <DeliveryRiskAlerts />
+
       <Card className="flex items-start gap-3 p-4">
         <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-brand-500" />
         <div>
