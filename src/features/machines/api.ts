@@ -46,6 +46,10 @@ export const machineService = {
     return httpClient.get<MachineHealthResponse>("/machine/predictive-health");
   },
 
+  async healthAdvice(id: string): Promise<{ machineID: string; aiGenerated: boolean; advice: string }> {
+    return httpClient.get(`/machine/health-advice/${id}`);
+  },
+
   async maintenanceDue(days = 14): Promise<{
     count: number;
     overdueCount: number;

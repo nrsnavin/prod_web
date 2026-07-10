@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, AlertTriangle, ChevronRight } from "lucide-react";
+import { Activity, AlertTriangle, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/components/ui/cn";
@@ -86,6 +87,40 @@ export function MachineHealthBanner() {
   );
 }
 
+// AI diagnosis sub-panel — fetched on demand (LLM call).
+function AiDiagnosis({ machineId }: { machineId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data, isFetching, isError } = useQuery({
+    queryKey: ["machine-health-advice", machineId],
+    queryFn: () => machineService.healthAdvice(machineId),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+
+  if (!open) {
+    return (
+      <Button variant="secondary" size="sm" className="mt-4" onClick={() => setOpen(true)}>
+        <Sparkles className="h-4 w-4" /> AI diagnosis
+      </Button>
+    );
+  }
+  return (
+    <div className="mt-4 rounded-lg border border-brand-100 bg-brand-50/40 p-3">
+      <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-brand-600">
+        <Sparkles className="h-3.5 w-3.5" /> AI diagnosis
+        {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+      </p>
+      {isError ? (
+        <p className="text-sm text-ink-400">Couldn't generate a diagnosis right now.</p>
+      ) : data ? (
+        <p className="whitespace-pre-wrap text-sm text-ink-700">{data.advice}</p>
+      ) : (
+        <p className="text-sm text-ink-400">Analysing…</p>
+      )}
+    </div>
+  );
+}
+
 // Compact health card for a single machine's detail page.
 export function MachineHealthCard({ machineId }: { machineId: string }) {
   const { data, isLoading } = usePredictiveHealth();
@@ -154,6 +189,8 @@ export function MachineHealthCard({ machineId }: { machineId: string }) {
       ) : (
         <p className="mt-4 text-sm text-ink-400">No risk signals — running normally.</p>
       )}
+
+      <AiDiagnosis machineId={machineId} />
     </Card>
   );
 }
