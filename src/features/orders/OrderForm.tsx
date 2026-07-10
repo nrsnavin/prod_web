@@ -8,6 +8,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { useCustomers } from "@/features/customers/hooks";
 import { useElastics } from "@/features/elastics/hooks";
 import { OrderFormValues } from "./types";
+import { OrderEtaPanel } from "./OrderEtaPanel";
 
 const schema = z.object({
   date: z.string().min(1, "Order date required"),
@@ -42,6 +43,7 @@ export function OrderForm({
     register,
     control,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<OrderFormValues>({
     resolver: zodResolver(schema),
@@ -55,6 +57,9 @@ export function OrderForm({
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "elasticOrdered" });
+
+  const watchedLines = watch("elasticOrdered");
+  const watchedSupply = watch("supplyDate");
 
   const elasticOptions = (elastics.data?.elastics ?? []).map((e) => ({
     value: e._id,
@@ -136,6 +141,8 @@ export function OrderForm({
           <Plus className="h-4 w-4" /> Add elastic
         </Button>
       </div>
+
+      <OrderEtaPanel lines={watchedLines ?? []} supplyDate={watchedSupply} />
 
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>

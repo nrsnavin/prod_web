@@ -19,6 +19,7 @@ import { orderStatusTone, orderStatusLabel } from "./orderStatus";
 import { JobCreateForm } from "@/features/jobs/JobCreateForm";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { OrderEtaCard } from "@/features/analytics/breakdown/OrderEtaCard";
+import { OrderSuggestedPlan } from "./OrderSuggestedPlan";
 
 const elasticColumns: Column<OrderElasticProgress>[] = [
   { key: "name", header: "Elastic", render: (e) => <span className="font-medium">{e.name}</span> },
@@ -230,6 +231,10 @@ export function OrderDetailPage() {
         orderId={order._id}
         active={order.status === "Approved" || order.status === "InProgress"}
       />
+
+      {(order.status === "Open" || order.status === "Approved") && (
+        <OrderSuggestedPlan order={order} />
+      )}
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Elastic progress</h3>
