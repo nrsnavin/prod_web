@@ -99,8 +99,15 @@ export const poService = {
     return res;
   },
 
-  update: (poId: string, body: { expectedDate?: string; notes?: string; auditReason: string }) =>
-    httpClient.put("/supplier/edit-po", { poId, ...body }),
+  update: (
+    poId: string,
+    body: {
+      expectedDate?: string;
+      notes?: string;
+      items?: Array<{ rawMaterial: string; quantity: number; price: number }>;
+      auditReason: string;
+    }
+  ) => httpClient.put("/supplier/edit-po", { poId, ...body }),
 
   remove: (poId: string, auditReason: string) =>
     httpClient.delete("/supplier/delete-po", { poId, auditReason }),

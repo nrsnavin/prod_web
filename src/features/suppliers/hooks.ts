@@ -80,8 +80,18 @@ export function usePoMutations() {
     onSuccess: invalidate,
   });
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { expectedDate?: string; notes?: string; auditReason: string } }) =>
-      poService.update(id, body),
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: {
+        expectedDate?: string;
+        notes?: string;
+        items?: Array<{ rawMaterial: string; quantity: number; price: number }>;
+        auditReason: string;
+      };
+    }) => poService.update(id, body),
     onSuccess: invalidate,
   });
   const remove = useMutation({

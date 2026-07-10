@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Copy, PackagePlus, FileText, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, PackagePlus, FileText, Pencil, Trash2, Plus } from "lucide-react";
 import { PrintModal } from "@/components/print/PrintModal";
 import { PoDocument } from "./PoDocument";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -8,7 +8,9 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { Combobox } from "@/components/ui/Combobox";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { useMaterials } from "@/features/materials/hooks";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -143,26 +145,44 @@ function InwardForm({
   );
 }
 
+type EditLine = { rawMaterial: string; quantity: string; price: string };
+
 function PoEditModal({
   po,
   open,
   onClose,
   update,
 }: {
-  po: { _id: string; expectedDate?: string; notes?: string };
+  po: { _id: string; expectedDate?: string; notes?: string; items: PoItem[] };
   open: boolean;
   onClose: () => void;
   update: ReturnType<typeof usePoMutations>["update"];
 }) {
   const { toast } = useToast();
+  const materials = useMaterials({ search: "", category: "all", lowStock: false });
   const [expectedDate, setExpectedDate] = useState(po.expectedDate ? po.expectedDate.slice(0, 10) : "");
   const [notes, setNotes] = useState(po.notes ?? "");
   const [auditReason, setAuditReason] = useState("");
+  const [lines, setLines] = useState<EditLine[]>(
+    po.items.map((it) => ({ rawMaterial: materialId(it), quantity: String(it.quantity), price: String(it.price) }))
+  );
+
+  const materialOptions = (materials.data ?? []).map((m) => ({ value: m._id, label: `${m.name} (${m.category})` }));
+  const setLine = (i: number, patch: Partial<EditLine>) =>
+    setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  const addLine = () => setLines((ls) => [...ls, { rawMaterial: "", quantity: "", price: "" }]);
+  const removeLine = (i: number) => setLines((ls) => (ls.length > 1 ? ls.filter((_, idx) => idx !== i) : ls));
+  const total = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.price) || 0), 0);
 
   const save = () => {
     if (auditReason.trim().length < 3) { toast("Give a reason (min 3 chars) for the edit", "error"); return; }
+    const items = lines
+      .filter((l) => l.rawMaterial)
+      .map((l) => ({ rawMaterial: l.rawMaterial, quantity: Number(l.quantity) || 0, price: Number(l.price) || 0 }));
+    if (items.length === 0) { toast("Add at least one line item", "error"); return; }
+    if (items.some((it) => it.quantity <= 0)) { toast("Every line needs a quantity greater than 0", "error"); return; }
     update.mutate(
-      { id: po._id, body: { expectedDate, notes, auditReason: auditReason.trim() } },
+      { id: po._id, body: { expectedDate, notes, items, auditReason: auditReason.trim() } },
       {
         onSuccess: () => { toast("Purchase order updated", "success"); onClose(); },
         onError: (e) => toast(e instanceof ApiError ? e.message : "Update failed", "error"),
@@ -171,12 +191,56 @@ function PoEditModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit purchase order" width="max-w-md">
+    <Modal open={open} onClose={onClose} title="Edit purchase order" width="max-w-2xl">
       <div className="space-y-4">
-        <p className="text-xs text-ink-400">
-          Only Open POs with no receipts can be edited. To change line items, clone and recreate the PO.
-        </p>
-        <Input label="Requested delivery date" type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />
+        <p className="text-xs text-ink-400">Only Open POs with no receipts can be edited.</p>
+
+        <div>
+          <p className="mb-1.5 text-sm font-medium text-ink-600">Line items *</p>
+          <div className="hidden grid-cols-[1fr_90px_100px_90px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+            <span>Material</span>
+            <span className="text-right">Qty</span>
+            <span className="text-right">Rate (₹)</span>
+            <span className="text-right">Amount</span>
+            <span />
+          </div>
+          <div className="space-y-2">
+            {lines.map((l, i) => (
+              <div key={i} className="grid grid-cols-[1fr_90px_100px_90px_32px] items-start gap-2">
+                <Combobox
+                  placeholder={materials.isLoading ? "Loading…" : "Material"}
+                  options={materialOptions}
+                  value={l.rawMaterial}
+                  onChange={(v) => setLine(i, { rawMaterial: v })}
+                />
+                <Input type="number" step="0.01" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} />
+                <Input type="number" step="0.01" value={l.price} onChange={(e) => setLine(i, { price: e.target.value })} />
+                <div className="flex h-10 items-center justify-end text-sm tabular-nums text-ink-600">
+                  {((Number(l.quantity) || 0) * (Number(l.price) || 0)).toLocaleString("en-IN")}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeLine(i)}
+                  className="grid h-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40"
+                  disabled={lines.length <= 1}
+                  aria-label="Remove line"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <Button type="button" variant="ghost" size="sm" onClick={addLine}>
+              <Plus className="h-4 w-4" /> Add item
+            </Button>
+            <span className="text-sm font-semibold tabular-nums">Total ₹{total.toLocaleString("en-IN")}</span>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input label="Requested delivery date" type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />
+        </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Terms / notes</label>
           <textarea
@@ -286,7 +350,7 @@ export function PoDetailPage() {
       />
 
       <PoEditModal
-        po={{ _id: po._id, expectedDate: po.expectedDate, notes: po.notes }}
+        po={{ _id: po._id, expectedDate: po.expectedDate, notes: po.notes, items: po.items }}
         open={editOpen}
         onClose={() => setEditOpen(false)}
         update={update}
