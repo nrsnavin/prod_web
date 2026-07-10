@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
+import { cn } from "@/components/ui/cn";
 import { machineService } from "@/features/machines/api";
 import { issueService, MachineIssue } from "./api";
 
@@ -194,34 +195,64 @@ function ReportIssueModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Repeat-offender anomaly banner ──────────────────────────────
+// ── Repeat-offender anomaly banner (tunable window / threshold) ──
 function AnomalyBanner() {
+  const [days, setDays] = useState(30);
+  const [threshold, setThreshold] = useState(3);
   const { data } = useQuery({
-    queryKey: ["machine-anomalies"],
-    queryFn: () => issueService.anomalies(30, 3),
+    queryKey: ["machine-anomalies", days, threshold],
+    queryFn: () => issueService.anomalies(days, threshold),
     refetchInterval: 120_000,
   });
   const anomalies = data?.anomalies ?? [];
-  if (anomalies.length === 0) return null;
+  const hit = anomalies.length > 0;
+
+  const controls = (
+    <div className="flex items-center gap-2 text-xs text-ink-500">
+      <span>flag</span>
+      <select
+        value={threshold}
+        onChange={(e) => setThreshold(Number(e.target.value))}
+        className="rounded border border-ink-200 bg-white px-1.5 py-0.5"
+      >
+        {[2, 3, 5].map((n) => <option key={n} value={n}>{n}+</option>)}
+      </select>
+      <span>issues in</span>
+      <select
+        value={days}
+        onChange={(e) => setDays(Number(e.target.value))}
+        className="rounded border border-ink-200 bg-white px-1.5 py-0.5"
+      >
+        {[7, 30, 90].map((n) => <option key={n} value={n}>{n}d</option>)}
+      </select>
+    </div>
+  );
 
   return (
-    <Card className="mb-4 border-l-4 border-status-danger p-4">
-      <p className="flex items-center gap-2 text-sm font-semibold text-status-danger">
-        <AlertTriangle className="h-4 w-4" />
-        Frequent breakdowns — {anomalies.length} machine{anomalies.length === 1 ? "" : "s"} with {data?.threshold}+ issues in {data?.windowDays} days
-      </p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {anomalies.map((a) => (
-          <span
-            key={a.machineId}
-            className="inline-flex items-center gap-2 rounded-full border border-status-danger/30 bg-status-dangerBg px-3 py-1 text-sm"
-          >
-            <span className="font-medium">Machine {a.machineID ?? "—"}</span>
-            <span className="tabular-nums text-status-danger">{a.count} issues</span>
-            {a.openCount > 0 && <span className="text-xs text-ink-500">· {a.openCount} open</span>}
-          </span>
-        ))}
+    <Card className={cn("mb-4 border-l-4 p-4", hit ? "border-status-danger" : "border-status-success")}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className={cn("flex items-center gap-2 text-sm font-semibold", hit ? "text-status-danger" : "text-status-success")}>
+          <AlertTriangle className="h-4 w-4" />
+          {hit
+            ? `Frequent breakdowns — ${anomalies.length} machine${anomalies.length === 1 ? "" : "s"} flagged`
+            : `No repeat-offender machines (${threshold}+ in ${days}d)`}
+        </p>
+        {controls}
       </div>
+      {hit && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {anomalies.map((a) => (
+            <span
+              key={a.machineId}
+              className="inline-flex items-center gap-2 rounded-full border border-status-danger/30 bg-status-dangerBg px-3 py-1 text-sm"
+            >
+              <span className="font-medium">Machine {a.machineID ?? "—"}</span>
+              <span className="tabular-nums text-status-danger">{a.count} issues</span>
+              {a.openCount > 0 && <span className="text-xs text-ink-500">· {a.openCount} open</span>}
+            </span>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
