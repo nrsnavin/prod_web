@@ -29,6 +29,7 @@ import {
   Sparkles,
   Database,
   Wand2,
+  ScanLine,
   LucideIcon,
 } from "lucide-react";
 
@@ -71,6 +72,7 @@ export const navSections: NavSection[] = [
       { label: "Warping", path: "/warping", icon: Layers },
       { label: "Covering", path: "/covering", icon: Disc3 },
       { label: "Packing", path: "/packing", icon: Package },
+      { label: "Quality Control", path: "/qc", icon: ScanLine },
       { label: "Shift Plans", path: "/shift-plans", icon: CalendarClock },
       { label: "Shift Verification", path: "/shift-verification", icon: ShieldCheck },
       { label: "Production View", path: "/production", icon: Factory },
