@@ -5,6 +5,7 @@ import {
   WastageFormValues,
   WastageJobRow,
   WastageRecord,
+  WastageRootCause,
 } from "./types";
 
 export const wastageService = {
@@ -37,6 +38,10 @@ export const wastageService = {
       { days }
     );
     return res.analytics;
+  },
+
+  async rootCause(days = 30): Promise<WastageRootCause> {
+    return httpClient.get<WastageRootCause>("/wastage/root-cause", { days });
   },
 
   add: (body: WastageFormValues) => httpClient.post("/wastage/add-wastage", body),

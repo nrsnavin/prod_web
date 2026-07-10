@@ -35,6 +35,13 @@ export function useWastageAnalytics(days: number) {
   });
 }
 
+export function useWastageRootCause(days: number) {
+  return useQuery({
+    queryKey: [KEY, "root-cause", days],
+    queryFn: () => wastageService.rootCause(days),
+  });
+}
+
 export function useWastageMutations() {
   const qc = useQueryClient();
   const invalidate = () => {

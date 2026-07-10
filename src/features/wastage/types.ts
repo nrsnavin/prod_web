@@ -45,3 +45,18 @@ export interface WastageFormValues {
   penalty?: number;
   reason: string;
 }
+
+export interface WastageRootCause {
+  success: boolean;
+  days: number;
+  totals: { qty: number; count: number; penalty: number };
+  byReason: Array<{ reason: string; qty: number; count: number; penalty: number }>;
+  byOperator: Array<{ name: string; department?: string; qty: number; count: number }>;
+  byElastic: Array<{ name: string; qty: number; count: number }>;
+  byMachine: Array<{ machineID: string; qty: number; count: number }>;
+  reasonMachine: Array<{ reason: string; machineID: string; qty: number; count: number }>;
+  reasonOperator: Array<{ reason: string; operator: string; qty: number; count: number }>;
+  insights: Array<{ severity: "info" | "warn"; title: string; detail: string }>;
+  aiSummary: string | null;
+  aiGenerated: boolean;
+}
