@@ -1,13 +1,14 @@
+import { useCallback, useMemo } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Combobox } from "@/components/ui/Combobox";
-import { useCustomers } from "@/features/customers/hooks";
-import { useElastics } from "@/features/elastics/hooks";
-import { ElasticGroup, ElasticGroupFormValues, itemElasticId } from "./types";
+import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
+import { customerService } from "@/features/customers/api";
+import { elasticService } from "@/features/elastics/api";
+import { ElasticGroup, ElasticGroupFormValues, itemElasticId, itemElasticName } from "./types";
 
 const schema = z.object({
   name: z.string().min(1, "Group name required"),
@@ -35,8 +36,22 @@ export function ElasticGroupForm({
   onSubmit: (v: ElasticGroupFormValues) => void;
   onCancel: () => void;
 }) {
-  const customers = useCustomers({ page: 1, search: "" });
-  const elastics = useElastics({ page: 1, search: "" });
+  const loadCustomers = useCallback(
+    (q: string) =>
+      customerService.list({ page: 1, search: q, limit: 50 }).then((r) => {
+        const opts = r.customers.map((c) => ({ value: c._id, label: c.name }));
+        // Keep "Global" reachable when not narrowing by a name.
+        return q.trim() ? opts : [{ value: "", label: "Global (any customer)" }, ...opts];
+      }),
+    []
+  );
+  const loadElastics = useCallback(
+    (q: string) =>
+      elasticService
+        .list({ page: 1, search: q, limit: 50 })
+        .then((r) => r.elastics.map((e) => ({ value: e._id, label: e.name }))),
+    []
+  );
 
   const {
     register,
@@ -55,7 +70,13 @@ export function ElasticGroupForm({
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
-  const elasticOptions = (elastics.data?.elastics ?? []).map((e) => ({ value: e._id, label: e.name }));
+  // Labels for elastics already on the group (edit mode) so their lines
+  // render a name before any search runs.
+  const elasticSeed = useMemo(
+    () =>
+      (initial?.items ?? []).map((it) => ({ value: itemElasticId(it), label: itemElasticName(it) })),
+    [initial]
+  );
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -66,13 +87,11 @@ export function ElasticGroupForm({
             control={control}
             name="customer"
             render={({ field }) => (
-              <Combobox
+              <AsyncCombobox
                 label="Customer"
                 placeholder="Global (any customer)"
-                options={[
-                  { value: "", label: "Global (any customer)" },
-                  ...(customers.data?.customers ?? []).map((c) => ({ value: c._id, label: c.name })),
-                ]}
+                loadOptions={loadCustomers}
+                seedOptions={[{ value: "", label: "Global (any customer)" }]}
                 value={field.value ?? ""}
                 onChange={field.onChange}
               />
@@ -95,9 +114,10 @@ export function ElasticGroupForm({
                 control={control}
                 name={`items.${i}.elastic`}
                 render={({ field }) => (
-                  <Combobox
+                  <AsyncCombobox
                     placeholder="Select elastic"
-                    options={elasticOptions}
+                    loadOptions={loadElastics}
+                    seedOptions={elasticSeed}
                     error={errors.items?.[i]?.elastic?.message}
                     value={field.value}
                     onChange={field.onChange}
