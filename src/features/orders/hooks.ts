@@ -4,6 +4,22 @@ import { OrderFormValues, OrderStatus } from "./types";
 
 const KEY = "orders";
 
+// Entry-time ETA estimate. Pass an already-debounced payload; the query
+// stays disabled until there is at least one line with a positive qty.
+export function useOrderEstimate(
+  body: { elasticOrdered: Array<{ elastic: string; quantity: number }>; supplyDate?: string; machines?: number } | null,
+  enabled = true
+) {
+  const valid = !!body && body.elasticOrdered.length > 0;
+  return useQuery({
+    queryKey: ["order-eta", body],
+    queryFn: () => orderService.estimateCompletion(body!),
+    enabled: enabled && valid,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
 export function useOrders(status: OrderStatus) {
   return useQuery({
     queryKey: [KEY, status],

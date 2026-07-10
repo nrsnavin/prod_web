@@ -1,5 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
-import { OrderDetail, OrderFormValues, OrderListItem, OrderStatus } from "./types";
+import { OrderDetail, OrderEtaEstimate, OrderFormValues, OrderListItem, OrderStatus } from "./types";
 
 export const orderService = {
   async list(status: OrderStatus): Promise<OrderListItem[]> {
@@ -30,4 +30,13 @@ export const orderService = {
   cancel: (orderId: string) => httpClient.post("/order/cancel", { orderId }),
   startProduction: (orderId: string) => httpClient.post("/order/start-production", { orderId }),
   complete: (orderId: string) => httpClient.post("/order/complete", { orderId }),
+
+  // Entry-time ETA estimator — safe to call on every (debounced) change.
+  async estimateCompletion(body: {
+    elasticOrdered: Array<{ elastic: string; quantity: number }>;
+    supplyDate?: string;
+    machines?: number;
+  }): Promise<OrderEtaEstimate> {
+    return httpClient.post<OrderEtaEstimate>("/order/estimate-completion", body);
+  },
 };
