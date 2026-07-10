@@ -53,6 +53,11 @@ export const shiftService = {
     note?: string;
   }) => httpClient.post("/shift/verify-production", body),
 
+  correctProduction: (shiftId: string, body: { productionMeters: number; auditReason: string }) =>
+    httpClient.put(`/shift/production-entry/${shiftId}`, body),
+  deleteProduction: (shiftId: string, auditReason: string) =>
+    httpClient.delete(`/shift/production-entry/${shiftId}`, { auditReason }),
+
   async runningMachines(): Promise<RunningMachineOption[]> {
     const res = await httpClient.get<{ success: boolean; data: RunningMachineOption[] }>(
       "/machine/running-machines"

@@ -1,13 +1,20 @@
 import { useState } from "react";
-import { Sun, Moon, X } from "lucide-react";
+import { Sun, Moon, X, Pencil, Trash2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { cn } from "@/components/ui/cn";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { useToast } from "@/components/ui/Toast";
+import { ApiError } from "@/core/http/httpClient";
+import { shiftService } from "./api";
 import { useProductionRange, useProductionShiftDetail } from "./hooks";
 import { ProductionShiftSlice } from "./types";
 import { presetRange, toISODate } from "@/features/analytics/components/FilterBar";
@@ -67,26 +74,106 @@ type DetailRow = {
   job?: { jobNo?: number; status?: string } | null;
 };
 
-const detailColumns: Column<DetailRow>[] = [
-  { key: "machine", header: "Machine", render: (d) => d.machine?.machineID ?? "—" },
-  { key: "operator", header: "Operator", render: (d) => d.employee?.name ?? "—" },
-  { key: "job", header: "Job", render: (d) => (d.job?.jobNo ? `J-${d.job.jobNo}` : "—") },
-  { key: "timer", header: "Runtime", align: "right", render: (d) => d.timerLabel },
-  {
-    key: "prod",
-    header: "Output (m)",
-    align: "right",
-    render: (d) => d.productionMeters.toLocaleString("en-IN"),
-  },
-  {
-    key: "status",
-    header: "Status",
-    render: (d) => <StatusChip tone={sliceTone[d.status] ?? "neutral"}>{d.status}</StatusChip>,
-  },
-];
+function useProductionEntryMutations(shiftPlanId: string) {
+  const qc = useQueryClient();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["production"] });
+    qc.invalidateQueries({ queryKey: ["shift-detail", shiftPlanId] });
+    qc.invalidateQueries({ queryKey: ["orders"] });
+    qc.invalidateQueries({ queryKey: ["jobs"] });
+  };
+  const correct = useMutation({
+    mutationFn: ({ shiftId, productionMeters, auditReason }: { shiftId: string; productionMeters: number; auditReason: string }) =>
+      shiftService.correctProduction(shiftId, { productionMeters, auditReason }),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: ({ shiftId, auditReason }: { shiftId: string; auditReason: string }) =>
+      shiftService.deleteProduction(shiftId, auditReason),
+    onSuccess: invalidate,
+  });
+  return { correct, remove };
+}
+
+function ProductionEditModal({
+  row,
+  correct,
+  onClose,
+}: {
+  row: DetailRow;
+  correct: ReturnType<typeof useProductionEntryMutations>["correct"];
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [meters, setMeters] = useState(String(row.productionMeters));
+  const [auditReason, setAuditReason] = useState("");
+  const save = () => {
+    if (auditReason.trim().length < 3) { toast("Give a reason (min 3 chars)", "error"); return; }
+    if (!(Number(meters) >= 0)) { toast("Output must be ≥ 0", "error"); return; }
+    correct.mutate(
+      { shiftId: row.shiftDetailId, productionMeters: Number(meters), auditReason: auditReason.trim() },
+      {
+        onSuccess: () => { toast("Production corrected", "success"); onClose(); },
+        onError: (e) => toast(e instanceof ApiError ? e.message : "Correction failed", "error"),
+      }
+    );
+  };
+  return (
+    <Modal open onClose={onClose} title="Correct production entry" width="max-w-md">
+      <div className="space-y-4">
+        <Input label="Total output (m)" type="number" step="0.01" value={meters} onChange={(e) => setMeters(e.target.value)} />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for correction *</label>
+          <textarea
+            rows={2}
+            value={auditReason}
+            onChange={(e) => setAuditReason(e.target.value)}
+            placeholder="Why is this being corrected? (recorded in the audit log)"
+            className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
+          />
+        </div>
+        <p className="text-xs text-ink-400">Re-derives the job / order / plan totals by the difference. The rate model self-corrects on future shifts.</p>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" loading={correct.isPending} onClick={save}>Save correction</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function ShiftDetailModal({ shiftPlanId, onClose }: { shiftPlanId: string; onClose: () => void }) {
   const { data, isLoading } = useProductionShiftDetail(shiftPlanId);
+  const { toast } = useToast();
+  const { correct, remove } = useProductionEntryMutations(shiftPlanId);
+  const [editRow, setEditRow] = useState<DetailRow | null>(null);
+  const [delRow, setDelRow] = useState<DetailRow | null>(null);
+
+  const detailColumns: Column<DetailRow>[] = [
+    { key: "machine", header: "Machine", render: (d) => d.machine?.machineID ?? "—" },
+    { key: "operator", header: "Operator", render: (d) => d.employee?.name ?? "—" },
+    { key: "job", header: "Job", render: (d) => (d.job?.jobNo ? `J-${d.job.jobNo}` : "—") },
+    { key: "timer", header: "Runtime", align: "right", render: (d) => d.timerLabel },
+    { key: "prod", header: "Output (m)", align: "right", render: (d) => d.productionMeters.toLocaleString("en-IN") },
+    { key: "status", header: "Status", render: (d) => <StatusChip tone={sliceTone[d.status] ?? "neutral"}>{d.status}</StatusChip> },
+    {
+      key: "act",
+      header: "",
+      align: "right",
+      render: (d) =>
+        d.status === "closed" ? (
+          <span className="inline-flex gap-1">
+            <button onClick={() => setEditRow(d)} className="p-1.5 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900" aria-label="Correct production">
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button onClick={() => setDelRow(d)} className="p-1.5 rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger" aria-label="Delete production">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </span>
+        ) : null,
+    },
+  ];
+
   return (
     <Modal open onClose={onClose} title={data ? `${data.shift} shift · ${data.dateLabel}` : "Shift detail"} width="max-w-3xl">
       {isLoading || !data ? (
@@ -116,6 +203,25 @@ function ShiftDetailModal({ shiftPlanId, onClose }: { shiftPlanId: string; onClo
             rows={data.details}
             rowKey={(d) => d.shiftDetailId}
             emptyTitle="No entries"
+          />
+          {editRow && <ProductionEditModal row={editRow} correct={correct} onClose={() => setEditRow(null)} />}
+          <ReasonDialog
+            open={!!delRow}
+            onClose={() => setDelRow(null)}
+            title="Delete production entry"
+            description="Reverses this shift's output from the job / order / plan totals and un-verifies it for re-entry. Recorded in the audit trail."
+            confirmLabel="Delete entry"
+            loading={remove.isPending}
+            onConfirm={(reason) =>
+              delRow &&
+              remove.mutate(
+                { shiftId: delRow.shiftDetailId, auditReason: reason },
+                {
+                  onSuccess: () => { toast("Production entry deleted", "success"); setDelRow(null); },
+                  onError: (e) => toast(e instanceof ApiError ? e.message : "Delete failed", "error"),
+                }
+              )
+            }
           />
         </>
       )}
