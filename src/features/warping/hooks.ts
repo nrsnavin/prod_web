@@ -50,7 +50,12 @@ export function useWarpingMutations() {
     mutationFn: warpingService.createPlan,
     onSuccess: invalidate,
   });
-  return { start, complete, cancel, createPlan };
+  const deletePlan = useMutation({
+    mutationFn: ({ planId, auditReason }: { planId: string; auditReason: string }) =>
+      warpingService.deletePlan(planId, auditReason),
+    onSuccess: invalidate,
+  });
+  return { start, complete, cancel, createPlan, deletePlan };
 }
 
 export function useCoverings(params: { status: ProgrammeStatus | "all"; search: string; page: number }) {
