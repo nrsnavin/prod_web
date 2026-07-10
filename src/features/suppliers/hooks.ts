@@ -79,5 +79,15 @@ export function usePoMutations() {
     }) => poService.inwardStock(poId, items),
     onSuccess: invalidate,
   });
-  return { create, clone, inward };
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { expectedDate?: string; notes?: string; auditReason: string } }) =>
+      poService.update(id, body),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: ({ id, auditReason }: { id: string; auditReason: string }) =>
+      poService.remove(id, auditReason),
+    onSuccess: invalidate,
+  });
+  return { create, clone, inward, update, remove };
 }

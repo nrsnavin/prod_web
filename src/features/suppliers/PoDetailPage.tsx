@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Copy, PackagePlus, FileText } from "lucide-react";
+import { ArrowLeft, Copy, PackagePlus, FileText, Pencil, Trash2 } from "lucide-react";
 import { PrintModal } from "@/components/print/PrintModal";
 import { PoDocument } from "./PoDocument";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -142,14 +143,78 @@ function InwardForm({
   );
 }
 
+function PoEditModal({
+  po,
+  open,
+  onClose,
+  update,
+}: {
+  po: { _id: string; expectedDate?: string; notes?: string };
+  open: boolean;
+  onClose: () => void;
+  update: ReturnType<typeof usePoMutations>["update"];
+}) {
+  const { toast } = useToast();
+  const [expectedDate, setExpectedDate] = useState(po.expectedDate ? po.expectedDate.slice(0, 10) : "");
+  const [notes, setNotes] = useState(po.notes ?? "");
+  const [auditReason, setAuditReason] = useState("");
+
+  const save = () => {
+    if (auditReason.trim().length < 3) { toast("Give a reason (min 3 chars) for the edit", "error"); return; }
+    update.mutate(
+      { id: po._id, body: { expectedDate, notes, auditReason: auditReason.trim() } },
+      {
+        onSuccess: () => { toast("Purchase order updated", "success"); onClose(); },
+        onError: (e) => toast(e instanceof ApiError ? e.message : "Update failed", "error"),
+      }
+    );
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit purchase order" width="max-w-md">
+      <div className="space-y-4">
+        <p className="text-xs text-ink-400">
+          Only Open POs with no receipts can be edited. To change line items, clone and recreate the PO.
+        </p>
+        <Input label="Requested delivery date" type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink-600">Terms / notes</label>
+          <textarea
+            rows={2}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
+          <textarea
+            rows={2}
+            value={auditReason}
+            onChange={(e) => setAuditReason(e.target.value)}
+            placeholder="Why is this being changed? (recorded in the audit log)"
+            className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export function PoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data, isLoading, isError, error } = usePurchaseOrder(id);
-  const { clone, inward } = usePoMutations();
+  const { clone, inward, update, remove } = usePoMutations();
   const [inwardOpen, setInwardOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [delOpen, setDelOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -170,6 +235,7 @@ export function PoDetailPage() {
   const { po, inwardHistory } = data;
   const supplierName = typeof po.supplier === "object" && po.supplier ? po.supplier.name : "—";
   const total = po.items.reduce((s, it) => s + it.price * it.quantity, 0);
+  const editable = po.status === "Open" && !po.items.some((it) => (it.received ?? 0) > 0);
 
   return (
     <>
@@ -205,7 +271,41 @@ export function PoDetailPage() {
             >
               <Copy className="h-4 w-4" /> Clone
             </Button>
+            {editable && (
+              <>
+                <Button variant="secondary" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4" /> Edit
+                </Button>
+                <Button variant="danger" onClick={() => setDelOpen(true)}>
+                  <Trash2 className="h-4 w-4" /> Delete
+                </Button>
+              </>
+            )}
           </>
+        }
+      />
+
+      <PoEditModal
+        po={{ _id: po._id, expectedDate: po.expectedDate, notes: po.notes }}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        update={update}
+      />
+      <ReasonDialog
+        open={delOpen}
+        onClose={() => setDelOpen(false)}
+        title={`Delete PO #${po.poNo}`}
+        description="The PO is cancelled (kept for audit) and recorded in the audit trail. Only Open POs with no receipts can be deleted."
+        confirmLabel="Delete PO"
+        loading={remove.isPending}
+        onConfirm={(reason) =>
+          remove.mutate(
+            { id: po._id, auditReason: reason },
+            {
+              onSuccess: () => { toast("Purchase order deleted", "success"); navigate("/purchase-orders"); },
+              onError: (e) => toast(e instanceof ApiError ? e.message : "Delete failed", "error"),
+            }
+          )
         }
       />
 

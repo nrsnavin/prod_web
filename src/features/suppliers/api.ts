@@ -98,4 +98,10 @@ export const poService = {
     }>("/supplier/inward-stock", { poId, items });
     return res;
   },
+
+  update: (poId: string, body: { expectedDate?: string; notes?: string; auditReason: string }) =>
+    httpClient.put("/supplier/edit-po", { poId, ...body }),
+
+  remove: (poId: string, auditReason: string) =>
+    httpClient.delete("/supplier/delete-po", { poId, auditReason }),
 };
