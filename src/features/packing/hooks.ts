@@ -38,9 +38,15 @@ export function usePackingMutations() {
     mutationFn: (body: PackingFormValues) => packingService.create(body),
     onSuccess: invalidate,
   });
-  const remove = useMutation({
-    mutationFn: (id: string) => packingService.remove(id),
+  const update = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { meter: number; auditReason: string } }) =>
+      packingService.update(id, body),
     onSuccess: invalidate,
   });
-  return { create, remove };
+  const remove = useMutation({
+    mutationFn: ({ id, auditReason }: { id: string; auditReason: string }) =>
+      packingService.remove(id, auditReason),
+    onSuccess: invalidate,
+  });
+  return { create, update, remove };
 }
