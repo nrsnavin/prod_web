@@ -57,6 +57,36 @@ export interface MaintenanceDueItem {
   daysUntil: number;
 }
 
+export type HealthBand = "healthy" | "watch" | "at_risk";
+
+export interface MachineHealthReason {
+  severity: "low" | "medium" | "high";
+  label: string;
+  detail: string;
+}
+
+export interface MachineHealth {
+  machineId: string;
+  machineID: string;
+  status: MachineStatus;
+  score: number;
+  band: HealthBand;
+  dropPct: number;
+  issues30d: number;
+  openIssues: number;
+  recentAvg: number | null;
+  baselineAvg: number | null;
+  nextServiceDate?: string | null;
+  reasons: MachineHealthReason[];
+}
+
+export interface MachineHealthResponse {
+  success: boolean;
+  generatedAt: string;
+  summary: { total: number; atRisk: number; watch: number };
+  machines: MachineHealth[];
+}
+
 export interface MachineFormValues {
   ID: string;
   manufacturer: string;

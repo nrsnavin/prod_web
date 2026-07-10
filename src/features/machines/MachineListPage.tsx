@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useMachines, useMachineMutations, useMaintenanceDue } from "./hooks";
+import { MachineHealthBanner } from "./MachineHealth";
 import { Machine, MachineFormValues, MachineStatus } from "./types";
 
 const statusTone: Record<MachineStatus, ChipTone> = {
@@ -109,6 +110,8 @@ export function MachineListPage() {
           </Button>
         }
       />
+
+      <MachineHealthBanner />
 
       {(due.data?.count ?? 0) > 0 && (
         <Card className="mb-4 p-4 border-l-4 border-status-warning">

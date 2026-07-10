@@ -3,6 +3,7 @@ import {
   Machine,
   MachineDetail,
   MachineFormValues,
+  MachineHealthResponse,
   MachineStatus,
   MaintenanceDueItem,
   ServiceLogFormValues,
@@ -39,6 +40,10 @@ export const machineService = {
 
   async addServiceLog(machineId: string, body: ServiceLogFormValues): Promise<void> {
     await httpClient.post("/machine/add-service-log", { machineId, ...body });
+  },
+
+  async predictiveHealth(): Promise<MachineHealthResponse> {
+    return httpClient.get<MachineHealthResponse>("/machine/predictive-health");
   },
 
   async maintenanceDue(days = 14): Promise<{
