@@ -22,4 +22,23 @@ export const qcService = {
   create(body: QcCreateBody): Promise<{ success: boolean; jobOrderNo: number }> {
     return httpClient.post("/qc/create", body);
   },
+
+  trainingReadiness(): Promise<TrainingReadiness> {
+    return httpClient.get<TrainingReadiness>("/qc/training-readiness");
+  },
+
+  exportDataset(): Promise<{ success: boolean; count: number; exportedAt: string; samples: unknown[] }> {
+    return httpClient.get("/qc/export-dataset");
+  },
 };
+
+export interface TrainingReadiness {
+  success: boolean;
+  thresholds: { MIN_SAMPLES: number; MIN_CLASSES: number; MIN_PER_CLASS: number };
+  totals: { qcRecords: number; labelledImages: number; aiAssisted: number; aiAssistedShare: number };
+  classes: Array<{ defectCode: string; count: number }>;
+  classesReady: number;
+  progressPct: number;
+  ready: boolean;
+  recommendation: string;
+}

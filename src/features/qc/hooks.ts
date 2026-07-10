@@ -12,6 +12,10 @@ export function useQcRecent() {
   return useQuery({ queryKey: [KEY, "recent"], queryFn: () => qcService.recent(30) });
 }
 
+export function useTrainingReadiness() {
+  return useQuery({ queryKey: [KEY, "training-readiness"], queryFn: qcService.trainingReadiness, staleTime: 60_000 });
+}
+
 export function useQcMutations() {
   const qc = useQueryClient();
   const visionDraft = useMutation({
