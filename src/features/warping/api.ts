@@ -40,6 +40,11 @@ export const warpingService = {
     beams: Array<{ sections: Array<{ warpYarn: string; ends: number; length?: number }> }>;
     remarks?: string;
   }) => httpClient.post("/warping/warpingPlan/create", body),
+
+  updatePlan: (planId: string, body: { remarks?: string; auditReason: string }) =>
+    httpClient.put(`/warping/warpingPlan/${planId}`, body),
+  deletePlan: (planId: string, auditReason: string) =>
+    httpClient.delete(`/warping/warpingPlan/${planId}`, { auditReason }),
 };
 
 export const coveringService = {

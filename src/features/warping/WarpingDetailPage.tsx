@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Play, CheckCircle2, XCircle, Plus, Printer, Tags } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle2, XCircle, Plus, Printer, Tags, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -20,8 +21,9 @@ export function WarpingDetailPage() {
   const { toast } = useToast();
   const { data: warping, isLoading, isError, error } = useWarping(id);
   const plan = useWarpingPlan(id);
-  const { start, complete, cancel } = useWarpingMutations();
+  const { start, complete, cancel, deletePlan } = useWarpingMutations();
   const [planOpen, setPlanOpen] = useState(false);
+  const [delPlanOpen, setDelPlanOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState<null | "sheet" | "labels">(null);
 
   if (isLoading) {
@@ -72,9 +74,14 @@ export function WarpingDetailPage() {
               </Button>
             )}
             {warping.status === "open" && hasPlan && (
-              <Button loading={start.isPending} onClick={() => run(start, "Warping started")}>
-                <Play className="h-4 w-4" /> Start
-              </Button>
+              <>
+                <Button variant="secondary" onClick={() => setDelPlanOpen(true)}>
+                  <Trash2 className="h-4 w-4" /> Delete plan
+                </Button>
+                <Button loading={start.isPending} onClick={() => run(start, "Warping started")}>
+                  <Play className="h-4 w-4" /> Start
+                </Button>
+              </>
             )}
             {warping.status === "in_progress" && (
               <Button loading={complete.isPending} onClick={() => run(complete, "Warping completed")}>
@@ -88,6 +95,26 @@ export function WarpingDetailPage() {
             )}
           </>
         }
+      />
+
+      <ReasonDialog
+        open={delPlanOpen}
+        onClose={() => setDelPlanOpen(false)}
+        title="Delete warping plan"
+        description="Removes the beam plan so a corrected one can be created. Recorded in the audit trail."
+        confirmLabel="Delete plan"
+        loading={deletePlan.isPending}
+        onConfirm={(reason) => {
+          const planId = plan.data?.plan?._id;
+          if (!planId) { toast("No plan to delete", "error"); return; }
+          deletePlan.mutate(
+            { planId, auditReason: reason },
+            {
+              onSuccess: () => { toast("Warping plan deleted", "success"); setDelPlanOpen(false); },
+              onError: (e) => toast(e instanceof ApiError ? e.message : "Delete failed", "error"),
+            }
+          );
+        }}
       />
 
       <Card className="p-6">
