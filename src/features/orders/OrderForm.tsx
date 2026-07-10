@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -6,10 +6,11 @@ import { Plus, Trash2, Layers } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
-import { useCustomers } from "@/features/customers/hooks";
-import { useElastics } from "@/features/elastics/hooks";
+import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
+import { customerService } from "@/features/customers/api";
+import { elasticService } from "@/features/elastics/api";
 import { useElasticGroups } from "@/features/elasticGroups/hooks";
-import { itemElasticId } from "@/features/elasticGroups/types";
+import { itemElasticId, itemElasticName } from "@/features/elasticGroups/types";
 import { OrderFormValues } from "./types";
 import { OrderEtaPanel } from "./OrderEtaPanel";
 
@@ -38,9 +39,22 @@ export function OrderForm({
   onSubmit: (v: OrderFormValues) => void;
   onCancel: () => void;
 }) {
-  // Big page sizes keep these dropdowns complete without a picker UI.
-  const customers = useCustomers({ page: 1, search: "" });
-  const elastics = useElastics({ page: 1, search: "" });
+  // Server-searched dropdowns: type to query the full masters, not just a
+  // preloaded page (customer/elastic lists can exceed the API's page cap).
+  const loadCustomers = useCallback(
+    (q: string) =>
+      customerService
+        .list({ page: 1, search: q, limit: 50 })
+        .then((r) => r.customers.map((c) => ({ value: c._id, label: c.name }))),
+    []
+  );
+  const loadElastics = useCallback(
+    (q: string) =>
+      elasticService
+        .list({ page: 1, search: q, limit: 50 })
+        .then((r) => r.elastics.map((e) => ({ value: e._id, label: e.name }))),
+    []
+  );
 
   const {
     register,
@@ -84,10 +98,15 @@ export function OrderForm({
     else toAdd.forEach((l) => append(l));
   };
 
-  const elasticOptions = (elastics.data?.elastics ?? []).map((e) => ({
-    value: e._id,
-    label: e.name,
-  }));
+  // Labels for elastics pulled in via a group, so those lines show a name
+  // even though they were never searched for individually.
+  const elasticSeed = useMemo(
+    () =>
+      (groups.data ?? []).flatMap((g) =>
+        g.items.map((it) => ({ value: itemElasticId(it), label: itemElasticName(it) }))
+      ),
+    [groups.data]
+  );
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -96,10 +115,10 @@ export function OrderForm({
           control={control}
           name="customer"
           render={({ field }) => (
-            <Combobox
+            <AsyncCombobox
               label="Customer *"
               placeholder="Select customer"
-              options={(customers.data?.customers ?? []).map((c) => ({ value: c._id, label: c.name }))}
+              loadOptions={loadCustomers}
               error={errors.customer?.message}
               value={field.value}
               onChange={field.onChange}
@@ -147,9 +166,10 @@ export function OrderForm({
                 control={control}
                 name={`elasticOrdered.${i}.elastic`}
                 render={({ field }) => (
-                  <Combobox
+                  <AsyncCombobox
                     placeholder="Select elastic"
-                    options={elasticOptions}
+                    loadOptions={loadElastics}
+                    seedOptions={elasticSeed}
                     error={errors.elasticOrdered?.[i]?.elastic?.message}
                     value={field.value}
                     onChange={field.onChange}
