@@ -24,6 +24,7 @@ const PoCreatePage = lazyPage(() => import("@/features/suppliers/PoCreatePage"),
 const PoDetailPage = lazyPage(() => import("@/features/suppliers/PoDetailPage"), "PoDetailPage");
 const MaterialListPage = lazyPage(() => import("@/features/materials/MaterialListPage"), "MaterialListPage");
 const MaterialDetailPage = lazyPage(() => import("@/features/materials/MaterialDetailPage"), "MaterialDetailPage");
+const MaterialForecastPage = lazyPage(() => import("@/features/materials/MaterialForecastPage"), "MaterialForecastPage");
 const ElasticListPage = lazyPage(() => import("@/features/elastics/ElasticListPage"), "ElasticListPage");
 const ElasticDetailPage = lazyPage(() => import("@/features/elastics/ElasticDetailPage"), "ElasticDetailPage");
 const ElasticGroupsPage = lazyPage(() => import("@/features/elasticGroups/ElasticGroupsPage"), "ElasticGroupsPage");
@@ -115,6 +116,7 @@ const detailRoutes = [
   { path: "/customers/:id", element: withSuspense(<CustomerDetailPage />) },
   { path: "/purchase-orders/new", element: withSuspense(<PoCreatePage />) },
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
+  { path: "/materials/forecast", element: withSuspense(<MaterialForecastPage />) },
   { path: "/materials/:id", element: withSuspense(<MaterialDetailPage />) },
   { path: "/elastics/:id", element: withSuspense(<ElasticDetailPage />) },
   { path: "/elastic-groups/:id", element: withSuspense(<ElasticGroupDetailPage />) },

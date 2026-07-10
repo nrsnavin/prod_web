@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -56,6 +56,9 @@ export function PoCreatePage() {
   );
   const materials = useMaterials({ search: "", category: "all", lowStock: false });
 
+  // Optional prefill from the replenishment forecast ("Draft PO").
+  const prefill = (useLocation().state as { prefill?: { supplier: string; supplierName?: string; items: Array<{ rawMaterial: string; quantity: number; price: number }> } } | null)?.prefill;
+
   const {
     register,
     control,
@@ -65,10 +68,13 @@ export function PoCreatePage() {
   } = useForm<PoFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      supplier: "",
+      supplier: prefill?.supplier ?? "",
       expectedDate: "",
       notes: "",
-      items: [{ rawMaterial: "", quantity: 0, price: 0 }],
+      items:
+        prefill?.items && prefill.items.length > 0
+          ? prefill.items
+          : [{ rawMaterial: "", quantity: 0, price: 0 }],
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -144,6 +150,11 @@ export function PoCreatePage() {
                     label="Supplier *"
                     placeholder="Select supplier"
                     loadOptions={loadSuppliers}
+                    seedOptions={
+                      prefill?.supplier && prefill.supplierName
+                        ? [{ value: prefill.supplier, label: prefill.supplierName }]
+                        : undefined
+                    }
                     error={errors.supplier?.message}
                     value={field.value}
                     onChange={field.onChange}

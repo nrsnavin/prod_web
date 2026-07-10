@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, TriangleAlert, ClipboardList } from "lucide-react";
+import { Plus, TriangleAlert, ClipboardList, TrendingDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -85,6 +85,9 @@ export function MaterialListPage() {
         }
         actions={
           <>
+            <Button variant="secondary" onClick={() => navigate("/materials/forecast")}>
+              <TrendingDown className="h-4 w-4" /> Reorder forecast
+            </Button>
             <Button variant="secondary" onClick={() => setStockTakeOpen(true)}>
               <ClipboardList className="h-4 w-4" /> Stock take
             </Button>
