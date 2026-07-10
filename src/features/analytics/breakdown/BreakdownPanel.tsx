@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { lazy, Suspense } from "react";
 import { Cog, User, Building2, ClipboardList, Cable, Layers } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/Card";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Combobox } from "@/components/ui/Combobox";
+import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
@@ -42,12 +43,15 @@ export function BreakdownPanel({
   const [customerId, setCustomerId] = useState("");
   const [machineId, setMachineId] = useState("");
 
-  // Cross-filter option lists (cheap, cached).
-  const customers = useQuery({
-    queryKey: ["breakdown-customers"],
-    queryFn: () => customerService.list({ limit: 200, page: 1 }),
-    staleTime: 5 * 60_000,
-  });
+  // Customer filter searches the server so it isn't capped to one page.
+  const loadCustomers = useCallback(
+    (q: string) =>
+      customerService.list({ page: 1, search: q, limit: 50 }).then((r) => {
+        const opts = r.customers.map((c) => ({ value: c._id, label: c.name }));
+        return q.trim() ? opts : [{ value: "", label: "All customers" }, ...opts];
+      }),
+    []
+  );
   const machines = useQuery({
     queryKey: ["breakdown-machines"],
     queryFn: () => machineService.list("all"),
@@ -158,14 +162,9 @@ export function BreakdownPanel({
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <div className="w-52">
-            <Combobox
-              options={[
-                { value: "", label: "All customers" },
-                ...(customers.data?.customers ?? []).map((c) => ({
-                  value: c._id,
-                  label: c.name,
-                })),
-              ]}
+            <AsyncCombobox
+              loadOptions={loadCustomers}
+              seedOptions={[{ value: "", label: "All customers" }]}
               value={customerId}
               onChange={setCustomerId}
               placeholder="Filter customer"

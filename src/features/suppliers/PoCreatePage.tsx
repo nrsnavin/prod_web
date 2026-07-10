@@ -1,6 +1,5 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,11 +9,12 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
+import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useMaterials } from "@/features/materials/hooks";
 import { supplierService } from "./api";
-import { PoFormValues } from "./types";
+import { PoFormValues, Supplier } from "./types";
 import { usePoMutations } from "./hooks";
 
 const schema = z.object({
@@ -39,11 +39,21 @@ export function PoCreatePage() {
   const { toast } = useToast();
   const { create } = usePoMutations();
 
-  const suppliers = useQuery({
-    queryKey: ["suppliers-full"],
-    queryFn: () => supplierService.list({ page: 1, limit: 200 }),
-    staleTime: 5 * 60_000,
-  });
+  // Supplier picker searches the server; cache the full records we see so the
+  // vendor-detail card can still resolve GSTIN/phone/address for the pick.
+  const [supplierCache, setSupplierCache] = useState<Map<string, Supplier>>(new Map());
+  const loadSuppliers = useCallback(
+    (q: string) =>
+      supplierService.list({ page: 1, search: q, limit: 50 }).then((r) => {
+        setSupplierCache((prev) => {
+          const next = new Map(prev);
+          for (const s of r.suppliers) next.set(s._id, s);
+          return next;
+        });
+        return r.suppliers.map((s) => ({ value: s._id, label: s.name }));
+      }),
+    []
+  );
   const materials = useMaterials({ search: "", category: "all", lowStock: false });
 
   const {
@@ -71,10 +81,7 @@ export function PoCreatePage() {
   );
   const lineCount = items.filter((i) => i.rawMaterial && Number(i.quantity) > 0).length;
 
-  const selectedSupplier = useMemo(
-    () => (suppliers.data?.suppliers ?? []).find((s) => s._id === supplierId),
-    [suppliers.data, supplierId]
-  );
+  const selectedSupplier = supplierId ? supplierCache.get(supplierId) : undefined;
 
   const materialById = useMemo(() => {
     const m = new Map<string, { name: string; unit?: string }>();
@@ -133,10 +140,10 @@ export function PoCreatePage() {
                 control={control}
                 name="supplier"
                 render={({ field }) => (
-                  <Combobox
+                  <AsyncCombobox
                     label="Supplier *"
                     placeholder="Select supplier"
-                    options={(suppliers.data?.suppliers ?? []).map((s) => ({ value: s._id, label: s.name }))}
+                    loadOptions={loadSuppliers}
                     error={errors.supplier?.message}
                     value={field.value}
                     onChange={field.onChange}
