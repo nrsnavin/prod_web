@@ -1,7 +1,14 @@
 import { httpClient } from "@/core/http/httpClient";
-import { MaterialFormValues, RawMaterial, SupplierOption } from "./types";
+import { MaterialFormValues, RawMaterial, ReplenishmentForecast, SupplierOption } from "./types";
 
 export const materialService = {
+  replenishmentForecast(horizonDays = 14, lookbackDays = 30): Promise<ReplenishmentForecast> {
+    return httpClient.get<ReplenishmentForecast>("/materials/replenishment-forecast", {
+      horizonDays,
+      lookbackDays,
+    });
+  },
+
   async list(params: { search?: string; category?: string; lowStock?: boolean }): Promise<RawMaterial[]> {
     const query: Record<string, unknown> = {};
     if (params.search) query.search = params.search;

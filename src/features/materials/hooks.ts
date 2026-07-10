@@ -12,6 +12,14 @@ export function useMaterials(params: { search: string; category: string; lowStoc
   });
 }
 
+export function useReplenishmentForecast(horizonDays: number, lookbackDays = 30) {
+  return useQuery({
+    queryKey: [KEY, "forecast", horizonDays, lookbackDays],
+    queryFn: () => materialService.replenishmentForecast(horizonDays, lookbackDays),
+    staleTime: 60_000,
+  });
+}
+
 export function useMaterial(id: string | undefined) {
   return useQuery({
     queryKey: [KEY, "detail", id],
