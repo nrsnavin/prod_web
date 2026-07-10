@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Layers, Pencil, Trash2, Building2, Globe } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -17,6 +18,7 @@ import { ElasticGroupForm } from "./ElasticGroupForm";
 
 export function ElasticGroupsPage() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { data, isLoading, isError, error } = useElasticGroups();
   const { create, update, remove } = useElasticGroupMutations();
   const [editing, setEditing] = useState<ElasticGroup | null>(null);
@@ -52,7 +54,11 @@ export function ElasticGroupsPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {data!.map((g) => (
-            <Card key={g._id} className="flex flex-col p-4">
+            <Card
+              key={g._id}
+              onClick={() => navigate(`/elastic-groups/${g._id}`)}
+              className="flex cursor-pointer flex-col p-4 transition-colors hover:border-brand-500"
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{g.name}</p>
@@ -70,10 +76,18 @@ export function ElasticGroupsPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-1">
-                  <button onClick={() => setEditing(g)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-900" aria-label="Edit">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditing(g); }}
+                    className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-900"
+                    aria-label="Edit"
+                  >
                     <Pencil className="h-4 w-4" />
                   </button>
-                  <button onClick={() => setDeleting(g)} className="rounded-lg p-1.5 text-ink-400 hover:bg-status-dangerBg hover:text-status-danger" aria-label="Delete">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleting(g); }}
+                    className="rounded-lg p-1.5 text-ink-400 hover:bg-status-dangerBg hover:text-status-danger"
+                    aria-label="Delete"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>

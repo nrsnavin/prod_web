@@ -27,6 +27,7 @@ const MaterialDetailPage = lazyPage(() => import("@/features/materials/MaterialD
 const ElasticListPage = lazyPage(() => import("@/features/elastics/ElasticListPage"), "ElasticListPage");
 const ElasticDetailPage = lazyPage(() => import("@/features/elastics/ElasticDetailPage"), "ElasticDetailPage");
 const ElasticGroupsPage = lazyPage(() => import("@/features/elasticGroups/ElasticGroupsPage"), "ElasticGroupsPage");
+const ElasticGroupDetailPage = lazyPage(() => import("@/features/elasticGroups/ElasticGroupDetailPage"), "ElasticGroupDetailPage");
 const MachineListPage = lazyPage(() => import("@/features/machines/MachineListPage"), "MachineListPage");
 const MachineDetailPage = lazyPage(() => import("@/features/machines/MachineDetailPage"), "MachineDetailPage");
 const EmployeeListPage = lazyPage(() => import("@/features/employees/EmployeeListPage"), "EmployeeListPage");
@@ -114,6 +115,7 @@ const detailRoutes = [
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
   { path: "/materials/:id", element: withSuspense(<MaterialDetailPage />) },
   { path: "/elastics/:id", element: withSuspense(<ElasticDetailPage />) },
+  { path: "/elastic-groups/:id", element: withSuspense(<ElasticGroupDetailPage />) },
   { path: "/machines/:id", element: withSuspense(<MachineDetailPage />) },
   { path: "/employees/:id", element: withSuspense(<EmployeeDetailPage />) },
   { path: "/orders/:id", element: withSuspense(<OrderDetailPage />) },

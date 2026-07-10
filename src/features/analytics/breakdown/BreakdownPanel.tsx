@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { lazy, Suspense } from "react";
-import { Cog, User, Building2, ClipboardList, Cable } from "lucide-react";
+import { Cog, User, Building2, ClipboardList, Cable, Layers } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/Card";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -24,6 +24,7 @@ const DIMS: { key: GroupDim; label: string; icon: typeof Cog }[] = [
   { key: "customer", label: "Customer", icon: Building2 },
   { key: "order", label: "Order", icon: ClipboardList },
   { key: "elastic", label: "Elastic", icon: Cable },
+  { key: "group", label: "Group", icon: Layers },
 ];
 
 const fmt = (n: number) => n.toLocaleString("en-IN");
@@ -190,6 +191,13 @@ export function BreakdownPanel({
       {isError && (
         <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
           Couldn't load breakdown: {(error as Error).message}
+        </p>
+      )}
+
+      {groupBy === "group" && (
+        <p className="rounded-lg bg-status-infoBg px-3 py-2 text-xs text-status-info">
+          Groups can share elastics, so a group's figures are a rollup of its elastics' output
+          across all customers — rows may overlap and won't necessarily sum to the plant total.
         </p>
       )}
 

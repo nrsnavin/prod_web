@@ -1,6 +1,6 @@
 // Mirrors GET /api/v2/production/breakdown (prod/api/production.js)
 
-export type GroupDim = "machine" | "operator" | "customer" | "order" | "elastic";
+export type GroupDim = "machine" | "operator" | "customer" | "order" | "elastic" | "group";
 
 export type InsightSeverity = "good" | "info" | "warn";
 

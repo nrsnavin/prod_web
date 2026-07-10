@@ -15,6 +15,14 @@ export function useElasticGroups(customerId?: string, enabled = true) {
   });
 }
 
+export function useElasticGroup(id: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "detail", id],
+    queryFn: () => elasticGroupService.getById(id!),
+    enabled: !!id,
+  });
+}
+
 export function useElasticGroupMutations() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: [KEY] });
