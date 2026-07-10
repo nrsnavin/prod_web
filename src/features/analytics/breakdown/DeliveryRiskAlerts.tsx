@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, MessageCircle, Copy, ChevronRight } from "lucide-react";
+import { AlertTriangle, MessageCircle, Copy, ChevronRight, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
@@ -61,7 +61,14 @@ export function DeliveryRiskAlerts() {
                 </span>
               </div>
 
-              <p className="mt-2 rounded-lg bg-canvas px-3 py-2 text-sm text-ink-700">{r.draft}</p>
+              <p className="mt-2 rounded-lg bg-canvas px-3 py-2 text-sm text-ink-700">
+                {r.aiDrafted && (
+                  <span className="mr-1.5 inline-flex items-center gap-1 rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-600 align-middle">
+                    <Sparkles className="h-3 w-3" /> AI
+                  </span>
+                )}
+                {r.draft}
+              </p>
 
               <div className="mt-2 flex items-center gap-2">
                 {link ? (

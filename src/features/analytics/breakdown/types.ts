@@ -83,6 +83,7 @@ export interface DeliveryRisk {
   workingDays?: number;
   lateWorkingDays: number;
   draft: string;
+  aiDrafted?: boolean;
 }
 
 export interface RunningEta extends BulkEta {
