@@ -73,6 +73,18 @@ export interface BulkEta {
   rateSources?: EtaRateSources;
 }
 
+export interface DeliveryRisk {
+  orderId: string;
+  orderNo: number;
+  status: string;
+  customer: { name: string; phone: string | null };
+  promised?: string;
+  expectedDate?: string;
+  workingDays?: number;
+  lateWorkingDays: number;
+  draft: string;
+}
+
 export interface RunningEta extends BulkEta {
   perJob?: Array<{
     job: string;

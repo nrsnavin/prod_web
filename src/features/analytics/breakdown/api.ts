@@ -1,5 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
-import { BreakdownParams, BreakdownResponse, BulkEta, RunningEta } from "./types";
+import { BreakdownParams, BreakdownResponse, BulkEta, DeliveryRisk, RunningEta } from "./types";
 
 export const breakdownService = {
   async get(params: BreakdownParams): Promise<BreakdownResponse> {
@@ -27,5 +27,9 @@ export const breakdownService = {
     return httpClient.get<RunningEta & { orderNo?: number; status?: string }>(
       `/order/${orderId}/running-eta`
     );
+  },
+
+  async etaRisks(): Promise<{ count: number; risks: DeliveryRisk[] }> {
+    return httpClient.get<{ success: boolean; count: number; risks: DeliveryRisk[] }>("/order/eta-risks");
   },
 };
