@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useMachine, useMachineMutations } from "./hooks";
+import { MachineHealthCard } from "./MachineHealth";
 import { MachineShiftRow, MachineStatus, ServiceLogFormValues } from "./types";
 import { useTrackRecent } from "@/core/ui/uiStore";
 
@@ -168,6 +169,8 @@ export function MachineDetailPage() {
           ]}
         />
       </Card>
+
+      {id && <MachineHealthCard machineId={id} />}
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card>
