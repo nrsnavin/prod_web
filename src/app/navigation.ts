@@ -83,6 +83,7 @@ export const navSections: NavSection[] = [
       { label: "Purchase Orders", path: "/purchase-orders", icon: FileText },
       { label: "Raw Materials", path: "/materials", icon: Boxes },
       { label: "Elastic Products", path: "/elastics", icon: Cable },
+      { label: "Elastic Groups", path: "/elastic-groups", icon: Layers },
       { label: "Machines", path: "/machines", icon: Cog },
       { label: "Employees", path: "/employees", icon: UserRound },
     ],

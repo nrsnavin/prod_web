@@ -14,6 +14,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useCustomer, useCustomerMutations } from "./hooks";
 import { CustomerForm } from "./CustomerForm";
 import { useTrackRecent } from "@/core/ui/uiStore";
+import { CustomerElasticGroups } from "@/features/elasticGroups/CustomerElasticGroups";
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -98,6 +99,8 @@ export function CustomerDetailPage() {
           ]}
         />
       </Card>
+
+      <CustomerElasticGroups customerId={customer._id} />
 
       <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit customer">
         <CustomerForm
