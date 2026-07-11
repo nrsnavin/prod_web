@@ -103,7 +103,7 @@ function OrderEditModal({
   onClose,
   update,
 }: {
-  order: { _id: string; po?: string; supplyDate?: string; description?: string };
+  order: { _id: string; po?: string; supplyDate?: string; description?: string; __v?: number };
   open: boolean;
   onClose: () => void;
   update: ReturnType<typeof useOrderMutations>["update"];
@@ -117,10 +117,22 @@ function OrderEditModal({
   const save = () => {
     if (auditReason.trim().length < 3) { toast("Give a reason (min 3 chars) for the edit", "error"); return; }
     update.mutate(
-      { id: order._id, body: { po, supplyDate, description, auditReason: auditReason.trim() } },
+      {
+        id: order._id,
+        // expectedVersion = the __v this modal loaded — the server 409s
+        // if someone else saved in between (optimistic lock).
+        body: { po, supplyDate, description, auditReason: auditReason.trim(), expectedVersion: order.__v },
+      },
       {
         onSuccess: () => { toast("Order updated", "success"); onClose(); },
-        onError: (e) => toast(e instanceof ApiError ? e.message : "Update failed", "error"),
+        onError: (e) => {
+          if (e instanceof ApiError && e.status === 409) {
+            toast("Someone else edited this order — reloading the latest version", "error");
+            onClose(); // the mutation's invalidate refetches; modal reopens fresh
+            return;
+          }
+          toast(e instanceof ApiError ? e.message : "Update failed", "error");
+        },
       }
     );
   };
