@@ -56,6 +56,7 @@ export const navSections: NavSection[] = [
     items: [
       { label: "Dashboard", path: "/", icon: LayoutDashboard },
       { label: "Analytics", path: "/analytics", icon: TrendingUp },
+      { label: "Audit Trail", path: "/audit", icon: Fingerprint, roles: ["admin"] },
     ],
   },
   {
