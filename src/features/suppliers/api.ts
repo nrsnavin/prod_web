@@ -106,6 +106,7 @@ export const poService = {
       notes?: string;
       items?: Array<{ rawMaterial: string; quantity: number; price: number }>;
       auditReason: string;
+      expectedVersion?: number;
     }
   ) => httpClient.put("/supplier/edit-po", { poId, ...body }),
 

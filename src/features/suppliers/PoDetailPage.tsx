@@ -153,7 +153,7 @@ function PoEditModal({
   onClose,
   update,
 }: {
-  po: { _id: string; expectedDate?: string; notes?: string; items: PoItem[] };
+  po: { _id: string; expectedDate?: string; notes?: string; items: PoItem[]; __v?: number };
   open: boolean;
   onClose: () => void;
   update: ReturnType<typeof usePoMutations>["update"];
@@ -182,10 +182,22 @@ function PoEditModal({
     if (items.length === 0) { toast("Add at least one line item", "error"); return; }
     if (items.some((it) => it.quantity <= 0)) { toast("Every line needs a quantity greater than 0", "error"); return; }
     update.mutate(
-      { id: po._id, body: { expectedDate, notes, items, auditReason: auditReason.trim() } },
+      {
+        id: po._id,
+        // expectedVersion = the __v this modal loaded — the server 409s
+        // if someone else saved in between (optimistic lock).
+        body: { expectedDate, notes, items, auditReason: auditReason.trim(), expectedVersion: po.__v },
+      },
       {
         onSuccess: () => { toast("Purchase order updated", "success"); onClose(); },
-        onError: (e) => toast(e instanceof ApiError ? e.message : "Update failed", "error"),
+        onError: (e) => {
+          if (e instanceof ApiError && e.status === 409) {
+            toast("Someone else edited this PO — reloading the latest version", "error");
+            onClose();
+            return;
+          }
+          toast(e instanceof ApiError ? e.message : "Update failed", "error");
+        },
       }
     );
   };
