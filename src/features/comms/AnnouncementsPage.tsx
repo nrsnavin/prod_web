@@ -7,7 +7,7 @@ import { Plus, Pin, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -177,7 +177,7 @@ export function AnnouncementsPage() {
         </div>
       )}
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New announcement" width="max-w-xl">
+      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New announcement" width="max-w-xl">
         <AnnouncementForm
           submitting={create.isPending}
           onCancel={() => setCreateOpen(false)}
@@ -192,7 +192,7 @@ export function AnnouncementsPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
 
       <ConfirmDialog
         open={!!deleting}

@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/Pagination";
@@ -90,7 +90,7 @@ export function CustomerListPage() {
         <Pagination page={page} totalPages={data?.pages ?? 1} total={data?.total} onChange={setPage} />
       </Card>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add customer">
+      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="Add customer">
         <CustomerForm
           submitting={create.isPending}
           onCancel={() => setCreateOpen(false)}
@@ -105,7 +105,7 @@ export function CustomerListPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

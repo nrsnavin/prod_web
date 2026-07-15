@@ -4,7 +4,7 @@ import { Plus, Layers, Pencil, Trash2, Building2, Globe } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -111,7 +111,7 @@ export function ElasticGroupsPage() {
         </div>
       )}
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="New elastic group" width="max-w-2xl">
+      <FormScreen open={creating} onClose={() => setCreating(false)} title="New elastic group" width="max-w-2xl">
         <ElasticGroupForm
           submitting={create.isPending}
           onCancel={() => setCreating(false)}
@@ -125,10 +125,10 @@ export function ElasticGroupsPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
 
       {editing && (
-        <Modal open onClose={() => setEditing(null)} title="Edit elastic group" width="max-w-2xl">
+        <FormScreen open onClose={() => setEditing(null)} title="Edit elastic group" width="max-w-2xl">
           <ElasticGroupForm
             initial={editing}
             submitting={update.isPending}
@@ -146,7 +146,7 @@ export function ElasticGroupsPage() {
               )
             }
           />
-        </Modal>
+        </FormScreen>
       )}
 
       <ConfirmDialog

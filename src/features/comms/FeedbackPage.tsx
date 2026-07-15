@@ -4,7 +4,7 @@ import { MessageSquareReply } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -31,7 +31,7 @@ function RespondModal({ item, onClose }: { item: FeedbackItem; onClose: () => vo
   });
 
   return (
-    <Modal open onClose={onClose} title="Respond to feedback" width="max-w-md">
+    <FormScreen open onClose={onClose} title="Respond to feedback" width="max-w-md">
       <p className="text-sm text-ink-600 rounded-xl bg-ink-100/60 p-3">
         {item.message ?? item.text ?? ""}
       </p>
@@ -60,7 +60,7 @@ function RespondModal({ item, onClose }: { item: FeedbackItem; onClose: () => vo
           Send response
         </Button>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 

@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { DescriptionList } from "@/components/ui/DescriptionList";
@@ -225,7 +225,7 @@ export function MachineDetailPage() {
         </Card>
       </div>
 
-      <Modal open={logOpen} onClose={() => setLogOpen(false)} title="Add service log">
+      <FormScreen open={logOpen} onClose={() => setLogOpen(false)} title="Add service log">
         <ServiceLogForm
           submitting={addServiceLog.isPending}
           onCancel={() => setLogOpen(false)}
@@ -243,7 +243,7 @@ export function MachineDetailPage() {
             )
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

@@ -5,7 +5,7 @@ import { ArrowLeft, Play, CheckCircle2, XCircle, Plus, Printer, Tags, Trash2, Wa
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -221,7 +221,7 @@ export function WarpingDetailPage() {
         plan={plan.data?.plan}
       />
 
-      <Modal open={planOpen} onClose={() => setPlanOpen(false)} title="Create warping plan" width="max-w-2xl">
+      <FormScreen open={planOpen} onClose={() => setPlanOpen(false)} title="Create warping plan" width="max-w-2xl">
         <WarpingPlanForm
           warpingId={warping._id}
           jobId={warping.job?._id}
@@ -231,7 +231,7 @@ export function WarpingDetailPage() {
           }}
           onCancel={() => setPlanOpen(false)}
         />
-      </Modal>
+      </FormScreen>
 
       {optimizeOpen && (
         <OptimizeLayoutModal
@@ -283,7 +283,7 @@ function OptimizeLayoutModal({
   const m = data?.metrics;
 
   return (
-    <Modal open onClose={onClose} title="Optimize warping layout" width="max-w-2xl">
+    <FormScreen open onClose={onClose} title="Optimize warping layout" width="max-w-2xl">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-sm text-ink-600">Beam capacity (ends)</label>
@@ -360,6 +360,6 @@ function OptimizeLayoutModal({
           <Skeleton className="h-64 w-full" />
         )}
       </div>
-    </Modal>
+    </FormScreen>
   );
 }

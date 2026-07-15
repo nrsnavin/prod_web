@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
@@ -199,7 +199,7 @@ export function MaterialDetailPage() {
         />
       </Card>
 
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit material">
+      <FormScreen open={editOpen} onClose={() => setEditOpen(false)} title="Edit material">
         <MaterialForm
           initial={material}
           submitting={update.isPending}
@@ -218,9 +218,9 @@ export function MaterialDetailPage() {
             )
           }
         />
-      </Modal>
+      </FormScreen>
 
-      <Modal open={adjustOpen} onClose={() => setAdjustOpen(false)} title="Adjust stock">
+      <FormScreen open={adjustOpen} onClose={() => setAdjustOpen(false)} title="Adjust stock">
         <AdjustStockForm
           currentStock={material.stock}
           submitting={adjustStock.isPending}
@@ -239,7 +239,7 @@ export function MaterialDetailPage() {
             )
           }
         />
-      </Modal>
+      </FormScreen>
 
       <ConfirmDialog
         open={deleteOpen}

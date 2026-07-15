@@ -6,7 +6,7 @@ import {
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -123,7 +123,7 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal open onClose={onClose} title="New QC check" width="max-w-2xl">
+    <FormScreen open onClose={onClose} title="New QC check" width="max-w-2xl">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Combobox
@@ -248,7 +248,7 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
           <Button type="button" loading={create.isPending} onClick={save}>Save QC check</Button>
         </div>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 

@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -81,7 +81,7 @@ export function OrderListPage() {
         />
       </Card>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New order" width="max-w-2xl">
+      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New order" width="max-w-2xl">
         <OrderForm
           submitting={create.isPending}
           onCancel={() => setCreateOpen(false)}
@@ -97,7 +97,7 @@ export function OrderListPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

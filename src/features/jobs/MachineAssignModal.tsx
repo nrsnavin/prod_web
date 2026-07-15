@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Combobox } from "@/components/ui/Combobox";
@@ -62,7 +62,7 @@ export function MachineAssignModal({
   const allMapped = headCount > 0 && [...Array(headCount)].every((_, h) => headMap[h]);
 
   return (
-    <Modal open={open} onClose={onClose} title={`Assign machine — ${job.jobNo}`} width="max-w-xl">
+    <FormScreen open={open} onClose={onClose} title={`Assign machine — ${job.jobNo}`} width="max-w-xl">
       <div className="space-y-4">
         <Combobox
           label="Free machine *"
@@ -127,6 +127,6 @@ export function MachineAssignModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }

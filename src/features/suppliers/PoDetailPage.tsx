@@ -6,7 +6,7 @@ import { PoDocument } from "./PoDocument";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
@@ -203,7 +203,7 @@ function PoEditModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit purchase order" width="max-w-2xl">
+    <FormScreen open={open} onClose={onClose} title="Edit purchase order" width="max-w-2xl">
       <div className="space-y-4">
         <p className="text-xs text-ink-400">Only Open POs with no receipts can be edited.</p>
 
@@ -277,7 +277,7 @@ function PoEditModal({
           <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>
         </div>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 
@@ -431,7 +431,7 @@ export function PoDetailPage() {
         <PoDocument po={po} />
       </PrintModal>
 
-      <Modal open={inwardOpen} onClose={() => setInwardOpen(false)} title="Record goods received">
+      <FormScreen open={inwardOpen} onClose={() => setInwardOpen(false)} title="Record goods received">
         <InwardForm
           items={po.items}
           submitting={inward.isPending}
@@ -450,7 +450,7 @@ export function PoDetailPage() {
             )
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

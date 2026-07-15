@@ -65,7 +65,7 @@ export function useOrderMutations() {
     onSuccess: invalidate,
   });
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: Partial<OrderFormValues> & { auditReason: string } }) =>
+    mutationFn: ({ id, body }: { id: string; body: Partial<OrderFormValues> & { auditReason: string; expectedVersion?: number } }) =>
       orderService.update(id, body),
     onSuccess: invalidate,
   });

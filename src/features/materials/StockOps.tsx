@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ShoppingCart, ClipboardList } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError, httpClient } from "@/core/http/httpClient";
 import { poService } from "@/features/suppliers/api";
@@ -137,7 +137,7 @@ export function StockTakeModal({
   });
 
   return (
-    <Modal open onClose={onClose} title="Stock take" width="max-w-xl">
+    <FormScreen open onClose={onClose} title="Stock take" width="max-w-xl">
       <p className="text-sm text-ink-400 mb-3">
         Enter physically counted quantities — only materials with a variance are adjusted, each
         with a ledger entry.
@@ -197,6 +197,6 @@ export function StockTakeModal({
           <ClipboardList className="h-4 w-4" /> Post adjustments
         </Button>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -184,7 +184,7 @@ export function SupplierListPage() {
         />
       </Card>
 
-      <Modal
+      <FormScreen
         open={formOpen}
         onClose={() => setFormOpen(false)}
         title={editing ? "Edit supplier" : "Add supplier"}
@@ -206,7 +206,7 @@ export function SupplierListPage() {
             else create.mutate(values, opts);
           }}
         />
-      </Modal>
+      </FormScreen>
 
       <ConfirmDialog
         open={!!deleting}

@@ -3,7 +3,7 @@ import { ShieldCheck, Sun, Moon } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -34,7 +34,7 @@ function VerifyModal({
   const jobNo = shift.machine?.orderRunning?.jobOrderNo ?? shift.job?.jobOrderNo;
 
   return (
-    <Modal open onClose={onClose} title="Verify shift production" width="max-w-md">
+    <FormScreen open onClose={onClose} title="Verify shift production" width="max-w-md">
       <div className="space-y-4">
         <div className="rounded-xl bg-ink-100/60 p-3 text-sm">
           <p className="font-semibold">{shift.employee?.name ?? "Operator"}</p>
@@ -95,7 +95,7 @@ function VerifyModal({
           </Button>
         </div>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 

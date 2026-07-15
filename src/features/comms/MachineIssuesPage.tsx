@@ -4,7 +4,7 @@ import { Wrench, Plus, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Combobox } from "@/components/ui/Combobox";
@@ -68,7 +68,7 @@ function UpdateModal({ issue, onClose }: { issue: MachineIssue; onClose: () => v
   });
 
   return (
-    <Modal open onClose={onClose} title={`Issue — ${issue.machine?.ID ?? "machine"}`} width="max-w-md">
+    <FormScreen open onClose={onClose} title={`Issue — ${issue.machine?.ID ?? "machine"}`} width="max-w-md">
       <p className="text-sm text-ink-600 rounded-xl bg-ink-100/60 p-3">
         {issue.description ?? issue.title ?? ""}
       </p>
@@ -125,7 +125,7 @@ function UpdateModal({ issue, onClose }: { issue: MachineIssue; onClose: () => v
           Update issue
         </Button>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 
@@ -155,7 +155,7 @@ function ReportIssueModal({ onClose }: { onClose: () => void }) {
   const valid = machineId && title.trim() && description.trim();
 
   return (
-    <Modal open onClose={onClose} title="Report machine issue" width="max-w-md">
+    <FormScreen open onClose={onClose} title="Report machine issue" width="max-w-md">
       <div className="space-y-3">
         <Combobox
           label="Machine *"
@@ -191,7 +191,7 @@ function ReportIssueModal({ onClose }: { onClose: () => void }) {
           Report issue
         </Button>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 

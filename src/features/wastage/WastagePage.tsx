@@ -6,7 +6,7 @@ import { Plus, ChevronDown, ChevronUp, Trash2, Sparkles, AlertTriangle, Info, Pe
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -159,7 +159,7 @@ function WastageEditModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit wastage" width="max-w-md">
+    <FormScreen open={open} onClose={onClose} title="Edit wastage" width="max-w-md">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Input label="Quantity (m) *" type="number" step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
@@ -181,7 +181,7 @@ function WastageEditModal({
           <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>
         </div>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 
@@ -614,9 +614,9 @@ export function WastagePage() {
         </>
       )}
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Record wastage" width="max-w-xl">
+      <FormScreen open={addOpen} onClose={() => setAddOpen(false)} title="Record wastage" width="max-w-xl">
         <AddWastageForm onDone={() => setAddOpen(false)} onCancel={() => setAddOpen(false)} />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

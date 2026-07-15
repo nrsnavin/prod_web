@@ -83,13 +83,13 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
     >
       <div
         ref={panelRef}
-        className={cn("w-full bg-white rounded-card shadow-card-hover", width)}
+        className={cn("w-full bg-white rounded-card shadow-card-hover flex flex-col max-h-[85vh]", width)}
         onInput={() => {
           dirtyRef.current = true;
         }}
       >
         {title && (
-          <div className="flex items-center justify-between px-5 py-4 border-b border-ink-100">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-ink-100 shrink-0">
             <h2 className="text-base font-semibold">{title}</h2>
             <button
               onClick={requestClose}
@@ -100,7 +100,9 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
             </button>
           </div>
         )}
-        <div className="p-5">{children}</div>
+        {/* Body scrolls when a dialog is taller than the viewport, so the
+            content below the fold (e.g. a Save button) is always reachable. */}
+        <div className="p-5 overflow-y-auto">{children}</div>
       </div>
     </div>
   );
