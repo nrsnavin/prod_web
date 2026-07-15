@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -117,7 +117,7 @@ export function EmployeeListPage() {
         />
       </Card>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add employee">
+      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="Add employee">
         <EmployeeForm
           submitting={create.isPending}
           onCancel={() => setCreateOpen(false)}
@@ -132,7 +132,7 @@ export function EmployeeListPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

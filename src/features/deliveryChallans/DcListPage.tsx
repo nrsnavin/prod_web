@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -137,7 +137,7 @@ export function DcListPage() {
         <Pagination page={page} totalPages={totalPages} total={data?.total} onChange={setPage} />
       </Card>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New delivery challan" width="max-w-3xl">
+      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New delivery challan" width="max-w-3xl">
         <DcForm
           submitting={create.isPending}
           onCancel={() => setCreateOpen(false)}
@@ -153,7 +153,7 @@ export function DcListPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

@@ -5,7 +5,7 @@ import { ArrowLeft, Pencil, Trash2, Building2, Globe, Cable } from "lucide-react
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -131,7 +131,7 @@ export function ElasticGroupDetailPage() {
       </p>
 
       {editing && (
-        <Modal open onClose={() => setEditing(false)} title="Edit elastic group" width="max-w-2xl">
+        <FormScreen open onClose={() => setEditing(false)} title="Edit elastic group" width="max-w-2xl">
           <ElasticGroupForm
             initial={group}
             submitting={update.isPending}
@@ -149,7 +149,7 @@ export function ElasticGroupDetailPage() {
               )
             }
           />
-        </Modal>
+        </FormScreen>
       )}
 
       <ConfirmDialog

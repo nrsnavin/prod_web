@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/Pagination";
@@ -100,7 +100,7 @@ export function ElasticListPage() {
         <Pagination page={page} totalPages={totalPages} total={data?.total} onChange={setPage} />
       </Card>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New elastic" width="max-w-2xl">
+      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New elastic" width="max-w-2xl">
         <ElasticForm
           submitting={create.isPending}
           onCancel={() => setCreateOpen(false)}
@@ -115,7 +115,7 @@ export function ElasticListPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

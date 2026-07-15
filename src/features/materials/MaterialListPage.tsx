@@ -4,7 +4,7 @@ import { Plus, TriangleAlert, ClipboardList, TrendingDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -137,7 +137,7 @@ export function MaterialListPage() {
         <StockTakeModal materials={data} onClose={() => setStockTakeOpen(false)} />
       )}
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add raw material">
+      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="Add raw material">
         <MaterialForm
           submitting={create.isPending}
           onCancel={() => setCreateOpen(false)}
@@ -152,7 +152,7 @@ export function MaterialListPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

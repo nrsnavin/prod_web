@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -173,7 +173,7 @@ export function MachineListPage() {
         />
       </Card>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Add machine">
+      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="Add machine">
         <MachineForm
           submitting={create.isPending}
           onCancel={() => setCreateOpen(false)}
@@ -188,7 +188,7 @@ export function MachineListPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

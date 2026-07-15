@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck, Plus, Trash2, FileBadge } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -82,7 +82,7 @@ function QcForm({ job, onClose }: { job: JobDetail; onClose: () => void }) {
     setRows((rs) => rs.map((r, x) => (x === i ? { ...r, ...patch } : r)));
 
   return (
-    <Modal open onClose={onClose} title={`QC check — ${job.jobNo}`} width="max-w-xl">
+    <FormScreen open onClose={onClose} title={`QC check — ${job.jobNo}`} width="max-w-xl">
       <div className="space-y-4">
         <Select
           label="Elastic *"
@@ -146,7 +146,7 @@ function QcForm({ job, onClose }: { job: JobDetail; onClose: () => void }) {
           </Button>
         </div>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 

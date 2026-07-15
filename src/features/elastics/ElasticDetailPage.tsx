@@ -4,7 +4,7 @@ import { ArrowLeft, Pencil, Calculator } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
@@ -146,7 +146,7 @@ export function ElasticDetailPage() {
         </Card>
       </div>
 
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit elastic" width="max-w-2xl">
+      <FormScreen open={editOpen} onClose={() => setEditOpen(false)} title="Edit elastic" width="max-w-2xl">
         <ElasticForm
           initial={elastic}
           submitting={update.isPending}
@@ -165,7 +165,7 @@ export function ElasticDetailPage() {
             )
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

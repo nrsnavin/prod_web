@@ -4,7 +4,7 @@ import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2 } fr
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
@@ -138,7 +138,7 @@ function OrderEditModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit order" width="max-w-lg">
+    <FormScreen open={open} onClose={onClose} title="Edit order" width="max-w-lg">
       <div className="space-y-4">
         <p className="text-xs text-ink-400">
           Only Open orders can be edited. To change ordered elastics, cancel and recreate the order.
@@ -163,7 +163,7 @@ function OrderEditModal({
           <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>
         </div>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 
@@ -407,7 +407,7 @@ export function OrderDetailPage() {
         />
       )}
 
-      <Modal open={jobOpen} onClose={() => setJobOpen(false)} title={`New job for order #${order.orderNo}`}>
+      <FormScreen open={jobOpen} onClose={() => setJobOpen(false)} title={`New job for order #${order.orderNo}`}>
         <JobCreateForm
           order={order}
           onClose={() => setJobOpen(false)}
@@ -416,7 +416,7 @@ export function OrderDetailPage() {
             navigate(`/jobs/${jobId}`);
           }}
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

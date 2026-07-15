@@ -4,7 +4,7 @@ import { UserCheck } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Select } from "@/components/ui/Select";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -80,7 +80,7 @@ function MarkModal({
   });
 
   return (
-    <Modal open onClose={onClose} title={`Mark attendance — ${shift} shift`} width="max-w-xl">
+    <FormScreen open onClose={onClose} title={`Mark attendance — ${shift} shift`} width="max-w-xl">
       <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
         {unmarked.map((e) => (
           <div key={e.id} className="grid grid-cols-[1fr_160px] gap-2 items-center">
@@ -124,7 +124,7 @@ function MarkModal({
           <UserCheck className="h-4 w-4" /> Mark {unmarked.length} employees
         </Button>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 

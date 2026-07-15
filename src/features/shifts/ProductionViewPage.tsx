@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
@@ -119,7 +120,7 @@ function ProductionEditModal({
     );
   };
   return (
-    <Modal open onClose={onClose} title="Correct production entry" width="max-w-md">
+    <FormScreen open onClose={onClose} title="Correct production entry" width="max-w-md">
       <div className="space-y-4">
         <Input label="Total output (m)" type="number" step="0.01" value={meters} onChange={(e) => setMeters(e.target.value)} />
         <div>
@@ -138,7 +139,7 @@ function ProductionEditModal({
           <Button type="button" loading={correct.isPending} onClick={save}>Save correction</Button>
         </div>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 

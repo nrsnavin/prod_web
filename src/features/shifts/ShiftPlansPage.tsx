@@ -4,7 +4,7 @@ import { Plus, Sun, Moon, ArrowRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
@@ -157,7 +157,7 @@ export function ShiftPlansPage() {
         )}
       </Card>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New shift plan" width="max-w-2xl">
+      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New shift plan" width="max-w-2xl">
         <ShiftPlanFormLazy
           submitting={createPlan.isPending}
           onCancel={() => setCreateOpen(false)}
@@ -172,7 +172,7 @@ export function ShiftPlansPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

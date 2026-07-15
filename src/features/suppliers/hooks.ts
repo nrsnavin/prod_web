@@ -90,6 +90,7 @@ export function usePoMutations() {
         notes?: string;
         items?: Array<{ rawMaterial: string; quantity: number; price: number }>;
         auditReason: string;
+        expectedVersion?: number;
       };
     }) => poService.update(id, body),
     onSuccess: invalidate,

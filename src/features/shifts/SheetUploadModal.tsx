@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { UploadCloud, FileText, Sparkles, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
@@ -96,7 +96,7 @@ export function SheetUploadModal({
   const selectedCount = rows.filter((r) => r.include && !r.alreadyClosed && r.production != null).length;
 
   return (
-    <Modal open={open} onClose={close} title="Upload filled production sheet" width="max-w-5xl">
+    <FormScreen open={open} onClose={close} title="Upload filled production sheet" width="max-w-5xl">
       {!result ? (
         <div className="space-y-4">
           <div
@@ -257,6 +257,6 @@ export function SheetUploadModal({
           </div>
         </div>
       )}
-    </Modal>
+    </FormScreen>
   );
 }

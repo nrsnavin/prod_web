@@ -4,7 +4,7 @@ import { ArrowLeft, Pencil, UserX } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -102,7 +102,7 @@ export function CustomerDetailPage() {
 
       <CustomerElasticGroups customerId={customer._id} />
 
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit customer">
+      <FormScreen open={editOpen} onClose={() => setEditOpen(false)} title="Edit customer">
         <CustomerForm
           initial={customer}
           submitting={update.isPending}
@@ -121,7 +121,7 @@ export function CustomerDetailPage() {
             )
           }
         />
-      </Modal>
+      </FormScreen>
 
       <ConfirmDialog
         open={confirmOpen}

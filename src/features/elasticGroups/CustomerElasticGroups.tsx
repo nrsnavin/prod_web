@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Layers, Plus, Pencil, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -65,7 +65,7 @@ export function CustomerElasticGroups({ customerId }: { customerId: string }) {
         </ul>
       )}
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="New elastic group" width="max-w-2xl">
+      <FormScreen open={creating} onClose={() => setCreating(false)} title="New elastic group" width="max-w-2xl">
         <ElasticGroupForm
           fixedCustomerId={customerId}
           submitting={create.isPending}
@@ -83,10 +83,10 @@ export function CustomerElasticGroups({ customerId }: { customerId: string }) {
             )
           }
         />
-      </Modal>
+      </FormScreen>
 
       {editing && (
-        <Modal open onClose={() => setEditing(null)} title="Edit elastic group" width="max-w-2xl">
+        <FormScreen open onClose={() => setEditing(null)} title="Edit elastic group" width="max-w-2xl">
           <ElasticGroupForm
             initial={editing}
             fixedCustomerId={customerId}
@@ -105,7 +105,7 @@ export function CustomerElasticGroups({ customerId }: { customerId: string }) {
               )
             }
           />
-        </Modal>
+        </FormScreen>
       )}
 
       <ConfirmDialog

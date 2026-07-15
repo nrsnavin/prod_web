@@ -3,7 +3,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp, Printer, Pencil } from "lucide-re
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -158,7 +158,7 @@ function PackingEditModal({ record, onClose }: { record: PackingRecord; onClose:
   };
 
   return (
-    <Modal open onClose={onClose} title="Edit packing" width="max-w-md">
+    <FormScreen open onClose={onClose} title="Edit packing" width="max-w-md">
       <div className="space-y-4">
         <Input label="Meters *" type="number" step="0.01" value={meter} onChange={(e) => setMeter(e.target.value)} />
         <div>
@@ -177,7 +177,7 @@ function PackingEditModal({ record, onClose }: { record: PackingRecord; onClose:
           <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>
         </div>
       </div>
-    </Modal>
+    </FormScreen>
   );
 }
 
@@ -259,7 +259,7 @@ export function PackingPage() {
         </div>
       )}
 
-      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add packing" width="max-w-xl">
+      <FormScreen open={addOpen} onClose={() => setAddOpen(false)} title="Add packing" width="max-w-xl">
         <PackingForm
           submitting={create.isPending}
           onCancel={() => setAddOpen(false)}
@@ -274,7 +274,7 @@ export function PackingPage() {
             })
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }

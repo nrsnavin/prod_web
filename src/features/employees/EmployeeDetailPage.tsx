@@ -4,7 +4,7 @@ import { ArrowLeft, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -132,7 +132,7 @@ export function EmployeeDetailPage() {
         />
       </Card>
 
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit employee">
+      <FormScreen open={editOpen} onClose={() => setEditOpen(false)} title="Edit employee">
         <EmployeeForm
           initial={{
             name: emp.name,
@@ -157,7 +157,7 @@ export function EmployeeDetailPage() {
             )
           }
         />
-      </Modal>
+      </FormScreen>
     </>
   );
 }
