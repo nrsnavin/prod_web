@@ -32,6 +32,7 @@ const REPORTS: { group: string; items: ReportDef[] }[] = [
         title: "Dispatch & customer sales",
         description: "Delivery-challan register with quantity and value, grouped by customer.",
         icon: Truck,
+        path: "/reports/dispatch",
       },
       {
         title: "Order book & fulfillment",
