@@ -162,3 +162,33 @@ export interface StockPurchasesReport {
   rangeLabel: string;
   preset: Preset;
 }
+
+// ── Stock movement ledger report ──────────────────────────────────
+export type MovementGroupBy = "material" | "day";
+
+export interface MovementSummary {
+  inQty: number;
+  outQty: number;
+  net: number;
+  inCount: number;
+  outCount: number;
+}
+
+export type MovementRow = { key: string | null; label: string } & Record<string, string | number | null>;
+
+export interface StockMovementsReport {
+  range: { from: string; to: string };
+  groupBy: MovementGroupBy;
+  summary: MovementSummary;
+  columns: ReportColumn[];
+  rows: MovementRow[];
+  series: { date: string; net: number }[];
+  seriesKey: string;
+  comparison?: {
+    range: { from: string; to: string };
+    summary: MovementSummary;
+    delta: { inQty: number; outQty: number; net: number };
+  };
+  rangeLabel: string;
+  preset: Preset;
+}

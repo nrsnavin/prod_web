@@ -21,6 +21,7 @@ const ProductionReportPage = lazyPage(() => import("@/features/reports/Productio
 const DispatchReportPage = lazyPage(() => import("@/features/reports/DispatchReportPage"), "DispatchReportPage");
 const OrderBookReportPage = lazyPage(() => import("@/features/reports/OrderBookReportPage"), "OrderBookReportPage");
 const StockPurchasesReportPage = lazyPage(() => import("@/features/reports/StockPurchasesReportPage"), "StockPurchasesReportPage");
+const StockMovementsReportPage = lazyPage(() => import("@/features/reports/StockMovementsReportPage"), "StockMovementsReportPage");
 const CustomerListPage = lazyPage(() => import("@/features/customers/CustomerListPage"), "CustomerListPage");
 const CustomerDetailPage = lazyPage(() => import("@/features/customers/CustomerDetailPage"), "CustomerDetailPage");
 const SupplierListPage = lazyPage(() => import("@/features/suppliers/SupplierListPage"), "SupplierListPage");
@@ -129,6 +130,7 @@ const detailRoutes = [
   { path: "/reports/dispatch", element: withSuspense(<DispatchReportPage />) },
   { path: "/reports/order-book", element: withSuspense(<OrderBookReportPage />) },
   { path: "/reports/stock-purchases", element: withSuspense(<StockPurchasesReportPage />) },
+  { path: "/reports/stock-movements", element: withSuspense(<StockMovementsReportPage />) },
   { path: "/customers/:id", element: withSuspense(<CustomerDetailPage />) },
   { path: "/purchase-orders/new", element: withSuspense(<PoCreatePage />) },
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
