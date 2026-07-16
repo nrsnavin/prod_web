@@ -38,6 +38,7 @@ const REPORTS: { group: string; items: ReportDef[] }[] = [
         title: "Order book & fulfillment",
         description: "Open and pending orders by customer and supply date, plus on-time delivery.",
         icon: ClipboardList,
+        path: "/reports/order-book",
       },
     ],
   },

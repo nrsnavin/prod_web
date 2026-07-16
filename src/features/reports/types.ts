@@ -98,3 +98,36 @@ export interface DispatchReport {
   rangeLabel: string;
   preset: Preset;
 }
+
+// ── Order book & fulfillment report ───────────────────────────────
+export type OrderBookGroupBy = "customer" | "status" | "supplyMonth";
+
+export interface OrderBookSummary {
+  orders: number;
+  orderedQty: number;
+  pendingQty: number;
+  openOrders: number;
+  completedOrders: number;
+  overdueOrders: number;
+  onTimePct: number | null;
+  otdConsidered: number;
+}
+
+export type OrderBookRow = { key: string | null; label: string } & Record<string, string | number | null>;
+
+export interface OrderBookReport {
+  range: { from: string; to: string };
+  groupBy: OrderBookGroupBy;
+  summary: OrderBookSummary;
+  columns: ReportColumn[];
+  rows: OrderBookRow[];
+  series: { date: string; quantity: number }[];
+  seriesKey: string;
+  comparison?: {
+    range: { from: string; to: string };
+    summary: OrderBookSummary;
+    delta: { orders: number; orderedQty: number; orderedQtyPct: number | null };
+  };
+  rangeLabel: string;
+  preset: Preset;
+}
