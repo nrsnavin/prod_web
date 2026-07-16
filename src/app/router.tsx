@@ -16,6 +16,8 @@ const lazyPage = (loader: () => Promise<Record<string, unknown>>, name: string) 
   );
 
 const AnalyticsPage = lazyPage(() => import("@/features/analytics/AnalyticsPage"), "AnalyticsPage");
+const ReportsLandingPage = lazyPage(() => import("@/features/reports/ReportsLandingPage"), "ReportsLandingPage");
+const ProductionReportPage = lazyPage(() => import("@/features/reports/ProductionReportPage"), "ProductionReportPage");
 const CustomerListPage = lazyPage(() => import("@/features/customers/CustomerListPage"), "CustomerListPage");
 const CustomerDetailPage = lazyPage(() => import("@/features/customers/CustomerDetailPage"), "CustomerDetailPage");
 const SupplierListPage = lazyPage(() => import("@/features/suppliers/SupplierListPage"), "SupplierListPage");
@@ -83,6 +85,7 @@ const withSuspense = (el: JSX.Element) => (
 // other nav destination falls back to ComingSoonPage.
 const builtPages: Record<string, JSX.Element> = {
   "/analytics": withSuspense(<AnalyticsPage />),
+  "/reports": withSuspense(<ReportsLandingPage />),
   "/customers": withSuspense(<CustomerListPage />),
   "/suppliers": withSuspense(<SupplierListPage />),
   "/purchase-orders": withSuspense(<PoListPage />),
@@ -119,6 +122,7 @@ const builtPages: Record<string, JSX.Element> = {
 
 // Detail routes that live under a nav destination.
 const detailRoutes = [
+  { path: "/reports/production", element: withSuspense(<ProductionReportPage />) },
   { path: "/customers/:id", element: withSuspense(<CustomerDetailPage />) },
   { path: "/purchase-orders/new", element: withSuspense(<PoCreatePage />) },
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
