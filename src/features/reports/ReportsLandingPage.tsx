@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Factory, Truck, ClipboardList, Boxes, ArrowRight } from "lucide-react";
+import { Factory, Truck, ClipboardList, Boxes, ArrowLeftRight, ArrowRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -47,9 +47,15 @@ const REPORTS: { group: string; items: ReportDef[] }[] = [
     items: [
       {
         title: "Stock & purchases",
-        description: "Raw-material stock and valuation, movement ledger, and PO register (received vs pending).",
+        description: "Raw-material stock and valuation, plus the PO register (received vs pending).",
         icon: Boxes,
         path: "/reports/stock-purchases",
+      },
+      {
+        title: "Stock movement ledger",
+        description: "Complete raw-material in/out ledger over a period, by material or day.",
+        icon: ArrowLeftRight,
+        path: "/reports/stock-movements",
       },
     ],
   },
