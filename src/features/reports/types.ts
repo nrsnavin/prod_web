@@ -8,6 +8,7 @@ export type ProductionGroupBy = "machine" | "shift" | "elastic" | "operator" | "
 export interface ReportColumn {
   key: string;
   header: string;
+  format?: "text" | "number" | "currency";
 }
 
 export interface ProductionSummary {
@@ -57,11 +58,43 @@ export interface ProductionReport {
   preset: Preset;
 }
 
-// The filter state shared by the filter bar and the query.
+// The filter state shared by the filter bar and the query. groupBy is a
+// plain string so one filter bar serves every report's own dimensions.
 export interface ReportFilters {
   preset: Preset;
   from?: string; // yyyy-mm-dd, only when preset === "custom"
   to?: string;
-  groupBy: ProductionGroupBy;
+  groupBy: string;
   compare: boolean;
+}
+
+// ── Dispatch & customer-sales report ──────────────────────────────
+export type DispatchGroupBy = "customer" | "elastic" | "day";
+
+export interface DispatchSummary {
+  dcs: number;
+  quantity: number;
+  amount: number;
+  customers: number;
+  avgRate: number;
+}
+
+// Rows are keyed by their columns' `key`s (label/dcs/quantity/amount).
+export type DispatchRow = { key: string | null; label: string } & Record<string, string | number | null>;
+
+export interface DispatchReport {
+  range: { from: string; to: string };
+  groupBy: DispatchGroupBy;
+  summary: DispatchSummary;
+  columns: ReportColumn[];
+  rows: DispatchRow[];
+  series: { date: string; amount: number }[];
+  seriesKey: string;
+  comparison?: {
+    range: { from: string; to: string };
+    summary: DispatchSummary;
+    delta: { amount: number; quantity: number; dcs: number; amountPct: number | null };
+  };
+  rangeLabel: string;
+  preset: Preset;
 }

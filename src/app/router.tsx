@@ -18,6 +18,7 @@ const lazyPage = (loader: () => Promise<Record<string, unknown>>, name: string) 
 const AnalyticsPage = lazyPage(() => import("@/features/analytics/AnalyticsPage"), "AnalyticsPage");
 const ReportsLandingPage = lazyPage(() => import("@/features/reports/ReportsLandingPage"), "ReportsLandingPage");
 const ProductionReportPage = lazyPage(() => import("@/features/reports/ProductionReportPage"), "ProductionReportPage");
+const DispatchReportPage = lazyPage(() => import("@/features/reports/DispatchReportPage"), "DispatchReportPage");
 const CustomerListPage = lazyPage(() => import("@/features/customers/CustomerListPage"), "CustomerListPage");
 const CustomerDetailPage = lazyPage(() => import("@/features/customers/CustomerDetailPage"), "CustomerDetailPage");
 const SupplierListPage = lazyPage(() => import("@/features/suppliers/SupplierListPage"), "SupplierListPage");
@@ -123,6 +124,7 @@ const builtPages: Record<string, JSX.Element> = {
 // Detail routes that live under a nav destination.
 const detailRoutes = [
   { path: "/reports/production", element: withSuspense(<ProductionReportPage />) },
+  { path: "/reports/dispatch", element: withSuspense(<DispatchReportPage />) },
   { path: "/customers/:id", element: withSuspense(<CustomerDetailPage />) },
   { path: "/purchase-orders/new", element: withSuspense(<PoCreatePage />) },
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
