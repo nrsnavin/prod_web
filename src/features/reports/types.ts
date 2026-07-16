@@ -131,3 +131,34 @@ export interface OrderBookReport {
   rangeLabel: string;
   preset: Preset;
 }
+
+// ── Stock & purchases report ──────────────────────────────────────
+export type StockGroupBy = "material" | "category" | "supplier";
+
+export interface StockSummary {
+  materials: number;
+  stockValue: number;
+  lowStock: number;
+  pos: number;
+  purchaseValue: number;
+  pendingValue: number;
+}
+
+export type StockRow = { key: string | null; label: string; low?: boolean } & Record<string, string | number | boolean | null>;
+
+export interface StockPurchasesReport {
+  range: { from: string; to: string };
+  groupBy: StockGroupBy;
+  summary: StockSummary;
+  columns: ReportColumn[];
+  rows: StockRow[];
+  series: { date: string; value: number }[];
+  seriesKey: string;
+  comparison?: {
+    range: { from: string; to: string };
+    summary: { pos: number; purchaseValue: number; pendingValue: number };
+    delta: { purchaseValue: number; purchaseValuePct: number | null };
+  };
+  rangeLabel: string;
+  preset: Preset;
+}

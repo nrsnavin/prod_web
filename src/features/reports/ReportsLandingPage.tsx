@@ -49,6 +49,7 @@ const REPORTS: { group: string; items: ReportDef[] }[] = [
         title: "Stock & purchases",
         description: "Raw-material stock and valuation, movement ledger, and PO register (received vs pending).",
         icon: Boxes,
+        path: "/reports/stock-purchases",
       },
     ],
   },

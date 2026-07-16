@@ -1,5 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
-import { DispatchReport, OrderBookReport, ProductionReport, ReportFilters } from "./types";
+import { DispatchReport, OrderBookReport, ProductionReport, ReportFilters, StockPurchasesReport } from "./types";
 
 // Only send from/to for a custom range; presets are resolved server-side.
 function toParams(f: ReportFilters): Record<string, unknown> {
@@ -33,6 +33,14 @@ export const reportsService = {
   async orderBook(filters: ReportFilters): Promise<OrderBookReport> {
     const res = await httpClient.get<{ success: boolean; report: OrderBookReport }>(
       "/reports/order-book",
+      toParams(filters)
+    );
+    return res.report;
+  },
+
+  async stockPurchases(filters: ReportFilters): Promise<StockPurchasesReport> {
+    const res = await httpClient.get<{ success: boolean; report: StockPurchasesReport }>(
+      "/reports/stock-purchases",
       toParams(filters)
     );
     return res.report;
