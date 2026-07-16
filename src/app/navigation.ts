@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   TrendingUp,
+  FileBarChart,
   ShoppingCart,
   ClipboardList,
   Truck,
@@ -56,6 +57,7 @@ export const navSections: NavSection[] = [
     items: [
       { label: "Dashboard", path: "/", icon: LayoutDashboard },
       { label: "Analytics", path: "/analytics", icon: TrendingUp },
+      { label: "Reports", path: "/reports", icon: FileBarChart },
       { label: "Audit Trail", path: "/audit", icon: Fingerprint, roles: ["admin"] },
     ],
   },
