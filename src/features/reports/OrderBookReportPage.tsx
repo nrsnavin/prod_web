@@ -67,7 +67,7 @@ export function OrderBookReportPage() {
     groupBy: "customer",
     compare: false,
   });
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<"csv" | "pdf" | null>(null);
 
   const ready = filters.preset !== "custom" || (!!filters.from && !!filters.to);
 
@@ -81,14 +81,14 @@ export function OrderBookReportPage() {
   const s = data?.summary;
   const cmp = data?.comparison;
 
-  const onExportCsv = async () => {
-    setExporting(true);
+  const runExport = async (fmt: "csv" | "pdf") => {
+    setExporting(fmt);
     try {
-      await reportsService.downloadCsv("/reports/order-book", "order-book-report", filters);
+      await reportsService.download("/reports/order-book", "order-book-report", filters, fmt);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Export failed", "error");
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -105,8 +105,8 @@ export function OrderBookReportPage() {
         filters={filters}
         onChange={setFilters}
         groupByOptions={GROUP_BY_OPTIONS}
-        onExportCsv={onExportCsv}
-        onPrint={() => window.print()}
+        onExportCsv={() => runExport("csv")}
+        onExportPdf={() => runExport("pdf")}
         exporting={exporting}
       />
 

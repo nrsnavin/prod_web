@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { Download, Printer } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { Preset, ReportFilters } from "../types";
 
 const PRESETS: { value: Preset; label: string }[] = [
@@ -29,15 +29,15 @@ export function ReportFilterBar({
   onChange,
   groupByOptions,
   onExportCsv,
-  onPrint,
+  onExportPdf,
   exporting,
 }: {
   filters: ReportFilters;
   onChange: (next: ReportFilters) => void;
   groupByOptions: GroupByOption[];
   onExportCsv: () => void;
-  onPrint: () => void;
-  exporting?: boolean;
+  onExportPdf: () => void;
+  exporting?: "csv" | "pdf" | null;
 }) {
   const set = (patch: Partial<ReportFilters>) => onChange({ ...filters, ...patch });
 
@@ -103,11 +103,11 @@ export function ReportFilterBar({
         </label>
 
         <div className="ml-auto flex items-end gap-2">
-          <Button variant="secondary" onClick={onPrint}>
-            <Printer className="h-4 w-4" /> Print / PDF
+          <Button variant="secondary" onClick={onExportPdf} loading={exporting === "pdf"}>
+            <FileText className="h-4 w-4" /> PDF
           </Button>
-          <Button variant="secondary" onClick={onExportCsv} loading={exporting}>
-            <Download className="h-4 w-4" /> Export CSV
+          <Button variant="secondary" onClick={onExportCsv} loading={exporting === "csv"}>
+            <Download className="h-4 w-4" /> Excel / CSV
           </Button>
         </div>
       </div>
