@@ -54,16 +54,25 @@ export const reportsService = {
     return res.report;
   },
 
-  // Streams the same report as a CSV and triggers a browser download.
-  async downloadCsv(reportPath: string, filenameBase: string, filters: ReportFilters): Promise<void> {
-    const blob = await httpClient.getBlob(reportPath, { ...toParams(filters), format: "csv" });
+  // Streams the report in the given format (csv | pdf) as a real file
+  // download — no browser print / screen capture.
+  async download(reportPath: string, filenameBase: string, filters: ReportFilters, format: "csv" | "pdf"): Promise<void> {
+    const blob = await httpClient.getBlob(reportPath, { ...toParams(filters), format });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${filenameBase}.csv`;
+    a.download = `${filenameBase}.${format}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  },
+
+  downloadCsv(reportPath: string, filenameBase: string, filters: ReportFilters): Promise<void> {
+    return this.download(reportPath, filenameBase, filters, "csv");
+  },
+
+  downloadPdf(reportPath: string, filenameBase: string, filters: ReportFilters): Promise<void> {
+    return this.download(reportPath, filenameBase, filters, "pdf");
   },
 };

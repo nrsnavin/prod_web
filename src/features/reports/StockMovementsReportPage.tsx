@@ -52,7 +52,7 @@ export function StockMovementsReportPage() {
     groupBy: "material",
     compare: false,
   });
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<"csv" | "pdf" | null>(null);
 
   const ready = filters.preset !== "custom" || (!!filters.from && !!filters.to);
 
@@ -65,14 +65,14 @@ export function StockMovementsReportPage() {
 
   const s = data?.summary;
 
-  const onExportCsv = async () => {
-    setExporting(true);
+  const runExport = async (fmt: "csv" | "pdf") => {
+    setExporting(fmt);
     try {
-      await reportsService.downloadCsv("/reports/stock-movements", "stock-movements-report", filters);
+      await reportsService.download("/reports/stock-movements", "stock-movements-report", filters, fmt);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Export failed", "error");
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -90,8 +90,8 @@ export function StockMovementsReportPage() {
         filters={filters}
         onChange={setFilters}
         groupByOptions={GROUP_BY_OPTIONS}
-        onExportCsv={onExportCsv}
-        onPrint={() => window.print()}
+        onExportCsv={() => runExport("csv")}
+        onExportPdf={() => runExport("pdf")}
         exporting={exporting}
       />
 

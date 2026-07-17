@@ -78,7 +78,7 @@ export function ProductionReportPage() {
     groupBy: "machine",
     compare: false,
   });
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<"csv" | "pdf" | null>(null);
 
   // Custom range needs both ends before we query.
   const ready = filters.preset !== "custom" || (!!filters.from && !!filters.to);
@@ -93,14 +93,14 @@ export function ProductionReportPage() {
   const s = data?.summary;
   const cmp = data?.comparison;
 
-  const onExportCsv = async () => {
-    setExporting(true);
+  const runExport = async (fmt: "csv" | "pdf") => {
+    setExporting(fmt);
     try {
-      await reportsService.downloadCsv("/reports/production", "production-report", filters);
+      await reportsService.download("/reports/production", "production-report", filters, fmt);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Export failed", "error");
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -117,8 +117,8 @@ export function ProductionReportPage() {
         filters={filters}
         onChange={setFilters}
         groupByOptions={GROUP_BY_OPTIONS}
-        onExportCsv={onExportCsv}
-        onPrint={() => window.print()}
+        onExportCsv={() => runExport("csv")}
+        onExportPdf={() => runExport("pdf")}
         exporting={exporting}
       />
 
