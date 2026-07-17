@@ -18,11 +18,18 @@
   }
 }
 
-/* Print: only the .print-area content is put on paper (DC, MRP sheet). */
+/* Print: only the .print-area content is put on paper (DC, MRP sheet,
+   PO document, packing slip, etc.). */
 @media print {
+  html,
   body {
-    background: white;
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
   }
+  /* Hide everything, then reveal only the print sheet. visibility (not
+     display) so a deeply-nested .print-area still shows regardless of
+     hidden ancestors. */
   body * {
     visibility: hidden;
   }
@@ -30,11 +37,33 @@
   .print-area * {
     visibility: visible;
   }
+  /* Pull the sheet to the top-left of the page and let it grow to ANY
+     height so multi-page documents paginate. The previous `inset: 0`
+     pinned the height to one viewport, which clipped — and often blanked
+     — every document taller than the screen (PO, DC, packing slip). */
   .print-area {
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
     width: 100%;
     padding: 0;
+    margin: 0;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  /* When the sheet is inside the (fixed, scrollable) modal, neutralise
+     the modal's own positioning / height cap / backdrop so it can't
+     constrain or hide the printed page. */
+  [role="dialog"] {
+    position: static !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: none !important;
+    padding: 0 !important;
+  }
+  [role="dialog"] * {
+    max-height: none !important;
+    overflow: visible !important;
   }
   /* Labels & slips: never split one across pages */
   .print-label {
