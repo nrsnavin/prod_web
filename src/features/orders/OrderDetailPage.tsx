@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useOrder, useOrderMutations } from "./hooks";
 import { OrderElasticProgress, RawMaterialRequirement } from "./types";
+import { OrderAnalytics } from "./OrderAnalytics";
 import { orderStatusTone, orderStatusLabel } from "./orderStatus";
 import { JobCreateForm } from "@/features/jobs/JobCreateForm";
 import { useTrackRecent } from "@/core/ui/uiStore";
@@ -343,6 +344,8 @@ export function OrderDetailPage() {
       {(order.status === "Open" || order.status === "Approved") && (
         <OrderSuggestedPlan order={order} />
       )}
+
+      <OrderAnalytics elastics={order.elastics ?? []} />
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Elastic progress</h3>
