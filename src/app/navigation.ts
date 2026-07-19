@@ -145,9 +145,17 @@ export const allNavItems: NavItem[] = navSections.flatMap((s) => s.items);
 // admin, or the item explicitly lists the department. Unknown/absent
 // department (e.g. a legacy user carrying only a raw role) sees only the
 // unrestricted items — fail closed.
+const FLOOR_DEPARTMENTS: Department[] = ["preparatory", "weaving", "packing"];
+
 export function canAccess(item: NavItem, department: string | undefined | null): boolean {
   if (!item.departments) return true;
   if (department === "admin") return true;
+  // Legacy users carrying the raw backend role `production` (no
+  // department assigned yet) span the whole floor — show the union of
+  // the three floor departments until an admin assigns one.
+  if (department === "production") {
+    return item.departments.some((d) => FLOOR_DEPARTMENTS.includes(d));
+  }
   return !!department && item.departments.includes(department as Department);
 }
 
@@ -161,7 +169,8 @@ export function effectiveDepartment(
   if (user.department) return user.department;
   if (user.role === "admin") return "admin";
   if (user.role === "accounts") return "finance";
-  return undefined; // legacy production/stores/sales → unrestricted items until reassigned
+  if (user.role === "production") return "production"; // union of floor depts (see canAccess)
+  return undefined; // legacy stores/sales → unrestricted items until reassigned
 }
 
 export function visibleSections(department: string | undefined | null): NavSection[] {

@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, CornerDownLeft, FileText, Users, Cable, Boxes, Truck, LucideIcon } from "lucide-react";
-import { allNavItems } from "@/app/navigation";
+import { allNavItems, canAccess, effectiveDepartment } from "@/app/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/components/ui/cn";
 import { httpClient } from "@/core/http/httpClient";
+import { useAuth } from "@/core/auth/useAuth";
 
 export interface GlobalSearchProps {
   open: boolean;
@@ -85,13 +86,18 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
     staleTime: 15_000,
   });
 
+  const { user } = useAuth();
   const pageHits: Hit[] = useMemo(() => {
+    const dept = effectiveDepartment(user);
     const needle = q.toLowerCase();
+    // Only offer pages this department can actually open — otherwise
+    // search surfaces screens that bounce on click.
+    const accessible = allNavItems.filter((i) => canAccess(i, dept));
     const items = needle
-      ? allNavItems.filter((i) => i.label.toLowerCase().includes(needle))
-      : allNavItems;
+      ? accessible.filter((i) => i.label.toLowerCase().includes(needle))
+      : accessible;
     return items.map((i) => ({ icon: i.icon, label: i.label, sub: "Page", path: i.path }));
-  }, [q]);
+  }, [q, user]);
 
   const results: Hit[] = useMemo(
     () => [...(q.length >= 2 ? entities.data ?? [] : []), ...pageHits],
