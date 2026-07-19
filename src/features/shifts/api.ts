@@ -2,6 +2,7 @@ import { httpClient } from "@/core/http/httpClient";
 import {
   PendingShift,
   ProductionDay,
+  ProductionShiftSlice,
   RunningMachineOption,
   ShiftPlanDetail,
   ShiftPlanFormValues,
@@ -76,11 +77,52 @@ export const shiftService = {
 
 export const productionService = {
   async dateRange(startDate: string, endDate: string): Promise<ProductionDay[]> {
-    const res = await httpClient.get<{ success: boolean; count: number; data: ProductionDay[] }>(
+    // The backend names the per-shift fields machines/operators/status;
+    // this feature's ProductionShiftSlice uses machineCount/operatorCount/
+    // statusSummary. Map them here (as shiftDetail does) — without this,
+    // every shift renders "0 mc · 0 op" with a blank status chip.
+    interface BackendSlice {
+      exists: boolean;
+      shiftPlanId?: string | null;
+      machines?: number;
+      operators?: number;
+      shiftDetailCount?: number;
+      production?: number;
+      description?: string;
+      status?: "none" | "open" | "running" | "closed";
+    }
+    interface BackendDay {
+      date: string;
+      dateLabel: string;
+      dayOfWeek: string;
+      hasData: boolean;
+      totalProduction: number;
+      dayShift: BackendSlice;
+      nightShift: BackendSlice;
+    }
+    const res = await httpClient.get<{ success: boolean; count: number; data: BackendDay[] }>(
       "/production/date-range",
       { startDate, endDate }
     );
-    return res.data;
+    const mapSlice = (s: BackendSlice): ProductionShiftSlice => ({
+      exists: s.exists,
+      shiftPlanId: s.shiftPlanId ?? undefined,
+      machineCount: s.machines ?? 0,
+      operatorCount: s.operators ?? 0,
+      shiftDetailCount: s.shiftDetailCount ?? 0,
+      production: s.production ?? 0,
+      description: s.description,
+      statusSummary: s.status,
+    });
+    return (res.data ?? []).map((d) => ({
+      date: d.date,
+      dateLabel: d.dateLabel,
+      dayOfWeek: d.dayOfWeek,
+      hasData: d.hasData,
+      totalProduction: d.totalProduction,
+      dayShift: mapSlice(d.dayShift),
+      nightShift: mapSlice(d.nightShift),
+    }));
   },
 
   async shiftDetail(shiftPlanId: string): Promise<{
