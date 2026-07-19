@@ -15,6 +15,7 @@ import { useEmployee, useEmployeeMutations } from "./hooks";
 import { EmployeeShiftRow } from "./types";
 import { EmployeeForm } from "./EmployeeForm";
 import { EmployeePayrollCard } from "./EmployeePayrollCard";
+import { SkillProfileCard } from "./SkillProfileCard";
 
 const shiftColumns: Column<EmployeeShiftRow>[] = [
   { key: "date", header: "Date", render: (s) => new Date(s.date).toLocaleDateString() },
@@ -123,6 +124,8 @@ export function EmployeeDetailPage() {
         </Card>
       </div>
 
+      <SkillProfileCard empId={emp.id} profile={emp.skillProfile} />
+
       <EmployeePayrollCard empId={emp.id} />
 
       <Card className="mt-4">
@@ -143,6 +146,8 @@ export function EmployeeDetailPage() {
             phoneNumber: emp.phoneNumber,
             role: emp.role,
             aadhar: emp.aadhar,
+            hourlyRate: emp.hourlyRate,
+            skillProfile: emp.skillProfile ?? undefined,
           }}
           submitting={update.isPending}
           onCancel={() => setEditOpen(false)}
