@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -178,6 +178,7 @@ export function OrderDetailPage() {
   const [jobOpen, setJobOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
   useTrackRecent("Order", `/orders/${id}`, order ? `Order #${order.orderNo} · ${order.customer?.name ?? ""}` : undefined);
 
   if (isLoading) {
@@ -248,6 +249,11 @@ export function OrderDetailPage() {
         subtitle={order.customer?.name}
         actions={
           <>
+            {(order.status === "Open" || order.status === "Approved") && (
+              <Button variant="secondary" onClick={() => setPlanOpen(true)}>
+                <Sparkles className="h-4 w-4" /> Suggested plan
+              </Button>
+            )}
             {(order.status === "Approved" || order.status === "InProgress") && (
               <Button onClick={() => setJobOpen(true)}>
                 <Plus className="h-4 w-4" /> Create job
@@ -342,7 +348,7 @@ export function OrderDetailPage() {
       />
 
       {(order.status === "Open" || order.status === "Approved") && (
-        <OrderSuggestedPlan order={order} />
+        <OrderSuggestedPlan order={order} open={planOpen} onClose={() => setPlanOpen(false)} />
       )}
 
       <OrderAnalytics elastics={order.elastics ?? []} />

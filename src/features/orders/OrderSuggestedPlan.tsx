@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { Sparkles, Cpu, CalendarClock, AlertTriangle, Info } from "lucide-react";
-import { Card } from "@/components/ui/Card";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { SidePanel } from "@/components/ui/SidePanel";
 import { cn } from "@/components/ui/cn";
 import { useOrderEstimate } from "./hooks";
 import { OrderDetail } from "./types";
@@ -15,8 +15,18 @@ function fmt(iso?: string): string {
 // AI suggested production plan for an order: recommended machine count,
 // the machines→completion trade-off, and the per-elastic split. Driven
 // by the same entry-time estimator used on the create form, run against
-// the order's *pending* quantities.
-export function OrderSuggestedPlan({ order }: { order: OrderDetail }) {
+// the order's *pending* quantities. Rendered in a right-hand SidePanel so
+// it sits beside the page instead of taking the centre column; the
+// estimate is only fetched once the panel is opened.
+export function OrderSuggestedPlan({
+  order,
+  open,
+  onClose,
+}: {
+  order: OrderDetail;
+  open: boolean;
+  onClose: () => void;
+}) {
   const pendingLines = (order.elastics ?? [])
     .map((e) => ({ elastic: e.id, name: e.name, quantity: e.pending > 0 ? e.pending : 0 }))
     .filter((l) => l.elastic && l.quantity > 0);
@@ -34,20 +44,26 @@ export function OrderSuggestedPlan({ order }: { order: OrderDetail }) {
       }
     : null;
 
-  const { data, isLoading, isError } = useOrderEstimate(payload, true);
-
-  if (!pendingLines.length) return null;
+  // Only hit the estimator once the panel is actually open.
+  const { data, isLoading, isError } = useOrderEstimate(payload, open);
 
   return (
-    <Card className="mt-4 p-5">
-      <h3 className="mb-1 flex items-center gap-2 font-semibold">
-        <Sparkles className="h-4 w-4 text-brand-500" /> Suggested plan
-      </h3>
+    <SidePanel
+      open={open}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-brand-500" /> Suggested plan
+        </span>
+      }
+    >
       <p className="mb-3 text-sm text-ink-400">
         AI recommendation for the {order.elastics.reduce((s, e) => s + (e.pending > 0 ? e.pending : 0), 0).toLocaleString("en-IN")} m still pending.
       </p>
 
-      {isLoading ? (
+      {!pendingLines.length ? (
+        <p className="text-sm text-ink-400">Nothing pending on this order — no plan needed.</p>
+      ) : isLoading ? (
         <Skeleton className="h-40 w-full" />
       ) : isError || !data?.ok ? (
         <p className="text-sm text-ink-400">Not enough production history yet to suggest a plan.</p>
@@ -151,6 +167,6 @@ export function OrderSuggestedPlan({ order }: { order: OrderDetail }) {
           )}
         </>
       )}
-    </Card>
+    </SidePanel>
   );
 }
