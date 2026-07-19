@@ -7,7 +7,7 @@ import react from "@vitejs/plugin-react";
 // In production builds, set VITE_API_BASE_URL to the real backend URL.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const proxyTarget = env.VITE_PROXY_TARGET || "http://13.233.117.153:2701";
+  const proxyTarget = env.VITE_PROXY_TARGET || "https://api.baluelastics.com";
 
   return {
     plugins: [react()],
