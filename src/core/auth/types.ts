@@ -2,6 +2,8 @@ export interface SessionUser {
   id: string;
   username: string;
   role: string;
+  /** Shop-floor department that drives web nav/route access. */
+  department?: string | null;
 }
 
 export interface LoginCredentials {

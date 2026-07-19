@@ -5,12 +5,13 @@ interface LoginResponse {
   username: string;
   id: string;
   role: string;
+  department?: string | null;
   token: string;
 }
 
 interface GetUserResponse {
   success: boolean;
-  user: { _id: string; name: string; role: string };
+  user: { _id: string; name: string; role: string; department?: string | null };
 }
 
 class ApiAuthService implements AuthService {
@@ -23,7 +24,7 @@ class ApiAuthService implements AuthService {
       "/user/login-user",
       credentials
     );
-    return { id: res.id, username: res.username, role: res.role };
+    return { id: res.id, username: res.username, role: res.role, department: res.department ?? null };
   }
 
   async logout(): Promise<void> {
@@ -39,6 +40,7 @@ class ApiAuthService implements AuthService {
       id: res.user._id,
       username: res.user.name,
       role: res.user.role,
+      department: res.user.department ?? null,
     };
   }
 }

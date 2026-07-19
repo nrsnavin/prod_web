@@ -67,6 +67,7 @@ const AnnouncementsPage = lazyPage(() => import("@/features/comms/AnnouncementsP
 const FeedbackPage = lazyPage(() => import("@/features/comms/FeedbackPage"), "FeedbackPage");
 const MachineIssuesPage = lazyPage(() => import("@/features/comms/MachineIssuesPage"), "MachineIssuesPage");
 const NotificationSettingsPage = lazyPage(() => import("@/features/comms/NotificationSettingsPage"), "NotificationSettingsPage");
+const UsersPage = lazyPage(() => import("@/features/users/UsersPage"), "UsersPage");
 const AdvisorPage = lazyPage(() => import("@/features/comms/AdvisorPage"), "AdvisorPage");
 const AssistantPage = lazyPage(() => import("@/features/assistant/AssistantPage"), "AssistantPage");
 const DataIoPage = lazyPage(() => import("@/features/comms/DataIoPage"), "DataIoPage");
@@ -122,6 +123,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/advisor": withSuspense(<AdvisorPage />),
   "/assistant": withSuspense(<AssistantPage />),
   "/data-io": withSuspense(<DataIoPage />),
+  "/users": withSuspense(<UsersPage />),
 };
 
 // Detail routes that live under a nav destination.

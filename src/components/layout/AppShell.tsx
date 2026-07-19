@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { RequireDeptAccess } from "@/app/guards";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { GlobalSearch } from "./GlobalSearch";
@@ -35,7 +36,9 @@ export function AppShell() {
           onSearchClick={() => setSearchOpen(true)}
         />
         <main className="flex-1 p-4 lg:p-6">
-          <Outlet />
+          <RequireDeptAccess>
+            <Outlet />
+          </RequireDeptAccess>
         </main>
       </div>
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
