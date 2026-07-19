@@ -14,6 +14,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useEmployee, useEmployeeMutations } from "./hooks";
 import { EmployeeShiftRow } from "./types";
 import { EmployeeForm } from "./EmployeeForm";
+import { EmployeePayrollCard } from "./EmployeePayrollCard";
 
 const shiftColumns: Column<EmployeeShiftRow>[] = [
   { key: "date", header: "Date", render: (s) => new Date(s.date).toLocaleDateString() },
@@ -121,6 +122,8 @@ export function EmployeeDetailPage() {
           )}
         </Card>
       </div>
+
+      <EmployeePayrollCard empId={emp.id} />
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Recent shifts</h3>

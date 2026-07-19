@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, FileText, Check, X, Printer } from "lucide-react";
+import { Play, FileText, Check, X, Printer, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +13,8 @@ import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { payrollService, PayrollEmployeeRow } from "./api";
+import { FormScreen } from "@/components/ui/FormScreen";
+import { Input } from "@/components/ui/Input";
 
 const payrollTone: Record<string, ChipTone> = {
   draft: "neutral",
@@ -100,6 +102,108 @@ function PayslipModal({
   );
 }
 
+// Admin/finance records an advance given to an employee. Born approved
+// with the deduction month set — the enterer IS the approver.
+function AddAdvanceForm({
+  defaultYear,
+  defaultMonth,
+  onClose,
+}: {
+  defaultYear: number;
+  defaultMonth: number;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [employee, setEmployee] = useState("");
+  const [amount, setAmount] = useState("");
+  const [dMonth, setDMonth] = useState(defaultMonth);
+  const [dYear, setDYear] = useState(defaultYear);
+  const [reason, setReason] = useState("");
+
+  const emps = useQuery({
+    queryKey: ["payroll", "employees"],
+    queryFn: payrollService.payrollEmployees,
+  });
+
+  const save = useMutation({
+    mutationFn: () =>
+      payrollService.createAdvance({
+        employee,
+        amount: Number(amount),
+        deductMonth: dMonth,
+        deductYear: dYear,
+        reason: reason.trim() || undefined,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["payroll"] });
+      toast("Advance recorded", "success");
+      onClose();
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Failed to record advance", "error"),
+  });
+
+  const submit = () => {
+    if (!employee) return toast("Pick an employee", "error");
+    if (!(Number(amount) > 0)) return toast("Amount must be greater than 0", "error");
+    save.mutate();
+  };
+
+  return (
+    <FormScreen open onClose={onClose} title="Add advance" width="max-w-md">
+      <div className="space-y-4">
+        <Select
+          label="Employee"
+          value={employee}
+          onChange={(e) => setEmployee(e.target.value)}
+          placeholder={emps.isLoading ? "Loading…" : "Select employee"}
+          options={(emps.data ?? []).map((e) => ({
+            value: e.id,
+            label: e.department ? `${e.name} — ${e.department}` : e.name,
+          }))}
+        />
+        <Input
+          label="Amount (₹)"
+          type="number"
+          min="1"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <Select
+            label="Recover in month"
+            value={String(dMonth)}
+            onChange={(e) => setDMonth(Number(e.target.value))}
+            options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+          />
+          <Select
+            label="Year"
+            value={String(dYear)}
+            onChange={(e) => setDYear(Number(e.target.value))}
+            options={[defaultYear - 1, defaultYear, defaultYear + 1].map((y) => ({
+              value: String(y),
+              label: String(y),
+            }))}
+          />
+        </div>
+        <Input
+          label="Reason (optional)"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. medical emergency"
+        />
+        <p className="text-xs text-ink-400">
+          Recorded as already approved — it will be recovered from the selected month's payroll.
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" loading={save.isPending} onClick={submit}>Record advance</Button>
+        </div>
+      </div>
+    </FormScreen>
+  );
+}
+
 export function PayrollPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -124,8 +228,13 @@ export function PayrollPage() {
     mutationFn: () => payrollService.generate(year, month),
     onSuccess: invalidate,
   });
-  const approveAdv = useMutation({ mutationFn: payrollService.approveAdvance, onSuccess: invalidate });
+  // Approving recovers the advance in the page's selected payroll month.
+  const approveAdv = useMutation({
+    mutationFn: (id: string) => payrollService.approveAdvance(id, month, year),
+    onSuccess: invalidate,
+  });
   const rejectAdv = useMutation({ mutationFn: payrollService.rejectAdvance, onSuccess: invalidate });
+  const [addAdvOpen, setAddAdvOpen] = useState(false);
 
   const s = dashboard.data?.summary;
 
@@ -270,7 +379,12 @@ export function PayrollPage() {
 
       {tab === "advances" && (
         <Card className="p-5">
-          <h3 className="font-semibold">Advance requests</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Advance requests</h3>
+            <Button size="sm" onClick={() => setAddAdvOpen(true)}>
+              <Plus className="h-4 w-4" /> Add advance
+            </Button>
+          </div>
           {advances.isLoading ? (
             <Skeleton className="mt-3 h-32 w-full" />
           ) : (advances.data?.length ?? 0) === 0 ? (
@@ -327,6 +441,10 @@ export function PayrollPage() {
             </ul>
           )}
         </Card>
+      )}
+
+      {addAdvOpen && (
+        <AddAdvanceForm defaultYear={year} defaultMonth={month} onClose={() => setAddAdvOpen(false)} />
       )}
 
       {slip && (
