@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/core/auth/useAuth";
+import { canAccessPath, effectiveDepartment } from "./navigation";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -27,6 +28,18 @@ export function RequireRole({
 }) {
   const { user } = useAuth();
   if (!user || !roles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+// Department-aware guard for the current route. A user who navigates
+// (or deep-links) to a path their department can't access is bounced to
+// the dashboard, so the nav filtering can't be bypassed by typing a URL.
+export function RequireDeptAccess({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const location = useLocation();
+  if (!canAccessPath(location.pathname, effectiveDepartment(user))) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;

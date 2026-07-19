@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { visibleSections } from "@/app/navigation";
+import { visibleSections, effectiveDepartment } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { cn } from "@/components/ui/cn";
 import { config } from "@/app/config";
@@ -13,7 +13,7 @@ export interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const { user } = useAuth();
-  const sections = visibleSections(user?.role);
+  const sections = visibleSections(effectiveDepartment(user));
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
 
