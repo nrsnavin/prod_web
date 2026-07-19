@@ -11,12 +11,17 @@ import { Link } from "react-router-dom";
 import { History } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useUiStore } from "@/core/ui/uiStore";
+import { canAccessPath, effectiveDepartment } from "@/app/navigation";
 
 export function DashboardPage() {
   const { user } = useAuth();
   const recent = useUiStore((s) => s.recent);
+  const dept = effectiveDepartment(user);
+  // Only fetch what this department may access — a forbidden tile's
+  // query would 403 and noise up the page.
+  const canShifts = canAccessPath("/shift-verification", dept);
   const kpis = useDashboardKpis();
-  const pendingShifts = usePendingShiftCount();
+  const pendingShifts = usePendingShiftCount(canShifts);
   const announcements = useActiveAnnouncements();
 
   const hour = new Date().getHours();
@@ -51,41 +56,51 @@ export function DashboardPage() {
         </p>
       )}
 
+      {/* Tiles are department-aware: each shows only when its target
+          screen is accessible, so no tile ever links into a bounce. */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile
-          label="Open jobs"
-          value={kpis.data?.openJobs ?? "—"}
-          icon={ClipboardList}
-          to="/jobs"
-          loading={kpis.isLoading}
-          footer="preparatory → packing"
-        />
-        <KpiTile
-          label="Shifts to verify"
-          value={pendingShifts.data ?? "—"}
-          icon={ShieldCheck}
-          to="/shift-verification"
-          loading={pendingShifts.isLoading}
-          alert={(pendingShifts.data ?? 0) > 0}
-          footer="submitted by workers"
-        />
-        <KpiTile
-          label="Pending leaves"
-          value={kpis.data?.pendingLeaves ?? "—"}
-          icon={CalendarOff}
-          to="/leave"
-          loading={kpis.isLoading}
-          alert={(kpis.data?.pendingLeaves ?? 0) > 0}
-          footer="awaiting decision"
-        />
-        <KpiTile
-          label="Attendance today"
-          value={att ? `${att.attendancePct}%` : "—"}
-          icon={Fingerprint}
-          to="/attendance"
-          loading={kpis.isLoading}
-          footer={att ? `${att.totalMarked}/${att.totalEmployees} marked` : undefined}
-        />
+        {canAccessPath("/jobs", dept) && (
+          <KpiTile
+            label="Open jobs"
+            value={kpis.data?.openJobs ?? "—"}
+            icon={ClipboardList}
+            to="/jobs"
+            loading={kpis.isLoading}
+            footer="preparatory → packing"
+          />
+        )}
+        {canShifts && (
+          <KpiTile
+            label="Shifts to verify"
+            value={pendingShifts.data ?? "—"}
+            icon={ShieldCheck}
+            to="/shift-verification"
+            loading={pendingShifts.isLoading}
+            alert={(pendingShifts.data ?? 0) > 0}
+            footer="submitted by workers"
+          />
+        )}
+        {canAccessPath("/leave", dept) && (
+          <KpiTile
+            label="Pending leaves"
+            value={kpis.data?.pendingLeaves ?? "—"}
+            icon={CalendarOff}
+            to="/leave"
+            loading={kpis.isLoading}
+            alert={(kpis.data?.pendingLeaves ?? 0) > 0}
+            footer="awaiting decision"
+          />
+        )}
+        {canAccessPath("/attendance", dept) && (
+          <KpiTile
+            label="Attendance today"
+            value={att ? `${att.attendancePct}%` : "—"}
+            icon={Fingerprint}
+            to="/attendance"
+            loading={kpis.isLoading}
+            footer={att ? `${att.totalMarked}/${att.totalEmployees} marked` : undefined}
+          />
+        )}
       </div>
 
       {recent.length > 0 && (

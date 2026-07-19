@@ -9,11 +9,15 @@ export function useDashboardKpis() {
   });
 }
 
-export function usePendingShiftCount() {
+export function usePendingShiftCount(enabled = true) {
   return useQuery({
     queryKey: ["dashboard", "pendingShifts"],
     queryFn: dashboardService.getPendingShiftCount,
     refetchInterval: 60_000,
+    // The endpoint is admin/production-gated; departments that can't
+    // access it (e.g. finance) must not fire the call at all — a 403
+    // would just noise up their dashboard.
+    enabled,
   });
 }
 
