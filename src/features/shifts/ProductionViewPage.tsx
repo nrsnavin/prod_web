@@ -234,7 +234,7 @@ export function ProductionViewPage() {
   const [range, setRange] = useState(presetRange(6));
   const [openPlan, setOpenPlan] = useState<string | null>(null);
 
-  const { data, isLoading, isError, error } = useProductionRange(range.startDate, range.endDate);
+  const { data, isLoading, isFetching, isError, error } = useProductionRange(range.startDate, range.endDate);
 
   return (
     <>
@@ -262,6 +262,11 @@ export function ProductionViewPage() {
             {p.label}
           </button>
         ))}
+        {/* Subtle signal that a preset/date change is refetching while the
+            previous rows stay visible (placeholderData). */}
+        {isFetching && !isLoading && (
+          <span className="ml-1 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-ink-300 border-t-brand-500" aria-label="Refreshing" />
+        )}
         <div className="flex items-center gap-2 text-sm ml-2">
           <input
             type="date"
