@@ -1,1 +1,0 @@
-const e={Open:"info",Approved:"warning",InProgress:"warning",Completed:"success",Cancelled:"neutral"},n={Open:"Open",Approved:"Approved",InProgress:"In production",Completed:"Completed",Cancelled:"Cancelled"};export{e as a,n as o};
