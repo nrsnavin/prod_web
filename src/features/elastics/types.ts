@@ -34,6 +34,9 @@ export interface Elastic {
   noOfHook?: number;
   weight?: number;
   quantityProduced?: number;
+  stock?: number;
+  minStock?: number;
+  reservedStock?: number;
   conversionCost?: number;
   costing?: ElasticCosting;
   createdAt?: string;
