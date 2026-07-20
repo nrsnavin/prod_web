@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
+import { useAuth } from "@/core/auth/useAuth";
+import { canAccessPath, effectiveDepartment } from "@/app/navigation";
 import { useAnalytics } from "./hooks";
 import { AnalyticsFilters } from "./types";
 import { FilterBar, presetRange } from "./components/FilterBar";
@@ -51,6 +53,11 @@ export function AnalyticsPage() {
   const fmt = (n?: number) => (n ?? 0).toLocaleString("en-IN");
 
   // On-time delivery over the last 90 days (order-linked dispatches).
+  // The endpoint lives under /dc (finance-area gate), so only fetch when
+  // this user can access delivery challans — a weaving user opening
+  // Analytics would otherwise fire a guaranteed 403.
+  const { user } = useAuth();
+  const canOtd = canAccessPath("/delivery-challans", effectiveDepartment(user));
   const otd = useQuery({
     queryKey: ["otd-stats"],
     queryFn: () =>
@@ -58,6 +65,7 @@ export function AnalyticsPage() {
         "/dc/otd-stats",
         { days: 90 }
       ),
+    enabled: canOtd,
   });
 
   return (
@@ -86,17 +94,19 @@ export function AnalyticsPage() {
         <StatTile label="Efficiency score" value={`${s?.avgEfficiencyScore ?? 0}`} loading={isLoading} />
         <StatTile label="Consistency" value={`${s?.factoryConsistency ?? 0}%`} loading={isLoading} />
         <StatTile label="Anomalies" value={fmt(s?.anomalyCount)} loading={isLoading} />
-        <StatTile
-          label="On-time delivery (90d)"
-          value={
-            otd.data?.otdPct != null
-              ? `${otd.data.otdPct}%`
-              : otd.data
-                ? "—"
-                : "…"
-          }
-          loading={otd.isLoading}
-        />
+        {canOtd && (
+          <StatTile
+            label="On-time delivery (90d)"
+            value={
+              otd.data?.otdPct != null
+                ? `${otd.data.otdPct}%`
+                : otd.data
+                  ? "—"
+                  : "…"
+            }
+            loading={otd.isLoading}
+          />
+        )}
       </div>
       )}
 
