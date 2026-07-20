@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sun, Moon, X, Pencil, Trash2 } from "lucide-react";
+import { Sun, Moon, X, Pencil, Trash2, Lock, LockOpen } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -15,8 +15,9 @@ import { cn } from "@/components/ui/cn";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { shiftService } from "./api";
+import { shiftService, productionService } from "./api";
 import { useProductionRange, useProductionShiftDetail } from "./hooks";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProductionShiftSlice } from "./types";
 import { presetRange, toISODate } from "@/features/analytics/components/FilterBar";
 
@@ -146,9 +147,39 @@ function ProductionEditModal({
 function ShiftDetailModal({ shiftPlanId, onClose }: { shiftPlanId: string; onClose: () => void }) {
   const { data, isLoading } = useProductionShiftDetail(shiftPlanId);
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { correct, remove } = useProductionEntryMutations(shiftPlanId);
   const [editRow, setEditRow] = useState<DetailRow | null>(null);
   const [delRow, setDelRow] = useState<DetailRow | null>(null);
+  const [finalizeOpen, setFinalizeOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
+
+  const finalized = data?.finalized ?? false;
+  const allVerified =
+    (data?.details.length ?? 0) > 0 && (data?.details ?? []).every((d) => d.status === "closed");
+
+  const invalidateDetail = () => {
+    qc.invalidateQueries({ queryKey: ["production"] });
+    qc.invalidateQueries({ queryKey: ["production", "shift-detail", shiftPlanId] });
+  };
+  const finalize = useMutation({
+    mutationFn: () => productionService.finalizePlan(shiftPlanId),
+    onSuccess: (r) => {
+      invalidateDetail();
+      setFinalizeOpen(false);
+      toast(r.message ?? "Shift finalised", "success");
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Finalise failed", "error"),
+  });
+  const reopen = useMutation({
+    mutationFn: () => productionService.unfinalizePlan(shiftPlanId),
+    onSuccess: () => {
+      invalidateDetail();
+      setReopenOpen(false);
+      toast("Shift reopened for corrections", "success");
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Reopen failed", "error"),
+  });
 
   const detailColumns: Column<DetailRow>[] = [
     { key: "machine", header: "Machine", render: (d) => d.machine?.machineID ?? "—" },
@@ -162,7 +193,7 @@ function ShiftDetailModal({ shiftPlanId, onClose }: { shiftPlanId: string; onClo
       header: "",
       align: "right",
       render: (d) =>
-        d.status === "closed" ? (
+        d.status === "closed" && !finalized ? (
           <span className="inline-flex gap-1">
             <button onClick={() => setEditRow(d)} className="p-1.5 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900" aria-label="Correct production">
               <Pencil className="h-4 w-4" />
@@ -199,11 +230,59 @@ function ShiftDetailModal({ shiftPlanId, onClose }: { shiftPlanId: string; onClo
               <p className="text-xs text-ink-400">total runtime</p>
             </div>
           </div>
+          {/* Finalisation — locks the day's verified numbers. */}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-canvas px-3 py-2">
+            {finalized ? (
+              <>
+                <span className="flex items-center gap-1.5 text-sm text-ink-600">
+                  <Lock className="h-4 w-4 text-status-success" />
+                  <StatusChip tone="success">Finalised</StatusChip>
+                  {data.finalizedBy && <span className="text-xs text-ink-400">by {data.finalizedBy}</span>}
+                  <span className="text-xs text-ink-400">— entries are locked</span>
+                </span>
+                <Button size="sm" variant="secondary" onClick={() => setReopenOpen(true)}>
+                  <LockOpen className="h-4 w-4" /> Reopen
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-ink-600">
+                  {allVerified
+                    ? "All entries verified — finalise to lock this shift's numbers."
+                    : "Finalise becomes available once every entry is verified."}
+                </span>
+                <Button size="sm" disabled={!allVerified} onClick={() => setFinalizeOpen(true)}>
+                  <Lock className="h-4 w-4" /> Finalise shift
+                </Button>
+              </>
+            )}
+          </div>
+
           <DataTable
             columns={detailColumns}
             rows={data.details}
             rowKey={(d) => d.shiftDetailId}
             emptyTitle="No entries"
+          />
+
+          <ConfirmDialog
+            open={finalizeOpen}
+            title={`Finalise ${data.shift} shift · ${data.dateLabel}?`}
+            message="Locks every production entry — no corrections, deletions or new entries after this. The numbers become final for payroll and reports. An admin can reopen if truly needed."
+            confirmLabel="Finalise"
+            loading={finalize.isPending}
+            onCancel={() => setFinalizeOpen(false)}
+            onConfirm={() => finalize.mutate()}
+          />
+          <ConfirmDialog
+            open={reopenOpen}
+            title="Reopen this shift?"
+            message="Unlocks the entries so corrections are possible again. Refinalise when done."
+            confirmLabel="Reopen"
+            danger
+            loading={reopen.isPending}
+            onCancel={() => setReopenOpen(false)}
+            onConfirm={() => reopen.mutate()}
           />
           {editRow && <ProductionEditModal row={editRow} correct={correct} onClose={() => setEditRow(null)} />}
           <ReasonDialog
