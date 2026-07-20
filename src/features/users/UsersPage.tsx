@@ -15,6 +15,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { DEPARTMENTS, DEPARTMENT_LABELS } from "@/app/navigation";
+import { useAuth } from "@/core/auth/useAuth";
 import { usersService, ManagedUser } from "./api";
 
 const deptOptions = DEPARTMENTS.map((d) => ({ value: d, label: DEPARTMENT_LABELS[d] ?? d }));
@@ -93,6 +94,7 @@ function UserFormScreen({
 
 export function UsersPage() {
   const { toast } = useToast();
+  const { user: me } = useAuth();
   const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["users"],
@@ -128,16 +130,25 @@ export function UsersPage() {
       key: "act",
       header: "",
       align: "right",
-      render: (u) => (
-        <span className="inline-flex gap-1">
-          <button onClick={() => setFormUser(u)} className="p-1.5 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900" aria-label="Edit user">
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button onClick={() => setDelUser(u)} className="p-1.5 rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger" aria-label="Delete user">
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </span>
-      ),
+      render: (u) => {
+        // You can edit yourself (name/password) but never delete your
+        // own account — the backend rejects it too; the UI simply
+        // doesn't offer it.
+        const isSelf = String(u._id) === String(me?.id);
+        return (
+          <span className="inline-flex items-center gap-1">
+            {isSelf && <StatusChip tone="info">You</StatusChip>}
+            <button onClick={() => setFormUser(u)} className="p-1.5 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900" aria-label="Edit user">
+              <Pencil className="h-4 w-4" />
+            </button>
+            {!isSelf && (
+              <button onClick={() => setDelUser(u)} className="p-1.5 rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger" aria-label="Delete user">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </span>
+        );
+      },
     },
   ];
 
