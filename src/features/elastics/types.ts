@@ -20,6 +20,8 @@ export interface ElasticCosting {
 export interface Elastic {
   _id: string;
   name: string;
+  /** Soft-deleted / inactive — hidden from lists and pickers by default. */
+  archived?: boolean;
   weaveType?: string;
   image?: string;
   warpSpandex?: MaterialWeight;

@@ -2,7 +2,7 @@ import { httpClient } from "@/core/http/httpClient";
 import { Elastic, ElasticFormValues, MaterialsByCategory } from "./types";
 
 export const elasticService = {
-  async list(params: { page?: number; limit?: number; search?: string }) {
+  async list(params: { page?: number; limit?: number; search?: string; includeArchived?: string }) {
     const res = await httpClient.get<{
       success: boolean;
       elastics: Elastic[];
@@ -38,6 +38,21 @@ export const elasticService = {
 
   async recalculateCost(elasticId: string): Promise<void> {
     await httpClient.post("/elastic/recalculate-elastic-cost", { elasticId });
+  },
+
+  /** Mark inactive (archived: true) or reactivate (archived: false).
+   *  Reversible; the backend refuses when stock is reserved on orders. */
+  async setArchived(id: string, archived: boolean): Promise<{ message?: string }> {
+    return httpClient.patch<{ success: boolean; message?: string }>(
+      `/elastic/${id}/archive`,
+      { archived }
+    );
+  },
+
+  /** Permanent delete. The backend refuses while stock, reservations or
+   *  stock movements exist (no force from the UI — archive instead). */
+  async remove(id: string): Promise<void> {
+    await httpClient.delete(`/elastic/delete-elastic?id=${encodeURIComponent(id)}`);
   },
 
   async materialsByCategory(): Promise<MaterialsByCategory> {
