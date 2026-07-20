@@ -42,7 +42,18 @@ const columns: Column<Elastic>[] = [
     key: "stock",
     header: "Stock (m)",
     align: "right",
-    render: (e) => (e.quantityProduced ?? 0).toLocaleString("en-IN"),
+    // Real stock position (was quantityProduced — a lifetime counter,
+    // not what's on the shelf). LOW flags stock at/under minStock.
+    render: (e) => {
+      const stock = e.stock ?? 0;
+      const low = (e.minStock ?? 0) > 0 && stock <= (e.minStock ?? 0);
+      return (
+        <span className="tabular-nums">
+          {stock.toLocaleString("en-IN")}
+          {low && <StatusChip tone="danger" className="ml-2">LOW</StatusChip>}
+        </span>
+      );
+    },
   },
   {
     key: "cost",

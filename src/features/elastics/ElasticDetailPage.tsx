@@ -14,6 +14,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useElastic, useElasticMutations } from "./hooks";
 import { MaterialWeight } from "./types";
 import { ElasticForm } from "./ElasticForm";
+import { ElasticStockCard } from "./ElasticStockCard";
 
 function materialName(mw?: MaterialWeight): string {
   if (!mw?.id) return "—";
@@ -205,6 +206,8 @@ export function ElasticDetailPage() {
           </div>
         </Card>
       </div>
+
+      <ElasticStockCard elasticId={elastic._id} />
 
       <FormScreen open={editOpen} onClose={() => setEditOpen(false)} title="Edit elastic" width="max-w-2xl">
         <ElasticForm
