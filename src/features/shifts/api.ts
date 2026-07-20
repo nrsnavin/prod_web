@@ -76,6 +76,10 @@ export const shiftService = {
 };
 
 export const productionService = {
+  finalizePlan: (shiftPlanId: string) =>
+    httpClient.post<{ success: boolean; message?: string }>(`/shift/finalize-plan/${shiftPlanId}`),
+  unfinalizePlan: (shiftPlanId: string) =>
+    httpClient.post<{ success: boolean; message?: string }>(`/shift/unfinalize-plan/${shiftPlanId}`),
   async dateRange(startDate: string, endDate: string): Promise<ProductionDay[]> {
     // The backend names the per-shift fields machines/operators/status;
     // this feature's ProductionShiftSlice uses machineCount/operatorCount/
@@ -131,6 +135,8 @@ export const productionService = {
     shift: "DAY" | "NIGHT";
     description?: string;
     totalProduction: number;
+    finalized: boolean;
+    finalizedBy?: string | null;
     summary: {
       totalMachines: number;
       totalOperators: number;
@@ -168,6 +174,8 @@ export const productionService = {
       shiftType: "DAY" | "NIGHT";
       description?: string;
       totalProduction: number;
+      finalized?: boolean;
+      finalizedBy?: string | null;
       summary?: {
         totalMachines?: number;
         totalOperators?: number;
@@ -192,6 +200,8 @@ export const productionService = {
       shift: d.shiftType,
       description: d.description,
       totalProduction: d.totalProduction ?? 0,
+      finalized: !!d.finalized,
+      finalizedBy: d.finalizedBy ?? null,
       summary: {
         totalMachines: d.summary?.totalMachines ?? 0,
         totalOperators: d.summary?.totalOperators ?? 0,
