@@ -202,7 +202,6 @@ function AnomalyBanner() {
   const { data } = useQuery({
     queryKey: ["machine-anomalies", days, threshold],
     queryFn: () => issueService.anomalies(days, threshold),
-    refetchInterval: 120_000,
   });
   const anomalies = data?.anomalies ?? [];
   const hit = anomalies.length > 0;
@@ -265,7 +264,6 @@ export function MachineIssuesPage() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["machine-issues", status],
     queryFn: () => issueService.list(status),
-    refetchInterval: 60_000,
   });
 
   return (
