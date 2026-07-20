@@ -10,6 +10,7 @@ import { DataTable, Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { StatusChip } from "@/components/ui/StatusChip";
 import { ApiError } from "@/core/http/httpClient";
 import { useElastics, useElasticMutations } from "./hooks";
 import { Elastic } from "./types";
@@ -21,7 +22,10 @@ const columns: Column<Elastic>[] = [
     header: "Elastic",
     render: (e) => (
       <div>
-        <p className="font-medium">{e.name}</p>
+        <p className="font-medium">
+          {e.name}
+          {e.archived && <StatusChip tone="warning" className="ml-2">Inactive</StatusChip>}
+        </p>
         <p className="text-xs text-ink-400">{e.weaveType || "—"}</p>
       </div>
     ),
@@ -52,11 +56,12 @@ const columns: Column<Elastic>[] = [
 export function ElasticListPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { data, isLoading, isError, error } = useElastics({ page, search });
+  const { data, isLoading, isError, error } = useElastics({ page, search, showInactive });
   const { create } = useElasticMutations();
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 20)) : 1;
@@ -73,7 +78,7 @@ export function ElasticListPage() {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <SearchInput
           value={search}
           onChange={(v) => {
@@ -83,6 +88,18 @@ export function ElasticListPage() {
           placeholder="Search elastics…"
           className="max-w-sm"
         />
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-600">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => {
+              setShowInactive(e.target.checked);
+              setPage(1);
+            }}
+            className="h-4 w-4 rounded border-ink-300 accent-brand-500"
+          />
+          Show inactive
+        </label>
       </div>
 
       {isError && <ErrorBanner message={(error as Error).message} />}

@@ -4,10 +4,16 @@ import { ElasticFormValues } from "./types";
 
 const KEY = "elastics";
 
-export function useElastics(params: { page: number; search: string }) {
+export function useElastics(params: { page: number; search: string; showInactive?: boolean }) {
   return useQuery({
     queryKey: [KEY, params],
-    queryFn: () => elasticService.list({ ...params, limit: 20 }),
+    queryFn: () =>
+      elasticService.list({
+        page: params.page,
+        search: params.search,
+        limit: 20,
+        ...(params.showInactive ? { includeArchived: "true" } : {}),
+      }),
     placeholderData: (prev) => prev,
   });
 }
@@ -45,5 +51,14 @@ export function useElasticMutations() {
     mutationFn: (id: string) => elasticService.recalculateCost(id),
     onSuccess: invalidate,
   });
-  return { create, update, recalculate };
+  const setArchived = useMutation({
+    mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
+      elasticService.setArchived(id, archived),
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => elasticService.remove(id),
+    onSuccess: invalidate,
+  });
+  return { create, update, recalculate, setArchived, remove };
 }

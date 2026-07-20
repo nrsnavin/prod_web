@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Pencil, Calculator } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Pencil, Calculator, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
+import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -35,9 +37,12 @@ function CompositionRow({ label, mw }: { label: string; mw?: MaterialWeight }) {
 export function ElasticDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { data: elastic, isLoading, isError, error } = useElastic(id);
-  const { update, recalculate } = useElasticMutations();
+  const { update, recalculate, setArchived, remove } = useElasticMutations();
   const [editOpen, setEditOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -65,6 +70,7 @@ export function ElasticDetailPage() {
         subtitle={elastic.weaveType}
         actions={
           <>
+            {elastic.archived && <StatusChip tone="warning">Inactive</StatusChip>}
             <Button
               variant="secondary"
               loading={recalculate.isPending}
@@ -81,7 +87,61 @@ export function ElasticDetailPage() {
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" /> Edit
             </Button>
+            <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
+              {elastic.archived
+                ? <><ArchiveRestore className="h-4 w-4" /> Reactivate</>
+                : <><Archive className="h-4 w-4" /> Mark inactive</>}
+            </Button>
+            <Button variant="danger" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4" /> Delete
+            </Button>
           </>
+        }
+      />
+
+      <ConfirmDialog
+        open={archiveOpen}
+        title={elastic.archived ? `Reactivate ${elastic.name}` : `Mark ${elastic.name} inactive`}
+        message={
+          elastic.archived
+            ? "The elastic becomes visible again in lists and order forms."
+            : "Hidden from lists and new-order pickers. Existing orders, stock history and DCs keep their records. You can reactivate any time."
+        }
+        confirmLabel={elastic.archived ? "Reactivate" : "Mark inactive"}
+        loading={setArchived.isPending}
+        onCancel={() => setArchiveOpen(false)}
+        onConfirm={() =>
+          setArchived.mutate(
+            { id: elastic._id, archived: !elastic.archived },
+            {
+              onSuccess: (r) => {
+                setArchiveOpen(false);
+                toast(r.message ?? (elastic.archived ? "Reactivated" : "Marked inactive"), "success");
+              },
+              onError: (e) =>
+                toast(e instanceof ApiError ? e.message : "Update failed", "error"),
+            }
+          )
+        }
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title={`Delete ${elastic.name}?`}
+        message="Permanent. Only possible while the elastic has no stock, no reservations and no stock movements — otherwise use Mark inactive, which keeps all history."
+        confirmLabel="Delete permanently"
+        danger
+        loading={remove.isPending}
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={() =>
+          remove.mutate(elastic._id, {
+            onSuccess: () => {
+              toast("Elastic deleted", "success");
+              navigate("/elastics");
+            },
+            onError: (e) =>
+              toast(e instanceof ApiError ? e.message : "Delete failed", "error"),
+          })
         }
       />
 
