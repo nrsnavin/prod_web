@@ -16,7 +16,6 @@ export function LeavePage() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["leave", "pending"],
     queryFn: leaveService.pending,
-    refetchInterval: 60_000,
   });
 
   const invalidate = () => {

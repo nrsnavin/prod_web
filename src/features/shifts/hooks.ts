@@ -5,7 +5,7 @@ import { ShiftPlanFormValues } from "./types";
 const KEY = "shifts";
 
 export function useTodayShifts() {
-  return useQuery({ queryKey: [KEY, "today"], queryFn: shiftService.today, refetchInterval: 60_000 });
+  return useQuery({ queryKey: [KEY, "today"], queryFn: shiftService.today });
 }
 
 export function useShiftPlan(id: string | undefined) {
@@ -27,7 +27,6 @@ export function usePendingVerification() {
   return useQuery({
     queryKey: [KEY, "pending-verification"],
     queryFn: shiftService.pendingVerification,
-    refetchInterval: 60_000,
   });
 }
 
