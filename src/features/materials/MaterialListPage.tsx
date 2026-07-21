@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, TriangleAlert, ClipboardList, TrendingDown } from "lucide-react";
+import { Plus, TriangleAlert, ClipboardList, TrendingDown, IndianRupee } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,7 +16,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useMaterials, useMaterialMutations } from "./hooks";
 import { MATERIAL_CATEGORIES, RawMaterial } from "./types";
 import { MaterialForm } from "./MaterialForm";
-import { ReorderSuggestions, StockTakeModal } from "./StockOps";
+import { ReorderSuggestions, StockTakeModal, BulkPriceUpdateModal } from "./StockOps";
 
 const columns: Column<RawMaterial>[] = [
   {
@@ -66,6 +66,7 @@ export function MaterialListPage() {
   const [lowStock, setLowStock] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [stockTakeOpen, setStockTakeOpen] = useState(false);
+  const [priceUpdateOpen, setPriceUpdateOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -90,6 +91,9 @@ export function MaterialListPage() {
             </Button>
             <Button variant="secondary" onClick={() => setStockTakeOpen(true)}>
               <ClipboardList className="h-4 w-4" /> Stock take
+            </Button>
+            <Button variant="secondary" onClick={() => setPriceUpdateOpen(true)}>
+              <IndianRupee className="h-4 w-4" /> Update prices
             </Button>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" /> Add material
@@ -135,6 +139,10 @@ export function MaterialListPage() {
 
       {stockTakeOpen && data && (
         <StockTakeModal materials={data} onClose={() => setStockTakeOpen(false)} />
+      )}
+
+      {priceUpdateOpen && data && (
+        <BulkPriceUpdateModal materials={data} onClose={() => setPriceUpdateOpen(false)} />
       )}
 
       <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="Add raw material">

@@ -49,6 +49,21 @@ export interface SupplierOption {
   name: string;
 }
 
+// Mirrors POST /materials/bulk-update-prices (prod/api/rawMaterial.js)
+export interface BulkPriceResult {
+  success: boolean;
+  message: string;
+  updated: number;
+  skipped: number;
+  results: Array<{
+    _id: string;
+    name: string;
+    oldPrice: number;
+    newPrice: number;
+    change: number;
+  }>;
+}
+
 // Mirrors GET /materials/replenishment-forecast (prod/api/rawMaterial.js)
 export interface ForecastLine {
   _id: string;
