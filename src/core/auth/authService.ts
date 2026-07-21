@@ -43,6 +43,22 @@ class ApiAuthService implements AuthService {
       department: res.user.department ?? null,
     };
   }
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const res = await this.client.post<{ success: boolean; message: string }>(
+      "/user/forgot-password",
+      { email }
+    );
+    return { message: res.message };
+  }
+
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
+    const res = await this.client.post<{ success: boolean; message: string }>(
+      "/user/reset-password",
+      { token, password }
+    );
+    return { message: res.message };
+  }
 }
 
 export const authService: AuthService = new ApiAuthService(httpClient);
