@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocation, useNavigate, Navigate } from "react-router-dom";
+import { useLocation, useNavigate, Navigate, Link } from "react-router-dom";
 import { Factory } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
 import { SESSION_EXPIRED_KEY } from "@/core/auth/authStore";
@@ -111,6 +111,15 @@ export function LoginPage() {
               error={errors.password?.message}
               {...register("password")}
             />
+
+            <div className="flex justify-end -mt-1">
+              <Link
+                to="/forgot-password"
+                className="text-sm font-medium text-brand-500 hover:text-brand-600"
+              >
+                Forgot password?
+              </Link>
+            </div>
 
             {serverError && (
               <p className="text-sm text-status-danger bg-status-dangerBg rounded-lg px-3 py-2">

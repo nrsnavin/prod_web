@@ -4,6 +4,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { RequireAuth } from "./guards";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ComingSoonPage } from "@/features/common/ComingSoonPage";
 import { allNavItems } from "./navigation";
@@ -163,6 +165,8 @@ const featureRoutes = [
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
   {
     path: "/",
     element: (
