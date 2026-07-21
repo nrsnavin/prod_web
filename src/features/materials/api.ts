@@ -1,5 +1,11 @@
 import { httpClient } from "@/core/http/httpClient";
-import { MaterialFormValues, RawMaterial, ReplenishmentForecast, SupplierOption } from "./types";
+import {
+  BulkPriceResult,
+  MaterialFormValues,
+  RawMaterial,
+  ReplenishmentForecast,
+  SupplierOption,
+} from "./types";
 
 export const materialService = {
   replenishmentForecast(horizonDays = 14, lookbackDays = 30): Promise<ReplenishmentForecast> {
@@ -52,6 +58,16 @@ export const materialService = {
   async adjustStock(id: string, adjustment: number, reason: string): Promise<void> {
     await httpClient.post("/materials/bulk-adjust-stock", {
       adjustments: [{ _id: id, adjustment, reason }],
+    });
+  },
+
+  async bulkUpdatePrices(
+    updates: Array<{ _id: string; price: number }>,
+    reason: string
+  ): Promise<BulkPriceResult> {
+    return httpClient.post<BulkPriceResult>("/materials/bulk-update-prices", {
+      updates,
+      reason,
     });
   },
 
