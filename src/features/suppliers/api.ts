@@ -79,6 +79,11 @@ export const poService = {
     return res.po;
   },
 
+  // Server-rendered PDF via the visual template designer.
+  pdfBlob(id: string): Promise<Blob> {
+    return httpClient.getBlob(`/supplier/po/${id}/pdf`);
+  },
+
   async clone(id: string): Promise<PurchaseOrder> {
     const res = await httpClient.post<{ success: boolean; po: PurchaseOrder }>(
       "/supplier/clone-po",
