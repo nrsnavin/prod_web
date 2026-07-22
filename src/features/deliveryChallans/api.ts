@@ -33,6 +33,11 @@ export const dcService = {
     return httpClient.get<DcOrderInfo & { success: boolean }>("/dc/order-info", { id: orderId });
   },
 
+  // Server-rendered PDF via the visual template designer.
+  pdfBlob(id: string): Promise<Blob> {
+    return httpClient.getBlob(`/dc/${id}/pdf`);
+  },
+
   async create(body: DcFormValues): Promise<DeliveryChallan> {
     const res = await httpClient.post<{ success: boolean; dc: DeliveryChallan }>(
       "/dc/create",

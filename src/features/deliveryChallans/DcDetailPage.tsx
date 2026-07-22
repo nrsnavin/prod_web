@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Printer, Truck, PackageCheck, XCircle } from "lucide-react";
+import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -8,6 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useDc, useDcMutations } from "./hooks";
+import { dcService } from "./api";
 import { DcStatus } from "./types";
 import { dcStatusTone } from "./DcListPage";
 
@@ -17,6 +19,23 @@ export function DcDetailPage() {
   const { toast } = useToast();
   const { data: dc, isLoading, isError, error } = useDc(id);
   const { updateStatus } = useDcMutations();
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadPdf = async () => {
+    if (!id) return;
+    setDownloading(true);
+    try {
+      const blob = await dcService.pdfBlob(id);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      // Revoke a little later so the new tab has time to load it.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Could not generate the PDF", "error");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -60,6 +79,9 @@ export function DcDetailPage() {
           subtitle={dc.customerName}
           actions={
             <>
+              <Button variant="secondary" onClick={downloadPdf} loading={downloading}>
+                <FileDown className="h-4 w-4" /> Download PDF
+              </Button>
               <Button variant="secondary" onClick={() => window.print()}>
                 <Printer className="h-4 w-4" /> Print
               </Button>
