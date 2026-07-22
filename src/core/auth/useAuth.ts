@@ -17,10 +17,21 @@ export function useAuth() {
     [setSession]
   );
 
+  const requestOtp = useCallback((email: string) => authService.requestOtp(email), []);
+
+  const verifyOtp = useCallback(
+    async (email: string, otp: string) => {
+      const session = await authService.verifyOtp(email, otp);
+      setSession(session);
+      return session;
+    },
+    [setSession]
+  );
+
   const logout = useCallback(async () => {
     await authService.logout();
     clearSession();
   }, [clearSession]);
 
-  return { user, isAuthenticated: user !== null, login, logout };
+  return { user, isAuthenticated: user !== null, login, requestOtp, verifyOtp, logout };
 }
