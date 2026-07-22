@@ -40,10 +40,17 @@ export interface RawMaterialRequirement {
   id?: string;
   name?: string;
   material?: { _id: string; name: string } | string;
+  rawMaterial?: string;
   quantity?: number;
   required?: number;
+  // The order-detail endpoint returns the requirement as `requiredWeight`
+  // (kg) and current stock as `inStock`; the older `required`/`available`
+  // names are kept as fallbacks for other callers.
+  requiredWeight?: number;
   available?: number;
+  inStock?: number;
   stock?: number;
+  stockSufficient?: boolean;
   unit?: string;
 }
 
