@@ -7,6 +7,7 @@ import { config } from "@/app/config";
 export interface HttpClient {
   get<T>(url: string, params?: Record<string, unknown>): Promise<T>;
   getBlob(url: string, params?: Record<string, unknown>): Promise<Blob>;
+  postBlob(url: string, body?: unknown): Promise<Blob>;
   post<T>(url: string, body?: unknown): Promise<T>;
   put<T>(url: string, body?: unknown): Promise<T>;
   patch<T>(url: string, body?: unknown): Promise<T>;
@@ -75,6 +76,10 @@ class AxiosHttpClient implements HttpClient {
   }
   async getBlob(url: string, params?: Record<string, unknown>): Promise<Blob> {
     const { data } = await this.instance.get(url, { params, responseType: "blob" });
+    return data as Blob;
+  }
+  async postBlob(url: string, body?: unknown): Promise<Blob> {
+    const { data } = await this.instance.post(url, body, { responseType: "blob" });
     return data as Blob;
   }
   async post<T>(url: string, body?: unknown): Promise<T> {
