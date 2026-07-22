@@ -21,4 +21,9 @@ export interface AuthService {
   // resolves with a generic message regardless of whether the email exists.
   forgotPassword(email: string): Promise<{ message: string }>;
   resetPassword(token: string, password: string): Promise<{ message: string }>;
+  // Email-OTP login (the primary sign-in). requestOtp emails a 6-digit
+  // code (generic response, no enumeration); verifyOtp exchanges the code
+  // for a session, same as login().
+  requestOtp(email: string): Promise<{ message: string }>;
+  verifyOtp(email: string, otp: string): Promise<SessionUser>;
 }
