@@ -61,6 +61,17 @@ export interface OrderDetail {
   rawMaterialRequired: RawMaterialRequirement[];
 }
 
+// Structured payload the backend attaches to an INSUFFICIENT_STOCK 400
+// when an Open order is approved while a raw material is short. The
+// force-approve dialog renders it so the admin sees what they override.
+export interface StockShortfall {
+  materialId: string;
+  materialName: string;
+  available: number;
+  required: number;
+  short: number;
+}
+
 export interface OrderFormValues {
   date: string;
   po: string;

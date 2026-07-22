@@ -31,7 +31,12 @@ export const orderService = {
   remove: (orderId: string, auditReason: string) =>
     httpClient.post("/order/delete-order", { orderId, auditReason }),
 
-  approve: (orderId: string) => httpClient.post("/order/approve", { orderId }),
+  // `force`/`forceReason` drive the stock-guard override: a plain approve
+  // (force omitted) 400s with code INSUFFICIENT_STOCK when a raw material
+  // is short; re-calling with force + a reason (>= 8 chars) deducts what
+  // is available and records the override in the audit trail.
+  approve: (orderId: string, force?: boolean, forceReason?: string) =>
+    httpClient.post("/order/approve", { orderId, force, forceReason }),
   cancel: (orderId: string) => httpClient.post("/order/cancel", { orderId }),
   startProduction: (orderId: string) => httpClient.post("/order/start-production", { orderId }),
   complete: (orderId: string) => httpClient.post("/order/complete", { orderId }),
