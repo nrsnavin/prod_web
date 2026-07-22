@@ -38,7 +38,9 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler): void {
   onUnauthorized = handler;
 }
 
-function toApiError(error: unknown): ApiError {
+// Exported for unit tests — the interceptor uses it to normalise every
+// axios failure into an ApiError, preserving route-supplied diagnostics.
+export function toApiError(error: unknown): ApiError {
   if (axios.isAxiosError(error)) {
     const ax = error as AxiosError<{ message?: string; code?: string }>;
     const body = ax.response?.data;
