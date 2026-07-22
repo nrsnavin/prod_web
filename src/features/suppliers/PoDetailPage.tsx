@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Copy, PackagePlus, FileText, Pencil, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Copy, PackagePlus, FileText, FileDown, Pencil, Trash2, Plus } from "lucide-react";
 import { PrintModal } from "@/components/print/PrintModal";
 import { PoDocument } from "./PoDocument";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { usePurchaseOrder, usePoMutations } from "./hooks";
+import { poService } from "./api";
 import { InwardRecord, PoItem } from "./types";
 import { poStatusTone } from "./PoListPage";
 
@@ -291,6 +292,22 @@ export function PoDetailPage() {
   const [printOpen, setPrintOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadPdf = async () => {
+    if (!id) return;
+    setDownloading(true);
+    try {
+      const blob = await poService.pdfBlob(id);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Could not generate the PDF", "error");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -325,6 +342,9 @@ export function PoDetailPage() {
           <>
             <Button variant="secondary" onClick={() => setPrintOpen(true)}>
               <FileText className="h-4 w-4" /> View PDF
+            </Button>
+            <Button variant="secondary" onClick={downloadPdf} loading={downloading}>
+              <FileDown className="h-4 w-4" /> Download PDF
             </Button>
             {po.status !== "Completed" && (
               <Button onClick={() => setInwardOpen(true)}>
