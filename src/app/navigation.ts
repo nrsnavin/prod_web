@@ -32,6 +32,7 @@ import {
   Wand2,
   ScanLine,
   Bot,
+  SlidersHorizontal,
   LucideIcon,
 } from "lucide-react";
 
@@ -135,9 +136,16 @@ export const navSections: NavSection[] = [
     items: [
       { label: "Users", path: "/users", icon: UserRound, departments: ["admin"] },
       { label: "Data Import/Export", path: "/data-io", icon: Database, departments: ["admin"] },
+      // Settings is all-access: everyone can rearrange their own sidebar;
+      // the document/branding tab inside is admin-gated by the backend.
+      { label: "Settings", path: "/settings", icon: SlidersHorizontal },
     ],
   },
 ];
+
+// Sidebar items the user must never be able to hide (they'd lose their way
+// back). Cosmetic hiding only — routes stay reachable regardless.
+export const UNHIDEABLE_PATHS = ["/", "/settings"];
 
 export const allNavItems: NavItem[] = navSections.flatMap((s) => s.items);
 
@@ -179,6 +187,34 @@ export function visibleSections(department: string | undefined | null): NavSecti
       ...section,
       items: section.items.filter((item) => canAccess(item, department)),
     }))
+    .filter((section) => section.items.length > 0);
+}
+
+// Apply the user's personal sidebar prefs (hidden items + per-section
+// order) on top of the department-filtered sections. Unknown/newly-added
+// items that aren't in a saved order fall to the end in their original
+// order, so shipping a new nav item never disappears.
+export interface NavPrefs {
+  navHidden: string[];
+  navOrder: Record<string, string[]>;
+}
+
+export function applyNavPrefs(sections: NavSection[], prefs: NavPrefs): NavSection[] {
+  const hidden = new Set(prefs.navHidden.filter((p) => !UNHIDEABLE_PATHS.includes(p)));
+  return sections
+    .map((section) => {
+      const order = prefs.navOrder[section.label];
+      let items = section.items;
+      if (order && order.length) {
+        const idx = (p: string) => {
+          const i = order.indexOf(p);
+          return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+        };
+        items = [...items].sort((a, b) => idx(a.path) - idx(b.path));
+      }
+      items = items.filter((i) => !hidden.has(i.path));
+      return { ...section, items };
+    })
     .filter((section) => section.items.length > 0);
 }
 

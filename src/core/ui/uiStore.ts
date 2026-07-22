@@ -13,6 +13,16 @@ interface UiState {
   toggleSidebar(): void;
   recent: RecentItem[];
   addRecent(item: Omit<RecentItem, "at">): void;
+
+  // ── Per-user sidebar customization (persisted in this browser) ──
+  // navHidden: item paths the user chose to hide from the sidebar
+  // (cosmetic only — the route stays reachable by URL).
+  // navOrder: sectionLabel → ordered array of item paths.
+  navHidden: string[];
+  navOrder: Record<string, string[]>;
+  toggleNavHidden(path: string): void;
+  setSectionOrder(sectionLabel: string, paths: string[]): void;
+  resetNavPrefs(): void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -28,6 +38,18 @@ export const useUiStore = create<UiState>()(
             ...s.recent.filter((r) => r.path !== item.path),
           ].slice(0, 8),
         })),
+
+      navHidden: [],
+      navOrder: {},
+      toggleNavHidden: (path) =>
+        set((s) => ({
+          navHidden: s.navHidden.includes(path)
+            ? s.navHidden.filter((p) => p !== path)
+            : [...s.navHidden, path],
+        })),
+      setSectionOrder: (sectionLabel, paths) =>
+        set((s) => ({ navOrder: { ...s.navOrder, [sectionLabel]: paths } })),
+      resetNavPrefs: () => set({ navHidden: [], navOrder: {} }),
     }),
     { name: "jarvis-ui" }
   )

@@ -73,6 +73,7 @@ const UsersPage = lazyPage(() => import("@/features/users/UsersPage"), "UsersPag
 const AdvisorPage = lazyPage(() => import("@/features/comms/AdvisorPage"), "AdvisorPage");
 const AssistantPage = lazyPage(() => import("@/features/assistant/AssistantPage"), "AssistantPage");
 const DataIoPage = lazyPage(() => import("@/features/comms/DataIoPage"), "DataIoPage");
+const SettingsPage = lazyPage(() => import("@/features/settings/SettingsPage"), "SettingsPage");
 
 function PageFallback() {
   return (
@@ -126,6 +127,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/assistant": withSuspense(<AssistantPage />),
   "/data-io": withSuspense(<DataIoPage />),
   "/users": withSuspense(<UsersPage />),
+  "/settings": withSuspense(<SettingsPage />),
 };
 
 // Detail routes that live under a nav destination.
