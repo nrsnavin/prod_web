@@ -49,7 +49,8 @@ export function useOrderMutations() {
     onSuccess: invalidate,
   });
   const approve = useMutation({
-    mutationFn: (id: string) => orderService.approve(id),
+    mutationFn: ({ id, force, forceReason }: { id: string; force?: boolean; forceReason?: string }) =>
+      orderService.approve(id, force, forceReason),
     onSuccess: invalidate,
   });
   const cancel = useMutation({

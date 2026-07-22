@@ -18,7 +18,12 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
-    public readonly cause?: unknown
+    public readonly cause?: unknown,
+    // Route-supplied diagnostics the backend attaches to the error body
+    // (e.g. INSUFFICIENT_STOCK + a shortfall payload) so features can
+    // branch on them — the force-approve flow reads these.
+    public readonly code?: string,
+    public readonly data?: Record<string, unknown>
   ) {
     super(message);
     this.name = "ApiError";
@@ -35,13 +40,20 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler): void {
 
 function toApiError(error: unknown): ApiError {
   if (axios.isAxiosError(error)) {
-    const ax = error as AxiosError<{ message?: string }>;
+    const ax = error as AxiosError<{ message?: string; code?: string }>;
+    const body = ax.response?.data;
     const message =
-      ax.response?.data?.message ||
+      body?.message ||
       (ax.code === "ECONNABORTED"
         ? "Request timed out — check your connection."
         : ax.message);
-    return new ApiError(message, ax.response?.status, error);
+    return new ApiError(
+      message,
+      ax.response?.status,
+      error,
+      typeof body?.code === "string" ? body.code : undefined,
+      body && typeof body === "object" ? (body as Record<string, unknown>) : undefined
+    );
   }
   return new ApiError("Unexpected error", undefined, error);
 }

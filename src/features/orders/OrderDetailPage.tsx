@@ -16,13 +16,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useOrder, useOrderMutations } from "./hooks";
-import { OrderElasticProgress, RawMaterialRequirement } from "./types";
+import { OrderElasticProgress, RawMaterialRequirement, StockShortfall } from "./types";
 import { OrderAnalytics } from "./OrderAnalytics";
 import { orderStatusTone, orderStatusLabel } from "./orderStatus";
 import { JobCreateForm } from "@/features/jobs/JobCreateForm";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { OrderEtaCard } from "@/features/analytics/breakdown/OrderEtaCard";
 import { OrderSuggestedPlan } from "./OrderSuggestedPlan";
+import { ForceApprovalDialog } from "./ForceApprovalDialog";
 
 const elasticColumns: Column<OrderElasticProgress>[] = [
   { key: "name", header: "Elastic", render: (e) => <span className="font-medium">{e.name}</span> },
@@ -175,6 +176,9 @@ export function OrderDetailPage() {
   const { data: order, isLoading, isError, error } = useOrder(id);
   const { approve, cancel, startProduction, complete, update, remove } = useOrderMutations();
   const [confirm, setConfirm] = useState<null | "approve" | "cancel" | "start" | "complete">(null);
+  // Force-approve state: set from the backend's INSUFFICIENT_STOCK 400 so
+  // the admin can override the stock guard with a reason.
+  const [forceShortfall, setForceShortfall] = useState<{ shortfall: StockShortfall | null; message: string } | null>(null);
   const [jobOpen, setJobOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
@@ -198,7 +202,7 @@ export function OrderDetailPage() {
   }
 
   const act = (
-    mutation: typeof approve,
+    mutation: typeof cancel,
     successMsg: string
   ) =>
     mutation.mutate(order._id, {
@@ -212,11 +216,41 @@ export function OrderDetailPage() {
       },
     });
 
+  // Approve, optionally forcing past a stock shortfall. A plain approve
+  // that hits INSUFFICIENT_STOCK opens the force dialog instead of just
+  // toasting the error; confirming there re-runs with force + reason.
+  const runApprove = (force?: boolean, forceReason?: string) =>
+    approve.mutate(
+      { id: order._id, force, forceReason },
+      {
+        onSuccess: () => {
+          setConfirm(null);
+          setForceShortfall(null);
+          toast(force ? "Order force-approved — available stock deducted" : "Order approved — stock deducted", "success");
+        },
+        onError: (e) => {
+          if (e instanceof ApiError && e.code === "INSUFFICIENT_STOCK") {
+            // Swap the confirm dialog for the force-approve prompt,
+            // seeded with the backend's shortfall payload.
+            setConfirm(null);
+            setForceShortfall({
+              shortfall: (e.data?.shortfall as StockShortfall) ?? null,
+              message: e.message,
+            });
+            return;
+          }
+          setConfirm(null);
+          setForceShortfall(null);
+          toast(e instanceof ApiError ? e.message : "Action failed", "error");
+        },
+      }
+    );
+
   const confirmMeta = {
     approve: {
       title: "Approve order?",
-      message: "Raw material stock will be deducted for the full order quantity. This is validated against current stock.",
-      run: () => act(approve, "Order approved — stock deducted"),
+      message: "Raw material stock will be deducted for the full order quantity. This is validated against current stock — if a material is short you'll be asked to confirm a force approval.",
+      run: () => runApprove(),
       loading: approve.isPending,
     },
     cancel: {
@@ -415,6 +449,15 @@ export function OrderDetailPage() {
           onConfirm={confirmMeta[confirm].run}
         />
       )}
+
+      <ForceApprovalDialog
+        open={!!forceShortfall}
+        shortfall={forceShortfall?.shortfall ?? null}
+        originalMessage={forceShortfall?.message}
+        loading={approve.isPending}
+        onClose={() => setForceShortfall(null)}
+        onConfirm={(reason) => runApprove(true, reason)}
+      />
 
       <FormScreen open={jobOpen} onClose={() => setJobOpen(false)} title={`New job for order #${order.orderNo}`}>
         <JobCreateForm
