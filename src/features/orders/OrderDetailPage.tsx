@@ -78,22 +78,31 @@ function requirementName(r: RawMaterialRequirement): string {
   return "—";
 }
 
+// The order-detail endpoint names these `requiredWeight` and `inStock`;
+// the other spellings are fallbacks for any legacy caller.
+export function requirementRequired(r: RawMaterialRequirement): number {
+  return r.requiredWeight ?? r.required ?? r.quantity ?? 0;
+}
+export function requirementAvailable(r: RawMaterialRequirement): number | null {
+  return r.inStock ?? r.available ?? r.stock ?? null;
+}
+
 const materialColumns: Column<RawMaterialRequirement>[] = [
   { key: "name", header: "Raw material", render: (r) => requirementName(r) },
   {
     key: "required",
     header: "Required",
     align: "right",
-    render: (r) => (r.required ?? r.quantity ?? 0).toLocaleString("en-IN"),
+    render: (r) => requirementRequired(r).toLocaleString("en-IN"),
   },
   {
     key: "available",
     header: "In stock",
     align: "right",
     render: (r) => {
-      const avail = r.available ?? r.stock;
+      const avail = requirementAvailable(r);
       if (avail == null) return "—";
-      const short = avail < (r.required ?? r.quantity ?? 0);
+      const short = avail < requirementRequired(r);
       return <span className={short ? "text-status-danger font-semibold" : ""}>{avail.toLocaleString("en-IN")}</span>;
     },
   },
