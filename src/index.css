@@ -18,6 +18,14 @@
   }
 }
 
+/* Page margins for every printed document (MRP sheet, warping/covering
+   programme, DC, PO, packing slip, labels). A generous margin keeps text
+   off the paper edge and inside most printers' unprintable border. */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+
 /* Print: only the .print-area content is put on paper (DC, MRP sheet,
    PO document, packing slip, etc.). */
 @media print {
@@ -50,6 +58,46 @@
     margin: 0;
     max-height: none !important;
     overflow: visible !important;
+    /* Crisp, high-contrast text on paper. */
+    color: #111827;
+    line-height: 1.45;
+  }
+  /* Print the background fills the on-screen sheet relies on — header
+     bars, zebra/shortfall rows, status chips, table headers — instead of
+     letting the browser drop them and leave blank blocks. */
+  .print-area,
+  .print-area * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Wide sheet tables (covering programme, MRP) use the full printable
+     width rather than an on-screen horizontal scroll. */
+  .print-area .overflow-x-auto {
+    overflow: visible !important;
+  }
+  .print-area table {
+    width: 100% !important;
+    border-collapse: collapse;
+  }
+  /* Repeat table headers/footers on every printed page. */
+  .print-area thead {
+    display: table-header-group;
+  }
+  .print-area tfoot {
+    display: table-footer-group;
+  }
+  /* Keep a row, list item or signature block from splitting across pages,
+     and don't strand a heading at the foot of a page. */
+  .print-area tr,
+  .print-area li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .print-area h1,
+  .print-area h2,
+  .print-area h3 {
+    break-after: avoid;
+    page-break-after: avoid;
   }
   /* When the sheet is inside the (fixed, scrollable) modal, neutralise
      the modal's own positioning / height cap / backdrop so it can't
