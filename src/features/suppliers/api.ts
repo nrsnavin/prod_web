@@ -18,6 +18,14 @@ export const supplierService = {
     return res;
   },
 
+  async getById(id: string): Promise<Supplier> {
+    const res = await httpClient.get<{ success: boolean; supplier: Supplier }>(
+      "/supplier/get-supplier-detail",
+      { id }
+    );
+    return res.supplier;
+  },
+
   async create(body: SupplierFormValues): Promise<Supplier> {
     const res = await httpClient.post<{ success: boolean; supplier: Supplier }>(
       "/supplier/create-supplier",

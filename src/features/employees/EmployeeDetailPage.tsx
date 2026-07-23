@@ -15,6 +15,7 @@ import { useEmployee, useEmployeeMutations } from "./hooks";
 import { EmployeeShiftRow } from "./types";
 import { EmployeeForm } from "./EmployeeForm";
 import { EmployeePayrollCard } from "./EmployeePayrollCard";
+import { EmployeeLeavePayCard } from "./EmployeeLeavePayCard";
 import { SkillProfileCard } from "./SkillProfileCard";
 
 const shiftColumns: Column<EmployeeShiftRow>[] = [
@@ -127,6 +128,8 @@ export function EmployeeDetailPage() {
       <SkillProfileCard empId={emp.id} profile={emp.skillProfile} />
 
       <EmployeePayrollCard empId={emp.id} />
+
+      <EmployeeLeavePayCard empId={emp.id} />
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Recent shifts</h3>
