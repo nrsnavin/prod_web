@@ -18,7 +18,9 @@ export interface Warping {
 export interface WarpingPlanSection {
   warpYarn: { _id: string; name: string; unit?: string } | string | null;
   ends: number;
-  length?: number;
+  // Run length in metres — persisted as `maxMeters` on the WarpingPlan
+  // schema. (An earlier `length` alias never reached the DB.)
+  maxMeters?: number;
 }
 
 export interface WarpingPlanBeam {

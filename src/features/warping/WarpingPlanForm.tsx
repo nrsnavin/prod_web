@@ -12,7 +12,7 @@ import { useWarpYarnOptions, useWarpingMutations } from "./hooks";
 const sectionSchema = z.object({
   warpYarn: z.string().min(1, "Yarn required"),
   ends: z.coerce.number().positive("Ends > 0"),
-  length: z.coerce.number().min(0).optional(),
+  maxMeters: z.coerce.number().min(0).optional(),
 });
 const schema = z.object({
   remarks: z.string().optional(),
@@ -46,7 +46,7 @@ export function WarpingPlanForm({
     resolver: zodResolver(schema),
     defaultValues: {
       remarks: "",
-      beams: [{ sections: [{ warpYarn: "", ends: 0, length: 0 }] }],
+      beams: [{ sections: [{ warpYarn: "", ends: 0, maxMeters: 0 }] }],
     },
   });
   const beams = useFieldArray({ control, name: "beams" });
@@ -86,7 +86,7 @@ export function WarpingPlanForm({
         type="button"
         variant="ghost"
         size="sm"
-        onClick={() => beams.append({ sections: [{ warpYarn: "", ends: 0, length: 0 }] })}
+        onClick={() => beams.append({ sections: [{ warpYarn: "", ends: 0, maxMeters: 0 }] })}
       >
         <Plus className="h-4 w-4" /> Add beam
       </Button>
@@ -151,7 +151,7 @@ function BeamFields({
               error={errors.beams?.[index]?.sections?.[si]?.ends?.message}
               {...register(`beams.${index}.sections.${si}.ends`)}
             />
-            <Input type="number" placeholder="Length" {...register(`beams.${index}.sections.${si}.length`)} />
+            <Input type="number" placeholder="Length" {...register(`beams.${index}.sections.${si}.maxMeters`)} />
             <button
               type="button"
               onClick={() => sections.fields.length > 1 && sections.remove(si)}
@@ -169,7 +169,7 @@ function BeamFields({
         variant="ghost"
         size="sm"
         className="mt-2"
-        onClick={() => sections.append({ warpYarn: "", ends: 0, length: 0 })}
+        onClick={() => sections.append({ warpYarn: "", ends: 0, maxMeters: 0 })}
       >
         <Plus className="h-4 w-4" /> Add section
       </Button>
