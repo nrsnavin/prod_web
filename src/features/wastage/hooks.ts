@@ -28,6 +28,14 @@ export function useEligibleJobs(enabled = true) {
   });
 }
 
+export function useJobOperators(jobId: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "job-operators", jobId],
+    queryFn: () => wastageService.jobOperators(jobId!),
+    enabled: !!jobId,
+  });
+}
+
 export function useWastageAnalytics(days: number) {
   return useQuery({
     queryKey: [KEY, "analytics", days],
