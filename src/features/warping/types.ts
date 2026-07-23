@@ -36,6 +36,17 @@ export interface WarpingPlan {
   remarks?: string;
 }
 
+// One beam produced during covering — beamNo + weight (kg), optionally
+// who recorded it. Powers the printable covering beam labels.
+export interface BeamEntry {
+  _id: string;
+  beamNo: number;
+  weight: number;
+  note?: string;
+  enteredAt?: string;
+  enteredBy?: { _id?: string; name?: string; role?: string } | string | null;
+}
+
 export interface Covering {
   _id: string;
   status: ProgrammeStatus;
@@ -44,6 +55,9 @@ export interface Covering {
   remarks?: string;
   job?: { _id: string; jobOrderNo: number; status?: string; customer?: { name?: string } } | null;
   elasticPlanned?: ElasticOrderedLine[];
+  beamEntries?: BeamEntry[];
+  // Auto-summed kg across beamEntries.
+  producedWeight?: number;
 }
 
 export interface WarpYarnOption {
