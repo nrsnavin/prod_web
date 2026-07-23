@@ -6,6 +6,9 @@ export interface ShiftPlanMachineRow {
   production: number;
   timer?: string;
   status: string;
+  // The ShiftDetail id — the target of verify-production when an admin
+  // enters output for an open row. (`shiftPlanById` returns it as `id`.)
+  id: string;
 }
 
 export interface ShiftPlanDetail {
