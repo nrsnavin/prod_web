@@ -4,6 +4,9 @@ export interface SessionUser {
   role: string;
   /** Shop-floor department that drives web nav/route access. */
   department?: string | null;
+  /** Per-user feature keys (nav paths) the user may open. When present,
+   *  this — not department — decides what the nav/guards allow. */
+  features?: string[];
 }
 
 export interface LoginCredentials {

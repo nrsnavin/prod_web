@@ -155,12 +155,30 @@ export const allNavItems: NavItem[] = navSections.flatMap((s) => s.items);
 // unrestricted items — fail closed.
 const FLOOR_DEPARTMENTS: Department[] = ["preparatory", "weaving", "packing"];
 
-export function canAccess(item: NavItem, department: string | undefined | null): boolean {
-  if (!item.departments) return true;
+// Access context: the current user (or, for legacy call paths, a bare
+// department string). A user's explicit `features` list is authoritative
+// when present; otherwise we fall back to the department defaults.
+export type AccessCtx =
+  | { role?: string; department?: string | null; features?: string[] | null }
+  | string
+  | null
+  | undefined;
+
+function ctxFeatures(ctx: AccessCtx): string[] | undefined {
+  if (ctx && typeof ctx === "object" && Array.isArray(ctx.features)) return ctx.features;
+  return undefined;
+}
+
+export function canAccess(item: NavItem, ctx: AccessCtx): boolean {
+  if (!item.departments) return true; // unrestricted — always visible
+
+  // Custom per-user features win when present.
+  const features = ctxFeatures(ctx);
+  if (features) return features.includes(item.path);
+
+  // Legacy fallback: department-based.
+  const department = typeof ctx === "string" ? ctx : effectiveDepartment(ctx);
   if (department === "admin") return true;
-  // Legacy users carrying the raw backend role `production` (no
-  // department assigned yet) span the whole floor — show the union of
-  // the three floor departments until an admin assigns one.
   if (department === "production") {
     return item.departments.some((d) => FLOOR_DEPARTMENTS.includes(d));
   }
@@ -181,11 +199,11 @@ export function effectiveDepartment(
   return undefined; // legacy stores/sales → unrestricted items until reassigned
 }
 
-export function visibleSections(department: string | undefined | null): NavSection[] {
+export function visibleSections(ctx: AccessCtx): NavSection[] {
   return navSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => canAccess(item, department)),
+      items: section.items.filter((item) => canAccess(item, ctx)),
     }))
     .filter((section) => section.items.length > 0);
 }
@@ -222,10 +240,36 @@ export function applyNavPrefs(sections: NavSection[], prefs: NavPrefs): NavSecti
  *  nav item that is a prefix of the path, so detail pages (e.g.
  *  /orders/123) inherit their section's ("/orders") access. Paths with no
  *  matching nav item are allowed (e.g. "/" dashboard). */
-export function canAccessPath(path: string, department: string | undefined | null): boolean {
-  if (department === "admin") return true;
+export function canAccessPath(path: string, ctx: AccessCtx): boolean {
   const match = allNavItems
     .filter((i) => i.path !== "/" && (path === i.path || path.startsWith(i.path + "/")))
     .sort((a, b) => b.path.length - a.path.length)[0];
-  return match ? canAccess(match, department) : true;
+  return match ? canAccess(match, ctx) : true;
+}
+
+// ── Feature catalog helpers (for the admin Users screen) ──────────────
+// The nav item paths ARE the feature keys. The create/edit user form shows
+// this grouped list as a checklist.
+export interface FeatureOption {
+  key: string; // the nav path, e.g. "/orders"
+  label: string;
+  /** true when every user can open it regardless of assigned features. */
+  always: boolean;
+}
+export interface FeatureGroup {
+  section: string;
+  features: FeatureOption[];
+}
+export const FEATURE_GROUPS: FeatureGroup[] = navSections.map((s) => ({
+  section: s.label,
+  features: s.items.map((i) => ({ key: i.path, label: i.label, always: !i.departments })),
+}));
+export const ALL_FEATURE_KEYS: string[] = allNavItems.map((i) => i.path);
+
+// Default feature set for a department — mirrors utils/features.js on the
+// backend. Used to seed the checklist when an admin picks a department.
+export function featuresForDepartment(department: string | undefined | null): string[] {
+  return allNavItems
+    .filter((i) => canAccess(i, department ?? undefined))
+    .map((i) => i.path);
 }

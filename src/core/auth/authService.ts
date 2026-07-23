@@ -6,12 +6,19 @@ interface LoginResponse {
   id: string;
   role: string;
   department?: string | null;
+  features?: string[];
   token: string;
 }
 
-interface GetUserResponse {
+interface MeResponse {
   success: boolean;
-  user: { _id: string; name: string; role: string; department?: string | null };
+  user: {
+    id: string;
+    name: string;
+    role: string;
+    department?: string | null;
+    features?: string[];
+  };
 }
 
 class ApiAuthService implements AuthService {
@@ -24,7 +31,13 @@ class ApiAuthService implements AuthService {
       "/user/login-user",
       credentials
     );
-    return { id: res.id, username: res.username, role: res.role, department: res.department ?? null };
+    return {
+      id: res.id,
+      username: res.username,
+      role: res.role,
+      department: res.department ?? null,
+      features: res.features ?? undefined,
+    };
   }
 
   async logout(): Promise<void> {
@@ -35,12 +48,13 @@ class ApiAuthService implements AuthService {
   }
 
   async fetchCurrentUser(): Promise<SessionUser> {
-    const res = await this.client.get<GetUserResponse>("/user/getuser");
+    const res = await this.client.get<MeResponse>("/user/me");
     return {
-      id: res.user._id,
+      id: res.user.id,
       username: res.user.name,
       role: res.user.role,
       department: res.user.department ?? null,
+      features: res.user.features ?? undefined,
     };
   }
 
@@ -71,7 +85,13 @@ class ApiAuthService implements AuthService {
   async verifyOtp(email: string, otp: string): Promise<SessionUser> {
     // Same response shape + cookie as /login-user.
     const res = await this.client.post<LoginResponse>("/user/verify-otp", { email, otp });
-    return { id: res.id, username: res.username, role: res.role, department: res.department ?? null };
+    return {
+      id: res.id,
+      username: res.username,
+      role: res.role,
+      department: res.department ?? null,
+      features: res.features ?? undefined,
+    };
   }
 }
 
