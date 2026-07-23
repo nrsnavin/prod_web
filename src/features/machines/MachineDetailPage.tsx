@@ -19,8 +19,10 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useMachine, useMachineMutations } from "./hooks";
 import { MachineHealthCard } from "./MachineHealth";
-import { MachineShiftRow, MachineStatus, ServiceLogFormValues } from "./types";
+import { MachineHeadMapEditModal } from "./MachineHeadMapEditModal";
+import { MachineHeadElastic, MachineShiftRow, MachineStatus, ServiceLogFormValues } from "./types";
 import { useTrackRecent } from "@/core/ui/uiStore";
+import { Pencil } from "lucide-react";
 
 const statusTone: Record<MachineStatus, ChipTone> = {
   running: "success",
@@ -39,6 +41,24 @@ const shiftColumns: Column<MachineShiftRow>[] = [
   { key: "runtime", header: "Runtime (min)", align: "right", render: (s) => s.runtimeMinutes },
   { key: "output", header: "Output (m)", align: "right", render: (s) => s.outputMeters.toLocaleString("en-IN") },
   { key: "eff", header: "Efficiency", align: "right", render: (s) => `${s.efficiency}%` },
+];
+
+const headElasticColumns: Column<MachineHeadElastic>[] = [
+  {
+    key: "head",
+    header: "Head",
+    render: (h) => <span className="font-medium tabular-nums">#{h.head ?? "—"}</span>,
+  },
+  {
+    key: "elastic",
+    header: "Elastic",
+    render: (h) =>
+      h.elastic?.name ? (
+        h.elastic.name
+      ) : (
+        <span className="text-ink-400">— unassigned —</span>
+      ),
+  },
 ];
 
 const logSchema = z.object({
@@ -98,6 +118,7 @@ export function MachineDetailPage() {
   const { data: machine, isLoading, isError, error } = useMachine(id);
   const { setStatus, addServiceLog } = useMachineMutations();
   const [logOpen, setLogOpen] = useState(false);
+  const [mapEditOpen, setMapEditOpen] = useState(false);
   useTrackRecent("Machine", `/machines/${id}`, machine ? `Machine ${machine.id}` : undefined);
 
   if (isLoading) {
@@ -159,7 +180,16 @@ export function MachineDetailPage() {
             { label: "Manufacturer", value: machine.manufacturer },
             { label: "Heads", value: machine.heads },
             { label: "Hooks", value: machine.hooks },
-            { label: "Running job", value: machine.currentJobNo },
+            {
+              label: "Running job",
+              value: machine.currentJob?.id ? (
+                <Link to={`/jobs/${machine.currentJob.id}`} className="text-brand-600 hover:underline">
+                  J-{machine.currentJob.jobOrderNo ?? machine.currentJobNo}
+                </Link>
+              ) : machine.currentJobNo ? (
+                `J-${machine.currentJobNo}`
+              ) : undefined,
+            },
             {
               label: "Purchased",
               value: machine.dateOfPurchase
@@ -169,6 +199,36 @@ export function MachineDetailPage() {
           ]}
         />
       </Card>
+
+      <Card className="mt-4">
+        <div className="flex items-center justify-between px-5 pt-5">
+          <div className="flex items-baseline gap-3">
+            <h3 className="font-semibold">Head → elastic map</h3>
+            <span className="text-xs text-ink-400">
+              {machine.elastics.filter((h) => h.elastic).length} of {machine.heads} heads threaded
+            </span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => setMapEditOpen(true)}>
+            <Pencil className="h-4 w-4" /> Edit map
+          </Button>
+        </div>
+        <DataTable
+          columns={headElasticColumns}
+          rows={machine.elastics ?? []}
+          rowKey={(h) => `head-${h.head ?? "x"}-${h.elastic?._id ?? "none"}`}
+          emptyTitle="No elastics threaded on this machine"
+        />
+      </Card>
+
+      {mapEditOpen && id && (
+        <MachineHeadMapEditModal
+          machineId={id}
+          heads={machine.heads}
+          current={machine.elastics ?? []}
+          jobId={machine.currentJob?.id ?? null}
+          onClose={() => setMapEditOpen(false)}
+        />
+      )}
 
       {id && <MachineHealthCard machineId={id} />}
 

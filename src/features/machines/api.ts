@@ -42,6 +42,15 @@ export const machineService = {
     await httpClient.post("/machine/add-service-log", { machineId, ...body });
   },
 
+  // Replace the machine's head → elastic map. Each entry pairs a head
+  // number with an elastic id (or null to leave a head unthreaded).
+  async updateElasticMap(
+    id: string,
+    elastics: Array<{ head: number; elastic: string | null }>
+  ): Promise<void> {
+    await httpClient.put("/machine/updateOrder", { id, elastics });
+  },
+
   async predictiveHealth(): Promise<MachineHealthResponse> {
     return httpClient.get<MachineHealthResponse>("/machine/predictive-health");
   },

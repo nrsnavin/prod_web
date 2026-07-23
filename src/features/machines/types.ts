@@ -32,6 +32,12 @@ export interface MachineShiftRow {
   efficiency: number;
 }
 
+// One head of the loom and the elastic threaded on it.
+export interface MachineHeadElastic {
+  head: number | null;
+  elastic: { _id: string; name: string | null } | null;
+}
+
 export interface MachineDetail {
   id: string; // Machine.ID (display code)
   status: MachineStatus;
@@ -40,7 +46,8 @@ export interface MachineDetail {
   hooks: number;
   dateOfPurchase?: string | null;
   currentJobNo?: string | null;
-  elastics: unknown[];
+  currentJob?: { id: string | null; jobOrderNo: number | null } | null;
+  elastics: MachineHeadElastic[];
   result: MachineShiftRow[];
   serviceLogs: ServiceLog[];
 }

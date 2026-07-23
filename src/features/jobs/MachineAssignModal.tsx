@@ -48,15 +48,22 @@ export function MachineAssignModal({
     .filter((e) => e.elasticId)
     .map((e) => ({ value: e.elasticId!, label: e.elasticName }));
 
+  // Spread the job's planned elastics across the given number of heads,
+  // round-robin: a single-elastic job fills every head with it; a
+  // multi-elastic job distributes them (H1→E1, H2→E2, …, wrapping). Each
+  // head stays individually editable afterwards.
+  const spreadAcrossHeads = (heads: number): Record<number, string> => {
+    const next: Record<number, string> = {};
+    for (let h = 0; h < heads; h++) {
+      next[h] = elasticOptions.length ? elasticOptions[h % elasticOptions.length].value : "";
+    }
+    return next;
+  };
+
   const pickMachine = (id: string) => {
     setMachineId(id);
-    // Default every head to the first planned elastic so a single-elastic
-    // job needs no per-head clicks.
-    const first = elasticOptions[0]?.value ?? "";
     const m = (machines.data ?? []).find((x) => x._id === id);
-    const next: Record<number, string> = {};
-    for (let h = 0; h < (m?.NoOfHead ?? 0); h++) next[h] = first;
-    setHeadMap(next);
+    setHeadMap(spreadAcrossHeads(m?.NoOfHead ?? 0));
   };
 
   const allMapped = headCount > 0 && [...Array(headCount)].every((_, h) => headMap[h]);
@@ -77,9 +84,20 @@ export function MachineAssignModal({
 
         {selected && (
           <div>
-            <p className="text-sm font-medium text-ink-600 mb-1.5">
-              Head → elastic mapping ({headCount} heads)
-            </p>
+            <div className="mb-1.5 flex items-center justify-between">
+              <p className="text-sm font-medium text-ink-600">
+                Head → elastic mapping ({headCount} heads)
+              </p>
+              {elasticOptions.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setHeadMap(spreadAcrossHeads(headCount))}
+                  className="text-xs font-medium text-brand-600 hover:underline"
+                >
+                  Spread elastics evenly
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
               {[...Array(headCount)].map((_, h) => (
                 <div key={h} className="flex items-center gap-2">

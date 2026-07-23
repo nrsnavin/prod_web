@@ -45,5 +45,10 @@ export function useMachineMutations() {
       machineService.addServiceLog(machineId, body),
     onSuccess: invalidate,
   });
-  return { create, setStatus, addServiceLog };
+  const updateElasticMap = useMutation({
+    mutationFn: ({ id, elastics }: { id: string; elastics: Array<{ head: number; elastic: string | null }> }) =>
+      machineService.updateElasticMap(id, elastics),
+    onSuccess: invalidate,
+  });
+  return { create, setStatus, addServiceLog, updateElasticMap };
 }
