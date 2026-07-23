@@ -28,8 +28,18 @@ export interface OrderElasticProgress {
   pending: number;
 }
 
+// A populated JobOrder as returned by `get-orderDetail` (which does
+// `.populate("jobs.job")`). Before population `job` is just the id string.
+export interface PopulatedJob {
+  _id: string;
+  jobOrderNo?: number;
+  status?: string;
+}
+
 export interface OrderJobRef {
-  job?: string;
+  // Populated to the JobOrder document by the detail endpoint; a bare id
+  // string when unpopulated.
+  job?: string | PopulatedJob;
   no?: number;
   _id?: string;
   jobOrderNo?: number;
