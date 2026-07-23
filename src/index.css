@@ -118,4 +118,9 @@
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  /* Individual label printing: while a container is soloing one label,
+     hide every other label so only the chosen one lands on paper. */
+  [data-print-solo] .print-label:not(.print-solo-target) {
+    display: none !important;
+  }
 }
