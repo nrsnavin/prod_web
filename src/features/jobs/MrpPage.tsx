@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useMrp } from "./hooks";
 import { jobService } from "./api";
 import { MrpData } from "./types";
+import { ProductionModeControl } from "./ProductionModeControl";
 
 type MrpMaterial = MrpData["materials"][number];
 
@@ -102,12 +103,24 @@ export function MrpPage() {
         <Card className="p-5 print:shadow-none print:p-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip tone="info">{data.status}</StatusChip>
+            {/* Read-only badge on paper; the interactive control below is
+                hidden on print. */}
             <StatusChip tone={data.productionMode === "outsource" ? "warning" : "neutral"}>
               {data.productionMode === "outsource"
                 ? `Outsourced${data.outsourceVendor ? ` — ${data.outsourceVendor}` : ""}`
                 : "In-house"}
             </StatusChip>
           </div>
+
+          <div className="mt-4 print:hidden">
+            <h3 className="text-sm font-medium text-ink-600 mb-1.5">Production</h3>
+            <ProductionModeControl
+              jobId={id!}
+              mode={data.productionMode}
+              vendor={data.outsourceVendor}
+            />
+          </div>
+
           <h3 className="font-semibold mt-4">Elastics on this job</h3>
           <ul className="mt-2 divide-y divide-ink-100">
             {data.elastics.map((e, i) => (
