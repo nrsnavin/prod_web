@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderService } from "./api";
-import { OrderFormValues, OrderStatus } from "./types";
+import { OrderFilter, OrderFormValues } from "./types";
 
 const KEY = "orders";
 
@@ -20,7 +20,7 @@ export function useOrderEstimate(
   });
 }
 
-export function useOrders(status: OrderStatus) {
+export function useOrders(status: OrderFilter) {
   return useQuery({
     queryKey: [KEY, status],
     queryFn: () => orderService.list(status),

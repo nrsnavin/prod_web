@@ -8,6 +8,12 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "Cancelled",
 ];
 
+// The orders list can also filter on "All" (every status). Kept separate
+// from OrderStatus so status-keyed maps and item statuses stay exhaustive.
+export type OrderFilter = "All" | OrderStatus;
+
+export const ORDER_FILTERS: OrderFilter[] = ["All", ...ORDER_STATUSES];
+
 export interface OrderListItem {
   _id: string;
   orderNo: number;

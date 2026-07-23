@@ -1,5 +1,5 @@
 import { ChipTone } from "@/components/ui/StatusChip";
-import { OrderStatus } from "./types";
+import { OrderFilter, OrderStatus } from "./types";
 
 export const orderStatusTone: Record<OrderStatus, ChipTone> = {
   Open: "info",
@@ -15,4 +15,10 @@ export const orderStatusLabel: Record<OrderStatus, string> = {
   InProgress: "In production",
   Completed: "Completed",
   Cancelled: "Cancelled",
+};
+
+// Label for a list filter, which additionally covers "All".
+export const orderFilterLabel: Record<OrderFilter, string> = {
+  All: "All",
+  ...orderStatusLabel,
 };
