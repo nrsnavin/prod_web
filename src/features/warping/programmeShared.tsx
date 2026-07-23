@@ -16,6 +16,14 @@ export function elasticLineName(line: ElasticOrderedLine): string {
   return typeof line.elastic === "object" && line.elastic ? line.elastic.name : "—";
 }
 
+// Resolved elastic names for a programme's lines, dropping unpopulated
+// placeholders — used by the list pages' Elastics column.
+export function elasticNames(lines?: ElasticOrderedLine[]): string[] {
+  return (lines ?? [])
+    .map((l) => elasticLineName(l))
+    .filter((n) => n && n !== "—");
+}
+
 export function ElasticLines({ lines }: { lines?: ElasticOrderedLine[] }) {
   if (!lines?.length) return <span className="text-ink-400">—</span>;
   return (

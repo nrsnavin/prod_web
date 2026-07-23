@@ -8,7 +8,7 @@ import { DataTable, Column } from "@/components/ui/DataTable";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useCoverings } from "./hooks";
 import { Covering, ProgrammeStatus } from "./types";
-import { ProgrammeChip, elasticLineName } from "./programmeShared";
+import { ProgrammeChip, elasticNames } from "./programmeShared";
 
 const columns: Column<Covering>[] = [
   {
@@ -24,11 +24,14 @@ const columns: Column<Covering>[] = [
   {
     key: "elastics",
     header: "Elastics",
-    render: (c) =>
-      (c.elasticPlanned ?? [])
-        .map((l) => elasticLineName(l))
-        .filter(Boolean)
-        .join(", ") || "—",
+    cellClassName: "whitespace-normal",
+    render: (c) => {
+      const names = elasticNames(c.elasticPlanned);
+      if (names.length === 0) return "—";
+      return (
+        <div className="max-w-[22rem] break-words text-ink-600">{names.join(", ")}</div>
+      );
+    },
   },
   {
     key: "date",
