@@ -12,6 +12,7 @@ import { useCovering, useCoveringMutations } from "./hooks";
 import { ProgrammeChip, ElasticLines } from "./programmeShared";
 import { CoveringLabels } from "./CoveringLabels";
 import { CoveringProgrammeSheet } from "./CoveringProgrammeSheet";
+import { CoveringBeamEntries } from "./CoveringBeamEntries";
 
 export function CoveringDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -133,6 +134,8 @@ export function CoveringDetailPage() {
           <ElasticLines lines={covering.elasticPlanned} />
         </div>
       </Card>
+
+      <CoveringBeamEntries covering={covering} />
 
       <CoveringLabels open={labelsOpen} onClose={() => setLabelsOpen(false)} covering={covering} />
       <CoveringProgrammeSheet open={sheetOpen} onClose={() => setSheetOpen(false)} covering={covering} />

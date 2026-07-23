@@ -91,5 +91,15 @@ export function useCoveringMutations() {
       coveringService.cancel(id, remarks),
     onSuccess: invalidate,
   });
-  return { start, complete, cancel };
+  const addBeam = useMutation({
+    mutationFn: ({ id, beamNo, weight, note }: { id: string; beamNo: number; weight: number; note?: string }) =>
+      coveringService.addBeamEntry(id, beamNo, weight, note),
+    onSuccess: invalidate,
+  });
+  const deleteBeam = useMutation({
+    mutationFn: ({ coveringId, entryId }: { coveringId: string; entryId: string }) =>
+      coveringService.deleteBeamEntry(coveringId, entryId),
+    onSuccess: invalidate,
+  });
+  return { start, complete, cancel, addBeam, deleteBeam };
 }
