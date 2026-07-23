@@ -133,29 +133,50 @@ export function OrderForm({
       </div>
       <Input label="Description" {...register("description")} />
 
-      {/* Add from an elastic group — appears once a customer is chosen */}
-      {watchedCustomer && (groups.data?.length ?? 0) > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand-100 bg-brand-50/40 p-2.5">
-          <span className="flex items-center gap-1.5 text-sm font-medium text-ink-700">
-            <Layers className="h-4 w-4 text-brand-500" /> Add from group
+      {/* Add from an elastic group — always shown so the shortcut is
+          discoverable; the body adapts to whether a customer/groups exist. */}
+      <div className="rounded-xl border border-brand-100 bg-brand-50/50 p-3.5">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-100 text-brand-600">
+            <Layers className="h-4 w-4" />
           </span>
-          <div className="w-64">
-            <Combobox
-              placeholder="Select a group…"
-              options={(groups.data ?? []).map((g) => ({
-                value: g._id,
-                label: `${g.name}${g.customer ? "" : " · Global"} (${g.items.length})`,
-              }))}
-              value={groupPick}
-              onChange={(v) => {
-                addGroup(v);
-                setGroupPick("");
-              }}
-            />
+          <div>
+            <p className="text-sm font-semibold text-ink-900">Add from elastic group</p>
+            <p className="text-xs text-ink-400">
+              Pick a saved bundle to add all its elastics to the order at once.
+            </p>
           </div>
-          <span className="text-xs text-ink-400">adds all its elastics to the order</span>
         </div>
-      )}
+        <div className="mt-3">
+          {!watchedCustomer ? (
+            <p className="text-xs text-ink-400">Select a customer to load its saved groups.</p>
+          ) : groups.isLoading ? (
+            <p className="text-xs text-ink-400">Loading groups…</p>
+          ) : (groups.data?.length ?? 0) === 0 ? (
+            <p className="text-xs text-ink-400">
+              No saved groups for this customer yet. Create one under Elastic Groups.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="w-72">
+                <Combobox
+                  placeholder="Select a group…"
+                  options={(groups.data ?? []).map((g) => ({
+                    value: g._id,
+                    label: `${g.name}${g.customer ? "" : " · Global"} (${g.items.length})`,
+                  }))}
+                  value={groupPick}
+                  onChange={(v) => {
+                    addGroup(v);
+                    setGroupPick("");
+                  }}
+                />
+              </div>
+              <span className="text-xs text-ink-400">adds all its elastics to the order</span>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div>
         <p className="text-sm font-medium text-ink-600 mb-1.5">Elastics ordered *</p>
