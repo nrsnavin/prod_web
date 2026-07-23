@@ -205,7 +205,7 @@ export function MachineDetailPage() {
           <div className="flex items-baseline gap-3">
             <h3 className="font-semibold">Head → elastic map</h3>
             <span className="text-xs text-ink-400">
-              {machine.elastics.filter((h) => h.elastic).length} of {machine.heads} heads threaded
+              {(machine.elastics ?? []).filter((h) => h.elastic).length} of {machine.heads} heads threaded
             </span>
           </div>
           <Button size="sm" variant="secondary" onClick={() => setMapEditOpen(true)}>
