@@ -76,7 +76,7 @@ export function WarpingProgrammeSheet({
                     <td className="py-1.5 px-2 w-10 text-ink-400">#{si + 1}</td>
                     <td className="py-1.5 px-2 font-medium">{yarnName(s.warpYarn)}</td>
                     <td className="py-1.5 px-2 text-right tabular-nums">{s.ends}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">{s.length ?? "—"}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums">{s.maxMeters ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

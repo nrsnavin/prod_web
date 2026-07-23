@@ -37,7 +37,7 @@ export const warpingService = {
 
   createPlan: (body: {
     warpingId: string;
-    beams: Array<{ sections: Array<{ warpYarn: string; ends: number; length?: number }> }>;
+    beams: Array<{ sections: Array<{ warpYarn: string; ends: number; maxMeters?: number }> }>;
     remarks?: string;
   }) => httpClient.post("/warping/warpingPlan/create", body),
 
