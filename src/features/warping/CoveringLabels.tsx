@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
+import { Printer } from "lucide-react";
 import { PrintModal } from "@/components/print/PrintModal";
 import { QrImg } from "@/components/print/QrImg";
+import { cn } from "@/components/ui/cn";
 import { BeamEntry, Covering } from "./types";
 import { elasticLineName } from "./programmeShared";
 
@@ -15,7 +18,8 @@ function enteredByName(by: BeamEntry["enteredBy"]): string | null {
 // Covering beam labels — one card per recorded beam entry, showing the
 // beam number and its weight (kg) rather than the planned meters, mirroring
 // the Flutter covering beam label. The elastic name is the first planned
-// line on the covering.
+// line on the covering. Each label can be printed individually (its own
+// Print button), or all at once via the modal's Print action.
 export function CoveringLabels({
   open,
   onClose,
@@ -30,14 +34,42 @@ export function CoveringLabels({
   const elasticName = firstElastic ? elasticLineName(firstElastic) : "";
   const entries = covering.beamEntries ?? [];
 
+  // When set, only the matching label prints (the print CSS hides the rest
+  // while `data-print-solo` is present). Cleared right after printing.
+  const [soloId, setSoloId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!soloId) return;
+    // Defer to the next tick so the solo data-attrs are in the DOM before
+    // the print dialog snapshots the page.
+    const t = setTimeout(() => {
+      window.print();
+      setSoloId(null);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [soloId]);
+
   return (
     <PrintModal open={open} onClose={onClose} title="Covering beam labels">
-      <div className="space-y-3">
+      <div className="space-y-3" data-print-solo={soloId ? "" : undefined}>
         {entries.map((entry) => {
           const by = enteredByName(entry.enteredBy);
           return (
-            <div key={entry._id} className="print-label border-2 border-ink-900 rounded-sm p-3">
-              <div className="flex justify-between text-sm font-bold border-b border-ink-200 pb-1.5">
+            <div
+              key={entry._id}
+              className={cn(
+                "print-label relative border-2 border-ink-900 rounded-sm p-3",
+                soloId === entry._id && "print-solo-target"
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => setSoloId(entry._id)}
+                className="print:hidden absolute right-2 top-2 inline-flex items-center gap-1 rounded-md border border-ink-200 bg-white px-2 py-1 text-xs font-medium text-ink-600 hover:border-ink-400"
+                aria-label={`Print beam ${entry.beamNo} label`}
+              >
+                <Printer className="h-3.5 w-3.5" /> Print
+              </button>
+              <div className="flex justify-between text-sm font-bold border-b border-ink-200 pb-1.5 pr-16">
                 <span>COVERING BEAM · JOB J-{jobNo}</span>
                 <span>{covering.job?.customer?.name ?? ""}</span>
               </div>
