@@ -1,8 +1,8 @@
 import { httpClient } from "@/core/http/httpClient";
-import { OrderDetail, OrderEtaEstimate, OrderFormValues, OrderListItem, OrderStatus } from "./types";
+import { OrderDetail, OrderEtaEstimate, OrderFilter, OrderFormValues, OrderListItem } from "./types";
 
 export const orderService = {
-  async list(status: OrderStatus): Promise<OrderListItem[]> {
+  async list(status: OrderFilter): Promise<OrderListItem[]> {
     const res = await httpClient.get<{ success: boolean; orders: OrderListItem[] }>(
       "/order/list",
       { status }

@@ -12,8 +12,8 @@ import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useOrders, useOrderMutations } from "./hooks";
-import { ORDER_STATUSES, OrderListItem, OrderStatus } from "./types";
-import { orderStatusTone, orderStatusLabel } from "./orderStatus";
+import { ORDER_FILTERS, OrderFilter, OrderListItem } from "./types";
+import { orderStatusTone, orderStatusLabel, orderFilterLabel } from "./orderStatus";
 import { OrderForm } from "./OrderForm";
 
 const columns: Column<OrderListItem>[] = [
@@ -40,7 +40,7 @@ const columns: Column<OrderListItem>[] = [
 ];
 
 export function OrderListPage() {
-  const [status, setStatus] = useState<OrderStatus>("Open");
+  const [status, setStatus] = useState<OrderFilter>("All");
   const [createOpen, setCreateOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -48,11 +48,13 @@ export function OrderListPage() {
   const { data, isLoading, isError, error } = useOrders(status);
   const { create } = useOrderMutations();
 
+  const scope = status === "All" ? "" : `${orderFilterLabel[status].toLowerCase()} `;
+
   return (
     <>
       <PageHeader
         title="Orders"
-        subtitle={data ? `${data.length} ${orderStatusLabel[status].toLowerCase()} orders` : undefined}
+        subtitle={data ? `${data.length} ${scope}orders` : undefined}
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" /> New order
@@ -62,7 +64,7 @@ export function OrderListPage() {
 
       <div className="mb-4">
         <FilterChips
-          options={ORDER_STATUSES.map((s) => ({ value: s, label: orderStatusLabel[s] }))}
+          options={ORDER_FILTERS.map((s) => ({ value: s, label: orderFilterLabel[s] }))}
           value={status}
           onChange={setStatus}
         />
@@ -77,7 +79,7 @@ export function OrderListPage() {
           rowKey={(o) => o._id}
           onRowClick={(o) => navigate(`/orders/${o._id}`)}
           loading={isLoading}
-          emptyTitle={`No ${orderStatusLabel[status].toLowerCase()} orders`}
+          emptyTitle={`No ${scope}orders`}
         />
       </Card>
 
