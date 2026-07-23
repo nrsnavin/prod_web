@@ -15,6 +15,7 @@ import { useCustomer, useCustomerMutations } from "./hooks";
 import { CustomerForm } from "./CustomerForm";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { CustomerElasticGroups } from "@/features/elasticGroups/CustomerElasticGroups";
+import { CustomerOrdersCard } from "./CustomerOrdersCard";
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -99,6 +100,8 @@ export function CustomerDetailPage() {
           ]}
         />
       </Card>
+
+      <CustomerOrdersCard customerId={customer._id} />
 
       <CustomerElasticGroups customerId={customer._id} />
 

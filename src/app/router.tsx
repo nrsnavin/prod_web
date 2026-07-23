@@ -27,6 +27,7 @@ const StockMovementsReportPage = lazyPage(() => import("@/features/reports/Stock
 const CustomerListPage = lazyPage(() => import("@/features/customers/CustomerListPage"), "CustomerListPage");
 const CustomerDetailPage = lazyPage(() => import("@/features/customers/CustomerDetailPage"), "CustomerDetailPage");
 const SupplierListPage = lazyPage(() => import("@/features/suppliers/SupplierListPage"), "SupplierListPage");
+const SupplierDetailPage = lazyPage(() => import("@/features/suppliers/SupplierDetailPage"), "SupplierDetailPage");
 const PoListPage = lazyPage(() => import("@/features/suppliers/PoListPage"), "PoListPage");
 const PoCreatePage = lazyPage(() => import("@/features/suppliers/PoCreatePage"), "PoCreatePage");
 const PoDetailPage = lazyPage(() => import("@/features/suppliers/PoDetailPage"), "PoDetailPage");
@@ -138,6 +139,7 @@ const detailRoutes = [
   { path: "/reports/stock-purchases", element: withSuspense(<StockPurchasesReportPage />) },
   { path: "/reports/stock-movements", element: withSuspense(<StockMovementsReportPage />) },
   { path: "/customers/:id", element: withSuspense(<CustomerDetailPage />) },
+  { path: "/suppliers/:id", element: withSuspense(<SupplierDetailPage />) },
   { path: "/purchase-orders/new", element: withSuspense(<PoCreatePage />) },
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
   { path: "/materials/forecast", element: withSuspense(<MaterialForecastPage />) },

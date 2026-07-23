@@ -131,7 +131,32 @@ export const payrollService = {
     );
     return res.data;
   },
+  async history(empId: string, limit = 6): Promise<PayrollHistory> {
+    const res = await httpClient.get<{ success: boolean; data: PayrollHistory }>(
+      `/payroll/history/${empId}`,
+      { limit }
+    );
+    return res.data;
+  },
 };
+
+export interface PayslipRow {
+  _id: string;
+  year: number;
+  month: number;
+  netPay: number;
+  grossEarnings?: number;
+  totalDeductions?: number;
+  status: string; // draft | finalized | paid
+  finalizedAt?: string | null;
+  paidAt?: string | null;
+  createdAt?: string;
+}
+export interface PayrollHistory {
+  payslips: PayslipRow[];
+  unpaidTotal: number;
+  unpaidCount: number;
+}
 
 export interface EmployeeOverview {
   employee: { id: string; name: string; department?: string; role?: string; hourlyRate: number };
@@ -218,9 +243,26 @@ export interface LeaveCreateInput {
   autoApprove?: boolean;
 }
 
+export interface EmployeeLeaveRow {
+  id: string;
+  date?: string;
+  dateLabel?: string;
+  shift?: string;
+  leaveType?: string;
+  reason?: string;
+  status: string; // pending | approved | rejected
+  createdAt?: string;
+}
+
 export const leaveService = {
   async pending(): Promise<LeaveRow[]> {
     const res = await httpClient.get<{ success: boolean; data: LeaveRow[] }>("/leave/pending");
+    return res.data;
+  },
+  async byEmployee(empId: string): Promise<EmployeeLeaveRow[]> {
+    const res = await httpClient.get<{ success: boolean; data: EmployeeLeaveRow[] }>(
+      `/leave/employee/${empId}`
+    );
     return res.data;
   },
   approve: (id: string, note?: string) => httpClient.put(`/leave/${id}/approve`, { note }),
