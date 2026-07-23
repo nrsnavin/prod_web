@@ -18,6 +18,14 @@ export interface WastageRecord {
   createdAt?: string;
 }
 
+// A weaving operator who worked a shift on a given job — the candidates
+// for the "employee" field when recording that job's wastage.
+export interface JobOperator {
+  _id: string;
+  name: string;
+  department?: string;
+}
+
 export interface WastageEligibleJob {
   _id: string;
   jobOrderNo: number;

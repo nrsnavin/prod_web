@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,9 +17,9 @@ import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { useEmployees } from "@/features/employees/hooks";
 import {
   useEligibleJobs,
+  useJobOperators,
   useWastageAnalytics,
   useWastageByJob,
   useWastageJobs,
@@ -40,7 +40,6 @@ const schema = z.object({
 function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
   const { toast } = useToast();
   const jobs = useEligibleJobs();
-  const employees = useEmployees("all");
   const { add } = useWastageMutations();
 
   const {
@@ -48,6 +47,7 @@ function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<WastageFormValues>({
     resolver: zodResolver(schema),
@@ -60,6 +60,18 @@ function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
     .map((l) => (typeof l.elastic === "object" && l.elastic ? l.elastic : null))
     .filter((e): e is { _id: string; name: string } => !!e)
     .map((e) => ({ value: e._id, label: e.name }));
+
+  // Only the operators who actually worked shifts on the selected job — the
+  // employee field is meaningless until a job is chosen.
+  const operators = useJobOperators(jobId || undefined);
+  const employeeOptions = (operators.data ?? []).map((e) => ({ value: e._id, label: e.name }));
+
+  // Clear elastic + employee when the job changes so a stale pick from a
+  // previous job can't be submitted.
+  useEffect(() => {
+    setValue("elastic", "");
+    setValue("employee", "");
+  }, [jobId, setValue]);
 
   return (
     <form
@@ -102,9 +114,17 @@ function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
         )} />
         <Controller control={control} name="employee" render={({ field }) => (
           <Combobox
-            label="Employee *"
-            placeholder="Select employee"
-            options={(employees.data ?? []).map((e) => ({ value: e._id, label: e.name }))}
+            label="Employee (weaving operator) *"
+            placeholder={
+              !jobId
+                ? "Select a job first"
+                : operators.isLoading
+                ? "Loading operators…"
+                : employeeOptions.length === 0
+                ? "No operators recorded for this job"
+                : "Select operator"
+            }
+            options={employeeOptions}
             error={errors.employee?.message}
             value={field.value}
             onChange={field.onChange}
