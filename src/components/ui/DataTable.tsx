@@ -13,6 +13,9 @@ export interface Column<T> {
   render: (row: T) => ReactNode;
   /** When set, the header becomes click-to-sort using this accessor. */
   sort?: (row: T) => number | string;
+  /** Extra classes for this column's cells — e.g. to allow wrapping a
+   *  long cell that would otherwise overflow (overrides whitespace-nowrap). */
+  cellClassName?: string;
 }
 
 export interface DataTableProps<T> {
@@ -143,7 +146,8 @@ export function DataTable<T>({
                   className={cn(
                     "px-4 py-3 text-sm whitespace-nowrap",
                     alignClass[c.align ?? "left"],
-                    (c.align ?? "left") === "right" && "tabular-nums"
+                    (c.align ?? "left") === "right" && "tabular-nums",
+                    c.cellClassName
                   )}
                 >
                   {c.render(row)}

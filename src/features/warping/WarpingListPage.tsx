@@ -8,7 +8,7 @@ import { DataTable, Column } from "@/components/ui/DataTable";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useWarpings } from "./hooks";
 import { ProgrammeStatus, Warping } from "./types";
-import { ProgrammeChip, elasticLineName } from "./programmeShared";
+import { ProgrammeChip, elasticNames } from "./programmeShared";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All" },
@@ -32,11 +32,14 @@ const columns: Column<Warping>[] = [
   {
     key: "elastics",
     header: "Elastics",
-    render: (w) =>
-      (w.elasticOrdered ?? [])
-        .map((l) => elasticLineName(l))
-        .filter(Boolean)
-        .join(", ") || "—",
+    cellClassName: "whitespace-normal",
+    render: (w) => {
+      const names = elasticNames(w.elasticOrdered);
+      if (names.length === 0) return "—";
+      return (
+        <div className="max-w-[22rem] break-words text-ink-600">{names.join(", ")}</div>
+      );
+    },
   },
   {
     key: "plan",
