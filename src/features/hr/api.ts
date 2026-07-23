@@ -209,6 +209,15 @@ export interface LeaveRow {
   createdAt?: string;
 }
 
+export interface LeaveCreateInput {
+  employeeId: string;
+  date: string;
+  shift: "DAY" | "NIGHT" | "BOTH";
+  leaveType: "casual" | "sick" | "unpaid";
+  reason: string;
+  autoApprove?: boolean;
+}
+
 export const leaveService = {
   async pending(): Promise<LeaveRow[]> {
     const res = await httpClient.get<{ success: boolean; data: LeaveRow[] }>("/leave/pending");
@@ -216,4 +225,7 @@ export const leaveService = {
   },
   approve: (id: string, note?: string) => httpClient.put(`/leave/${id}/approve`, { note }),
   reject: (id: string, note?: string) => httpClient.put(`/leave/${id}/reject`, { note }),
+  // Admin raises leave on an employee's behalf; autoApprove creates it
+  // already approved (and syncs attendance).
+  create: (body: LeaveCreateInput) => httpClient.post("/leave/admin-request", body),
 };
