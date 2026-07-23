@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/core/auth/useAuth";
-import { canAccessPath, effectiveDepartment } from "./navigation";
+import { canAccessPath } from "./navigation";
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -39,7 +39,7 @@ export function RequireRole({
 export function RequireDeptAccess({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const location = useLocation();
-  if (!canAccessPath(location.pathname, effectiveDepartment(user))) {
+  if (!canAccessPath(location.pathname, user)) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
