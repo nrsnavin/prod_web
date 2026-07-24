@@ -1,5 +1,6 @@
 import { httpClient } from "@/core/http/httpClient";
 import {
+  JobOperator,
   WastageAnalytics,
   WastageEligibleJob,
   WastageFormValues,
@@ -30,6 +31,16 @@ export const wastageService = {
       "/wastage/jobs-for-wastage"
     );
     return res.jobs;
+  },
+
+  // The weaving operators who worked shifts on this job — used to scope the
+  // employee dropdown when recording wastage.
+  async jobOperators(jobId: string): Promise<JobOperator[]> {
+    const res = await httpClient.get<{ success: boolean; operators: JobOperator[] }>(
+      "/wastage/job-operators",
+      { id: jobId }
+    );
+    return res.operators;
   },
 
   async analytics(days = 30): Promise<WastageAnalytics> {

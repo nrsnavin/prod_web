@@ -8,6 +8,12 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "Cancelled",
 ];
 
+// The orders list can also filter on "All" (every status). Kept separate
+// from OrderStatus so status-keyed maps and item statuses stay exhaustive.
+export type OrderFilter = "All" | OrderStatus;
+
+export const ORDER_FILTERS: OrderFilter[] = ["All", ...ORDER_STATUSES];
+
 export interface OrderListItem {
   _id: string;
   orderNo: number;
@@ -28,8 +34,18 @@ export interface OrderElasticProgress {
   pending: number;
 }
 
+// A populated JobOrder as returned by `get-orderDetail` (which does
+// `.populate("jobs.job")`). Before population `job` is just the id string.
+export interface PopulatedJob {
+  _id: string;
+  jobOrderNo?: number;
+  status?: string;
+}
+
 export interface OrderJobRef {
-  job?: string;
+  // Populated to the JobOrder document by the detail endpoint; a bare id
+  // string when unpopulated.
+  job?: string | PopulatedJob;
   no?: number;
   _id?: string;
   jobOrderNo?: number;
@@ -40,16 +56,18 @@ export interface RawMaterialRequirement {
   id?: string;
   name?: string;
   material?: { _id: string; name: string } | string;
+  rawMaterial?: string;
   quantity?: number;
   required?: number;
-  available?: number;
-  stock?: number;
-  unit?: string;
-  // Actual field names returned by the backend (services/materialRequirement
-  // + api/order.js): kept the alias fields above for backward-compat.
+  // The order-detail endpoint returns the requirement as `requiredWeight`
+  // (kg) and current stock as `inStock`; the older `required`/`available`
+  // names are kept as fallbacks for other callers.
   requiredWeight?: number;
+  available?: number;
   inStock?: number;
+  stock?: number;
   stockSufficient?: boolean;
+  unit?: string;
 }
 
 export interface OrderDetail {
@@ -64,6 +82,17 @@ export interface OrderDetail {
   elastics: OrderElasticProgress[];
   jobs: OrderJobRef[];
   rawMaterialRequired: RawMaterialRequirement[];
+}
+
+// Structured payload the backend attaches to an INSUFFICIENT_STOCK 400
+// when an Open order is approved while a raw material is short. The
+// force-approve dialog renders it so the admin sees what they override.
+export interface StockShortfall {
+  materialId: string;
+  materialName: string;
+  available: number;
+  required: number;
+  short: number;
 }
 
 export interface OrderFormValues {

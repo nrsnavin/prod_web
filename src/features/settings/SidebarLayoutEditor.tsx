@@ -6,7 +6,6 @@ import { useAuth } from "@/core/auth/useAuth";
 import { useUiStore } from "@/core/ui/uiStore";
 import {
   visibleSections,
-  effectiveDepartment,
   UNHIDEABLE_PATHS,
   NavItem,
 } from "@/app/navigation";
@@ -31,7 +30,7 @@ export function SidebarLayoutEditor() {
   const setSectionOrder = useUiStore((s) => s.setSectionOrder);
   const resetNavPrefs = useUiStore((s) => s.resetNavPrefs);
 
-  const sections = visibleSections(effectiveDepartment(user));
+  const sections = visibleSections(user);
   const hidden = new Set(navHidden);
 
   const move = (sectionLabel: string, items: NavItem[], from: number, to: number) => {

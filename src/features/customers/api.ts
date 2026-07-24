@@ -39,4 +39,32 @@ export const customerService = {
   async deactivate(id: string): Promise<void> {
     await httpClient.delete("/customer/delete-customer", { id });
   },
+
+  async orders(id: string): Promise<CustomerOrders> {
+    const res = await httpClient.get<{ success: boolean } & CustomerOrders>(
+      "/customer/orders",
+      { id }
+    );
+    return {
+      running: res.running ?? [],
+      past: res.past ?? [],
+      pastTotal: res.pastTotal ?? 0,
+      hasMore: res.hasMore ?? false,
+    };
+  },
 };
+
+export interface CustomerOrderRow {
+  _id: string;
+  orderNo: number;
+  po?: string;
+  status: string;
+  supplyDate?: string;
+  createdAt?: string;
+}
+export interface CustomerOrders {
+  running: CustomerOrderRow[];
+  past: CustomerOrderRow[];
+  pastTotal: number;
+  hasMore: boolean;
+}

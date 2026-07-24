@@ -11,6 +11,7 @@ import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ApiError } from "@/core/http/httpClient";
 import { payrollService, PayrollEmployeeRow } from "./api";
 import { FormScreen } from "@/components/ui/FormScreen";
@@ -235,6 +236,16 @@ export function PayrollPage() {
   });
   const rejectAdv = useMutation({ mutationFn: payrollService.rejectAdvance, onSuccess: invalidate });
   const [addAdvOpen, setAddAdvOpen] = useState(false);
+  const [confirmGenerate, setConfirmGenerate] = useState(false);
+
+  const runGenerate = () =>
+    generate.mutate(undefined, {
+      onSuccess: (r) => {
+        toast(r.message ?? "Payroll generated", "success");
+        setConfirmGenerate(false);
+      },
+      onError: (e) => toast(e instanceof ApiError ? e.message : "Generation failed", "error"),
+    });
 
   const s = dashboard.data?.summary;
 
@@ -296,13 +307,7 @@ export function PayrollPage() {
         actions={
           <Button
             loading={generate.isPending}
-            onClick={() =>
-              generate.mutate(undefined, {
-                onSuccess: (r) => toast(r.message ?? "Payroll generated", "success"),
-                onError: (e) =>
-                  toast(e instanceof ApiError ? e.message : "Generation failed", "error"),
-              })
-            }
+            onClick={() => setConfirmGenerate(true)}
           >
             <Play className="h-4 w-4" /> Generate {MONTHS[month - 1]}
           </Button>
@@ -456,6 +461,16 @@ export function PayrollPage() {
           onClose={() => setSlip(null)}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmGenerate}
+        title={`Generate ${MONTHS[month - 1]} ${year} payroll?`}
+        message="This recomputes pay for every employee from attendance, bonuses and advances for the selected month, replacing any existing draft run."
+        confirmLabel="Generate"
+        loading={generate.isPending}
+        onCancel={() => setConfirmGenerate(false)}
+        onConfirm={runGenerate}
+      />
     </>
   );
 }

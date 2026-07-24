@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -77,6 +78,7 @@ function SupplierForm({
 }
 
 export function SupplierListPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -174,6 +176,7 @@ export function SupplierListPage() {
           columns={columns}
           rows={data?.suppliers ?? []}
           rowKey={(s) => s._id}
+          onRowClick={(s) => navigate(`/suppliers/${s._id}`)}
           loading={isLoading}
           emptyTitle="No suppliers found"
         />

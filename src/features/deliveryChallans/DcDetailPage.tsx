@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useDc, useDcMutations } from "./hooks";
@@ -20,6 +21,10 @@ export function DcDetailPage() {
   const { data: dc, isLoading, isError, error } = useDc(id);
   const { updateStatus } = useDcMutations();
   const [downloading, setDownloading] = useState(false);
+  // Status transition awaiting confirmation.
+  const [pending, setPending] = useState<
+    { status: DcStatus; msg: string; title: string; body: string; label: string; danger?: boolean } | null
+  >(null);
 
   const downloadPdf = async () => {
     if (!id) return;
@@ -86,12 +91,20 @@ export function DcDetailPage() {
                 <Printer className="h-4 w-4" /> Print
               </Button>
               {dc.status === "draft" && (
-                <Button loading={updateStatus.isPending} onClick={() => setStatus("dispatched", "DC dispatched")}>
+                <Button loading={updateStatus.isPending} onClick={() => setPending({
+                  status: "dispatched", msg: "DC dispatched", label: "Dispatch",
+                  title: "Dispatch this challan?",
+                  body: "Mark this delivery challan as dispatched? This confirms the goods have left the premises.",
+                })}>
                   <Truck className="h-4 w-4" /> Dispatch
                 </Button>
               )}
               {dc.status === "dispatched" && (
-                <Button loading={updateStatus.isPending} onClick={() => setStatus("delivered", "DC delivered")}>
+                <Button loading={updateStatus.isPending} onClick={() => setPending({
+                  status: "delivered", msg: "DC delivered", label: "Mark delivered",
+                  title: "Mark as delivered?",
+                  body: "Confirm the customer has received this delivery.",
+                })}>
                   <PackageCheck className="h-4 w-4" /> Mark delivered
                 </Button>
               )}
@@ -99,7 +112,11 @@ export function DcDetailPage() {
                 <Button
                   variant="danger"
                   loading={updateStatus.isPending}
-                  onClick={() => setStatus("cancelled", "DC cancelled — stock restored")}
+                  onClick={() => setPending({
+                    status: "cancelled", msg: "DC cancelled — stock restored", label: "Cancel DC", danger: true,
+                    title: "Cancel this challan?",
+                    body: "Cancelling restores the deducted stock and reservations. This can't be undone.",
+                  })}
                 >
                   <XCircle className="h-4 w-4" /> Cancel
                 </Button>
@@ -219,6 +236,20 @@ export function DcDetailPage() {
           </button>
         </p>
       )}
+
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.title ?? ""}
+        message={pending?.body ?? ""}
+        confirmLabel={pending?.label ?? "Confirm"}
+        danger={pending?.danger}
+        loading={updateStatus.isPending}
+        onCancel={() => setPending(null)}
+        onConfirm={() => {
+          if (pending) setStatus(pending.status, pending.msg);
+          setPending(null);
+        }}
+      />
     </>
   );
 }

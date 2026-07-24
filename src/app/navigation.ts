@@ -39,13 +39,14 @@ import {
 // Departments drive who sees what. `admin` sees everything; the four
 // shop-floor departments each see a focused set. Keep this list in sync
 // with utils/roles.js on the backend.
-export const DEPARTMENTS = ["admin", "preparatory", "weaving", "packing", "finance"] as const;
+// Preparatory + weaving were merged into a single "production" department
+// (they always shared the production role). Packing stays separate.
+export const DEPARTMENTS = ["admin", "production", "packing", "finance"] as const;
 export type Department = (typeof DEPARTMENTS)[number];
 
 export const DEPARTMENT_LABELS: Record<string, string> = {
   admin: "Admin",
-  preparatory: "Preparatory (Warping & Covering)",
-  weaving: "Weaving",
+  production: "Production (Warping, Weaving & Covering)",
   packing: "Packing & Checking",
   finance: "Finance",
 };
@@ -71,7 +72,7 @@ export const navSections: NavSection[] = [
     label: "Overview",
     items: [
       { label: "Dashboard", path: "/", icon: LayoutDashboard }, // all
-      { label: "Analytics", path: "/analytics", icon: TrendingUp, departments: ["admin", "weaving"] },
+      { label: "Analytics", path: "/analytics", icon: TrendingUp, departments: ["admin", "production"] },
       { label: "Reports", path: "/reports", icon: FileBarChart, departments: ["admin", "finance"] },
       { label: "Audit Trail", path: "/audit", icon: Fingerprint, departments: ["admin"] },
     ],
@@ -80,22 +81,22 @@ export const navSections: NavSection[] = [
     label: "Sales",
     items: [
       { label: "Orders", path: "/orders", icon: ShoppingCart, departments: ["admin", "finance"] },
-      { label: "Job Orders", path: "/jobs", icon: ClipboardList, departments: ["admin", "preparatory", "weaving", "packing"] },
+      { label: "Job Orders", path: "/jobs", icon: ClipboardList, departments: ["admin", "production", "packing"] },
       { label: "Delivery Challans", path: "/delivery-challans", icon: Truck, departments: ["admin", "finance"] },
     ],
   },
   {
     label: "Production",
     items: [
-      { label: "Auto Planner", path: "/planner", icon: Wand2, departments: ["admin", "weaving"] },
-      { label: "Warping", path: "/warping", icon: Layers, departments: ["admin", "preparatory"] },
-      { label: "Covering", path: "/covering", icon: Disc3, departments: ["admin", "preparatory"] },
+      { label: "Auto Planner", path: "/planner", icon: Wand2, departments: ["admin", "production"] },
+      { label: "Warping", path: "/warping", icon: Layers, departments: ["admin", "production"] },
+      { label: "Covering", path: "/covering", icon: Disc3, departments: ["admin", "production"] },
       { label: "Packing", path: "/packing", icon: Package, departments: ["admin", "packing"] },
       { label: "Quality Control", path: "/qc", icon: ScanLine, departments: ["admin", "packing"] },
-      { label: "Shift Plans", path: "/shift-plans", icon: CalendarClock, departments: ["admin", "weaving"] },
-      { label: "Shift Verification", path: "/shift-verification", icon: ShieldCheck, departments: ["admin", "weaving"] },
-      { label: "Production View", path: "/production", icon: Factory, departments: ["admin", "weaving"] },
-      { label: "Wastage", path: "/wastage", icon: Trash2, departments: ["admin", "weaving"] },
+      { label: "Shift Plans", path: "/shift-plans", icon: CalendarClock, departments: ["admin", "production"] },
+      { label: "Shift Verification", path: "/shift-verification", icon: ShieldCheck, departments: ["admin", "production"] },
+      { label: "Production View", path: "/production", icon: Factory, departments: ["admin", "production"] },
+      { label: "Wastage", path: "/wastage", icon: Trash2, departments: ["admin", "production"] },
     ],
   },
   {
@@ -107,7 +108,7 @@ export const navSections: NavSection[] = [
       { label: "Raw Materials", path: "/materials", icon: Boxes, departments: ["admin", "finance"] },
       { label: "Elastic Products", path: "/elastics", icon: Cable, departments: ["admin", "finance"] },
       { label: "Elastic Groups", path: "/elastic-groups", icon: Layers, departments: ["admin"] },
-      { label: "Machines", path: "/machines", icon: Cog, departments: ["admin", "weaving"] },
+      { label: "Machines", path: "/machines", icon: Cog, departments: ["admin", "production"] },
       { label: "Employees", path: "/employees", icon: UserRound, departments: ["admin", "finance"] },
     ],
   },
@@ -153,17 +154,37 @@ export const allNavItems: NavItem[] = navSections.flatMap((s) => s.items);
 // admin, or the item explicitly lists the department. Unknown/absent
 // department (e.g. a legacy user carrying only a raw role) sees only the
 // unrestricted items — fail closed.
-const FLOOR_DEPARTMENTS: Department[] = ["preparatory", "weaving", "packing"];
+// Legacy departments (pre-merge) alias to the merged "production" dept.
+const LEGACY_DEPT_ALIAS: Record<string, string> = { preparatory: "production", weaving: "production" };
+function normDept(d: string | null | undefined): string | undefined {
+  if (!d) return undefined;
+  return LEGACY_DEPT_ALIAS[d] ?? d;
+}
 
-export function canAccess(item: NavItem, department: string | undefined | null): boolean {
-  if (!item.departments) return true;
+// Access context: the current user (or, for legacy call paths, a bare
+// department string). A user's explicit `features` list is authoritative
+// when present; otherwise we fall back to the department defaults.
+export type AccessCtx =
+  | { role?: string; department?: string | null; features?: string[] | null }
+  | string
+  | null
+  | undefined;
+
+function ctxFeatures(ctx: AccessCtx): string[] | undefined {
+  if (ctx && typeof ctx === "object" && Array.isArray(ctx.features)) return ctx.features;
+  return undefined;
+}
+
+export function canAccess(item: NavItem, ctx: AccessCtx): boolean {
+  if (!item.departments) return true; // unrestricted — always visible
+
+  // Custom per-user features win when present.
+  const features = ctxFeatures(ctx);
+  if (features) return features.includes(item.path);
+
+  // Legacy fallback: department-based.
+  const department = typeof ctx === "string" ? normDept(ctx) : effectiveDepartment(ctx);
   if (department === "admin") return true;
-  // Legacy users carrying the raw backend role `production` (no
-  // department assigned yet) span the whole floor — show the union of
-  // the three floor departments until an admin assigns one.
-  if (department === "production") {
-    return item.departments.some((d) => FLOOR_DEPARTMENTS.includes(d));
-  }
   return !!department && item.departments.includes(department as Department);
 }
 
@@ -174,18 +195,18 @@ export function effectiveDepartment(
   user: { role?: string; department?: string | null } | null | undefined
 ): string | undefined {
   if (!user) return undefined;
-  if (user.department) return user.department;
+  if (user.department) return normDept(user.department);
   if (user.role === "admin") return "admin";
   if (user.role === "accounts") return "finance";
-  if (user.role === "production") return "production"; // union of floor depts (see canAccess)
+  if (user.role === "production") return "production";
   return undefined; // legacy stores/sales → unrestricted items until reassigned
 }
 
-export function visibleSections(department: string | undefined | null): NavSection[] {
+export function visibleSections(ctx: AccessCtx): NavSection[] {
   return navSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => canAccess(item, department)),
+      items: section.items.filter((item) => canAccess(item, ctx)),
     }))
     .filter((section) => section.items.length > 0);
 }
@@ -222,10 +243,36 @@ export function applyNavPrefs(sections: NavSection[], prefs: NavPrefs): NavSecti
  *  nav item that is a prefix of the path, so detail pages (e.g.
  *  /orders/123) inherit their section's ("/orders") access. Paths with no
  *  matching nav item are allowed (e.g. "/" dashboard). */
-export function canAccessPath(path: string, department: string | undefined | null): boolean {
-  if (department === "admin") return true;
+export function canAccessPath(path: string, ctx: AccessCtx): boolean {
   const match = allNavItems
     .filter((i) => i.path !== "/" && (path === i.path || path.startsWith(i.path + "/")))
     .sort((a, b) => b.path.length - a.path.length)[0];
-  return match ? canAccess(match, department) : true;
+  return match ? canAccess(match, ctx) : true;
+}
+
+// ── Feature catalog helpers (for the admin Users screen) ──────────────
+// The nav item paths ARE the feature keys. The create/edit user form shows
+// this grouped list as a checklist.
+export interface FeatureOption {
+  key: string; // the nav path, e.g. "/orders"
+  label: string;
+  /** true when every user can open it regardless of assigned features. */
+  always: boolean;
+}
+export interface FeatureGroup {
+  section: string;
+  features: FeatureOption[];
+}
+export const FEATURE_GROUPS: FeatureGroup[] = navSections.map((s) => ({
+  section: s.label,
+  features: s.items.map((i) => ({ key: i.path, label: i.label, always: !i.departments })),
+}));
+export const ALL_FEATURE_KEYS: string[] = allNavItems.map((i) => i.path);
+
+// Default feature set for a department — mirrors utils/features.js on the
+// backend. Used to seed the checklist when an admin picks a department.
+export function featuresForDepartment(department: string | undefined | null): string[] {
+  return allNavItems
+    .filter((i) => canAccess(i, department ?? undefined))
+    .map((i) => i.path);
 }

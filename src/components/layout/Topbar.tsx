@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Menu, Search, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/auth/useAuth";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export interface TopbarProps {
   onMenuClick: () => void;
@@ -10,10 +12,18 @@ export interface TopbarProps {
 export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
-    navigate("/login", { replace: true });
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate("/login", { replace: true });
+    } finally {
+      setLoggingOut(false);
+      setConfirmLogout(false);
+    }
   };
 
   return (
@@ -46,7 +56,7 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
           {user?.username?.charAt(0) ?? "?"}
         </span>
         <button
-          onClick={handleLogout}
+          onClick={() => setConfirmLogout(true)}
           className="p-2 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900"
           title="Log out"
           aria-label="Log out"
@@ -54,6 +64,16 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
           <LogOut className="h-5 w-5" />
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmLogout}
+        title="Log out?"
+        message="You'll need to sign in again to get back in."
+        confirmLabel="Log out"
+        loading={loggingOut}
+        onConfirm={handleLogout}
+        onCancel={() => setConfirmLogout(false)}
+      />
     </header>
   );
 }

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderService } from "./api";
-import { OrderFormValues, OrderStatus } from "./types";
+import { OrderFilter, OrderFormValues } from "./types";
 
 const KEY = "orders";
 
@@ -20,7 +20,7 @@ export function useOrderEstimate(
   });
 }
 
-export function useOrders(status: OrderStatus) {
+export function useOrders(status: OrderFilter) {
   return useQuery({
     queryKey: [KEY, status],
     queryFn: () => orderService.list(status),
@@ -49,8 +49,8 @@ export function useOrderMutations() {
     onSuccess: invalidate,
   });
   const approve = useMutation({
-    mutationFn: (vars: { id: string; force?: boolean; forceReason?: string }) =>
-      orderService.approve(vars.id, { force: vars.force, forceReason: vars.forceReason }),
+    mutationFn: ({ id, force, forceReason }: { id: string; force?: boolean; forceReason?: string }) =>
+      orderService.approve(id, force, forceReason),
     onSuccess: invalidate,
   });
   const cancel = useMutation({

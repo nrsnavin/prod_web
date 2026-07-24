@@ -6,6 +6,7 @@ export interface ManagedUser {
   email: string;
   role: string;
   department?: string | null;
+  features?: string[];
   createdAt?: string;
 }
 
@@ -14,6 +15,7 @@ export interface UserCreateInput {
   email: string;
   password: string;
   department: string;
+  features?: string[];
 }
 
 export interface UserUpdateInput {
@@ -21,6 +23,7 @@ export interface UserUpdateInput {
   email?: string;
   password?: string;
   department?: string;
+  features?: string[];
 }
 
 export const usersService = {

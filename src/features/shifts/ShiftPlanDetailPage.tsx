@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Trash2, Sun, Moon, Download, UploadCloud } from "lucide-react";
+import { ArrowLeft, Trash2, Sun, Moon, Download, UploadCloud, Gauge } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { FormScreen } from "@/components/ui/FormScreen";
+import { Input } from "@/components/ui/Input";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useShiftPlan, useShiftMutations } from "./hooks";
-import { ShiftPlanMachineRow } from "./types";
+import { ShiftPlanDetail, ShiftPlanMachineRow } from "./types";
 import { sheetService } from "./sheet";
 import { SheetUploadModal } from "./SheetUploadModal";
 
@@ -39,6 +41,87 @@ const columns: Column<ShiftPlanMachineRow>[] = [
   },
 ];
 
+// Admin enters (or overrides) output for a machine row that hasn't been
+// closed yet, going straight to verified — the same verify-production path
+// the worker-submission flow lands in, so job/order/plan totals cascade.
+export function EnterProductionModal({
+  plan,
+  row,
+  onClose,
+}: {
+  plan: ShiftPlanDetail;
+  row: ShiftPlanMachineRow;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const { verify } = useShiftMutations();
+  const [meters, setMeters] = useState(row.production ? String(row.production) : "");
+  const [timer, setTimer] = useState(row.timer ?? "");
+  const [note, setNote] = useState("");
+
+  return (
+    <FormScreen open onClose={onClose} title="Enter shift production" width="max-w-md">
+      <div className="space-y-4">
+        <div className="rounded-xl bg-ink-100/60 p-3 text-sm">
+          <p className="font-semibold">{row.machineName}</p>
+          <p className="text-ink-600">
+            {row.operatorName}
+            {row.jobOrderNo ? ` · J-${row.jobOrderNo}` : ""} · {plan.shift === "DAY" ? "Day" : "Night"} ·{" "}
+            {new Date(plan.date).toLocaleDateString()}
+          </p>
+        </div>
+
+        <Input
+          label="Production (m) *"
+          type="number"
+          step="0.01"
+          autoFocus
+          value={meters}
+          onChange={(e) => setMeters(e.target.value)}
+        />
+        <Input label="Runtime (HH:MM:SS)" value={timer} onChange={(e) => setTimer(e.target.value)} />
+        <Input
+          label="Note"
+          placeholder="Optional"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <p className="text-xs text-ink-400">
+          Saving records verified output for this machine and cascades it to the job, order and shift totals.
+        </p>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={!meters}
+            loading={verify.isPending}
+            onClick={() =>
+              verify.mutate(
+                {
+                  shiftId: row.id,
+                  productionMeters: Number(meters),
+                  timer: timer || undefined,
+                  note: note || undefined,
+                },
+                {
+                  onSuccess: () => {
+                    toast("Production recorded — cascaded to job & order", "success");
+                    onClose();
+                  },
+                  onError: (e) =>
+                    toast(e instanceof ApiError ? e.message : "Failed to record production", "error"),
+                }
+              )
+            }
+          >
+            <Gauge className="h-4 w-4" /> Save production
+          </Button>
+        </div>
+      </div>
+    </FormScreen>
+  );
+}
+
 export function ShiftPlanDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -48,6 +131,21 @@ export function ShiftPlanDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [entering, setEntering] = useState<ShiftPlanMachineRow | null>(null);
+
+  // Open (not-yet-closed) rows get an "Enter production" action so an
+  // admin can record output directly, without waiting on a worker submit.
+  const actionColumn: Column<ShiftPlanMachineRow> = {
+    key: "actions",
+    header: "",
+    align: "right",
+    render: (m) =>
+      m.status === "closed" ? null : (
+        <Button size="sm" variant="secondary" onClick={() => setEntering(m)}>
+          <Gauge className="h-4 w-4" /> Enter production
+        </Button>
+      ),
+  };
 
   const downloadSheet = async () => {
     if (!id) return;
@@ -130,12 +228,16 @@ export function ShiftPlanDetailPage() {
           Machine assignments
         </h3>
         <DataTable
-          columns={columns}
+          columns={[...columns, actionColumn]}
           rows={plan.machines}
           rowKey={(m) => m.machineId}
           emptyTitle="No machines on this plan"
         />
       </Card>
+
+      {entering && (
+        <EnterProductionModal plan={plan} row={entering} onClose={() => setEntering(null)} />
+      )}
 
       {id && (
         <SheetUploadModal

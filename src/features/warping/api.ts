@@ -37,7 +37,7 @@ export const warpingService = {
 
   createPlan: (body: {
     warpingId: string;
-    beams: Array<{ sections: Array<{ warpYarn: string; ends: number; length?: number }> }>;
+    beams: Array<{ sections: Array<{ warpYarn: string; ends: number; maxMeters?: number }> }>;
     remarks?: string;
   }) => httpClient.post("/warping/warpingPlan/create", body),
 
@@ -97,4 +97,9 @@ export const coveringService = {
   start: (id: string) => httpClient.post("/covering/start", { id }),
   complete: (id: string, remarks?: string) => httpClient.post("/covering/complete", { id, remarks }),
   cancel: (id: string, remarks?: string) => httpClient.post("/covering/cancel", { id, remarks }),
+
+  addBeamEntry: (id: string, beamNo: number, weight: number, note?: string) =>
+    httpClient.post("/covering/beam-entry", { id, beamNo, weight, note }),
+  deleteBeamEntry: (coveringId: string, entryId: string) =>
+    httpClient.delete("/covering/beam-entry", { coveringId, entryId }),
 };

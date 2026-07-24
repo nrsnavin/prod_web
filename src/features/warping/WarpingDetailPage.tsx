@@ -193,7 +193,7 @@ export function WarpingDetailPage() {
                           {typeof s.warpYarn === "object" && s.warpYarn ? s.warpYarn.name : "—"}
                         </span>
                         <span className="tabular-nums text-ink-600">
-                          {s.ends} ends{s.length ? ` · ${s.length} m` : ""}
+                          {s.ends} ends{s.maxMeters ? ` · ${s.maxMeters} m` : ""}
                         </span>
                       </li>
                     ))}
@@ -269,7 +269,7 @@ function OptimizeLayoutModal({
       {
         warpingId,
         beams: data.beams.map((b) => ({
-          sections: b.sections.map((s) => ({ warpYarn: s.warpYarnId, ends: s.ends, length: 0 })),
+          sections: b.sections.map((s) => ({ warpYarn: s.warpYarnId, ends: s.ends, maxMeters: 0 })),
         })),
         remarks: `AI-optimised layout · ${data.metrics?.beamsUsed} beams · ${data.metrics?.fillRate}% fill`,
       },

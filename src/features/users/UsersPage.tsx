@@ -14,7 +14,12 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { DEPARTMENTS, DEPARTMENT_LABELS } from "@/app/navigation";
+import {
+  DEPARTMENTS,
+  DEPARTMENT_LABELS,
+  FEATURE_GROUPS,
+  featuresForDepartment,
+} from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { usersService, ManagedUser } from "./api";
 
@@ -33,18 +38,49 @@ function UserFormScreen({
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
-  const [department, setDepartment] = useState(user?.department ?? "weaving");
+  const [department, setDepartment] = useState(user?.department ?? "production");
+  // Per-user feature access — a SUBSET of what the user's role/department
+  // can reach. Seeded from the saved set (intersected with the role, so
+  // stale/out-of-role keys drop off), or the department default on create.
+  const [features, setFeatures] = useState<string[]>(() => {
+    const dept = user?.department ?? "production";
+    const scope = new Set(featuresForDepartment(dept));
+    const seed = user?.features ?? featuresForDepartment(dept);
+    return seed.filter((k) => scope.has(k));
+  });
+
+  // The features this user's role/department is allowed to have. Selection
+  // is confined to this set — the UI only offers these, so a feature the
+  // backend role gate would block can never be granted.
+  const allowed = featuresForDepartment(department);
+  const allowedSet = new Set(allowed);
+
+  const featureSet = new Set(features);
+  const toggle = (key: string) =>
+    setFeatures((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  // Picking a department re-scopes AND re-seeds the checklist to that
+  // department's default set (the admin can then narrow it down).
+  const pickDepartment = (dept: string) => {
+    setDepartment(dept);
+    setFeatures(featuresForDepartment(dept));
+  };
 
   const save = useMutation({
-    mutationFn: () =>
-      isEdit
+    mutationFn: () => {
+      // Never send features outside the role's scope.
+      const scoped = features.filter((k) => allowedSet.has(k));
+      return isEdit
         ? usersService.update(user!._id, {
             name,
             email,
             department,
+            features: scoped,
             ...(password ? { password } : {}),
           })
-        : usersService.create({ name, email, password, department }),
+        : usersService.create({ name, email, password, department, features: scoped });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
       toast(isEdit ? "User updated" : "User created", "success");
@@ -61,26 +97,94 @@ function UserFormScreen({
   };
 
   return (
-    <FormScreen open onClose={onClose} title={isEdit ? "Edit user" : "Add user"} width="max-w-lg">
+    <FormScreen open onClose={onClose} title={isEdit ? "Edit user" : "Add user"} width="max-w-2xl">
       <div className="space-y-4">
-        <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Input
-          label={isEdit ? "New password (leave blank to keep)" : "Password"}
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Select
-          label="Department"
-          options={deptOptions}
-          value={department}
-          onChange={(e) => setDepartment(e.target.value)}
-        />
-        <p className="text-xs text-ink-400">
-          The department decides which screens this user sees. Backend access is derived from it
-          (preparatory/weaving/packing → production, finance → accounts, admin → full access).
-        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label={isEdit ? "New password (leave blank to keep)" : "Password"}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <Select
+            label="Preset (department)"
+            options={deptOptions}
+            value={department}
+            onChange={(e) => pickDepartment(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-ink-600">Feature access</p>
+            <div className="flex gap-2 text-xs">
+              <button type="button" className="text-brand-600 hover:underline"
+                onClick={() => setFeatures(allowed)}>
+                Select all
+              </button>
+              <button type="button" className="text-ink-400 hover:underline"
+                onClick={() => setFeatures(allowed.filter((k) => FEATURE_GROUPS.some((g) => g.features.some((f) => f.key === k && f.always))))}>
+                Clear
+              </button>
+            </div>
+          </div>
+          <p className="mb-2 text-xs text-ink-400">
+            Choose what this {DEPARTMENT_LABELS[department] ?? department} user can open. The list is
+            scoped to their role — only features that role can reach are shown. Items marked "always"
+            are visible to everyone.
+          </p>
+          <div className="max-h-72 overflow-y-auto rounded-lg border border-ink-200 p-3 space-y-3">
+            {FEATURE_GROUPS.map((g) => {
+              // Role-scoped: only offer features this department/role can reach.
+              const scopedFeatures = g.features.filter((f) => f.always || allowedSet.has(f.key));
+              if (scopedFeatures.length === 0) return null;
+              const optional = scopedFeatures.filter((f) => !f.always).map((f) => f.key);
+              const allOn = scopedFeatures.every((f) => f.always || featureSet.has(f.key));
+              return (
+                <div key={g.section}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{g.section}</p>
+                    {optional.length > 0 && (
+                      <button type="button" className="text-[11px] text-brand-600 hover:underline"
+                        onClick={() =>
+                          setFeatures((prev) => {
+                            const set = new Set(prev);
+                            const turnOff = optional.every((k) => set.has(k));
+                            optional.forEach((k) => (turnOff ? set.delete(k) : set.add(k)));
+                            return [...set];
+                          })
+                        }>
+                        {allOn ? "none" : "all"}
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
+                    {scopedFeatures.map((f) => (
+                      <label key={f.key} className="flex items-center gap-2 text-sm text-ink-700">
+                        <input
+                          type="checkbox"
+                          checked={f.always || featureSet.has(f.key)}
+                          disabled={f.always}
+                          onChange={() => toggle(f.key)}
+                          className="h-4 w-4 rounded border-ink-300 text-brand-600 focus:ring-brand-500/30 disabled:opacity-50"
+                        />
+                        <span className={f.always ? "text-ink-400" : ""}>
+                          {f.label}
+                          {f.always && <span className="ml-1 text-[10px] uppercase">always</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="button" loading={save.isPending} onClick={submit}>
