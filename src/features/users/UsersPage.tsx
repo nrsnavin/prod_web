@@ -39,35 +39,48 @@ function UserFormScreen({
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
   const [department, setDepartment] = useState(user?.department ?? "weaving");
-  // Custom per-user feature access. Seeded from the user's saved set, or
-  // the department default when creating.
-  const [features, setFeatures] = useState<string[]>(
-    user?.features ?? featuresForDepartment(user?.department ?? "weaving")
-  );
+  // Per-user feature access — a SUBSET of what the user's role/department
+  // can reach. Seeded from the saved set (intersected with the role, so
+  // stale/out-of-role keys drop off), or the department default on create.
+  const [features, setFeatures] = useState<string[]>(() => {
+    const dept = user?.department ?? "weaving";
+    const scope = new Set(featuresForDepartment(dept));
+    const seed = user?.features ?? featuresForDepartment(dept);
+    return seed.filter((k) => scope.has(k));
+  });
+
+  // The features this user's role/department is allowed to have. Selection
+  // is confined to this set — the UI only offers these, so a feature the
+  // backend role gate would block can never be granted.
+  const allowed = featuresForDepartment(department);
+  const allowedSet = new Set(allowed);
 
   const featureSet = new Set(features);
   const toggle = (key: string) =>
     setFeatures((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
-  // Picking a department re-seeds the checklist to that department's
-  // default; the admin can then tweak individual features.
+  // Picking a department re-scopes AND re-seeds the checklist to that
+  // department's default set (the admin can then narrow it down).
   const pickDepartment = (dept: string) => {
     setDepartment(dept);
     setFeatures(featuresForDepartment(dept));
   };
 
   const save = useMutation({
-    mutationFn: () =>
-      isEdit
+    mutationFn: () => {
+      // Never send features outside the role's scope.
+      const scoped = features.filter((k) => allowedSet.has(k));
+      return isEdit
         ? usersService.update(user!._id, {
             name,
             email,
             department,
-            features,
+            features: scoped,
             ...(password ? { password } : {}),
           })
-        : usersService.create({ name, email, password, department, features }),
+        : usersService.create({ name, email, password, department, features: scoped });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
       toast(isEdit ? "User updated" : "User created", "success");
@@ -110,42 +123,47 @@ function UserFormScreen({
             <p className="text-sm font-medium text-ink-600">Feature access</p>
             <div className="flex gap-2 text-xs">
               <button type="button" className="text-brand-600 hover:underline"
-                onClick={() => setFeatures(FEATURE_GROUPS.flatMap((g) => g.features.map((f) => f.key)))}>
+                onClick={() => setFeatures(allowed)}>
                 Select all
               </button>
               <button type="button" className="text-ink-400 hover:underline"
-                onClick={() => setFeatures(FEATURE_GROUPS.flatMap((g) => g.features.filter((f) => f.always).map((f) => f.key)))}>
+                onClick={() => setFeatures(allowed.filter((k) => FEATURE_GROUPS.some((g) => g.features.some((f) => f.key === k && f.always))))}>
                 Clear
               </button>
             </div>
           </div>
           <p className="mb-2 text-xs text-ink-400">
-            Choose exactly what this user can open. The department above is just a starting preset;
-            backend role access is still derived from it. Items marked "always" are visible to everyone.
+            Choose what this {DEPARTMENT_LABELS[department] ?? department} user can open. The list is
+            scoped to their role — only features that role can reach are shown. Items marked "always"
+            are visible to everyone.
           </p>
           <div className="max-h-72 overflow-y-auto rounded-lg border border-ink-200 p-3 space-y-3">
             {FEATURE_GROUPS.map((g) => {
-              const keys = g.features.map((f) => f.key);
-              const allOn = keys.every((k) => featureSet.has(k) || g.features.find((f) => f.key === k)?.always);
+              // Role-scoped: only offer features this department/role can reach.
+              const scopedFeatures = g.features.filter((f) => f.always || allowedSet.has(f.key));
+              if (scopedFeatures.length === 0) return null;
+              const optional = scopedFeatures.filter((f) => !f.always).map((f) => f.key);
+              const allOn = scopedFeatures.every((f) => f.always || featureSet.has(f.key));
               return (
                 <div key={g.section}>
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{g.section}</p>
-                    <button type="button" className="text-[11px] text-brand-600 hover:underline"
-                      onClick={() =>
-                        setFeatures((prev) => {
-                          const set = new Set(prev);
-                          const optional = g.features.filter((f) => !f.always).map((f) => f.key);
-                          const turnOff = optional.every((k) => set.has(k));
-                          optional.forEach((k) => (turnOff ? set.delete(k) : set.add(k)));
-                          return [...set];
-                        })
-                      }>
-                      {allOn ? "none" : "all"}
-                    </button>
+                    {optional.length > 0 && (
+                      <button type="button" className="text-[11px] text-brand-600 hover:underline"
+                        onClick={() =>
+                          setFeatures((prev) => {
+                            const set = new Set(prev);
+                            const turnOff = optional.every((k) => set.has(k));
+                            optional.forEach((k) => (turnOff ? set.delete(k) : set.add(k)));
+                            return [...set];
+                          })
+                        }>
+                        {allOn ? "none" : "all"}
+                      </button>
+                    )}
                   </div>
                   <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
-                    {g.features.map((f) => (
+                    {scopedFeatures.map((f) => (
                       <label key={f.key} className="flex items-center gap-2 text-sm text-ink-700">
                         <input
                           type="checkbox"
