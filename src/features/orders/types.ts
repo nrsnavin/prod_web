@@ -45,6 +45,11 @@ export interface RawMaterialRequirement {
   available?: number;
   stock?: number;
   unit?: string;
+  // Actual field names returned by the backend (services/materialRequirement
+  // + api/order.js): kept the alias fields above for backward-compat.
+  requiredWeight?: number;
+  inStock?: number;
+  stockSufficient?: boolean;
 }
 
 export interface OrderDetail {
