@@ -39,13 +39,14 @@ import {
 // Departments drive who sees what. `admin` sees everything; the four
 // shop-floor departments each see a focused set. Keep this list in sync
 // with utils/roles.js on the backend.
-export const DEPARTMENTS = ["admin", "preparatory", "weaving", "packing", "finance"] as const;
+// Preparatory + weaving were merged into a single "production" department
+// (they always shared the production role). Packing stays separate.
+export const DEPARTMENTS = ["admin", "production", "packing", "finance"] as const;
 export type Department = (typeof DEPARTMENTS)[number];
 
 export const DEPARTMENT_LABELS: Record<string, string> = {
   admin: "Admin",
-  preparatory: "Preparatory (Warping & Covering)",
-  weaving: "Weaving",
+  production: "Production (Warping, Weaving & Covering)",
   packing: "Packing & Checking",
   finance: "Finance",
 };
@@ -71,7 +72,7 @@ export const navSections: NavSection[] = [
     label: "Overview",
     items: [
       { label: "Dashboard", path: "/", icon: LayoutDashboard }, // all
-      { label: "Analytics", path: "/analytics", icon: TrendingUp, departments: ["admin", "weaving"] },
+      { label: "Analytics", path: "/analytics", icon: TrendingUp, departments: ["admin", "production"] },
       { label: "Reports", path: "/reports", icon: FileBarChart, departments: ["admin", "finance"] },
       { label: "Audit Trail", path: "/audit", icon: Fingerprint, departments: ["admin"] },
     ],
@@ -80,22 +81,22 @@ export const navSections: NavSection[] = [
     label: "Sales",
     items: [
       { label: "Orders", path: "/orders", icon: ShoppingCart, departments: ["admin", "finance"] },
-      { label: "Job Orders", path: "/jobs", icon: ClipboardList, departments: ["admin", "preparatory", "weaving", "packing"] },
+      { label: "Job Orders", path: "/jobs", icon: ClipboardList, departments: ["admin", "production", "packing"] },
       { label: "Delivery Challans", path: "/delivery-challans", icon: Truck, departments: ["admin", "finance"] },
     ],
   },
   {
     label: "Production",
     items: [
-      { label: "Auto Planner", path: "/planner", icon: Wand2, departments: ["admin", "weaving"] },
-      { label: "Warping", path: "/warping", icon: Layers, departments: ["admin", "preparatory"] },
-      { label: "Covering", path: "/covering", icon: Disc3, departments: ["admin", "preparatory"] },
+      { label: "Auto Planner", path: "/planner", icon: Wand2, departments: ["admin", "production"] },
+      { label: "Warping", path: "/warping", icon: Layers, departments: ["admin", "production"] },
+      { label: "Covering", path: "/covering", icon: Disc3, departments: ["admin", "production"] },
       { label: "Packing", path: "/packing", icon: Package, departments: ["admin", "packing"] },
       { label: "Quality Control", path: "/qc", icon: ScanLine, departments: ["admin", "packing"] },
-      { label: "Shift Plans", path: "/shift-plans", icon: CalendarClock, departments: ["admin", "weaving"] },
-      { label: "Shift Verification", path: "/shift-verification", icon: ShieldCheck, departments: ["admin", "weaving"] },
-      { label: "Production View", path: "/production", icon: Factory, departments: ["admin", "weaving"] },
-      { label: "Wastage", path: "/wastage", icon: Trash2, departments: ["admin", "weaving"] },
+      { label: "Shift Plans", path: "/shift-plans", icon: CalendarClock, departments: ["admin", "production"] },
+      { label: "Shift Verification", path: "/shift-verification", icon: ShieldCheck, departments: ["admin", "production"] },
+      { label: "Production View", path: "/production", icon: Factory, departments: ["admin", "production"] },
+      { label: "Wastage", path: "/wastage", icon: Trash2, departments: ["admin", "production"] },
     ],
   },
   {
@@ -107,7 +108,7 @@ export const navSections: NavSection[] = [
       { label: "Raw Materials", path: "/materials", icon: Boxes, departments: ["admin", "finance"] },
       { label: "Elastic Products", path: "/elastics", icon: Cable, departments: ["admin", "finance"] },
       { label: "Elastic Groups", path: "/elastic-groups", icon: Layers, departments: ["admin"] },
-      { label: "Machines", path: "/machines", icon: Cog, departments: ["admin", "weaving"] },
+      { label: "Machines", path: "/machines", icon: Cog, departments: ["admin", "production"] },
       { label: "Employees", path: "/employees", icon: UserRound, departments: ["admin", "finance"] },
     ],
   },
@@ -153,7 +154,12 @@ export const allNavItems: NavItem[] = navSections.flatMap((s) => s.items);
 // admin, or the item explicitly lists the department. Unknown/absent
 // department (e.g. a legacy user carrying only a raw role) sees only the
 // unrestricted items — fail closed.
-const FLOOR_DEPARTMENTS: Department[] = ["preparatory", "weaving", "packing"];
+// Legacy departments (pre-merge) alias to the merged "production" dept.
+const LEGACY_DEPT_ALIAS: Record<string, string> = { preparatory: "production", weaving: "production" };
+function normDept(d: string | null | undefined): string | undefined {
+  if (!d) return undefined;
+  return LEGACY_DEPT_ALIAS[d] ?? d;
+}
 
 // Access context: the current user (or, for legacy call paths, a bare
 // department string). A user's explicit `features` list is authoritative
@@ -177,11 +183,8 @@ export function canAccess(item: NavItem, ctx: AccessCtx): boolean {
   if (features) return features.includes(item.path);
 
   // Legacy fallback: department-based.
-  const department = typeof ctx === "string" ? ctx : effectiveDepartment(ctx);
+  const department = typeof ctx === "string" ? normDept(ctx) : effectiveDepartment(ctx);
   if (department === "admin") return true;
-  if (department === "production") {
-    return item.departments.some((d) => FLOOR_DEPARTMENTS.includes(d));
-  }
   return !!department && item.departments.includes(department as Department);
 }
 
@@ -192,10 +195,10 @@ export function effectiveDepartment(
   user: { role?: string; department?: string | null } | null | undefined
 ): string | undefined {
   if (!user) return undefined;
-  if (user.department) return user.department;
+  if (user.department) return normDept(user.department);
   if (user.role === "admin") return "admin";
   if (user.role === "accounts") return "finance";
-  if (user.role === "production") return "production"; // union of floor depts (see canAccess)
+  if (user.role === "production") return "production";
   return undefined; // legacy stores/sales → unrestricted items until reassigned
 }
 

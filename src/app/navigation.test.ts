@@ -12,14 +12,14 @@ const item = (path: string) => allNavItems.find((i) => i.path === path)!;
 
 describe("navigation access — custom per-user features", () => {
   it("grants only the features in a user's explicit list", () => {
-    const user = { role: "production", department: "weaving", features: ["/wastage", "/orders"] };
+    const user = { role: "production", department: "production", features: ["/wastage", "/orders"] };
     expect(canAccess(item("/wastage"), user)).toBe(true);
     expect(canAccess(item("/orders"), user)).toBe(true);
     expect(canAccess(item("/machines"), user)).toBe(false); // not granted
   });
 
   it("always allows unrestricted items regardless of the feature list", () => {
-    const user = { department: "weaving", features: [] as string[] };
+    const user = { department: "production", features: [] as string[] };
     // Dashboard / Ask Jarvis have no `departments` → always visible.
     expect(canAccess(item("/"), user)).toBe(true);
     expect(canAccess(item("/assistant"), user)).toBe(true);
@@ -47,12 +47,21 @@ describe("navigation access — custom per-user features", () => {
   });
 
   it("featuresForDepartment seeds the department default", () => {
-    const weaving = featuresForDepartment("weaving");
-    expect(weaving).toContain("/wastage");
-    expect(weaving).not.toContain("/orders");
+    const production = featuresForDepartment("production");
+    expect(production).toContain("/wastage");
+    expect(production).toContain("/warping"); // merged preparatory feature
+    expect(production).not.toContain("/orders");
     expect(featuresForDepartment("admin")).toEqual(
       expect.arrayContaining(ALL_FEATURE_KEYS)
     );
+  });
+
+  it("legacy preparatory/weaving departments alias to production", () => {
+    // Pre-merge accounts still resolve to the merged production set.
+    expect(featuresForDepartment("weaving")).toEqual(featuresForDepartment("production"));
+    expect(featuresForDepartment("preparatory")).toEqual(featuresForDepartment("production"));
+    expect(canAccess(item("/wastage"), { department: "weaving" })).toBe(true);
+    expect(canAccess(item("/warping"), { department: "preparatory" })).toBe(true);
   });
 
   it("exposes a non-empty grouped catalog for the checklist UI", () => {

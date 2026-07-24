@@ -38,12 +38,12 @@ function UserFormScreen({
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
-  const [department, setDepartment] = useState(user?.department ?? "weaving");
+  const [department, setDepartment] = useState(user?.department ?? "production");
   // Per-user feature access — a SUBSET of what the user's role/department
   // can reach. Seeded from the saved set (intersected with the role, so
   // stale/out-of-role keys drop off), or the department default on create.
   const [features, setFeatures] = useState<string[]>(() => {
-    const dept = user?.department ?? "weaving";
+    const dept = user?.department ?? "production";
     const scope = new Set(featuresForDepartment(dept));
     const seed = user?.features ?? featuresForDepartment(dept);
     return seed.filter((k) => scope.has(k));
