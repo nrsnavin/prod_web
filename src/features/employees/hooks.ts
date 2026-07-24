@@ -20,6 +20,20 @@ export function useEmployee(id: string | undefined) {
   });
 }
 
+export function useEmployeeAttendance(
+  id: string | undefined,
+  startDate: string,
+  endDate: string,
+  shift: string
+) {
+  return useQuery({
+    queryKey: [KEY, "attendance", id, startDate, endDate, shift],
+    queryFn: () => employeeService.attendance(id!, startDate, endDate, shift),
+    enabled: !!id && !!startDate && !!endDate,
+    placeholderData: (prev) => prev,
+  });
+}
+
 export function useEmployeeMutations() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: [KEY] });
