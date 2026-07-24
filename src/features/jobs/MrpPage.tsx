@@ -22,18 +22,19 @@ const materialColumns: Column<MrpMaterial>[] = [
   { key: "cat", header: "Category", render: (m) => m.category ?? "—" },
   {
     key: "required",
-    header: "Required",
+    header: "Required (kg)",
     align: "right",
-    render: (m) => (m.required ?? m.quantity ?? 0).toLocaleString("en-IN"),
+    render: (m) => (m.requiredWeight ?? m.required ?? m.quantity ?? 0).toLocaleString("en-IN"),
   },
   {
     key: "stock",
     header: "In stock",
     align: "right",
     render: (m) => {
-      const stock = m.stock ?? m.available;
+      const stock = m.inStock ?? m.stock ?? m.available;
       if (stock == null) return "—";
-      const short = stock < (m.required ?? m.quantity ?? 0);
+      const req = m.requiredWeight ?? m.required ?? m.quantity ?? 0;
+      const short = stock < req;
       return (
         <span className={short ? "text-status-danger font-semibold" : ""}>
           {stock.toLocaleString("en-IN")}

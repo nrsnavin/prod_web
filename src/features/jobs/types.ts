@@ -130,5 +130,9 @@ export interface MrpData {
     stock?: number;
     available?: number;
     unit?: string;
+    // Actual backend field names (utils/materialRequirement.js).
+    requiredWeight?: number;
+    inStock?: number;
+    shortfall?: number;
   }>;
 }
