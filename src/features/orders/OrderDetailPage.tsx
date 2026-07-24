@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2, Sparkles, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -77,22 +77,27 @@ function requirementName(r: RawMaterialRequirement): string {
   return "—";
 }
 
+// The backend returns requiredWeight / inStock; older shapes used
+// required / available|stock. Read both so the value never falls to 0.
+const reqOf = (r: RawMaterialRequirement) => r.requiredWeight ?? r.required ?? r.quantity ?? 0;
+const stockOf = (r: RawMaterialRequirement) => r.inStock ?? r.available ?? r.stock ?? null;
+
 const materialColumns: Column<RawMaterialRequirement>[] = [
   { key: "name", header: "Raw material", render: (r) => requirementName(r) },
   {
     key: "required",
-    header: "Required",
+    header: "Required (kg)",
     align: "right",
-    render: (r) => (r.required ?? r.quantity ?? 0).toLocaleString("en-IN"),
+    render: (r) => reqOf(r).toLocaleString("en-IN"),
   },
   {
     key: "available",
     header: "In stock",
     align: "right",
     render: (r) => {
-      const avail = r.available ?? r.stock;
+      const avail = stockOf(r);
       if (avail == null) return "—";
-      const short = avail < (r.required ?? r.quantity ?? 0);
+      const short = avail < reqOf(r);
       return <span className={short ? "text-status-danger font-semibold" : ""}>{avail.toLocaleString("en-IN")}</span>;
     },
   },
@@ -179,6 +184,7 @@ export function OrderDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const [forceOpen, setForceOpen] = useState(false);
   useTrackRecent("Order", `/orders/${id}`, order ? `Order #${order.orderNo} · ${order.customer?.name ?? ""}` : undefined);
 
   if (isLoading) {
@@ -198,7 +204,7 @@ export function OrderDetailPage() {
   }
 
   const act = (
-    mutation: typeof approve,
+    mutation: typeof cancel,
     successMsg: string
   ) =>
     mutation.mutate(order._id, {
@@ -212,11 +218,36 @@ export function OrderDetailPage() {
       },
     });
 
+  // Raw-material shortage: any required material whose in-stock is below
+  // what the order needs. Force-approval lets an admin approve anyway
+  // (backend deducts what it can and records the forced shortfall).
+  const shortMaterials = (order.rawMaterialRequired ?? []).filter((r) => {
+    const stock = stockOf(r);
+    return stock != null && stock < reqOf(r);
+  });
+  const hasShortage = shortMaterials.length > 0;
+
+  const runApprove = (opts?: { force?: boolean; forceReason?: string }) =>
+    approve.mutate(
+      { id: order._id, force: opts?.force, forceReason: opts?.forceReason },
+      {
+        onSuccess: () => {
+          setConfirm(null);
+          setForceOpen(false);
+          toast(opts?.force ? "Order force-approved despite short stock" : "Order approved — stock deducted", "success");
+        },
+        onError: (e) => {
+          setConfirm(null);
+          toast(e instanceof ApiError ? e.message : "Approval failed", "error");
+        },
+      }
+    );
+
   const confirmMeta = {
     approve: {
       title: "Approve order?",
       message: "Raw material stock will be deducted for the full order quantity. This is validated against current stock.",
-      run: () => act(approve, "Order approved — stock deducted"),
+      run: () => runApprove(),
       loading: approve.isPending,
     },
     cancel: {
@@ -264,9 +295,15 @@ export function OrderDetailPage() {
                 <Button variant="secondary" onClick={() => setEditOpen(true)}>
                   <Pencil className="h-4 w-4" /> Edit
                 </Button>
-                <Button onClick={() => setConfirm("approve")}>
-                  <CheckCircle2 className="h-4 w-4" /> Approve
-                </Button>
+                {hasShortage ? (
+                  <Button variant="danger" onClick={() => setForceOpen(true)}>
+                    <AlertTriangle className="h-4 w-4" /> Force approve
+                  </Button>
+                ) : (
+                  <Button onClick={() => setConfirm("approve")}>
+                    <CheckCircle2 className="h-4 w-4" /> Approve
+                  </Button>
+                )}
               </>
             )}
             {order.status === "Approved" && (
@@ -415,6 +452,21 @@ export function OrderDetailPage() {
           onConfirm={confirmMeta[confirm].run}
         />
       )}
+
+      <ReasonDialog
+        open={forceOpen}
+        onClose={() => setForceOpen(false)}
+        onConfirm={(reason) => runApprove({ force: true, forceReason: reason })}
+        title="Force approve — raw material short"
+        description={
+          `${shortMaterials.length} material${shortMaterials.length === 1 ? "" : "s"} below the required quantity ` +
+          `(${shortMaterials.map((m) => requirementName(m)).join(", ")}). ` +
+          "Approving will deduct what's available and record the shortfall against your reason. Enter why you're overriding."
+        }
+        confirmLabel="Force approve"
+        tone="danger"
+        loading={approve.isPending}
+      />
 
       <FormScreen open={jobOpen} onClose={() => setJobOpen(false)} title={`New job for order #${order.orderNo}`}>
         <JobCreateForm

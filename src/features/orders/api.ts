@@ -31,7 +31,12 @@ export const orderService = {
   remove: (orderId: string, auditReason: string) =>
     httpClient.post("/order/delete-order", { orderId, auditReason }),
 
-  approve: (orderId: string) => httpClient.post("/order/approve", { orderId }),
+  approve: (orderId: string, opts?: { force?: boolean; forceReason?: string }) =>
+    httpClient.post("/order/approve", {
+      orderId,
+      force: opts?.force ?? false,
+      forceReason: opts?.forceReason ?? "",
+    }),
   cancel: (orderId: string) => httpClient.post("/order/cancel", { orderId }),
   startProduction: (orderId: string) => httpClient.post("/order/start-production", { orderId }),
   complete: (orderId: string) => httpClient.post("/order/complete", { orderId }),
