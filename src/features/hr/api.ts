@@ -219,7 +219,34 @@ export const bonusService = {
   },
   trigger: (year: number) => httpClient.post("/bonus/trigger", { year }),
   payRecord: (id: string) => httpClient.put(`/bonus/records/${id}/pay`),
+  preview: (year: number) => httpClient.get<BonusPreview>("/bonus/preview", { year }),
 };
+
+export interface BonusPreviewRow {
+  employeeId: string;
+  name: string;
+  department: string;
+  salaryReceived: number;
+  annualEarnings: number;
+  bonusPercent: number;
+  attendanceRate: number;
+  attendanceTier: string;
+  multiplier: number;
+  bonusAmount: number;
+  basedOn: string;
+}
+
+export interface BonusPreview {
+  success: boolean;
+  year: number;
+  approximate: boolean;
+  canGenerate: boolean;
+  diwaliDate: string | null;
+  bonusLabel: string;
+  totalPayout: number;
+  rows: BonusPreviewRow[];
+  window: { start: string; end: string };
+}
 
 // ── Leave ───────────────────────────────────────────────────────────────
 export interface LeaveRow {

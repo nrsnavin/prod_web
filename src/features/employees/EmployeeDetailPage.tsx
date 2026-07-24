@@ -16,6 +16,7 @@ import { EmployeeShiftRow } from "./types";
 import { EmployeeForm } from "./EmployeeForm";
 import { EmployeePayrollCard } from "./EmployeePayrollCard";
 import { EmployeeLeavePayCard } from "./EmployeeLeavePayCard";
+import { EmployeeAttendanceCard } from "./EmployeeAttendanceCard";
 import { SkillProfileCard } from "./SkillProfileCard";
 
 const shiftColumns: Column<EmployeeShiftRow>[] = [
@@ -128,6 +129,8 @@ export function EmployeeDetailPage() {
       <SkillProfileCard empId={emp.id} profile={emp.skillProfile} />
 
       <EmployeePayrollCard empId={emp.id} />
+
+      <EmployeeAttendanceCard empId={emp.id} />
 
       <EmployeeLeavePayCard empId={emp.id} />
 

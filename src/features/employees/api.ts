@@ -37,4 +37,47 @@ export const employeeService = {
   async setPerformance(id: string, performance: number): Promise<void> {
     await httpClient.patch("/employee/performance", { id, performance });
   },
+
+  async attendance(
+    id: string,
+    startDate: string,
+    endDate: string,
+    shift: string = "all"
+  ): Promise<AttendanceReport> {
+    const res = await httpClient.get<{ success: boolean } & AttendanceReport>(
+      `/attendance/employee/${encodeURIComponent(id)}`,
+      { startDate, endDate, shift }
+    );
+    return { summary: res.summary, records: res.records };
+  },
 };
+
+export interface AttendanceRecord {
+  id: string;
+  date: string;
+  dateLabel: string;
+  dayOfWeek: string;
+  shift: string;
+  status: string;
+  checkIn: string;
+  checkOut: string;
+  lateMinutes: number;
+  leaveType: string;
+  notes: string;
+}
+
+export interface AttendanceSummary {
+  total: number;
+  present: number;
+  late: number;
+  halfDay: number;
+  absent: number;
+  onLeave: number;
+  attendancePct: number;
+  totalLateMinutes: number;
+}
+
+export interface AttendanceReport {
+  summary: AttendanceSummary;
+  records: AttendanceRecord[];
+}

@@ -11,7 +11,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { bonusService, BonusRecordRow } from "./api";
+import { bonusService, BonusRecordRow, BonusPreviewRow } from "./api";
 
 export function BonusPage() {
   const currentYear = new Date().getFullYear();
@@ -28,6 +28,10 @@ export function BonusPage() {
     queryKey: ["bonus", "records", year],
     queryFn: () => bonusService.records(year),
   });
+  const preview = useQuery({
+    queryKey: ["bonus", "preview", year],
+    queryFn: () => bonusService.preview(year),
+  });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["bonus"] });
   const trigger = useMutation({ mutationFn: () => bonusService.trigger(year), onSuccess: invalidate });
@@ -35,6 +39,27 @@ export function BonusPage() {
 
   const stats = config.data?.stats;
   const cfg = config.data?.config;
+  const pv = preview.data;
+  const diwaliLabel = pv?.diwaliDate
+    ? new Date(pv.diwaliDate).toLocaleDateString("en-IN", { month: "long", year: "numeric" })
+    : null;
+
+  const previewColumns: Column<BonusPreviewRow>[] = [
+    {
+      key: "emp",
+      header: "Employee",
+      render: (r) => (
+        <div>
+          <p className="font-medium">{r.name}</p>
+          <p className="text-xs text-ink-400 capitalize">{r.department}</p>
+        </div>
+      ),
+    },
+    { key: "salary", header: "Window salary (₹)", align: "right", render: (r) => (r.annualEarnings).toLocaleString("en-IN") },
+    { key: "pct", header: "Percent", align: "right", render: (r) => `${r.bonusPercent}%` },
+    { key: "tier", header: "Attendance", align: "right", render: (r) => `${r.attendanceRate}% · ${r.attendanceTier} ×${r.multiplier}` },
+    { key: "amount", header: "Approx bonus (₹)", align: "right", render: (r) => <span className="font-bold">{r.bonusAmount.toLocaleString("en-IN")}</span> },
+  ];
 
   const columns: Column<BonusRecordRow>[] = [
     {
@@ -88,12 +113,17 @@ export function BonusPage() {
   return (
     <>
       <PageHeader
-        title="Yearly bonus"
-        subtitle="Computed from attendance days across the bonus year."
+        title="Diwali bonus"
+        subtitle="Percent of salary received over the Diwali year, scaled by attendance."
         actions={
           cfg?.status !== "triggered" && (
-            <Button onClick={() => setTriggerOpen(true)}>
-              <Play className="h-4 w-4" /> Trigger {year} bonus
+            <Button disabled={!pv?.canGenerate} onClick={() => setTriggerOpen(true)}>
+              <Play className="h-4 w-4" />{" "}
+              {pv?.canGenerate
+                ? `Generate ${year} bonus`
+                : diwaliLabel
+                ? `Available in ${diwaliLabel}`
+                : "Set Diwali date first"}
             </Button>
           )
         }
@@ -124,6 +154,34 @@ export function BonusPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {cfg?.status !== "triggered" && (
+        <Card className="mb-4">
+          <div className="px-5 pt-5">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Gift className="h-4 w-4 text-brand-500" /> Approximate bonus
+              {pv?.approximate && <StatusChip tone="warning">approximate</StatusChip>}
+            </h3>
+            <p className="mt-1 text-sm text-ink-400">
+              {pv?.approximate
+                ? `Provisional figures — they finalize when you generate on ${diwaliLabel ?? "the Diwali month"}. Amounts grow as each month's payroll is paid.`
+                : diwaliLabel
+                ? `It's the Diwali month (${diwaliLabel}). Review the figures below and generate to lock them in.`
+                : "Set the Diwali date in the bonus config to define the window and enable generation."}
+              {pv && (
+                <> Projected total: <span className="font-semibold text-ink-600">₹{pv.totalPayout.toLocaleString("en-IN")}</span>.</>
+              )}
+            </p>
+          </div>
+          <DataTable
+            columns={previewColumns}
+            rows={pv?.rows ?? []}
+            rowKey={(r) => r.employeeId}
+            loading={preview.isLoading}
+            emptyTitle="No employees to preview"
+          />
+        </Card>
       )}
 
       <Card>
