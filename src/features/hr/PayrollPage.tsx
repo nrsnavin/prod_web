@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, FileText, Check, X, Printer, Plus } from "lucide-react";
+import { Play, FileText, Check, X, Printer, Plus, FileDown, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +13,7 @@ import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ApiError } from "@/core/http/httpClient";
-import { payrollService, PayrollEmployeeRow } from "./api";
+import { payrollService, PayrollEmployeeRow, PayrollSettings } from "./api";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 
@@ -41,10 +41,26 @@ function PayslipModal({
   month: number;
   onClose: () => void;
 }) {
+  const { toast } = useToast();
+  const [downloading, setDownloading] = useState(false);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["payslip", empId, year, month],
     queryFn: () => payrollService.slip(empId, year, month),
   });
+
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const blob = await payrollService.slipPdf(empId, year, month);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Could not generate the PDF", "error");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const rows: Array<[string, unknown]> = data
     ? [
@@ -92,7 +108,10 @@ function PayslipModal({
               </dd>
             </div>
           </dl>
-          <div className="mt-4 flex justify-end print:hidden">
+          <div className="mt-4 flex justify-end gap-2 print:hidden">
+            <Button variant="secondary" size="sm" loading={downloading} onClick={downloadPdf}>
+              <FileDown className="h-4 w-4" /> Download PDF
+            </Button>
             <Button variant="secondary" size="sm" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> Print payslip
             </Button>
@@ -205,11 +224,82 @@ function AddAdvanceForm({
   );
 }
 
+const SETTING_GROUPS: { title: string; fields: { key: keyof PayrollSettings; label: string }[] }[] = [
+  { title: "Leave & penalties", fields: [
+    { key: "casualLeavesPerMonth", label: "Casual leaves / month" },
+    { key: "sickLeavesPerMonth", label: "Sick leaves / month" },
+    { key: "lateGracePeriodMinutes", label: "Late grace (min)" },
+    { key: "penaltyPerExcessAbsent", label: "Excess-absent penalty (₹)" },
+  ]},
+  { title: "Bonuses (₹)", fields: [
+    { key: "noLeaveBonus", label: "No-leave bonus" },
+    { key: "perfectAttendanceBonus", label: "Perfect attendance" },
+    { key: "streakBonusPer7Shifts", label: "Per 7-shift streak" },
+  ]},
+  { title: "Overtime", fields: [
+    { key: "overtimeMultiplier", label: "OT multiplier (×)" },
+    { key: "overtimeGraceMinutes", label: "OT grace (min)" },
+  ]},
+  { title: "Statutory (0 = off)", fields: [
+    { key: "pfPercent", label: "PF %" },
+    { key: "pfWageCeiling", label: "PF wage ceiling (₹)" },
+    { key: "esiPercent", label: "ESI %" },
+    { key: "esiWageCeiling", label: "ESI wage ceiling (₹)" },
+  ]},
+];
+
+function SettingsPanel() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({ queryKey: ["payroll", "settings"], queryFn: () => payrollService.settings() });
+  const [form, setForm] = useState<Partial<PayrollSettings>>({});
+  useEffect(() => { if (data) setForm(data); }, [data]);
+
+  const save = useMutation({
+    mutationFn: () => payrollService.saveSettings(form),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["payroll", "settings"] }); toast("Settings saved", "success"); },
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Save failed", "error"),
+  });
+  const set = (k: keyof PayrollSettings, v: string) => setForm((p) => ({ ...p, [k]: Number(v) }));
+
+  if (isLoading) return <Skeleton className="h-64 w-full" />;
+  return (
+    <Card className="p-5">
+      <div className="space-y-5">
+        {SETTING_GROUPS.map((g) => (
+          <div key={g.title}>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{g.title}</p>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {g.fields.map((f) => (
+                <Input
+                  key={f.key}
+                  label={f.label}
+                  type="number"
+                  value={String(form[f.key] ?? 0)}
+                  onChange={(e) => set(f.key, e.target.value)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-xs text-ink-400">
+        PF/ESI stay off while their % is 0. A wage ceiling of 0 means no ceiling.
+      </p>
+      <div className="mt-4 flex justify-end">
+        <Button loading={save.isPending} onClick={() => save.mutate()}>
+          <Settings2 className="h-4 w-4" /> Save settings
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 export function PayrollPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [tab, setTab] = useState<"payroll" | "advances">("payroll");
+  const [tab, setTab] = useState<"payroll" | "advances" | "settings">("payroll");
   const [slip, setSlip] = useState<{ empId: string; name: string } | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -242,6 +332,14 @@ export function PayrollPage() {
     generate.mutate(undefined, {
       onSuccess: (r) => {
         toast(r.message ?? "Payroll generated", "success");
+        // Surface anyone skipped for a missing hourly rate — a missing
+        // rate is a missing paycheck, so it must not pass silently.
+        if (r.skipped?.length) {
+          toast(
+            `Skipped (no hourly rate): ${r.skipped.map((e) => e.name).join(", ")}`,
+            "error"
+          );
+        }
         setConfirmGenerate(false);
       },
       onError: (e) => toast(e instanceof ApiError ? e.message : "Generation failed", "error"),
@@ -331,7 +429,7 @@ export function PayrollPage() {
           className="w-28"
         />
         <div className="ml-auto flex gap-1 rounded-lg bg-ink-100 p-1">
-          {(["payroll", "advances"] as const).map((t) => (
+          {(["payroll", "advances", "settings"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -405,7 +503,16 @@ export function PayrollPage() {
                       {a.createdAt && ` · ${new Date(a.createdAt).toLocaleDateString()}`}
                     </p>
                   </div>
-                  <span className="font-bold tabular-nums">₹{a.amount.toLocaleString("en-IN")}</span>
+                  <div className="text-right">
+                    <span className="font-bold tabular-nums">₹{a.amount.toLocaleString("en-IN")}</span>
+                    {a.status === "approved" && a.remainingBalance != null && (
+                      <p className="text-xs text-ink-400 tabular-nums">
+                        {a.remainingBalance <= 0
+                          ? "fully recovered"
+                          : `₹${a.remainingBalance.toLocaleString("en-IN")} left to recover`}
+                      </p>
+                    )}
+                  </div>
                   {a.status === "pending" ? (
                     <span className="flex gap-1.5">
                       <Button
@@ -447,6 +554,8 @@ export function PayrollPage() {
           )}
         </Card>
       )}
+
+      {tab === "settings" && <SettingsPanel />}
 
       {addAdvOpen && (
         <AddAdvanceForm defaultYear={year} defaultMonth={month} onClose={() => setAddAdvOpen(false)} />
