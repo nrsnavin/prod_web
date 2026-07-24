@@ -78,9 +78,34 @@ export interface AdvanceRequestRow {
   _id: string;
   employee?: { _id: string; name: string; department?: string } | null;
   amount: number;
+  remainingBalance?: number | null;
   reason?: string;
   status: string;
+  deductMonth?: number | null;
+  deductYear?: number | null;
   createdAt?: string;
+}
+
+export interface PayrollSettings {
+  casualLeavesPerMonth: number;
+  sickLeavesPerMonth: number;
+  lateGracePeriodMinutes: number;
+  penaltyPerExcessAbsent: number;
+  noLeaveBonus: number;
+  perfectAttendanceBonus: number;
+  streakBonusPer7Shifts: number;
+  overtimeMultiplier: number;
+  overtimeGraceMinutes: number;
+  pfPercent: number;
+  pfWageCeiling: number;
+  esiPercent: number;
+  esiWageCeiling: number;
+}
+
+export interface SkippedEmployee {
+  employeeId: string;
+  name: string;
+  reason: string;
 }
 
 export const payrollService = {
@@ -91,7 +116,7 @@ export const payrollService = {
     });
   },
   generate: (year: number, month: number, employeeId?: string) =>
-    httpClient.post<{ success: boolean; message: string }>("/payroll/generate", {
+    httpClient.post<{ success: boolean; message: string; skipped?: SkippedEmployee[] }>("/payroll/generate", {
       year,
       month,
       employeeId,
@@ -103,6 +128,14 @@ export const payrollService = {
     );
     return res.data;
   },
+  slipPdf: (empId: string, year: number, month: number) =>
+    httpClient.getBlob(`/payroll/slip/${empId}/pdf`, { year, month }),
+  async settings(): Promise<PayrollSettings> {
+    const res = await httpClient.get<{ success: boolean; data: PayrollSettings }>("/payroll/settings");
+    return res.data;
+  },
+  saveSettings: (body: Partial<PayrollSettings>) =>
+    httpClient.post<{ success: boolean; data: PayrollSettings }>("/payroll/settings", body),
   async advances(status?: string): Promise<AdvanceRequestRow[]> {
     const res = await httpClient.get<{ success: boolean; data: AdvanceRequestRow[] }>(
       "/payroll/advance",
