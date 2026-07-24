@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -20,6 +21,8 @@ export function LeavePage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  // Pending approve/reject decision awaiting confirmation.
+  const [decision, setDecision] = useState<{ id: string; name: string; action: "approve" | "reject" } | null>(null);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["leave", "pending"],
     queryFn: leaveService.pending,
@@ -104,28 +107,14 @@ export function LeavePage() {
                 <span className="flex gap-1.5">
                   <Button
                     size="sm"
-                    loading={approve.isPending}
-                    onClick={() =>
-                      approve.mutate(id, {
-                        onSuccess: () => toast("Leave approved", "success"),
-                        onError: (e) =>
-                          toast(e instanceof ApiError ? e.message : "Failed", "error"),
-                      })
-                    }
+                    onClick={() => setDecision({ id, name: l.employee?.name ?? "this worker", action: "approve" })}
                   >
                     <Check className="h-4 w-4" /> Approve
                   </Button>
                   <Button
                     size="sm"
                     variant="danger"
-                    loading={reject.isPending}
-                    onClick={() =>
-                      reject.mutate(id, {
-                        onSuccess: () => toast("Leave rejected", "success"),
-                        onError: (e) =>
-                          toast(e instanceof ApiError ? e.message : "Failed", "error"),
-                      })
-                    }
+                    onClick={() => setDecision({ id, name: l.employee?.name ?? "this worker", action: "reject" })}
                   >
                     <X className="h-4 w-4" /> Reject
                   </Button>
@@ -135,6 +124,31 @@ export function LeavePage() {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={decision !== null}
+        title={decision?.action === "reject" ? "Reject leave?" : "Approve leave?"}
+        message={
+          decision?.action === "reject"
+            ? `Reject the leave request from ${decision?.name}? They'll be notified it was declined.`
+            : `Approve the leave request from ${decision?.name}? This marks the day(s) as leave in their attendance.`
+        }
+        confirmLabel={decision?.action === "reject" ? "Reject" : "Approve"}
+        danger={decision?.action === "reject"}
+        loading={approve.isPending || reject.isPending}
+        onCancel={() => setDecision(null)}
+        onConfirm={() => {
+          if (!decision) return;
+          const mut = decision.action === "approve" ? approve : reject;
+          mut.mutate(decision.id, {
+            onSuccess: () => {
+              toast(decision.action === "approve" ? "Leave approved" : "Leave rejected", "success");
+              setDecision(null);
+            },
+            onError: (e) => toast(e instanceof ApiError ? e.message : "Failed", "error"),
+          });
+        }}
+      />
     </>
   );
 }
