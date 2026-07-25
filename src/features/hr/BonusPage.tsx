@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { Input } from "@/components/ui/Input";
-import { CalendarDays, Settings2 } from "lucide-react";
+import { CalendarDays, Settings2, RotateCcw } from "lucide-react";
 import { bonusService, BonusRecordRow, BonusPreviewRow } from "./api";
 
 // The Diwali date, label and thresholds that drive the whole module. Without
@@ -27,8 +27,19 @@ function BonusConfigPanel({ year }: { year: number }) {
   });
   const cfg = data?.config;
   const [form, setForm] = useState<Record<string, string>>({});
+  const [resetOpen, setResetOpen] = useState(false);
   const val = (k: string, fallback: unknown) =>
     form[k] ?? (fallback == null ? "" : String(fallback));
+
+  const reset = useMutation({
+    mutationFn: () => bonusService.resetYear(year),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["bonus"] });
+      toast(r.message ?? `Reset ${year} bonus`, "success");
+      setResetOpen(false);
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Reset failed", "error"),
+  });
 
   const save = useMutation({
     mutationFn: () =>
@@ -50,13 +61,39 @@ function BonusConfigPanel({ year }: { year: number }) {
   if (isLoading) return <Skeleton className="mb-4 h-32 w-full" />;
 
   const locked = cfg?.status === "triggered" || cfg?.status === "completed";
+  // Once records are PAID the year can't be reopened — the denominator that
+  // produced those amounts has to stay put.
+  const hasPaid = (data?.stats?.paidRecords ?? 0) > 0;
 
   return (
     <Card className="mb-4 p-5">
       <h3 className="mb-3 flex items-center gap-2 font-semibold">
         <CalendarDays className="h-4 w-4 text-brand-500" /> Diwali bonus settings {year}
         {!cfg?.bonusDate && <StatusChip tone="warning">date not set</StatusChip>}
+        {locked && <StatusChip tone="info">locked — {cfg?.status}</StatusChip>}
       </h3>
+
+      {locked && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-status-warning/40 bg-status-warningBg p-3">
+          <p className="text-sm text-ink-600">
+            {hasPaid ? (
+              <>
+                <span className="font-medium">Working days can't be changed</span> — {data?.stats?.paidRecords} bonus
+                record{(data?.stats?.paidRecords ?? 0) > 1 ? "s have" : " has"} already been paid, and the amounts were
+                computed from the current value. Reset clears only the <em>unpaid</em> records.
+              </>
+            ) : (
+              <>
+                <span className="font-medium">Working days are locked</span> because {year}'s bonus has been generated.
+                Reset clears the generated (unpaid) records so you can change the settings and generate again.
+              </>
+            )}
+          </p>
+          <Button variant="danger" size="sm" onClick={() => setResetOpen(true)}>
+            <RotateCcw className="h-4 w-4" /> Reset {year} bonus
+          </Button>
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Input
           label="Diwali date"
@@ -74,9 +111,11 @@ function BonusConfigPanel({ year }: { year: number }) {
         <Input
           label="Working days / year"
           type="number"
+          disabled={locked}
           value={val("yearlyWorkingDays", cfg?.yearlyWorkingDays ?? 300)}
           onChange={(e) => setForm((f) => ({ ...f, yearlyWorkingDays: e.target.value }))}
-          hint={locked ? "Locked after generating" : "Attendance-rate denominator"}
+          hint={locked ? "Reset the year to change this" : "Attendance-rate denominator"}
+          className={locked ? "bg-ink-100 text-ink-400" : undefined}
         />
         <Input
           label="Min days to qualify"
@@ -94,11 +133,30 @@ function BonusConfigPanel({ year }: { year: number }) {
           hint="Floor on the effective rate (8.33 = statutory)"
         />
       </div>
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex justify-end gap-2">
+        {!locked && (data?.stats?.totalRecords ?? 0) > 0 && (
+          <Button variant="secondary" onClick={() => setResetOpen(true)}>
+            <RotateCcw className="h-4 w-4" /> Reset {year}
+          </Button>
+        )}
         <Button loading={save.isPending} onClick={() => save.mutate()}>
           <Settings2 className="h-4 w-4" /> Save settings
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={resetOpen}
+        title={`Reset ${year} bonus?`}
+        message={
+          hasPaid
+            ? `This deletes the ${data?.stats?.pendingRecords ?? 0} UNPAID bonus record(s) for ${year} and removes them from employee ledgers. The ${data?.stats?.paidRecords} already-paid record(s) are kept and the year stays completed, so working days remain locked.`
+            : `This deletes the ${data?.stats?.totalRecords ?? 0} generated bonus record(s) for ${year} and removes them from employee ledgers, unlocking the settings so you can change them and generate again. Paid records are never deleted.`
+        }
+        confirmLabel="Reset bonus"
+        loading={reset.isPending}
+        onCancel={() => setResetOpen(false)}
+        onConfirm={() => reset.mutate()}
+      />
     </Card>
   );
 }
