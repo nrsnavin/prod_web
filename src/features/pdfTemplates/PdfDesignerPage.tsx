@@ -216,6 +216,16 @@ export function PdfDesignerPage() {
             />
             Use this template for {currentDocType?.label ?? "this document"}
           </label>
+          {/* Without this the design is saved but never rendered — every
+              PDF keeps coming out in the built-in layout, which reads as
+              "the designer doesn't work". Say so plainly. */}
+          {!tpl.enabled && (
+            <p className="rounded-lg bg-status-warningBg px-3 py-2 text-xs text-ink-600">
+              <span className="font-medium">This design is not in use.</span> Tick the box above and
+              save — until then {currentDocType?.label ?? "this document"} PDFs keep using the
+              built-in layout.
+            </p>
+          )}
           <Select
             label="Orientation"
             value={tpl.orientation}
