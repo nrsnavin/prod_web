@@ -119,7 +119,15 @@ const materialColumns: Column<RawMaterialRequirement>[] = [
     align: "right",
     render: (r) => {
       const avail = requirementAvailable(r);
-      if (avail == null) return "—";
+      // See MrpPage: a missing value means the server omitted the field,
+      // not that stock is zero.
+      if (avail == null) {
+        return (
+          <span className="text-ink-400" title="Stock not returned by the server for this material">
+            not available
+          </span>
+        );
+      }
       const short = avail < requirementRequired(r);
       return <span className={short ? "text-status-danger font-semibold" : ""}>{avail.toLocaleString("en-IN")}</span>;
     },
