@@ -32,7 +32,16 @@ const materialColumns: Column<MrpMaterial>[] = [
     align: "right",
     render: (m) => {
       const stock = m.inStock ?? m.stock ?? m.available;
-      if (stock == null) return "—";
+      // A current backend always sends a numeric inStock (0 when the
+      // material has none). A missing value means the API didn't return
+      // the field at all — say so rather than showing a bare dash.
+      if (stock == null) {
+        return (
+          <span className="text-ink-400" title="Stock not returned by the server for this material">
+            not available
+          </span>
+        );
+      }
       const req = m.requiredWeight ?? m.required ?? m.quantity ?? 0;
       const short = stock < req;
       return (
