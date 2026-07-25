@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/Card";
-import { COMPANY } from "@/app/company";
+import { useDocumentSettings } from "@/features/settings/hooks";
 import { PurchaseOrder, PoItem, PoSupplierRef } from "./types";
 
 const inr = (n: number) => n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -51,20 +51,39 @@ function amountInWords(num: number): string {
 export function PoDocument({ po }: { po: PurchaseOrder }) {
   const s = supplier(po);
   const total = po.items.reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 0), 0);
+  // Buyer details come from Settings → Document settings — the same source
+  // the generated PDF uses. They were previously hardcoded placeholders,
+  // so this sheet printed a different (fictional) company from the PDF.
+  const { data: doc } = useDocumentSettings();
+  const company = {
+    name: doc?.companyName ?? "",
+    addressLines: (doc?.addressLines ?? []).filter(Boolean),
+    gstin: doc?.gstin ?? "",
+    phone: doc?.phone ?? "",
+  };
+  const gstinPhone = [company.gstin && `GSTIN: ${company.gstin}`, company.phone]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="print-area">
       <Card className="mx-auto max-w-3xl p-8 text-ink-900 print:max-w-none print:p-0 print:shadow-none">
         {/* Header */}
         <div className="flex items-start justify-between border-b-2 border-ink-900 pb-4">
-          <div>
-            <h1 className="text-lg font-bold">{COMPANY.name}</h1>
-            {COMPANY.addressLines.map((l) => (
-              <p key={l} className="text-xs text-ink-600">{l}</p>
-            ))}
-            <p className="mt-0.5 text-xs text-ink-600">
-              GSTIN: {COMPANY.gstin} · {COMPANY.phone}
-            </p>
+          <div className="flex items-start gap-3">
+            {doc?.logo && (
+              <img src={doc.logo} alt="" className="h-12 w-12 shrink-0 object-contain" />
+            )}
+            <div>
+              <h1 className="text-lg font-bold" style={{ color: doc?.accentColor || undefined }}>
+                {company.name}
+              </h1>
+              {doc?.tagline && <p className="text-xs text-ink-400">{doc.tagline}</p>}
+              {company.addressLines.map((l) => (
+                <p key={l} className="text-xs text-ink-600">{l}</p>
+              ))}
+              {gstinPhone && <p className="mt-0.5 text-xs text-ink-600">{gstinPhone}</p>}
+            </div>
           </div>
           <div className="text-right">
             <h2 className="text-xl font-bold tracking-wide">PURCHASE ORDER</h2>
@@ -95,8 +114,8 @@ export function PoDocument({ po }: { po: PurchaseOrder }) {
           </div>
           <div>
             <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">Ship to</p>
-            <p className="font-semibold">{COMPANY.name}</p>
-            {COMPANY.addressLines.map((l) => (
+            <p className="font-semibold">{company.name}</p>
+            {company.addressLines.map((l) => (
               <p key={l} className="text-ink-600">{l}</p>
             ))}
             <p className="mt-1 text-ink-600">
@@ -146,8 +165,11 @@ export function PoDocument({ po }: { po: PurchaseOrder }) {
         {/* Terms */}
         <div className="mt-4 text-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Terms &amp; notes</p>
+          {/* PO-specific notes win; otherwise the standing terms configured
+              in Settings → Document settings, then a generic fallback. */}
           <p className="mt-1 whitespace-pre-wrap text-ink-600">
             {po.notes?.trim() ||
+              doc?.termsText?.trim() ||
               "Please supply the above materials as per agreed specifications. Quote this PO number on the invoice and delivery challan."}
           </p>
         </div>
@@ -156,11 +178,15 @@ export function PoDocument({ po }: { po: PurchaseOrder }) {
         <div className="mt-12 grid grid-cols-2 gap-6 text-sm text-ink-600">
           <div className="border-t border-ink-300 pt-2">Prepared by</div>
           <div className="border-t border-ink-300 pt-2 text-right">
-            For {COMPANY.name}
+            For {company.name}
             <br />
             <span className="mt-6 inline-block">Authorised signatory</span>
           </div>
         </div>
+
+        {doc?.footerNote && (
+          <p className="mt-6 border-t border-ink-200 pt-3 text-xs text-ink-400">{doc.footerNote}</p>
+        )}
       </Card>
     </div>
   );
