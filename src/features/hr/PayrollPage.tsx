@@ -13,7 +13,7 @@ import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ApiError } from "@/core/http/httpClient";
-import { payrollService, PayrollEmployeeRow, PayrollSettings } from "./api";
+import { payrollService, PayrollEmployeeRow, PayrollSettings, MonthRange, PayrollRangeRow } from "./api";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 
@@ -413,11 +413,91 @@ function SettingsPanel() {
   );
 }
 
+// Payroll summed across a month window — one row per employee, read-only
+// (paying happens per month). Powers the payroll page's "Range" view.
+function PayrollRangeView({ range }: { range: MonthRange }) {
+  const q = useQuery({
+    queryKey: ["payroll-range", range],
+    queryFn: () => payrollService.dashboardRange(range),
+  });
+  const s = q.data?.summary;
+
+  const columns: Column<PayrollRangeRow>[] = [
+    {
+      key: "name",
+      header: "Employee",
+      render: (e) => (
+        <div>
+          <p className="font-medium">{e.name}</p>
+          <p className="text-xs text-ink-400 capitalize">{e.department}</p>
+        </div>
+      ),
+    },
+    { key: "months", header: "Months", align: "right", render: (e) => e.months },
+    { key: "gross", header: "Gross (₹)", align: "right", render: (e) => (e.grossEarnings ?? 0).toLocaleString("en-IN") },
+    { key: "bonus", header: "Bonus (₹)", align: "right", render: (e) => (e.totalBonuses ?? 0).toLocaleString("en-IN") },
+    { key: "ded", header: "Deductions (₹)", align: "right", render: (e) => (e.totalDeductions ?? 0).toLocaleString("en-IN") },
+    { key: "net", header: "Net (₹)", align: "right", render: (e) => <span className="font-bold">{e.netPay.toLocaleString("en-IN")}</span> },
+    { key: "paid", header: "Paid (₹)", align: "right", render: (e) => (e.amountPaid ?? 0).toLocaleString("en-IN") },
+    {
+      key: "status",
+      header: "Status",
+      render: (e) => (
+        <StatusChip tone={e.fullyPaid ? "success" : "warning"}>
+          {e.fullyPaid ? "paid" : `${e.paidMonths}/${e.months} paid`}
+        </StatusChip>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      {q.isLoading ? (
+        <Skeleton className="h-24 w-full mb-4" />
+      ) : (
+        <div className="mb-4 grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+          {[
+            { label: "Net payout", val: inr(s?.totalNetPay) },
+            { label: "Gross", val: inr(s?.totalGross) },
+            { label: "Deductions", val: inr(s?.totalDeductions) },
+            { label: "Paid out", val: inr(s?.totalPaid) },
+            { label: "Employees", val: String(s?.totalEmployees ?? 0) },
+          ].map((t) => (
+            <Card key={t.label} className="p-4">
+              <p className="text-xs text-ink-400">{t.label}</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums">{t.val}</p>
+            </Card>
+          ))}
+        </div>
+      )}
+      <Card>
+        <DataTable
+          columns={columns}
+          rows={q.data?.employees ?? []}
+          rowKey={(e) => e.employeeId}
+          loading={q.isLoading}
+          emptyTitle="No payroll in this range"
+          emptyDescription="No generated payroll for the selected months."
+        />
+      </Card>
+    </>
+  );
+}
+
 export function PayrollPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [tab, setTab] = useState<"payroll" | "advances" | "settings">("payroll");
+  const [mode, setMode] = useState<"month" | "range">("month");
+  const [range, setRange] = useState<MonthRange>(() => {
+    const to = new Date();
+    const from = new Date(to.getFullYear(), to.getMonth() - 5, 1);
+    return {
+      fromYear: from.getFullYear(), fromMonth: from.getMonth() + 1,
+      toYear: to.getFullYear(), toMonth: to.getMonth() + 1,
+    };
+  });
   const [slip, setSlip] = useState<{ empId: string; name: string } | null>(null);
   const [payRow, setPayRow] = useState<PayrollEmployeeRow | null>(null);
   const { toast } = useToast();
@@ -590,6 +670,57 @@ export function PayrollPage() {
 
       {tab === "payroll" && (
         <>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div className="flex gap-1 rounded-lg bg-ink-100 p-1">
+              {(["month", "range"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-sm font-medium capitalize",
+                    mode === m ? "bg-white shadow-sm text-ink-900" : "text-ink-600"
+                  )}
+                >
+                  {m === "month" ? "Single month" : "Range"}
+                </button>
+              ))}
+            </div>
+            {mode === "range" && (
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-ink-400">From</span>
+                <Select
+                  className="w-32"
+                  value={String(range.fromMonth)}
+                  onChange={(e) => setRange((r) => ({ ...r, fromMonth: Number(e.target.value) }))}
+                  options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                />
+                <Select
+                  className="w-24"
+                  value={String(range.fromYear)}
+                  onChange={(e) => setRange((r) => ({ ...r, fromYear: Number(e.target.value) }))}
+                  options={[0, 1, 2].map((d) => { const y = now.getFullYear() - d; return { value: String(y), label: String(y) }; })}
+                />
+                <span className="text-ink-400">to</span>
+                <Select
+                  className="w-32"
+                  value={String(range.toMonth)}
+                  onChange={(e) => setRange((r) => ({ ...r, toMonth: Number(e.target.value) }))}
+                  options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                />
+                <Select
+                  className="w-24"
+                  value={String(range.toYear)}
+                  onChange={(e) => setRange((r) => ({ ...r, toYear: Number(e.target.value) }))}
+                  options={[0, 1, 2].map((d) => { const y = now.getFullYear() - d; return { value: String(y), label: String(y) }; })}
+                />
+              </div>
+            )}
+          </div>
+
+          {mode === "range" ? (
+            <PayrollRangeView range={range} />
+          ) : (
+          <>
           {dashboard.isLoading ? (
             <Skeleton className="h-24 w-full mb-4" />
           ) : (
@@ -625,6 +756,8 @@ export function PayrollPage() {
               emptyDescription={`Generate ${MONTHS[month - 1]} ${year} to compute pay from attendance.`}
             />
           </Card>
+          </>
+          )}
         </>
       )}
 

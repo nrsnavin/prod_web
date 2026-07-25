@@ -216,7 +216,75 @@ export const payrollService = {
     );
     return res.data;
   },
+  // One employee's slips across a month window, oldest first, plus totals.
+  range: (empId: string, r: MonthRange): Promise<PayrollRange> =>
+    httpClient.get<PayrollRange>(`/payroll/range/${empId}`, { ...r }),
+  // Per-employee summed rows across a month window (payroll page range view).
+  dashboardRange: (r: MonthRange): Promise<PayrollRangeDashboard> =>
+    httpClient.get<PayrollRangeDashboard>("/payroll/dashboard-range", { ...r }),
 };
+
+export interface MonthRange {
+  fromYear: number;
+  fromMonth: number;
+  toYear: number;
+  toMonth: number;
+}
+
+export interface PayrollRangeSlip {
+  _id: string;
+  year: number;
+  month: number;
+  netPay: number;
+  grossEarnings?: number;
+  totalBonuses?: number;
+  totalDeductions?: number;
+  totalAdvanceDeduction?: number;
+  amountPaid?: number;
+  status: string;
+}
+export interface PayrollRange {
+  success: boolean;
+  range: MonthRange;
+  slips: PayrollRangeSlip[];
+  totals: {
+    months: number;
+    grossEarnings: number;
+    totalBonuses: number;
+    totalDeductions: number;
+    totalAdvanceDeduction: number;
+    netPay: number;
+    amountPaid: number;
+  };
+}
+
+export interface PayrollRangeRow {
+  employeeId: string;
+  name: string;
+  department: string;
+  grossEarnings: number;
+  totalDeductions: number;
+  totalBonuses: number;
+  totalAdvanceDeduction: number;
+  netPay: number;
+  amountPaid: number;
+  months: number;
+  paidMonths: number;
+  fullyPaid: boolean;
+}
+export interface PayrollRangeDashboard {
+  success: boolean;
+  range: MonthRange;
+  summary: {
+    totalEmployees: number;
+    totalNetPay: number;
+    totalGross: number;
+    totalDeductions: number;
+    totalBonuses: number;
+    totalPaid: number;
+  };
+  employees: PayrollRangeRow[];
+}
 
 export interface PayslipRow {
   _id: string;
