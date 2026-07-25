@@ -11,7 +11,97 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
+import { Input } from "@/components/ui/Input";
+import { CalendarDays, Settings2 } from "lucide-react";
 import { bonusService, BonusRecordRow, BonusPreviewRow } from "./api";
+
+// The Diwali date, label and thresholds that drive the whole module. Without
+// a date set nothing can be generated, so this has to be visible and
+// editable on the page rather than buried in the database.
+function BonusConfigPanel({ year }: { year: number }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["bonus", "config", year],
+    queryFn: () => bonusService.config(year),
+  });
+  const cfg = data?.config;
+  const [form, setForm] = useState<Record<string, string>>({});
+  const val = (k: string, fallback: unknown) =>
+    form[k] ?? (fallback == null ? "" : String(fallback));
+
+  const save = useMutation({
+    mutationFn: () =>
+      bonusService.saveConfig({
+        year,
+        bonusDate: val("bonusDate", cfg?.bonusDate ? String(cfg.bonusDate).slice(0, 10) : "") || undefined,
+        bonusLabel: val("bonusLabel", cfg?.bonusLabel),
+        yearlyWorkingDays: Number(val("yearlyWorkingDays", cfg?.yearlyWorkingDays ?? 300)),
+        minDaysForEligibility: Number(val("minDaysForEligibility", cfg?.minDaysForEligibility ?? 30)),
+        minBonusPercent: Number(val("minBonusPercent", cfg?.minBonusPercent ?? 8.33)),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bonus"] });
+      toast("Bonus settings saved", "success");
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Save failed", "error"),
+  });
+
+  if (isLoading) return <Skeleton className="mb-4 h-32 w-full" />;
+
+  const locked = cfg?.status === "triggered" || cfg?.status === "completed";
+
+  return (
+    <Card className="mb-4 p-5">
+      <h3 className="mb-3 flex items-center gap-2 font-semibold">
+        <CalendarDays className="h-4 w-4 text-brand-500" /> Diwali bonus settings {year}
+        {!cfg?.bonusDate && <StatusChip tone="warning">date not set</StatusChip>}
+      </h3>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Input
+          label="Diwali date"
+          type="date"
+          value={val("bonusDate", cfg?.bonusDate ? String(cfg.bonusDate).slice(0, 10) : "")}
+          onChange={(e) => setForm((f) => ({ ...f, bonusDate: e.target.value }))}
+          hint="Defines the 12-month window and when generation unlocks"
+        />
+        <Input
+          label="Label"
+          value={val("bonusLabel", cfg?.bonusLabel)}
+          onChange={(e) => setForm((f) => ({ ...f, bonusLabel: e.target.value }))}
+          placeholder={`Diwali ${year}`}
+        />
+        <Input
+          label="Working days / year"
+          type="number"
+          value={val("yearlyWorkingDays", cfg?.yearlyWorkingDays ?? 300)}
+          onChange={(e) => setForm((f) => ({ ...f, yearlyWorkingDays: e.target.value }))}
+          hint={locked ? "Locked after generating" : "Attendance-rate denominator"}
+        />
+        <Input
+          label="Min days to qualify"
+          type="number"
+          value={val("minDaysForEligibility", cfg?.minDaysForEligibility ?? 30)}
+          onChange={(e) => setForm((f) => ({ ...f, minDaysForEligibility: e.target.value }))}
+          hint="0 = everyone qualifies"
+        />
+        <Input
+          label="Min bonus %"
+          type="number"
+          step="0.01"
+          value={val("minBonusPercent", cfg?.minBonusPercent ?? 8.33)}
+          onChange={(e) => setForm((f) => ({ ...f, minBonusPercent: e.target.value }))}
+          hint="Floor on the effective rate (8.33 = statutory)"
+        />
+      </div>
+      <div className="mt-4 flex justify-end">
+        <Button loading={save.isPending} onClick={() => save.mutate()}>
+          <Settings2 className="h-4 w-4" /> Save settings
+        </Button>
+      </div>
+    </Card>
+  );
+}
 
 export function BonusPage() {
   const currentYear = new Date().getFullYear();
@@ -57,8 +147,33 @@ export function BonusPage() {
     },
     { key: "salary", header: "Window salary (₹)", align: "right", render: (r) => (r.annualEarnings).toLocaleString("en-IN") },
     { key: "pct", header: "Percent", align: "right", render: (r) => `${r.bonusPercent}%` },
-    { key: "tier", header: "Attendance", align: "right", render: (r) => `${r.attendanceRate}% · ${r.attendanceTier} ×${r.multiplier}` },
-    { key: "amount", header: "Approx bonus (₹)", align: "right", render: (r) => <span className="font-bold">{r.bonusAmount.toLocaleString("en-IN")}</span> },
+    {
+      key: "tier",
+      header: "Attendance",
+      align: "right",
+      render: (r) => (
+        <div className="text-right">
+          <p className="tabular-nums">{r.attendanceRate}% · {r.attendanceTier} ×{r.multiplier}</p>
+          {r.attendanceDays != null && (
+            <p className="text-xs text-ink-400 tabular-nums">
+              {r.attendanceDays}/{r.totalWorkingDays} days
+              {r.attendanceSource === "scheduled_shifts" && " · from roster"}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "amount",
+      header: "Predicted bonus (₹)",
+      align: "right",
+      render: (r) =>
+        r.eligible === false ? (
+          <StatusChip tone="warning">under {r.minDaysForEligibility ?? 30} days</StatusChip>
+        ) : (
+          <span className="font-bold">{r.bonusAmount.toLocaleString("en-IN")}</span>
+        ),
+    },
   ];
 
   const columns: Column<BonusRecordRow>[] = [
@@ -156,33 +271,44 @@ export function BonusPage() {
         </div>
       )}
 
-      {cfg?.status !== "triggered" && (
-        <Card className="mb-4">
-          <div className="px-5 pt-5">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Gift className="h-4 w-4 text-brand-500" /> Approximate bonus
-              {pv?.approximate && <StatusChip tone="warning">approximate</StatusChip>}
-            </h3>
-            <p className="mt-1 text-sm text-ink-400">
-              {pv?.approximate
-                ? `Provisional figures — they finalize when you generate on ${diwaliLabel ?? "the Diwali month"}. Amounts grow as each month's payroll is paid.`
-                : diwaliLabel
-                ? `It's the Diwali month (${diwaliLabel}). Review the figures below and generate to lock them in.`
-                : "Set the Diwali date in the bonus config to define the window and enable generation."}
-              {pv && (
-                <> Projected total: <span className="font-semibold text-ink-600">₹{pv.totalPayout.toLocaleString("en-IN")}</span>.</>
-              )}
-            </p>
-          </div>
-          <DataTable
-            columns={previewColumns}
-            rows={pv?.rows ?? []}
-            rowKey={(r) => r.employeeId}
-            loading={preview.isLoading}
-            emptyTitle="No employees to preview"
-          />
-        </Card>
-      )}
+      <BonusConfigPanel year={year} />
+
+      {/* Prediction from current performance — always visible, including
+          after generating, so the live figures can be compared with what
+          was locked in. */}
+      <Card className="mb-4">
+        <div className="px-5 pt-5">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Gift className="h-4 w-4 text-brand-500" /> Bonus prediction — current performance
+            {pv?.approximate && <StatusChip tone="warning">projection</StatusChip>}
+            {cfg?.status === "triggered" && <StatusChip tone="info">already generated</StatusChip>}
+          </h3>
+          <p className="mt-1 text-sm text-ink-400">
+            {!pv?.configured
+              ? "Set the Diwali date above to define the 12-month window and enable generation."
+              : pv?.approximate
+              ? `Provisional — figures finalize when you generate on ${diwaliLabel}. Amounts grow as each month's payroll is paid.`
+              : `It's the Diwali month (${diwaliLabel}). Review below and generate to lock the figures in.`}
+            {pv && (
+              <>
+                {" "}Projected total:{" "}
+                <span className="font-semibold text-ink-600">₹{pv.totalPayout.toLocaleString("en-IN")}</span>
+                {pv.ineligibleCount ? (
+                  <> · <span className="text-status-warning">{pv.ineligibleCount} below the {pv.config?.minDaysForEligibility ?? 30}-day threshold</span></>
+                ) : null}
+                .
+              </>
+            )}
+          </p>
+        </div>
+        <DataTable
+          columns={previewColumns}
+          rows={pv?.rows ?? []}
+          rowKey={(r) => r.employeeId}
+          loading={preview.isLoading}
+          emptyTitle="No employees to preview"
+        />
+      </Card>
 
       <Card>
         <h3 className="font-semibold px-5 pt-5 flex items-center gap-2">

@@ -383,6 +383,10 @@ export interface BonusConfig {
   yearlyWorkingDays?: number;
   defaultPercent?: number;
   status?: string;
+  bonusDate?: string | null;
+  bonusLabel?: string;
+  minDaysForEligibility?: number;
+  minBonusPercent?: number;
 }
 
 export interface BonusRecordRow {
@@ -410,6 +414,14 @@ export const bonusService = {
     return res.records ?? res.data ?? [];
   },
   trigger: (year: number) => httpClient.post("/bonus/trigger", { year }),
+  saveConfig: (body: {
+    year: number;
+    bonusDate?: string;
+    bonusLabel?: string;
+    yearlyWorkingDays?: number;
+    minDaysForEligibility?: number;
+    minBonusPercent?: number;
+  }) => httpClient.put<{ success: boolean; config: BonusConfig }>("/bonus/config", body),
   payRecord: (id: string) => httpClient.put(`/bonus/records/${id}/pay`),
   preview: (year: number) => httpClient.get<BonusPreview>("/bonus/preview", { year }),
 };
@@ -426,6 +438,11 @@ export interface BonusPreviewRow {
   multiplier: number;
   bonusAmount: number;
   basedOn: string;
+  attendanceSource?: string;
+  attendanceDays?: number;
+  totalWorkingDays?: number;
+  eligible?: boolean;
+  minDaysForEligibility?: number;
 }
 
 export interface BonusPreview {
@@ -433,9 +450,13 @@ export interface BonusPreview {
   year: number;
   approximate: boolean;
   canGenerate: boolean;
+  configured?: boolean;
   diwaliDate: string | null;
   bonusLabel: string;
   totalPayout: number;
+  eligibleCount?: number;
+  ineligibleCount?: number;
+  config?: BonusConfig;
   rows: BonusPreviewRow[];
   window: { start: string; end: string };
 }
