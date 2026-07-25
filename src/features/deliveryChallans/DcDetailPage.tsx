@@ -87,7 +87,10 @@ export function DcDetailPage() {
               <Button variant="secondary" onClick={downloadPdf} loading={downloading}>
                 <FileDown className="h-4 w-4" /> Download PDF
               </Button>
-              <Button variant="secondary" onClick={() => window.print()}>
+              {/* Print the SAME document that downloads — the server PDF
+                  built from the Settings → PDF Designer template. Printing
+                  the on-page HTML produced a different-looking challan. */}
+              <Button variant="secondary" onClick={downloadPdf} loading={downloading}>
                 <Printer className="h-4 w-4" /> Print
               </Button>
               {dc.status === "draft" && (
