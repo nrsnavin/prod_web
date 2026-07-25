@@ -424,7 +424,23 @@ export const bonusService = {
   }) => httpClient.put<{ success: boolean; config: BonusConfig }>("/bonus/config", body),
   payRecord: (id: string) => httpClient.put(`/bonus/records/${id}/pay`),
   preview: (year: number) => httpClient.get<BonusPreview>("/bonus/preview", { year }),
+  // Live projection for one employee (employee detail page).
+  prediction: (empId: string, year: number) =>
+    httpClient.get<BonusPrediction>(`/bonus/employee/${empId}/prediction`, { year }),
 };
+
+export interface BonusPrediction {
+  success: boolean;
+  year: number;
+  employee: { id: string; name: string; department?: string };
+  approximate: boolean;
+  configured: boolean;
+  diwaliDate: string | null;
+  bonusLabel: string;
+  window: { start: string; end: string };
+  prediction: BonusPreviewRow & { rawBonusAmount?: number; salaryReceived?: number };
+  record: { bonusAmount: number; status: string; paidAt?: string | null } | null;
+}
 
 export interface BonusPreviewRow {
   employeeId: string;
