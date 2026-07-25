@@ -24,7 +24,7 @@ const payrollTone: Record<string, ChipTone> = {
   paid: "success",
 };
 
-const inr = (n: number | undefined) => `₹${Number(n ?? 0).toLocaleString("en-IN")}`;
+const inr = (n: number | null | undefined) => `₹${Number(n ?? 0).toLocaleString("en-IN")}`;
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
