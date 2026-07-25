@@ -35,7 +35,7 @@ export const attendanceService = {
   mark: (body: {
     date: string;
     shift: "DAY" | "NIGHT";
-    records: Array<{ employeeId: string; status: string; lateMinutes?: number; notes?: string }>;
+    records: Array<{ employeeId: string; status: string; lateMinutes?: number; overtimeMinutes?: number; notes?: string }>;
   }) => httpClient.post("/attendance/mark", body),
 };
 

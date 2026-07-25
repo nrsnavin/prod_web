@@ -74,6 +74,7 @@ function MarkModal({
   const [statuses, setStatuses] = useState<Record<string, string>>(
     Object.fromEntries(unmarked.map((e) => [e.id, "present"]))
   );
+  const [ot, setOt] = useState<Record<string, string>>({});
   const mark = useMutation({
     mutationFn: attendanceService.mark,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["attendance"] }),
@@ -82,19 +83,32 @@ function MarkModal({
   return (
     <FormScreen open onClose={onClose} title={`Mark attendance — ${shift} shift`} width="max-w-xl">
       <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
-        {unmarked.map((e) => (
-          <div key={e.id} className="grid grid-cols-[1fr_160px] gap-2 items-center">
-            <div>
-              <p className="text-sm font-medium">{e.name}</p>
-              <p className="text-xs text-ink-400 capitalize">{e.department ?? ""}</p>
+        {unmarked.map((e) => {
+          const worked = statuses[e.id] === "present" || statuses[e.id] === "late" || statuses[e.id] === "half_day";
+          return (
+            <div key={e.id} className="grid grid-cols-[1fr_130px_88px] gap-2 items-center">
+              <div>
+                <p className="text-sm font-medium">{e.name}</p>
+                <p className="text-xs text-ink-400 capitalize">{e.department ?? ""}</p>
+              </div>
+              <Select
+                options={STATUS_OPTIONS.map((s) => ({ value: s, label: s.replace("_", " ") }))}
+                value={statuses[e.id]}
+                onChange={(ev) => setStatuses((st) => ({ ...st, [e.id]: ev.target.value }))}
+              />
+              <input
+                type="number"
+                min={0}
+                placeholder="OT min"
+                title="Overtime minutes"
+                disabled={!worked}
+                value={worked ? ot[e.id] ?? "" : ""}
+                onChange={(ev) => setOt((o) => ({ ...o, [e.id]: ev.target.value }))}
+                className="h-9 w-full rounded-lg border border-ink-200 bg-white px-2 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
+              />
             </div>
-            <Select
-              options={STATUS_OPTIONS.map((s) => ({ value: s, label: s.replace("_", " ") }))}
-              value={statuses[e.id]}
-              onChange={(ev) => setStatuses((st) => ({ ...st, [e.id]: ev.target.value }))}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="mt-4 flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
@@ -108,6 +122,7 @@ function MarkModal({
                 records: Object.entries(statuses).map(([employeeId, status]) => ({
                   employeeId,
                   status,
+                  overtimeMinutes: Number(ot[employeeId]) || 0,
                 })),
               },
               {
