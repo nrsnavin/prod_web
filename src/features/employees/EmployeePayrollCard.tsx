@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { payrollService } from "@/features/hr/api";
+import { payrollService, MonthRange } from "@/features/hr/api";
+import { cn } from "@/components/ui/cn";
 
 const statusTone: Record<string, ChipTone> = { paid: "success", finalized: "info", draft: "warning" };
 
@@ -57,6 +58,120 @@ function SlipRow({
   );
 }
 
+// Payroll across a month window for one employee: a totals strip plus a
+// per-month slip table (with a per-month payslip PDF link).
+function RangeSlips({ empId }: { empId: string }) {
+  const { toast } = useToast();
+  const now = new Date();
+  const [range, setRange] = useState<MonthRange>(() => {
+    const from = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    return {
+      fromYear: from.getFullYear(), fromMonth: from.getMonth() + 1,
+      toYear: now.getFullYear(), toMonth: now.getMonth() + 1,
+    };
+  });
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const q = useQuery({
+    queryKey: ["emp-range", empId, range],
+    queryFn: () => payrollService.range(empId, range),
+    retry: false,
+  });
+  const t = q.data?.totals;
+
+  const downloadPdf = async (year: number, month: number) => {
+    const key = `${year}-${month}`;
+    setBusy(key);
+    try {
+      const blob = await payrollService.slipPdf(empId, year, month);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "No payslip for that month", "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const yearOpts = [0, 1, 2].map((d) => { const y = now.getFullYear() - d; return { value: String(y), label: String(y) }; });
+
+  return (
+    <>
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-ink-400">From</span>
+        <Select className="w-32" value={String(range.fromMonth)}
+          onChange={(e) => setRange((r) => ({ ...r, fromMonth: Number(e.target.value) }))}
+          options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))} />
+        <Select className="w-24" value={String(range.fromYear)}
+          onChange={(e) => setRange((r) => ({ ...r, fromYear: Number(e.target.value) }))} options={yearOpts} />
+        <span className="text-ink-400">to</span>
+        <Select className="w-32" value={String(range.toMonth)}
+          onChange={(e) => setRange((r) => ({ ...r, toMonth: Number(e.target.value) }))}
+          options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))} />
+        <Select className="w-24" value={String(range.toYear)}
+          onChange={(e) => setRange((r) => ({ ...r, toYear: Number(e.target.value) }))} options={yearOpts} />
+      </div>
+
+      {q.isLoading ? (
+        <Skeleton className="mt-4 h-40 w-full" />
+      ) : (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-4 rounded-lg bg-canvas p-4 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat label="Net pay" value={inr(t?.netPay)} sub={`${t?.months ?? 0} months`} />
+            <Stat label="Gross" value={inr(t?.grossEarnings)} />
+            <Stat label="Bonuses" value={inr(t?.totalBonuses)} />
+            <Stat label="Deductions" value={inr(t?.totalDeductions)} />
+            <Stat label="Advances" value={inr(t?.totalAdvanceDeduction)} />
+            <Stat label="Paid" value={inr(t?.amountPaid)} />
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-lg border border-ink-200">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-ink-100 text-left text-xs text-ink-400">
+                  <th className="px-4 py-2 font-medium">Month</th>
+                  <th className="px-4 py-2 text-right font-medium">Gross</th>
+                  <th className="px-4 py-2 text-right font-medium">Deductions</th>
+                  <th className="px-4 py-2 text-right font-medium">Net</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {(q.data?.slips ?? []).map((sl) => (
+                  <tr key={sl._id} className="border-b border-ink-100 last:border-0">
+                    <td className="px-4 py-2 font-medium">{MONTHS[sl.month - 1]} {sl.year}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{inr(sl.grossEarnings)}</td>
+                    <td className="px-4 py-2 text-right tabular-nums">{inr(sl.totalDeductions)}</td>
+                    <td className="px-4 py-2 text-right font-semibold tabular-nums">{inr(sl.netPay)}</td>
+                    <td className="px-4 py-2">
+                      <StatusChip tone={statusTone[sl.status] ?? "neutral"}>
+                        {sl.status.replace("_", " ")}
+                      </StatusChip>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <Button variant="ghost" size="sm" loading={busy === `${sl.year}-${sl.month}`}
+                        onClick={() => downloadPdf(sl.year, sl.month)}>
+                        <FileDown className="h-4 w-4" /> PDF
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {(q.data?.slips?.length ?? 0) === 0 && (
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-ink-400">
+                    No generated payroll in this range.
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 /**
  * Pay & performance overview for one employee: shift rates, the selected
  * month's computed payroll (attendance, earnings, bonuses, deductions,
@@ -66,6 +181,7 @@ function SlipRow({
 export function EmployeePayrollCard({ empId }: { empId: string }) {
   const now = new Date();
   const { toast } = useToast();
+  const [view, setView] = useState<"month" | "range">("month");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [downloading, setDownloading] = useState(false);
@@ -104,20 +220,38 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
         <h3 className="flex items-center gap-2 font-semibold">
           <Wallet className="h-4 w-4 text-brand-500" /> Pay &amp; month overview
         </h3>
-        <div className="flex items-center gap-2">
-          <Select
-            value={String(month)}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
-          />
-          <Select
-            value={String(year)}
-            onChange={(e) => setYear(Number(e.target.value))}
-            options={[year - 1, year, year + 1].map((y) => ({ value: String(y), label: String(y) }))}
-          />
-          <Button variant="secondary" size="sm" loading={downloading} onClick={downloadPdf}>
-            <FileDown className="h-4 w-4" /> Payslip PDF
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 rounded-lg bg-ink-100 p-1">
+            {(["month", "range"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={cn(
+                  "px-3 py-1 rounded-md text-sm font-medium capitalize",
+                  view === v ? "bg-white shadow-sm text-ink-900" : "text-ink-600"
+                )}
+              >
+                {v === "month" ? "Month" : "Range"}
+              </button>
+            ))}
+          </div>
+          {view === "month" && (
+            <>
+              <Select
+                value={String(month)}
+                onChange={(e) => setMonth(Number(e.target.value))}
+                options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+              />
+              <Select
+                value={String(year)}
+                onChange={(e) => setYear(Number(e.target.value))}
+                options={[year - 1, year, year + 1].map((y) => ({ value: String(y), label: String(y) }))}
+              />
+              <Button variant="secondary" size="sm" loading={downloading} onClick={downloadPdf}>
+                <FileDown className="h-4 w-4" /> Payslip PDF
+              </Button>
+            </>
+          )}
           <Link
             to="/payroll"
             className="inline-flex items-center gap-1 text-sm text-brand-600 hover:underline"
@@ -127,7 +261,9 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
         </div>
       </div>
 
-      {isLoading || !data ? (
+      {view === "range" && <RangeSlips empId={empId} />}
+
+      {view === "month" && (isLoading || !data ? (
         <Skeleton className="mt-4 h-40 w-full" />
       ) : (
         <>
@@ -135,7 +271,7 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
           <div className="mt-4 grid grid-cols-3 gap-4 rounded-lg bg-canvas p-4">
             <Stat label="Hourly rate" value={inr(data.employee.hourlyRate)} />
             <Stat label="DAY shift (12h)" value={inr(data.shiftRates.DAY)} />
-            <Stat label="NIGHT shift (8h)" value={inr(data.shiftRates.NIGHT)} />
+            <Stat label="NIGHT shift (12h)" value={inr(data.shiftRates.NIGHT)} />
           </div>
 
           {/* Salary slip — this month */}
@@ -224,7 +360,7 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
             </div>
           </div>
         </>
-      )}
+      ))}
     </Card>
   );
 }
