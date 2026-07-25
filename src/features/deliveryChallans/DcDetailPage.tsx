@@ -13,6 +13,7 @@ import { useDc, useDcMutations } from "./hooks";
 import { dcService } from "./api";
 import { DcStatus } from "./types";
 import { dcStatusTone } from "./DcListPage";
+import { CompanyLetterhead, CompanyDocumentFooter } from "@/components/documents/CompanyLetterhead";
 
 export function DcDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -135,14 +136,14 @@ export function DcDetailPage() {
       {/* Printable challan document */}
       <div className="print-area">
         <Card className="p-8 max-w-3xl print:shadow-none print:p-0 print:max-w-none">
-          <div className="flex items-start justify-between border-b border-ink-200 pb-4">
-            <div>
-              <h1 className="text-xl font-bold">DELIVERY CHALLAN</h1>
-              <p className="text-sm text-ink-600 mt-0.5">
-                {dc.type === "elastic" ? "Finished goods" : "Machine parts"} · Not a tax invoice
-              </p>
-            </div>
-            <div className="text-right text-sm">
+          {/* Company block comes from Settings → Document settings, the
+              same source the generated PDF uses. */}
+          <CompanyLetterhead
+            docTitle="DELIVERY CHALLAN"
+            docSubtitle={`${dc.type === "elastic" ? "Finished goods" : "Machine parts"} · Not a tax invoice`}
+          />
+          <div className="flex justify-end pt-3 text-sm">
+            <div className="text-right">
               <p className="font-bold">{dc.dcNumber}</p>
               <p className="text-ink-600">
                 {dc.dispatchDate ? new Date(dc.dispatchDate).toLocaleDateString() : ""}
@@ -228,6 +229,8 @@ export function DcDetailPage() {
             <div className="border-t border-ink-200 pt-2">Receiver's signature</div>
             <div className="border-t border-ink-200 pt-2 text-right">Authorised signatory</div>
           </div>
+
+          <CompanyDocumentFooter />
         </Card>
       </div>
 
