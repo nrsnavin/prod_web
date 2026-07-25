@@ -26,6 +26,16 @@ const payrollTone: Record<string, ChipTone> = {
 
 const inr = (n: number | null | undefined) => `₹${Number(n ?? 0).toLocaleString("en-IN")}`;
 
+// requested → approved → paid_out → recovered (rejected is terminal)
+const advanceTone: Record<string, ChipTone> = {
+  requested: "warning",
+  pending: "warning",
+  approved: "info",
+  paid_out: "success",
+  recovered: "neutral",
+  rejected: "danger",
+};
+
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
@@ -75,6 +85,9 @@ function PayslipModal({
         ["Bonuses", data.totalBonuses != null ? `₹${Number(data.totalBonuses).toLocaleString("en-IN")}` : undefined],
         ["Deductions", data.totalDeductions != null ? `₹${Number(data.totalDeductions).toLocaleString("en-IN")}` : undefined],
         ["Advance deduction", data.totalAdvanceDeduction != null ? `₹${Number(data.totalAdvanceDeduction).toLocaleString("en-IN")}` : undefined],
+        ["Cash paid", data.totalCashPaid ? `₹${Number(data.totalCashPaid).toLocaleString("en-IN")}` : undefined],
+        ["Advance recovered at payment", data.advanceRecoveredAtPayment ? `₹${Number(data.advanceRecoveredAtPayment).toLocaleString("en-IN")}` : undefined],
+        ["Total settled", data.amountPaid ? `₹${Number(data.amountPaid).toLocaleString("en-IN")}` : undefined],
       ]
     : [];
 
@@ -95,22 +108,34 @@ function PayslipModal({
           <p className="text-sm text-ink-400 print:hidden">
             {MONTHS[month - 1]} {year}
           </p>
-          <dl className="mt-3 divide-y divide-ink-100">
-            {rows
-              .filter(([, v]) => v !== undefined && v !== null)
-              .map(([label, value]) => (
-                <div key={label} className="flex justify-between py-2 text-sm">
-                  <dt className="text-ink-600">{label}</dt>
-                  <dd className="font-medium tabular-nums">{String(value)}</dd>
-                </div>
-              ))}
-            <div className="flex justify-between py-3">
-              <dt className="font-semibold">Net pay</dt>
-              <dd className="text-xl font-bold tabular-nums">
-                ₹{Number(data.netPay ?? 0).toLocaleString("en-IN")}
-              </dd>
-            </div>
-          </dl>
+          {/* A real table so the printed sheet has ruled rows and repeating
+              headers, not a run of flex rows. */}
+          <table className="mt-3 w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+                <th className="py-2 font-medium">Description</th>
+                <th className="py-2 text-right font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows
+                .filter(([, v]) => v !== undefined && v !== null)
+                .map(([label, value]) => (
+                  <tr key={label} className="border-b border-ink-100">
+                    <td className="py-2 text-ink-600">{label}</td>
+                    <td className="py-2 text-right font-medium tabular-nums">{String(value)}</td>
+                  </tr>
+                ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-ink-200">
+                <td className="py-3 font-semibold">Net pay</td>
+                <td className="py-3 text-right text-xl font-bold tabular-nums">
+                  ₹{Number(data.netPay ?? 0).toLocaleString("en-IN")}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
           <div className="mt-4 flex justify-end gap-2 print:hidden">
             <Button variant="secondary" size="sm" loading={downloading} onClick={downloadPdf}>
               <FileDown className="h-4 w-4" /> Download PDF
@@ -132,31 +157,51 @@ function PayDialog({ row, onClose }: { row: PayrollEmployeeRow; onClose: () => v
   const { toast } = useToast();
   const qc = useQueryClient();
   const remaining = Math.max(0, (row.netPay ?? 0) - (row.amountPaid ?? 0));
-  const [amount, setAmount] = useState(String(remaining));
   const [note, setNote] = useState("");
+  // employeeId → amount to hold back against that advance
+  const [recover, setRecover] = useState<Record<string, string>>({});
 
   const advances = useQuery({
     queryKey: ["emp-advances", row.employeeId],
     queryFn: () => payrollService.employeeAdvances(row.employeeId),
   });
+  // Money the employee is actually holding and still owes back.
   const outstanding = (advances.data ?? []).filter(
-    (a) => a.status === "approved" && (a.remainingBalance ?? 0) > 0
+    (a) => ["paid_out", "approved"].includes(a.status) && (a.remainingBalance ?? 0) > 0
   );
+
+  const recoverTotal = Object.values(recover).reduce((s, v) => s + (Number(v) || 0), 0);
+  // Cash defaults to whatever is left after the selected recoveries.
+  const [cashEdited, setCashEdited] = useState(false);
+  const [amount, setAmount] = useState(String(remaining));
+  const autoCash = Math.max(0, remaining - recoverTotal);
+  const cash = cashEdited ? Number(amount) || 0 : autoCash;
 
   const pay = useMutation({
     mutationFn: () =>
-      payrollService.pay(row.id!, { amount: Number(amount), paymentNote: note.trim() || undefined }),
+      payrollService.pay(row.id!, {
+        amount: cash,
+        paymentNote: note.trim() || undefined,
+        recoverAdvances: Object.entries(recover)
+          .filter(([, v]) => Number(v) > 0)
+          .map(([advance, v]) => ({ advance, amount: Number(v) })),
+      }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["payroll"] });
-      toast(r.data.status === "paid" ? "Marked as paid" : "Partial payment recorded", "success");
+      toast(
+        r.data.status === "paid"
+          ? `Paid — ₹${r.cashPaid.toLocaleString("en-IN")} cash${r.advanceRecovered ? `, ₹${r.advanceRecovered.toLocaleString("en-IN")} advance recovered` : ""}`
+          : "Partial payment recorded",
+        "success"
+      );
       onClose();
     },
     onError: (e) => toast(e instanceof ApiError ? e.message : "Payment failed", "error"),
   });
 
-  const amt = Number(amount);
-  const invalid = !(amt > 0);
-  const partial = amt > 0 && amt < remaining;
+  const settled = cash + recoverTotal;
+  const invalid = settled <= 0 || settled > remaining;
+  const partial = settled > 0 && settled < remaining;
 
   return (
     <FormScreen open onClose={onClose} title={`Pay — ${row.name}`} width="max-w-md">
@@ -187,15 +232,39 @@ function PayDialog({ row, onClose }: { row: PayrollEmployeeRow; onClose: () => v
         {outstanding.length > 0 && (
           <div className="rounded-lg bg-ink-100 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">
-              Outstanding advances
+              Recover advances from this payment
             </p>
-            <ul className="mt-1.5 space-y-1">
-              {outstanding.map((a) => (
-                <li key={a._id} className="flex justify-between text-sm">
-                  <span className="text-ink-600">{a.reason || "Advance"}</span>
-                  <span className="tabular-nums">{inr(a.remainingBalance)} left</span>
-                </li>
-              ))}
+            <ul className="mt-2 space-y-2">
+              {outstanding.map((a) => {
+                const bal = a.remainingBalance ?? 0;
+                return (
+                  <li key={a._id} className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">{a.reason || "Advance"}</p>
+                      <p className="text-xs text-ink-400 tabular-nums">{inr(bal)} outstanding</p>
+                    </div>
+                    <input
+                      type="number"
+                      min={0}
+                      max={bal}
+                      placeholder="0"
+                      value={recover[a._id] ?? ""}
+                      onChange={(e) => setRecover((r) => ({ ...r, [a._id]: e.target.value }))}
+                      className="h-9 w-24 rounded-lg border border-ink-200 bg-white px-2 text-sm tabular-nums"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() =>
+                        setRecover((r) => ({ ...r, [a._id]: String(Math.min(bal, remaining)) }))
+                      }
+                    >
+                      All
+                    </Button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -204,17 +273,42 @@ function PayDialog({ row, onClose }: { row: PayrollEmployeeRow; onClose: () => v
           <div className="flex items-end gap-2">
             <div className="flex-1">
               <Input
-                label="Amount to pay (₹)"
+                label="Cash to hand over (₹)"
                 type="number"
-                min="1"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                min="0"
+                value={cashEdited ? amount : String(autoCash)}
+                onChange={(e) => { setCashEdited(true); setAmount(e.target.value); }}
               />
             </div>
-            <Button type="button" variant="secondary" onClick={() => setAmount(String(remaining))}>
-              Full
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => { setCashEdited(false); setAmount(String(autoCash)); }}
+            >
+              Auto
             </Button>
           </div>
+          {recoverTotal > 0 && (
+            <div className="mt-2 rounded-lg border border-ink-200 p-2 text-sm">
+              <div className="flex justify-between py-0.5">
+                <span className="text-ink-600">Cash</span>
+                <span className="tabular-nums">{inr(cash)}</span>
+              </div>
+              <div className="flex justify-between py-0.5">
+                <span className="text-ink-600">Advance recovered</span>
+                <span className="tabular-nums">{inr(recoverTotal)}</span>
+              </div>
+              <div className="mt-1 flex justify-between border-t border-ink-100 pt-1 font-semibold">
+                <span>Settles</span>
+                <span className="tabular-nums">{inr(settled)}</span>
+              </div>
+            </div>
+          )}
+          {settled > remaining && (
+            <p className="mt-1 text-xs text-status-danger">
+              Cash + recovery ({inr(settled)}) exceeds the {inr(remaining)} remaining.
+            </p>
+          )}
           {partial && (
             <p className="mt-1 text-xs text-status-warning">
               Partial payment — the slip will be marked partially paid.
@@ -524,6 +618,8 @@ export function PayrollPage() {
     onSuccess: invalidate,
   });
   const rejectAdv = useMutation({ mutationFn: payrollService.rejectAdvance, onSuccess: invalidate });
+  // Handing the cash over — this is what books it to the employee's ledger.
+  const payOutAdv = useMutation({ mutationFn: payrollService.payOutAdvance, onSuccess: invalidate });
   const [addAdvOpen, setAddAdvOpen] = useState(false);
   const [confirmGenerate, setConfirmGenerate] = useState(false);
 
@@ -794,7 +890,7 @@ export function PayrollPage() {
                       </p>
                     )}
                   </div>
-                  {a.status === "pending" ? (
+                  {a.status === "requested" || a.status === "pending" ? (
                     <span className="flex gap-1.5">
                       <Button
                         size="sm"
@@ -824,9 +920,25 @@ export function PayrollPage() {
                         <X className="h-4 w-4" />
                       </Button>
                     </span>
+                  ) : a.status === "approved" ? (
+                    // Approved but the cash hasn't left yet — paying out is
+                    // what puts it on the employee's ledger.
+                    <Button
+                      size="sm"
+                      loading={payOutAdv.isPending}
+                      onClick={() =>
+                        payOutAdv.mutate(a._id, {
+                          onSuccess: () => toast("Advance paid out", "success"),
+                          onError: (e) =>
+                            toast(e instanceof ApiError ? e.message : "Failed", "error"),
+                        })
+                      }
+                    >
+                      <Wallet className="h-4 w-4" /> Pay out
+                    </Button>
                   ) : (
-                    <StatusChip tone={a.status === "approved" ? "success" : "neutral"}>
-                      {a.status}
+                    <StatusChip tone={advanceTone[a.status] ?? "neutral"}>
+                      {a.status.replace("_", " ")}
                     </StatusChip>
                   )}
                 </li>
