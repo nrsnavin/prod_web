@@ -423,6 +423,12 @@ export const bonusService = {
     minBonusPercent?: number;
   }) => httpClient.put<{ success: boolean; config: BonusConfig }>("/bonus/config", body),
   payRecord: (id: string) => httpClient.put(`/bonus/records/${id}/pay`),
+  // Clears the year's UNPAID bonus records (and their ledger rows) so the
+  // settings unlock and the year can be regenerated. Paid records survive.
+  resetYear: (year: number) =>
+    httpClient.delete<{ success: boolean; deletedCount: number; message: string }>(
+      `/bonus/year/${year}/reset`
+    ),
   preview: (year: number) => httpClient.get<BonusPreview>("/bonus/preview", { year }),
   // Live projection for one employee (employee detail page).
   prediction: (empId: string, year: number) =>
