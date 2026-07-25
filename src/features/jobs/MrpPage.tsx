@@ -35,10 +35,12 @@ const materialColumns: Column<MrpMaterial>[] = [
       // A current backend always sends a numeric inStock (0 when the
       // material has none). A missing value means the API didn't return
       // the field at all — say so rather than showing a bare dash.
-      if (stock == null) {
+      // stockKnown:false means the RawMaterial could not be resolved
+      // (deleted), so the 0 below is a placeholder, not a real reading.
+      if (stock == null || m.stockKnown === false) {
         return (
-          <span className="text-ink-400" title="Stock not returned by the server for this material">
-            not available
+          <span className="text-status-warning" title="This material could not be found — stock is unknown">
+            unknown
           </span>
         );
       }

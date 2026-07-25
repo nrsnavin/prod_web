@@ -134,5 +134,7 @@ export interface MrpData {
     requiredWeight?: number;
     inStock?: number;
     shortfall?: number;
+    // false when the RawMaterial reference could not be resolved.
+    stockKnown?: boolean;
   }>;
 }
