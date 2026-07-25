@@ -52,6 +52,7 @@ export interface WastageFormValues {
   quantity: number;
   penalty?: number;
   reason: string;
+  incidentDate?: string;
 }
 
 export interface WastageRootCause {

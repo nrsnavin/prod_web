@@ -14,7 +14,15 @@ import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { attendanceService, AttendanceRecord } from "./api";
+import { ShiftTimerPanel } from "./ShiftTimerPanel";
 import { toISODate } from "@/features/analytics/components/FilterBar";
+
+function fmtWorked(mins?: number): string {
+  if (!mins || mins <= 0) return "—";
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
 
 const statusTone: Record<string, ChipTone> = {
   present: "success",
@@ -50,6 +58,12 @@ const columns: Column<AttendanceRecord>[] = [
   { key: "in", header: "In", render: (r) => r.checkIn || "—" },
   { key: "out", header: "Out", render: (r) => r.checkOut || "—" },
   {
+    key: "worked",
+    header: "Worked",
+    align: "right",
+    render: (r) => <span className="tabular-nums">{fmtWorked(r.workedMinutes)}</span>,
+  },
+  {
     key: "late",
     header: "Late (min)",
     align: "right",
@@ -75,18 +89,26 @@ function MarkModal({
     Object.fromEntries(unmarked.map((e) => [e.id, "present"]))
   );
   const [ot, setOt] = useState<Record<string, string>>({});
+  const [checkIn, setCheckIn] = useState<Record<string, string>>({});
+  const [checkOut, setCheckOut] = useState<Record<string, string>>({});
   const mark = useMutation({
     mutationFn: attendanceService.mark,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["attendance"] }),
   });
 
   return (
-    <FormScreen open onClose={onClose} title={`Mark attendance — ${shift} shift`} width="max-w-xl">
+    <FormScreen open onClose={onClose} title={`Mark attendance — ${shift} shift`} width="max-w-3xl">
+      <p className="mb-2 text-xs text-ink-400">
+        Enter In/Out times to pay actual hours worked (capped at 12h). Leave blank to pay a full 12h shift.
+      </p>
+      <div className="grid grid-cols-[1fr_120px_84px_84px_72px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400">
+        <span>Employee</span><span>Status</span><span>In</span><span>Out</span><span className="text-right">OT min</span>
+      </div>
       <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
         {unmarked.map((e) => {
           const worked = statuses[e.id] === "present" || statuses[e.id] === "late" || statuses[e.id] === "half_day";
           return (
-            <div key={e.id} className="grid grid-cols-[1fr_130px_88px] gap-2 items-center">
+            <div key={e.id} className="grid grid-cols-[1fr_120px_84px_84px_72px] gap-2 items-center">
               <div>
                 <p className="text-sm font-medium">{e.name}</p>
                 <p className="text-xs text-ink-400 capitalize">{e.department ?? ""}</p>
@@ -97,10 +119,26 @@ function MarkModal({
                 onChange={(ev) => setStatuses((st) => ({ ...st, [e.id]: ev.target.value }))}
               />
               <input
+                type="time"
+                title="Clock-in time"
+                disabled={!worked}
+                value={worked ? checkIn[e.id] ?? "" : ""}
+                onChange={(ev) => setCheckIn((c) => ({ ...c, [e.id]: ev.target.value }))}
+                className="h-9 w-full rounded-lg border border-ink-200 bg-white px-1.5 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
+              />
+              <input
+                type="time"
+                title="Clock-out time"
+                disabled={!worked}
+                value={worked ? checkOut[e.id] ?? "" : ""}
+                onChange={(ev) => setCheckOut((c) => ({ ...c, [e.id]: ev.target.value }))}
+                className="h-9 w-full rounded-lg border border-ink-200 bg-white px-1.5 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
+              />
+              <input
                 type="number"
                 min={0}
-                placeholder="OT min"
-                title="Overtime minutes"
+                placeholder="OT"
+                title="Overtime minutes (used only when no In/Out times given)"
                 disabled={!worked}
                 value={worked ? ot[e.id] ?? "" : ""}
                 onChange={(ev) => setOt((o) => ({ ...o, [e.id]: ev.target.value }))}
@@ -123,6 +161,8 @@ function MarkModal({
                   employeeId,
                   status,
                   overtimeMinutes: Number(ot[employeeId]) || 0,
+                  checkIn: checkIn[employeeId] || undefined,
+                  checkOut: checkOut[employeeId] || undefined,
                 })),
               },
               {
@@ -187,6 +227,8 @@ export function AttendancePage() {
           onChange={setShift}
         />
       </div>
+
+      {date === toISODate(new Date()) && <ShiftTimerPanel date={date} />}
 
       {isError && <ErrorBanner message={(error as Error).message} />}
 

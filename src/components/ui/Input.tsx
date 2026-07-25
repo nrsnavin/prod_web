@@ -4,10 +4,11 @@ import { cn } from "./cn";
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  hint?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, className, id: idProp, ...rest }, ref) => {
+  ({ label, error, hint, className, id: idProp, ...rest }, ref) => {
     const autoId = useId();
     const id = idProp ?? autoId;
     return (
@@ -33,7 +34,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           aria-invalid={!!error}
           {...rest}
         />
-        {error && <p className="text-xs text-status-danger">{error}</p>}
+        {error ? (
+          <p className="text-xs text-status-danger">{error}</p>
+        ) : hint ? (
+          <p className="text-xs text-ink-400">{hint}</p>
+        ) : null}
       </div>
     );
   }

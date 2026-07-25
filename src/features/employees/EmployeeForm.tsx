@@ -94,8 +94,8 @@ export function EmployeeForm({
         />
         <p className="pb-2.5 text-xs text-ink-400">
           {hourlyRate > 0
-            ? `= ₹${(Math.round(hourlyRate * 100) / 100).toLocaleString("en-IN")}/hour · NIGHT (8h) ₹${Math.round(hourlyRate * 8).toLocaleString("en-IN")}`
-            : "Payroll pays per hour: DAY = 12h, NIGHT = 8h"}
+            ? `= ₹${(Math.round(hourlyRate * 100) / 100).toLocaleString("en-IN")}/hour · NIGHT (12h) ₹${Math.round(hourlyRate * 12).toLocaleString("en-IN")}`
+            : "Payroll pays per hour: DAY = 12h, NIGHT = 12h"}
         </p>
       </div>
 

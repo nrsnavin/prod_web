@@ -5,12 +5,17 @@ export interface AttendanceRecord {
   _id?: string;
   id?: string;
   employee?: { _id: string; name: string; department?: string } | null;
+  employeeId?: string;
   name?: string;
   department?: string;
   status: string;
   checkIn?: string;
   checkOut?: string;
+  clockInAt?: string | null;
+  clockOutAt?: string | null;
+  workedMinutes?: number;
   lateMinutes?: number;
+  overtimeMinutes?: number;
   leaveType?: string;
   notes?: string;
   shift?: string;
@@ -35,8 +40,28 @@ export const attendanceService = {
   mark: (body: {
     date: string;
     shift: "DAY" | "NIGHT";
-    records: Array<{ employeeId: string; status: string; lateMinutes?: number; overtimeMinutes?: number; notes?: string }>;
+    records: Array<{
+      employeeId: string;
+      status: string;
+      lateMinutes?: number;
+      overtimeMinutes?: number;
+      checkIn?: string;
+      checkOut?: string;
+      notes?: string;
+    }>;
   }) => httpClient.post("/attendance/mark", body),
+  // ── Live shift timer ──
+  async active(date: string): Promise<AttendanceRecord[]> {
+    const res = await httpClient.get<{ success: boolean; data: AttendanceRecord[] }>(
+      "/attendance/active",
+      { date }
+    );
+    return res.data;
+  },
+  clockIn: (body: { employeeId: string; shift: "DAY" | "NIGHT"; date: string }) =>
+    httpClient.post<{ success: boolean; data: AttendanceRecord }>("/attendance/clock-in", body),
+  clockOut: (body: { employeeId: string; shift: "DAY" | "NIGHT"; date: string }) =>
+    httpClient.post<{ success: boolean; data: AttendanceRecord }>("/attendance/clock-out", body),
 };
 
 // ── Payroll ─────────────────────────────────────────────────────────────
