@@ -172,6 +172,106 @@ function RangeSlips({ empId }: { empId: string }) {
   );
 }
 
+const KIND_LABEL: Record<string, string> = {
+  shift_salary: "Shift salary", overtime: "Overtime", bonus: "Bonus",
+  diwali_bonus: "Diwali bonus", penalty: "Penalty", absence: "Absence",
+  statutory: "PF / ESI", advance_issued: "Advance paid out",
+  advance_recovered: "Advance recovered", payment: "Salary paid",
+  adjustment: "Adjustment",
+};
+
+// Full money trail for one employee over a date range: every shift's pay,
+// overtime, bonuses, penalties, advances and payments, with a running
+// balance of what is still owed.
+function LedgerView({ empId }: { empId: string }) {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const [from, setFrom] = useState(iso(start));
+  const [to, setTo] = useState(iso(today));
+
+  const q = useQuery({
+    queryKey: ["emp-ledger", empId, from, to],
+    queryFn: () => payrollService.ledger(empId, from, to),
+    retry: false,
+  });
+  const t = q.data?.totals;
+
+  return (
+    <>
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-ink-400">From</span>
+        <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)}
+          className="h-9 rounded-lg border border-ink-200 bg-white px-2 text-sm" />
+        <span className="text-ink-400">to</span>
+        <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)}
+          className="h-9 rounded-lg border border-ink-200 bg-white px-2 text-sm" />
+      </div>
+
+      {q.isLoading ? (
+        <Skeleton className="mt-4 h-40 w-full" />
+      ) : (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-4 rounded-lg bg-canvas p-4 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat label="Earnings" value={inr(t?.earnings)} />
+            <Stat label="Bonuses" value={inr(t?.bonuses)} />
+            <Stat label="Penalties" value={inr(t?.penalties)} />
+            <Stat label="PF / ESI" value={inr(t?.statutory)} />
+            <Stat label="Advances (net)" value={inr(t?.advances)} />
+            <Stat label="Paid out" value={inr(t?.payments)} />
+          </div>
+
+          <div className="mt-3 flex flex-wrap justify-between gap-3 text-sm">
+            <span className="text-ink-600">
+              Opening balance <span className="font-semibold tabular-nums">{inr(q.data?.openingBalance)}</span>
+            </span>
+            <span className="text-ink-600">
+              Closing balance{" "}
+              <span className="text-base font-bold tabular-nums">{inr(q.data?.closingBalance)}</span>
+            </span>
+          </div>
+
+          <div className="mt-3 overflow-x-auto rounded-lg border border-ink-200">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-b border-ink-100 text-left text-xs text-ink-400">
+                  <th className="px-3 py-2 font-medium">Date</th>
+                  <th className="px-3 py-2 font-medium">Type</th>
+                  <th className="px-3 py-2 font-medium">Detail</th>
+                  <th className="px-3 py-2 text-right font-medium">Amount</th>
+                  <th className="px-3 py-2 text-right font-medium">Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(q.data?.entries ?? []).map((e) => (
+                  <tr key={e._id} className="border-b border-ink-100 last:border-0">
+                    <td className="whitespace-nowrap px-3 py-2 tabular-nums text-ink-600">
+                      {new Date(e.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" })}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2">{KIND_LABEL[e.kind] ?? e.kind}</td>
+                    <td className="px-3 py-2 text-ink-600">{e.label}</td>
+                    <td className={`px-3 py-2 text-right font-medium tabular-nums ${
+                      e.amount < 0 ? "text-status-danger" : "text-status-success"
+                    }`}>
+                      {e.amount < 0 ? "−" : "+"}{inr(Math.abs(e.amount))}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{inr(e.balance)}</td>
+                  </tr>
+                ))}
+                {(q.data?.entries?.length ?? 0) === 0 && (
+                  <tr><td colSpan={5} className="px-3 py-6 text-center text-ink-400">
+                    No ledger entries in this range.
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 /**
  * Pay & performance overview for one employee: shift rates, the selected
  * month's computed payroll (attendance, earnings, bonuses, deductions,
@@ -181,7 +281,7 @@ function RangeSlips({ empId }: { empId: string }) {
 export function EmployeePayrollCard({ empId }: { empId: string }) {
   const now = new Date();
   const { toast } = useToast();
-  const [view, setView] = useState<"month" | "range">("month");
+  const [view, setView] = useState<"month" | "range" | "ledger">("month");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [downloading, setDownloading] = useState(false);
@@ -222,7 +322,7 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
         </h3>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-lg bg-ink-100 p-1">
-            {(["month", "range"] as const).map((v) => (
+            {(["month", "range", "ledger"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -231,7 +331,7 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
                   view === v ? "bg-white shadow-sm text-ink-900" : "text-ink-600"
                 )}
               >
-                {v === "month" ? "Month" : "Range"}
+                {v === "month" ? "Month" : v === "range" ? "Range" : "Ledger"}
               </button>
             ))}
           </div>
@@ -262,6 +362,7 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
       </div>
 
       {view === "range" && <RangeSlips empId={empId} />}
+      {view === "ledger" && <LedgerView empId={empId} />}
 
       {view === "month" && (isLoading || !data ? (
         <Skeleton className="mt-4 h-40 w-full" />

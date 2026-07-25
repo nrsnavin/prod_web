@@ -154,11 +154,23 @@ export const payrollService = {
     httpClient.put<{ success: boolean; data: PayrollEmployeeRow }>(`/payroll/${id}/finalize`),
   // Pay the full remaining net (amount omitted) or a custom amount (partial).
   // A draft is auto-finalized on the backend before disbursing.
-  pay: (id: string, body?: { amount?: number; paymentNote?: string }) =>
-    httpClient.put<{ success: boolean; data: { status: string; amountPaid: number; netPay: number } }>(
-      `/payroll/${id}/pay`,
-      body ?? {}
-    ),
+  pay: (
+    id: string,
+    body?: {
+      amount?: number;
+      paymentNote?: string;
+      recoverAdvances?: Array<{ advance: string; amount: number }>;
+    }
+  ) =>
+    httpClient.put<{
+      success: boolean;
+      cashPaid: number;
+      advanceRecovered: number;
+      data: { status: string; amountPaid: number; netPay: number };
+    }>(`/payroll/${id}/pay`, body ?? {}),
+  payOutAdvance: (id: string) => httpClient.put(`/payroll/advance/${id}/pay-out`),
+  ledger: (empId: string, from: string, to: string): Promise<EmployeeLedger> =>
+    httpClient.get<EmployeeLedger>(`/payroll/ledger/${empId}`, { from, to }),
   async employeeAdvances(empId: string): Promise<AdvanceRequestRow[]> {
     const res = await httpClient.get<{ success: boolean; data: AdvanceRequestRow[] }>(
       "/payroll/advance",
@@ -223,6 +235,36 @@ export const payrollService = {
   dashboardRange: (r: MonthRange): Promise<PayrollRangeDashboard> =>
     httpClient.get<PayrollRangeDashboard>("/payroll/dashboard-range", { ...r }),
 };
+
+export type LedgerKind =
+  | "shift_salary" | "overtime" | "bonus" | "diwali_bonus" | "penalty"
+  | "absence" | "statutory" | "advance_issued" | "advance_recovered"
+  | "payment" | "adjustment";
+
+export interface LedgerRow {
+  _id: string;
+  date: string;
+  kind: LedgerKind;
+  amount: number;      // +ve = owed to employee, -ve = reduces what's owed
+  label: string;
+  balance: number;     // running balance after this row
+  year?: number | null;
+  month?: number | null;
+  source: string;
+}
+
+export interface EmployeeLedger {
+  success: boolean;
+  employee: { id: string; name: string; department?: string } | null;
+  range: { from: string; to: string };
+  openingBalance: number;
+  closingBalance: number;
+  entries: LedgerRow[];
+  totals: {
+    earnings: number; bonuses: number; penalties: number;
+    statutory: number; advances: number; payments: number;
+  };
+}
 
 export interface MonthRange {
   fromYear: number;
