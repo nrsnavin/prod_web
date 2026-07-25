@@ -66,6 +66,7 @@ export const attendanceService = {
 
 // ── Payroll ─────────────────────────────────────────────────────────────
 export interface PayrollEmployeeRow {
+  id?: string; // payroll document id (for finalize/pay)
   employeeId: string;
   name: string;
   department: string;
@@ -78,8 +79,9 @@ export interface PayrollEmployeeRow {
   totalBonuses?: number;
   totalAdvanceDeduction?: number;
   netPay: number;
+  amountPaid?: number;
   perfectAttendance?: boolean;
-  status: "draft" | "finalized" | "paid";
+  status: "draft" | "finalized" | "partially_paid" | "paid";
 }
 
 export interface PayrollDashboard {
@@ -93,8 +95,10 @@ export interface PayrollDashboard {
     totalBonuses: number;
     perfectCount: number;
     paidCount: number;
+    partiallyPaidCount?: number;
     finalizedCount: number;
     draftCount: number;
+    totalPaid?: number;
   };
   employees: PayrollEmployeeRow[];
 }
@@ -146,6 +150,22 @@ export const payrollService = {
       month,
       employeeId,
     }),
+  finalize: (id: string) =>
+    httpClient.put<{ success: boolean; data: PayrollEmployeeRow }>(`/payroll/${id}/finalize`),
+  // Pay the full remaining net (amount omitted) or a custom amount (partial).
+  // A draft is auto-finalized on the backend before disbursing.
+  pay: (id: string, body?: { amount?: number; paymentNote?: string }) =>
+    httpClient.put<{ success: boolean; data: { status: string; amountPaid: number; netPay: number } }>(
+      `/payroll/${id}/pay`,
+      body ?? {}
+    ),
+  async employeeAdvances(empId: string): Promise<AdvanceRequestRow[]> {
+    const res = await httpClient.get<{ success: boolean; data: AdvanceRequestRow[] }>(
+      "/payroll/advance",
+      { employeeId: empId }
+    );
+    return res.data;
+  },
   async slip(empId: string, year: number, month: number): Promise<Record<string, unknown>> {
     const res = await httpClient.get<{ success: boolean; data: Record<string, unknown> }>(
       `/payroll/slip/${empId}`,

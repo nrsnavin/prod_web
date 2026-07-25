@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, FileText, Check, X, Printer, Plus, FileDown, Settings2 } from "lucide-react";
+import { Play, FileText, Check, X, Printer, Plus, FileDown, Settings2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -20,8 +20,11 @@ import { Input } from "@/components/ui/Input";
 const payrollTone: Record<string, ChipTone> = {
   draft: "neutral",
   finalized: "info",
+  partially_paid: "warning",
   paid: "success",
 };
+
+const inr = (n: number | undefined) => `₹${Number(n ?? 0).toLocaleString("en-IN")}`;
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -119,6 +122,121 @@ function PayslipModal({
         </div>
       ) : null}
     </Modal>
+  );
+}
+
+// Record a payment against a payroll slip — full remaining net or a custom
+// (partial) amount. Shows any outstanding advances for context; a draft is
+// auto-finalized by the backend when paid.
+function PayDialog({ row, onClose }: { row: PayrollEmployeeRow; onClose: () => void }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const remaining = Math.max(0, (row.netPay ?? 0) - (row.amountPaid ?? 0));
+  const [amount, setAmount] = useState(String(remaining));
+  const [note, setNote] = useState("");
+
+  const advances = useQuery({
+    queryKey: ["emp-advances", row.employeeId],
+    queryFn: () => payrollService.employeeAdvances(row.employeeId),
+  });
+  const outstanding = (advances.data ?? []).filter(
+    (a) => a.status === "approved" && (a.remainingBalance ?? 0) > 0
+  );
+
+  const pay = useMutation({
+    mutationFn: () =>
+      payrollService.pay(row.id!, { amount: Number(amount), paymentNote: note.trim() || undefined }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["payroll"] });
+      toast(r.data.status === "paid" ? "Marked as paid" : "Partial payment recorded", "success");
+      onClose();
+    },
+    onError: (e) => toast(e instanceof ApiError ? e.message : "Payment failed", "error"),
+  });
+
+  const amt = Number(amount);
+  const invalid = !(amt > 0);
+  const partial = amt > 0 && amt < remaining;
+
+  return (
+    <FormScreen open onClose={onClose} title={`Pay — ${row.name}`} width="max-w-md">
+      <div className="space-y-4">
+        <div className="rounded-lg border border-ink-200 p-3 text-sm">
+          <div className="flex justify-between py-0.5">
+            <span className="text-ink-600">Net pay</span>
+            <span className="font-medium tabular-nums">{inr(row.netPay)}</span>
+          </div>
+          {(row.amountPaid ?? 0) > 0 && (
+            <div className="flex justify-between py-0.5">
+              <span className="text-ink-600">Already paid</span>
+              <span className="font-medium tabular-nums">{inr(row.amountPaid)}</span>
+            </div>
+          )}
+          <div className="mt-1 flex justify-between border-t border-ink-100 pt-1.5">
+            <span className="font-semibold">Remaining</span>
+            <span className="font-bold tabular-nums">{inr(remaining)}</span>
+          </div>
+        </div>
+
+        {(row.totalAdvanceDeduction ?? 0) > 0 && (
+          <p className="text-xs text-ink-400">
+            This month's net already recovers {inr(row.totalAdvanceDeduction)} in advances.
+          </p>
+        )}
+
+        {outstanding.length > 0 && (
+          <div className="rounded-lg bg-ink-100 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">
+              Outstanding advances
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {outstanding.map((a) => (
+                <li key={a._id} className="flex justify-between text-sm">
+                  <span className="text-ink-600">{a.reason || "Advance"}</span>
+                  <span className="tabular-nums">{inr(a.remainingBalance)} left</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Input
+                label="Amount to pay (₹)"
+                type="number"
+                min="1"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+            <Button type="button" variant="secondary" onClick={() => setAmount(String(remaining))}>
+              Full
+            </Button>
+          </div>
+          {partial && (
+            <p className="mt-1 text-xs text-status-warning">
+              Partial payment — the slip will be marked partially paid.
+            </p>
+          )}
+        </div>
+
+        <Input
+          label="Payment note (optional)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="e.g. paid by bank transfer"
+        />
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" disabled={invalid} loading={pay.isPending} onClick={() => pay.mutate()}>
+            <Check className="h-4 w-4" /> {partial ? "Pay part" : "Pay in full"}
+          </Button>
+        </div>
+      </div>
+    </FormScreen>
   );
 }
 
@@ -301,6 +419,7 @@ export function PayrollPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [tab, setTab] = useState<"payroll" | "advances" | "settings">("payroll");
   const [slip, setSlip] = useState<{ empId: string; name: string } | null>(null);
+  const [payRow, setPayRow] = useState<PayrollEmployeeRow | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
@@ -376,23 +495,48 @@ export function PayrollPage() {
     {
       key: "status",
       header: "Status",
-      render: (e) => <StatusChip tone={payrollTone[e.status] ?? "neutral"}>{e.status}</StatusChip>,
+      render: (e) => (
+        <div>
+          <StatusChip tone={payrollTone[e.status] ?? "neutral"}>
+            {e.status.replace("_", " ")}
+          </StatusChip>
+          {e.status === "partially_paid" && (
+            <p className="mt-0.5 text-xs text-ink-400 tabular-nums">
+              {inr(e.amountPaid)} of {inr(e.netPay)}
+            </p>
+          )}
+        </div>
+      ),
     },
     {
-      key: "slip",
+      key: "actions",
       header: "",
       align: "right",
       render: (e) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(ev) => {
-            ev.stopPropagation();
-            setSlip({ empId: e.employeeId, name: e.name });
-          }}
-        >
-          <FileText className="h-4 w-4" /> Slip
-        </Button>
+        <div className="flex justify-end gap-1">
+          {e.status !== "paid" && e.id && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                setPayRow(e);
+              }}
+            >
+              <Wallet className="h-4 w-4" /> Pay
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              setSlip({ empId: e.employeeId, name: e.name });
+            }}
+          >
+            <FileText className="h-4 w-4" /> Slip
+          </Button>
+        </div>
       ),
     },
   ];
@@ -449,14 +593,18 @@ export function PayrollPage() {
           {dashboard.isLoading ? (
             <Skeleton className="h-24 w-full mb-4" />
           ) : (
-            <div className="mb-4 grid gap-3 grid-cols-2 md:grid-cols-4">
+            <div className="mb-4 grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
               {[
                 { label: "Net payout", val: `₹${(s?.totalNetPay ?? 0).toLocaleString("en-IN")}` },
                 { label: "Gross", val: `₹${(s?.totalGross ?? 0).toLocaleString("en-IN")}` },
                 { label: "Deductions", val: `₹${(s?.totalDeductions ?? 0).toLocaleString("en-IN")}` },
                 {
+                  label: "Paid out",
+                  val: `₹${(s?.totalPaid ?? 0).toLocaleString("en-IN")}`,
+                },
+                {
                   label: "Status",
-                  val: `${s?.paidCount ?? 0} paid · ${s?.finalizedCount ?? 0} final · ${s?.draftCount ?? 0} draft`,
+                  val: `${s?.paidCount ?? 0} paid · ${s?.partiallyPaidCount ?? 0} part · ${s?.draftCount ?? 0} draft`,
                 },
               ].map((t) => (
                 <Card key={t.label} className="p-4">
@@ -560,6 +708,8 @@ export function PayrollPage() {
       {addAdvOpen && (
         <AddAdvanceForm defaultYear={year} defaultMonth={month} onClose={() => setAddAdvOpen(false)} />
       )}
+
+      {payRow && <PayDialog row={payRow} onClose={() => setPayRow(null)} />}
 
       {slip && (
         <PayslipModal
