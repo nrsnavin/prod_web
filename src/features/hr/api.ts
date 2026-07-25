@@ -209,6 +209,10 @@ export interface EmployeeOverview {
     dayShiftsWorked: number;
     nightShiftsWorked: number;
     totalAdvanceDeduction: number;
+    overtimeEarnings?: number;
+    totalOvertimeMinutes?: number;
+    pfDeduction?: number;
+    esiDeduction?: number;
     status: string;
   };
   production: { totalMeters: number; shifts: number };

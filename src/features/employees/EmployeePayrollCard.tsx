@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Wallet, Factory, Trash2, Fingerprint, ExternalLink } from "lucide-react";
+import { Wallet, Factory, Trash2, Fingerprint, ExternalLink, FileDown } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { StatusChip } from "@/components/ui/StatusChip";
+import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
+import { useToast } from "@/components/ui/Toast";
+import { ApiError } from "@/core/http/httpClient";
 import { payrollService } from "@/features/hr/api";
+
+const statusTone: Record<string, ChipTone> = { paid: "success", finalized: "info", draft: "warning" };
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -25,6 +30,33 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
+function SlipRow({
+  label,
+  value,
+  sub,
+  positive,
+  negative,
+}: {
+  label: string;
+  value: string;
+  sub?: boolean;
+  positive?: boolean;
+  negative?: boolean;
+}) {
+  return (
+    <div className={`flex items-center justify-between ${sub ? "py-1.5 pl-4" : "py-2.5"}`}>
+      <dt className={sub ? "text-xs text-ink-400" : "text-ink-600"}>{label}</dt>
+      <dd
+        className={`tabular-nums ${sub ? "text-xs text-ink-400" : "font-semibold"} ${
+          positive ? "text-status-success" : negative ? "text-status-danger" : ""
+        }`}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 /**
  * Pay & performance overview for one employee: shift rates, the selected
  * month's computed payroll (attendance, earnings, bonuses, deductions,
@@ -33,14 +65,33 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
  */
 export function EmployeePayrollCard({ empId }: { empId: string }) {
   const now = new Date();
+  const { toast } = useToast();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [downloading, setDownloading] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["employee-overview", empId, year, month],
     queryFn: () => payrollService.employeeOverview(empId, year, month),
     retry: false,
   });
+
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const blob = await payrollService.slipPdf(empId, year, month);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      toast(
+        e instanceof ApiError ? e.message : "No generated payslip for this month yet",
+        "error"
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Finance/admin only endpoint — anyone else simply doesn't get the card.
   if (isError) return null;
@@ -64,11 +115,14 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
             onChange={(e) => setYear(Number(e.target.value))}
             options={[year - 1, year, year + 1].map((y) => ({ value: String(y), label: String(y) }))}
           />
+          <Button variant="secondary" size="sm" loading={downloading} onClick={downloadPdf}>
+            <FileDown className="h-4 w-4" /> Payslip PDF
+          </Button>
           <Link
             to="/payroll"
             className="inline-flex items-center gap-1 text-sm text-brand-600 hover:underline"
           >
-            Payroll <ExternalLink className="h-3.5 w-3.5" />
+            Open in Payroll <ExternalLink className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>
@@ -78,23 +132,39 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
       ) : (
         <>
           {/* Rates */}
-          <div className="mt-4 grid grid-cols-2 gap-4 rounded-lg bg-canvas p-4 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-3 gap-4 rounded-lg bg-canvas p-4">
             <Stat label="Hourly rate" value={inr(data.employee.hourlyRate)} />
             <Stat label="DAY shift (12h)" value={inr(data.shiftRates.DAY)} />
             <Stat label="NIGHT shift (8h)" value={inr(data.shiftRates.NIGHT)} />
-            <Stat
-              label={`Net pay — ${MONTHS[month - 1]}`}
-              value={inr(p?.netPay)}
-              sub={p?.status ? `status: ${p.status}` : undefined}
-            />
           </div>
 
-          {/* Month money breakdown */}
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Stat label="Gross earnings" value={inr(p?.grossEarnings)} />
-            <Stat label="Bonuses" value={inr(p?.totalBonuses)} />
-            <Stat label="Deductions" value={inr(p?.totalDeductions)} />
-            <Stat label="Advance recovered" value={inr(p?.totalAdvanceDeduction)} />
+          {/* Salary slip — this month */}
+          <div className="mt-4 rounded-lg border border-ink-200">
+            <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
+              <p className="text-sm font-semibold">
+                Salary slip · {MONTHS[month - 1]} {year}
+              </p>
+              {p?.status && (
+                <StatusChip tone={statusTone[p.status] ?? "neutral"}>{p.status}</StatusChip>
+              )}
+            </div>
+            <dl className="divide-y divide-ink-100 px-4 text-sm">
+              <SlipRow label="Gross earnings" value={inr(p?.grossEarnings)} />
+              {!!p?.overtimeEarnings && (
+                <SlipRow sub label={`incl. overtime (${p.totalOvertimeMinutes ?? 0} min)`} value={`+ ${inr(p.overtimeEarnings)}`} />
+              )}
+              <SlipRow label="Bonuses" value={`+ ${inr(p?.totalBonuses)}`} positive />
+              <SlipRow label="Deductions" value={`− ${inr(p?.totalDeductions)}`} negative />
+              {!!p?.totalAdvanceDeduction && (
+                <SlipRow sub label="advance recovery" value={inr(p.totalAdvanceDeduction)} />
+              )}
+              {!!p?.pfDeduction && <SlipRow sub label="PF" value={inr(p.pfDeduction)} />}
+              {!!p?.esiDeduction && <SlipRow sub label="ESI" value={inr(p.esiDeduction)} />}
+              <div className="flex items-center justify-between py-3">
+                <dt className="font-semibold">Net pay</dt>
+                <dd className="text-2xl font-bold tabular-nums">{inr(p?.netPay)}</dd>
+              </div>
+            </dl>
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
