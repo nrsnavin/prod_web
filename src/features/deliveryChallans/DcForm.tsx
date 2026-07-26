@@ -142,16 +142,26 @@ export function DcForm({
 
       <div>
         <p className="text-sm font-medium text-ink-600 mb-1.5">Items *</p>
+        {/* Column headers label the repeating row inputs — a per-input label
+            on every row would repeat itself down the whole table. */}
+        <div className="grid grid-cols-[1fr_90px_100px_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400">
+          <span>{type === "elastic" ? "Elastic" : "Part description"}</span>
+          <span>Qty</span>
+          <span>Rate (₹)</span>
+          <span className="sr-only">Remove</span>
+        </div>
         <div className="space-y-2">
           {fields.map((field, i) => (
             <div key={field.id} className="grid grid-cols-[1fr_90px_100px_36px] gap-2 items-start">
               <Input
+                aria-label={type === "elastic" ? "Elastic name" : "Part description"}
                 placeholder={type === "elastic" ? "Elastic name" : "Part description"}
                 {...register(type === "elastic" ? `items.${i}.elasticName` : `items.${i}.description`)}
               />
               <Input
                 type="number"
                 step="0.01"
+                aria-label="Quantity"
                 placeholder="Qty"
                 error={errors.items?.[i]?.quantity?.message}
                 {...register(`items.${i}.quantity`)}
@@ -159,6 +169,7 @@ export function DcForm({
               <Input
                 type="number"
                 step="0.01"
+                aria-label="Rate in rupees"
                 placeholder="Rate ₹"
                 {...register(`items.${i}.rate`)}
               />

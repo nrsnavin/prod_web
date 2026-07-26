@@ -262,6 +262,7 @@ export function PoCreatePage() {
           <Card className="p-5">
             <h3 className="mb-2 font-semibold">Terms & notes</h3>
             <textarea
+              aria-label="Terms and notes"
               {...register("notes")}
               rows={3}
               placeholder="Payment terms, delivery instructions, packaging, etc."
