@@ -144,7 +144,7 @@ export function DocumentSettingsForm() {
                   onChange={(e) => set("accentColor", e.target.value)}
                   className="h-10 w-12 rounded-lg border border-ink-200 bg-white p-1 disabled:opacity-60"
                 />
-                <Input value={form.accentColor} disabled={!canEdit}
+                <Input aria-label="Accent colour hex code" value={form.accentColor} disabled={!canEdit}
                   onChange={(e) => set("accentColor", e.target.value)} className="w-28" />
               </div>
             </div>

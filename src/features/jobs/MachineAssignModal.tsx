@@ -105,6 +105,7 @@ export function MachineAssignModal({
                     H{h + 1}
                   </span>
                   <Select
+                    aria-label={`Elastic on head ${h}`}
                     options={elasticOptions}
                     value={headMap[h] ?? ""}
                     onChange={(e) => setHeadMap((m) => ({ ...m, [h]: e.target.value }))}

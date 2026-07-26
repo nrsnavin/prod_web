@@ -153,7 +153,7 @@ export function StockTakeModal({
                 <p className="font-medium truncate">{m.name}</p>
                 <p className="text-xs text-ink-400">system: {m.stock.toLocaleString("en-IN")}</p>
               </div>
-              <input
+              <input aria-label="Counted stock"
                 type="number"
                 step="0.01"
                 placeholder="Counted"
@@ -257,7 +257,7 @@ export function BulkPriceUpdateModal({
         Enter the new unit price for any material — only rows you change are updated, each with a
         price-history entry using the reason below.
       </p>
-      <input
+      <input aria-label="Reason for price change"
         type="text"
         placeholder="Reason (e.g. Monthly revision, supplier hike)"
         value={reason}
@@ -277,7 +277,7 @@ export function BulkPriceUpdateModal({
                   current: ₹{m.price.toLocaleString("en-IN")}
                 </p>
               </div>
-              <input
+              <input aria-label="New price"
                 type="number"
                 step="0.01"
                 min="0"

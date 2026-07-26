@@ -493,7 +493,7 @@ function ColorField({
       <div className="flex items-center gap-2">
         <input type="color" value={/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value) ? value : "#000000"}
           onChange={(e) => onChange(e.target.value)} className="h-8 w-10 rounded border border-ink-200 p-0.5" />
-        <input value={value} onChange={(e) => onChange(e.target.value)}
+        <input aria-label="Value" value={value} onChange={(e) => onChange(e.target.value)}
           className="h-8 flex-1 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500" />
         {allowClear && (
           <button onClick={onClear} className="text-xs text-ink-400 hover:text-ink-700">clear</button>
@@ -532,30 +532,30 @@ function TableColumnsEditor({
       {cols.map((c, i) => (
         <div key={i} className="rounded-lg border border-ink-100 p-2 space-y-1.5">
           <div className="flex items-center gap-1.5">
-            <input value={c.header} onChange={(e) => patchCol(i, { header: e.target.value })} placeholder="Header"
+            <input aria-label="Column header" value={c.header} onChange={(e) => patchCol(i, { header: e.target.value })} placeholder="Header"
               className="h-7 flex-1 rounded border border-ink-200 px-1.5 text-xs focus:outline-none focus:border-brand-500" />
             <button onClick={() => setCols(cols.filter((_, idx) => idx !== i))} className="text-status-danger" title="Remove">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
           <div className="grid grid-cols-2 gap-1.5">
-            <select value={c.field} onChange={(e) => patchCol(i, { field: e.target.value })}
+            <select aria-label="Column field" value={c.field} onChange={(e) => patchCol(i, { field: e.target.value })}
               className="h-7 rounded border border-ink-200 px-1 text-xs">
               {rowFieldOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
-            <select value={c.format} onChange={(e) => patchCol(i, { format: e.target.value as typeof c.format })}
+            <select aria-label="Column format" value={c.format} onChange={(e) => patchCol(i, { format: e.target.value as typeof c.format })}
               className="h-7 rounded border border-ink-200 px-1 text-xs">
               <option value="text">text</option>
               <option value="number">number</option>
               <option value="currency">currency</option>
             </select>
-            <select value={c.align} onChange={(e) => patchCol(i, { align: e.target.value as typeof c.align })}
+            <select aria-label="Column alignment" value={c.align} onChange={(e) => patchCol(i, { align: e.target.value as typeof c.align })}
               className="h-7 rounded border border-ink-200 px-1 text-xs">
               <option value="left">left</option>
               <option value="center">center</option>
               <option value="right">right</option>
             </select>
-            <input type="number" step={0.5} value={c.width} onChange={(e) => patchCol(i, { width: Number(e.target.value) })}
+            <input aria-label="Column width" type="number" step={0.5} value={c.width} onChange={(e) => patchCol(i, { width: Number(e.target.value) })}
               className="h-7 rounded border border-ink-200 px-1.5 text-xs" title="Relative width" />
           </div>
         </div>

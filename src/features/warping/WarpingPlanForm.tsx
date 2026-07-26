@@ -139,19 +139,19 @@ function BeamFields({
       <div className="space-y-2">
         {sections.fields.map((s, si) => (
           <div key={s.id} className="grid grid-cols-[1fr_90px_90px_32px] gap-2 items-start">
-            <Select
+            <Select aria-label="Warp yarn"
               placeholder="Warp yarn"
               options={yarnOptions}
               error={errors.beams?.[index]?.sections?.[si]?.warpYarn?.message}
               {...register(`beams.${index}.sections.${si}.warpYarn`)}
             />
-            <Input
+            <Input aria-label="Ends"
               type="number"
               placeholder="Ends"
               error={errors.beams?.[index]?.sections?.[si]?.ends?.message}
               {...register(`beams.${index}.sections.${si}.ends`)}
             />
-            <Input type="number" placeholder="Length" {...register(`beams.${index}.sections.${si}.maxMeters`)} />
+            <Input aria-label="Length" type="number" placeholder="Length" {...register(`beams.${index}.sections.${si}.maxMeters`)} />
             <button
               type="button"
               onClick={() => sections.fields.length > 1 && sections.remove(si)}

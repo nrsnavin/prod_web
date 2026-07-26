@@ -174,7 +174,7 @@ export function SheetUploadModal({
                 {rows.map((r, i) => (
                   <tr key={r.shiftDetailId} className={cn(r.alreadyClosed && "opacity-50")}>
                     <td className="p-2">
-                      <input
+                      <input aria-label="Include this row"
                         type="checkbox"
                         checked={r.include}
                         disabled={r.alreadyClosed}
@@ -188,7 +188,7 @@ export function SheetUploadModal({
                     <td className="p-2 text-ink-600">{r.operator ?? "—"}</td>
                     <td className="p-2 text-ink-600">{r.jobNo ?? "—"}</td>
                     <td className="p-2 text-right">
-                      <input
+                      <input aria-label="Production metres"
                         type="number"
                         value={r.production ?? ""}
                         disabled={r.alreadyClosed}
@@ -199,7 +199,7 @@ export function SheetUploadModal({
                       />
                     </td>
                     <td className="p-2">
-                      <input
+                      <input aria-label="Timer"
                         type="text"
                         value={r.timer ?? ""}
                         disabled={r.alreadyClosed}
@@ -209,7 +209,7 @@ export function SheetUploadModal({
                       />
                     </td>
                     <td className="p-2">
-                      <input
+                      <input aria-label="Remarks"
                         type="text"
                         value={r.remarks}
                         disabled={r.alreadyClosed}

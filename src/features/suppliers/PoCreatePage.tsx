@@ -204,7 +204,7 @@ export function PoCreatePage() {
                         control={control}
                         name={`items.${i}.rawMaterial`}
                         render={({ field }) => (
-                          <Combobox
+                          <Combobox aria-label="Material"
                             placeholder="Material"
                             options={materialOptions}
                             error={errors.items?.[i]?.rawMaterial?.message}
@@ -214,14 +214,14 @@ export function PoCreatePage() {
                         )}
                       />
                     </div>
-                    <Input
+                    <Input aria-label="Qty"
                       type="number"
                       step="0.01"
                       placeholder="Qty"
                       error={errors.items?.[i]?.quantity?.message}
                       {...register(`items.${i}.quantity`)}
                     />
-                    <Input
+                    <Input aria-label="Rate"
                       type="number"
                       step="0.01"
                       placeholder="Rate"

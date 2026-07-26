@@ -5,6 +5,8 @@ import type { ComboOption } from "./Combobox";
 
 export interface AsyncComboboxProps {
   label?: string;
+  /** Accessible name when there is no visible `label`. */
+  "aria-label"?: string;
   value: string;
   onChange: (value: string) => void;
   // Fetches options from the server for the current query. Called on open
@@ -32,6 +34,7 @@ export function AsyncCombobox({
   loadOptions,
   seedOptions,
   placeholder = "Select…",
+  "aria-label": ariaLabel,
   error,
   disabled,
   className,
@@ -156,6 +159,7 @@ export function AsyncCombobox({
           )}
           aria-haspopup="listbox"
           aria-expanded={open}
+          aria-label={ariaLabel}
         >
           <span className="flex-1 truncate">{selectedLabel ?? placeholder}</span>
           <ChevronDown className="h-4 w-4 text-ink-400 shrink-0" />
@@ -169,6 +173,7 @@ export function AsyncCombobox({
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                aria-label={ariaLabel ? `Search ${ariaLabel}` : "Search options"}
                 placeholder="Type to search…"
                 className="w-full text-sm outline-none placeholder:text-ink-400"
               />

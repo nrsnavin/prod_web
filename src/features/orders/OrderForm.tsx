@@ -159,7 +159,7 @@ export function OrderForm({
           ) : (
             <div className="flex flex-wrap items-center gap-2">
               <div className="w-72">
-                <Combobox
+                <Combobox aria-label="Elastic group"
                   placeholder="Select a group…"
                   options={(groups.data ?? []).map((g) => ({
                     value: g._id,
@@ -197,7 +197,7 @@ export function OrderForm({
                   />
                 )}
               />
-              <Input
+              <Input aria-label="Qty (m)"
                 type="number"
                 step="0.01"
                 placeholder="Qty (m)"

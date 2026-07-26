@@ -45,6 +45,7 @@ export function EmployeeBonusCard({ empId }: { empId: string }) {
           {data?.approximate && <StatusChip tone="warning">projection</StatusChip>}
         </h3>
         <Select
+          aria-label="Bonus year"
           value={String(year)}
           onChange={(e) => setYear(Number(e.target.value))}
           options={[0, 1, 2].map((d) => ({ value: String(currentYear - d), label: String(currentYear - d) }))}

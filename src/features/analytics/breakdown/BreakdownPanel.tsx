@@ -172,6 +172,7 @@ export function BreakdownPanel({
           </div>
           <div className="w-44">
             <Combobox
+              aria-label="Filter by machine"
               options={[
                 { value: "", label: "All machines" },
                 ...(machines.data ?? []).map((m) => ({

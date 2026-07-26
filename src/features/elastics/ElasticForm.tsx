@@ -138,7 +138,7 @@ export function ElasticForm({
           {fields.map((field, i) => (
             <div key={field.id} className="grid grid-cols-[1fr_110px_36px] gap-2 items-start">
               <Controller control={control} name={`warpYarn.${i}.id`} render={({ field }) => (
-                <Combobox
+                <Combobox aria-label="Select warp yarn"
                   placeholder="Select warp yarn"
                   options={toOptions(m?.warp)}
                   error={errors.warpYarn?.[i]?.id?.message}
@@ -146,7 +146,7 @@ export function ElasticForm({
                   onChange={field.onChange}
                 />
               )} />
-              <Input
+              <Input aria-label="Weight"
                 type="number"
                 step="0.01"
                 placeholder="Weight"

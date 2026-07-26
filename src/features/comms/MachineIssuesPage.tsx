@@ -209,7 +209,7 @@ function AnomalyBanner() {
   const controls = (
     <div className="flex items-center gap-2 text-xs text-ink-500">
       <span>flag</span>
-      <select
+      <select aria-label="Issue threshold"
         value={threshold}
         onChange={(e) => setThreshold(Number(e.target.value))}
         className="rounded border border-ink-200 bg-white px-1.5 py-0.5"
@@ -217,7 +217,7 @@ function AnomalyBanner() {
         {[2, 3, 5].map((n) => <option key={n} value={n}>{n}+</option>)}
       </select>
       <span>issues in</span>
-      <select
+      <select aria-label="Time window in days"
         value={days}
         onChange={(e) => setDays(Number(e.target.value))}
         className="rounded border border-ink-200 bg-white px-1.5 py-0.5"

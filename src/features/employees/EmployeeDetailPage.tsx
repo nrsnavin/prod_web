@@ -94,7 +94,7 @@ export function EmployeeDetailPage() {
         <Card className="p-6">
           <h3 className="font-semibold">Performance</h3>
           <p className="mt-1 text-3xl font-bold tabular-nums">{currentPerf}</p>
-          <input
+          <input aria-label="Performance score"
             type="range"
             min={0}
             max={100}
