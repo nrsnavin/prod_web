@@ -243,7 +243,7 @@ function PayDialog({ row, onClose }: { row: PayrollEmployeeRow; onClose: () => v
                       <p className="truncate text-sm">{a.reason || "Advance"}</p>
                       <p className="text-xs text-ink-400 tabular-nums">{inr(bal)} outstanding</p>
                     </div>
-                    <input
+                    <input aria-label="Amount to recover from this advance"
                       type="number"
                       min={0}
                       max={bal}
@@ -786,26 +786,26 @@ export function PayrollPage() {
             {mode === "range" && (
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-ink-400">From</span>
-                <Select
+                <Select aria-label="From month"
                   className="w-32"
                   value={String(range.fromMonth)}
                   onChange={(e) => setRange((r) => ({ ...r, fromMonth: Number(e.target.value) }))}
                   options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
                 />
-                <Select
+                <Select aria-label="From year"
                   className="w-24"
                   value={String(range.fromYear)}
                   onChange={(e) => setRange((r) => ({ ...r, fromYear: Number(e.target.value) }))}
                   options={[0, 1, 2].map((d) => { const y = now.getFullYear() - d; return { value: String(y), label: String(y) }; })}
                 />
                 <span className="text-ink-400">to</span>
-                <Select
+                <Select aria-label="To month"
                   className="w-32"
                   value={String(range.toMonth)}
                   onChange={(e) => setRange((r) => ({ ...r, toMonth: Number(e.target.value) }))}
                   options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
                 />
-                <Select
+                <Select aria-label="To year"
                   className="w-24"
                   value={String(range.toYear)}
                   onChange={(e) => setRange((r) => ({ ...r, toYear: Number(e.target.value) }))}

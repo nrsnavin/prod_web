@@ -98,9 +98,9 @@ function QcForm({ job, onClose }: { job: JobDetail; onClose: () => void }) {
           <div className="space-y-2">
             {rows.map((r, i) => (
               <div key={i} className="grid grid-cols-[1fr_90px_90px_52px_32px] gap-2 items-center">
-                <Input placeholder="Parameter (e.g. Width mm)" value={r.parameter} onChange={(e) => setRow(i, { parameter: e.target.value })} />
-                <Input placeholder="Expected" value={r.expected} onChange={(e) => setRow(i, { expected: e.target.value })} />
-                <Input placeholder="Measured" value={r.measured} onChange={(e) => setRow(i, { measured: e.target.value })} />
+                <Input aria-label="Parameter (e.g. Width mm)" placeholder="Parameter (e.g. Width mm)" value={r.parameter} onChange={(e) => setRow(i, { parameter: e.target.value })} />
+                <Input aria-label="Expected" placeholder="Expected" value={r.expected} onChange={(e) => setRow(i, { expected: e.target.value })} />
+                <Input aria-label="Measured" placeholder="Measured" value={r.measured} onChange={(e) => setRow(i, { measured: e.target.value })} />
                 <label className="flex items-center gap-1 text-xs">
                   <input type="checkbox" className="accent-brand-500" checked={r.pass} onChange={(e) => setRow(i, { pass: e.target.checked })} />
                   Pass

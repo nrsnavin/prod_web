@@ -208,7 +208,7 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
                 <div key={i} className="grid grid-cols-[1fr_90px_1fr_70px] items-center gap-2">
                   <span className="truncate text-sm">{r.parameter}</span>
                   <span className="text-sm text-ink-400">{r.expected || "—"}</span>
-                  <Input value={r.measured} onChange={(e) => setRow(i, { measured: e.target.value })} placeholder="value" />
+                  <Input aria-label={`Measured value for ${r.parameter}`} value={r.measured} onChange={(e) => setRow(i, { measured: e.target.value })} placeholder="value" />
                   <button
                     type="button"
                     onClick={() => setRow(i, { pass: !r.pass })}

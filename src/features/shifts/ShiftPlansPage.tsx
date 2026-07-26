@@ -125,7 +125,7 @@ export function ShiftPlansPage() {
         <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-400">
           Browse a date
         </h3>
-        <input
+        <input aria-label="Plan date"
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}

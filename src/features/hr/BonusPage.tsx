@@ -304,6 +304,7 @@ export function BonusPage() {
 
       <div className="mb-4">
         <Select
+          aria-label="Bonus year"
           options={[0, 1, 2].map((d) => ({ value: String(currentYear - d), label: String(currentYear - d) }))}
           value={String(year)}
           onChange={(e) => setYear(Number(e.target.value))}

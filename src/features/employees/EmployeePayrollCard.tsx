@@ -100,16 +100,16 @@ function RangeSlips({ empId }: { empId: string }) {
     <>
       <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
         <span className="text-ink-400">From</span>
-        <Select className="w-32" value={String(range.fromMonth)}
+        <Select aria-label="From month" className="w-32" value={String(range.fromMonth)}
           onChange={(e) => setRange((r) => ({ ...r, fromMonth: Number(e.target.value) }))}
           options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))} />
-        <Select className="w-24" value={String(range.fromYear)}
+        <Select aria-label="From year" className="w-24" value={String(range.fromYear)}
           onChange={(e) => setRange((r) => ({ ...r, fromYear: Number(e.target.value) }))} options={yearOpts} />
         <span className="text-ink-400">to</span>
-        <Select className="w-32" value={String(range.toMonth)}
+        <Select aria-label="To month" className="w-32" value={String(range.toMonth)}
           onChange={(e) => setRange((r) => ({ ...r, toMonth: Number(e.target.value) }))}
           options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))} />
-        <Select className="w-24" value={String(range.toYear)}
+        <Select aria-label="To year" className="w-24" value={String(range.toYear)}
           onChange={(e) => setRange((r) => ({ ...r, toYear: Number(e.target.value) }))} options={yearOpts} />
       </div>
 
@@ -201,10 +201,10 @@ function LedgerView({ empId }: { empId: string }) {
     <>
       <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
         <span className="text-ink-400">From</span>
-        <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)}
+        <input aria-label="Ledger from date" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)}
           className="h-9 rounded-lg border border-ink-200 bg-white px-2 text-sm" />
         <span className="text-ink-400">to</span>
-        <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)}
+        <input aria-label="Ledger to date" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)}
           className="h-9 rounded-lg border border-ink-200 bg-white px-2 text-sm" />
       </div>
 
@@ -337,12 +337,12 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
           </div>
           {view === "month" && (
             <>
-              <Select
+              <Select aria-label="Payroll month"
                 value={String(month)}
                 onChange={(e) => setMonth(Number(e.target.value))}
                 options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
               />
-              <Select
+              <Select aria-label="Payroll year"
                 value={String(year)}
                 onChange={(e) => setYear(Number(e.target.value))}
                 options={[year - 1, year, year + 1].map((y) => ({ value: String(y), label: String(y) }))}

@@ -89,7 +89,7 @@ export function ShiftPlanForm({
           {fields.map((field, i) => (
             <div key={field.id} className="grid grid-cols-[1fr_1fr_36px] gap-2 items-start">
               <Controller control={control} name={`machines.${i}.machine`} render={({ field }) => (
-                <Combobox
+                <Combobox aria-label="Machine"
                   placeholder="Machine"
                   options={machineOptions}
                   error={errors.machines?.[i]?.machine?.message}
@@ -101,7 +101,7 @@ export function ShiftPlanForm({
                 />
               )} />
               <Controller control={control} name={`machines.${i}.operator`} render={({ field }) => (
-                <Combobox
+                <Combobox aria-label="Operator"
                   placeholder="Operator"
                   options={operatorOptions}
                   error={errors.machines?.[i]?.operator?.message}

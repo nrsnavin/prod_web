@@ -16,6 +16,8 @@ export interface ComboboxProps {
   error?: string;
   disabled?: boolean;
   className?: string;
+  /** Accessible name when there's no visible `label` (e.g. a table row). */
+  "aria-label"?: string;
 }
 
 // Searchable dropdown for large masters (customers, elastics, materials…):
@@ -28,6 +30,7 @@ export function Combobox({
   onChange,
   placeholder = "Select…",
   error,
+  "aria-label": ariaLabel,
   disabled,
   className,
 }: ComboboxProps) {
@@ -114,6 +117,7 @@ export function Combobox({
           )}
           aria-haspopup="listbox"
           aria-expanded={open}
+          aria-label={ariaLabel}
         >
           <span className="flex-1 truncate">{selected?.label ?? placeholder}</span>
           <ChevronDown className="h-4 w-4 text-ink-400 shrink-0" />
@@ -127,6 +131,7 @@ export function Combobox({
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                aria-label={ariaLabel ? `Search ${ariaLabel}` : "Search options"}
                 placeholder="Type to search…"
                 className="w-full text-sm outline-none placeholder:text-ink-400"
               />

@@ -118,7 +118,7 @@ export function NotificationSettingsPage() {
               )}
             </ul>
             <div className="mt-3 flex gap-2">
-              <Input
+              <Input aria-label="+91XXXXXXXXXX"
                 placeholder="+91XXXXXXXXXX"
                 value={newNumber}
                 onChange={(e) => setNewNumber(e.target.value)}

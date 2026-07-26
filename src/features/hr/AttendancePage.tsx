@@ -114,11 +114,12 @@ function MarkModal({
                 <p className="text-xs text-ink-400 capitalize">{e.department ?? ""}</p>
               </div>
               <Select
+                aria-label={`Attendance status for ${e.name}`}
                 options={STATUS_OPTIONS.map((s) => ({ value: s, label: s.replace("_", " ") }))}
                 value={statuses[e.id]}
                 onChange={(ev) => setStatuses((st) => ({ ...st, [e.id]: ev.target.value }))}
               />
-              <input
+              <input aria-label="Clock-in time"
                 type="time"
                 title="Clock-in time"
                 disabled={!worked}
@@ -126,7 +127,7 @@ function MarkModal({
                 onChange={(ev) => setCheckIn((c) => ({ ...c, [e.id]: ev.target.value }))}
                 className="h-9 w-full rounded-lg border border-ink-200 bg-white px-1.5 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
               />
-              <input
+              <input aria-label="Clock-out time"
                 type="time"
                 title="Clock-out time"
                 disabled={!worked}
@@ -134,7 +135,7 @@ function MarkModal({
                 onChange={(ev) => setCheckOut((c) => ({ ...c, [e.id]: ev.target.value }))}
                 className="h-9 w-full rounded-lg border border-ink-200 bg-white px-1.5 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
               />
-              <input
+              <input aria-label="Overtime minutes"
                 type="number"
                 min={0}
                 placeholder="OT"
@@ -210,7 +211,7 @@ export function AttendancePage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input
+        <input aria-label="Attendance date"
           type="date"
           value={date}
           max={toISODate(new Date())}

@@ -80,6 +80,7 @@ export function ShiftTimerPanel({ date }: { date: string }) {
       <div className="mb-3 flex flex-wrap items-end gap-2">
         <div className="min-w-56 flex-1">
           <Select
+            aria-label="Employee to clock in"
             options={[{ value: "", label: employees.isLoading ? "Loading…" : "Select employee" }, ...options]}
             value={employeeId}
             onChange={(e) => setEmployeeId(e.target.value)}

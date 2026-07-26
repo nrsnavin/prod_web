@@ -124,7 +124,7 @@ export function ElasticGroupForm({
                   />
                 )}
               />
-              <Input
+              <Input aria-label="0 = blank"
                 type="number"
                 step="0.01"
                 placeholder="0 = blank"

@@ -98,6 +98,7 @@ export function MachineHeadMapEditModal({
                 <div key={h} className="flex items-center gap-2">
                   <span className="w-9 shrink-0 text-xs font-semibold text-ink-400 text-right">H{h}</span>
                   <Select
+                    aria-label={`Elastic on head ${h}`}
                     options={[{ value: "", label: "— none —" }, ...options]}
                     value={headMap[h] ?? ""}
                     onChange={(e) => setHeadMap((m) => ({ ...m, [h]: e.target.value }))}

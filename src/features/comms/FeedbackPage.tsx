@@ -36,6 +36,7 @@ function RespondModal({ item, onClose }: { item: FeedbackItem; onClose: () => vo
         {item.message ?? item.text ?? ""}
       </p>
       <textarea
+        aria-label="Response to feedback"
         rows={4}
         value={response}
         onChange={(e) => setResponse(e.target.value)}

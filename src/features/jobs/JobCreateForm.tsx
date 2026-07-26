@@ -52,7 +52,7 @@ export function JobCreateForm({
                   <p className="text-sm font-medium">{e.name}</p>
                   <p className="text-xs text-ink-400">{e.pending.toLocaleString("en-IN")} m pending</p>
                 </div>
-                <Input
+                <Input aria-label="Qty (m)"
                   type="number"
                   step="0.01"
                   min={0}
