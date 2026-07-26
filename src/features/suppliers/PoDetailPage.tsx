@@ -94,6 +94,13 @@ function InwardForm({
 
   return (
     <div className="space-y-4">
+      {/* Column headers label the repeating row inputs below — the inputs
+          themselves only carried placeholders, which vanish once typed. */}
+      <div className="grid grid-cols-[1fr_100px_110px] gap-2 px-1 text-xs font-medium text-ink-400">
+        <span>Material</span>
+        <span>Qty received</span>
+        <span>Lot no</span>
+      </div>
       <div className="space-y-2">
         {pending.map((it) => {
           const idKey = materialId(it);
@@ -111,11 +118,13 @@ function InwardForm({
                 step="0.01"
                 min={0}
                 max={remaining}
+                aria-label={`Quantity received for ${materialName(it)}`}
                 placeholder="Qty"
                 value={qty[idKey] ?? ""}
                 onChange={(e) => setQty((q) => ({ ...q, [idKey]: e.target.value }))}
               />
               <Input
+                aria-label={`Lot number for ${materialName(it)}`}
                 placeholder="Lot no"
                 value={lots[idKey] ?? ""}
                 onChange={(e) => setLots((l) => ({ ...l, [idKey]: e.target.value }))}
@@ -221,13 +230,16 @@ function PoEditModal({
             {lines.map((l, i) => (
               <div key={i} className="grid grid-cols-[1fr_90px_100px_90px_32px] items-start gap-2">
                 <Combobox
+                  aria-label="Material"
                   placeholder={materials.isLoading ? "Loading…" : "Material"}
                   options={materialOptions}
                   value={l.rawMaterial}
                   onChange={(v) => setLine(i, { rawMaterial: v })}
                 />
-                <Input type="number" step="0.01" value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} />
-                <Input type="number" step="0.01" value={l.price} onChange={(e) => setLine(i, { price: e.target.value })} />
+                <Input type="number" step="0.01" aria-label="Quantity" placeholder="Qty"
+                  value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} />
+                <Input type="number" step="0.01" aria-label="Rate in rupees" placeholder="Rate"
+                  value={l.price} onChange={(e) => setLine(i, { price: e.target.value })} />
                 <div className="flex h-10 items-center justify-end text-sm tabular-nums text-ink-600">
                   {((Number(l.quantity) || 0) * (Number(l.price) || 0)).toLocaleString("en-IN")}
                 </div>

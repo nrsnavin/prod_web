@@ -734,12 +734,14 @@ export function PayrollPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Select
+          aria-label="Payroll month"
           options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
           value={String(month)}
           onChange={(e) => setMonth(Number(e.target.value))}
           className="w-40"
         />
         <Select
+          aria-label="Payroll year"
           options={[0, 1, 2].map((d) => {
             const y = now.getFullYear() - d;
             return { value: String(y), label: String(y) };
