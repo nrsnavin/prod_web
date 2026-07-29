@@ -149,7 +149,7 @@ export function BreakdownPanel({
                 className={cn(
                   "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   groupBy === d.key
-                    ? "bg-white text-ink-900 shadow-sm"
+                    ? "bg-surface text-ink-900 shadow-sm"
                     : "text-ink-600 hover:text-ink-900"
                 )}
               >

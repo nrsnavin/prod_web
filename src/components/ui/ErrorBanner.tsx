@@ -16,7 +16,7 @@ export function ErrorBanner({ message }: { message: string }) {
           await qc.refetchQueries({ type: "active" });
           setRetrying(false);
         }}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger/40 px-2.5 py-1 font-medium hover:bg-status-danger hover:text-white transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-status-danger/40 px-2.5 py-1 font-medium hover:bg-status-dangerSolid hover:text-white transition-colors"
       >
         <RotateCw className={retrying ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
         Retry

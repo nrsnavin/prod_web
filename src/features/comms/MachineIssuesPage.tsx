@@ -212,7 +212,7 @@ function AnomalyBanner() {
       <select aria-label="Issue threshold"
         value={threshold}
         onChange={(e) => setThreshold(Number(e.target.value))}
-        className="rounded border border-ink-200 bg-white px-1.5 py-0.5"
+        className="rounded border border-ink-200 bg-surface px-1.5 py-0.5"
       >
         {[2, 3, 5].map((n) => <option key={n} value={n}>{n}+</option>)}
       </select>
@@ -220,7 +220,7 @@ function AnomalyBanner() {
       <select aria-label="Time window in days"
         value={days}
         onChange={(e) => setDays(Number(e.target.value))}
-        className="rounded border border-ink-200 bg-white px-1.5 py-0.5"
+        className="rounded border border-ink-200 bg-surface px-1.5 py-0.5"
       >
         {[7, 30, 90].map((n) => <option key={n} value={n}>{n}d</option>)}
       </select>

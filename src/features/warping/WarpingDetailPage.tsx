@@ -294,7 +294,7 @@ function OptimizeLayoutModal({
                 onClick={() => setCapacity(c)}
                 className={cn(
                   "rounded-md px-2.5 py-1 text-sm font-medium",
-                  capacity === c ? "bg-white text-ink-900 shadow-sm" : "text-ink-600"
+                  capacity === c ? "bg-surface text-ink-900 shadow-sm" : "text-ink-600"
                 )}
               >
                 {c}

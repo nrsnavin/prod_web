@@ -101,7 +101,7 @@ export function AssistantPage() {
                 {m.tools && m.tools.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1 border-t border-ink-200/60 pt-2">
                     {m.tools.map((t) => (
-                      <span key={t} className="inline-flex items-center gap-1 rounded bg-white/70 px-1.5 py-0.5 text-xs text-ink-500">
+                      <span key={t} className="inline-flex items-center gap-1 rounded bg-surface/70 px-1.5 py-0.5 text-xs text-ink-500">
                         <Wrench className="h-3 w-3" /> {TOOL_LABELS[t] ?? t}
                       </span>
                     ))}

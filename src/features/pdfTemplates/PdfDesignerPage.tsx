@@ -268,6 +268,8 @@ export function PdfDesignerPage() {
       {/* ── Canvas ─────────────────────────────────────────── */}
       <div className="overflow-auto">
         <div
+          // Literal white, not `bg-surface`: this is a preview of a sheet of
+          // paper, so it stays white even when the app is in dark mode.
           className="relative mx-auto bg-white shadow-md ring-1 ring-ink-200"
           style={{ width: displayW, height: pageH * scale }}
           onPointerDown={() => setSelId(null)}

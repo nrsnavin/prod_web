@@ -11,6 +11,8 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       {/* Brand panel */}
       <div className="hidden lg:flex flex-col justify-between bg-brand-500 text-white p-12">
         <div className="flex items-center gap-2.5">
+          {/* Sits on the always-red brand panel, so it is a white scrim in
+              both themes rather than the themeable surface token. */}
           <span className="h-10 w-10 rounded-xl bg-white/15 grid place-items-center">
             <Factory className="h-5 w-5" />
           </span>

@@ -115,7 +115,7 @@ export function DocumentSettingsForm() {
               onChange={(e) => setAddressText(e.target.value)}
               rows={3}
               placeholder={"One line per row\ne.g. 12 Mill Road\nErode, Tamil Nadu 638001"}
-              className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 disabled:bg-ink-50"
+              className="w-full rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 disabled:bg-ink-50"
             />
             <p className="mt-1 text-xs text-ink-400">Up to 6 lines. Blank lines are ignored.</p>
           </div>
@@ -142,7 +142,7 @@ export function DocumentSettingsForm() {
                   value={accent}
                   disabled={!canEdit}
                   onChange={(e) => set("accentColor", e.target.value)}
-                  className="h-10 w-12 rounded-lg border border-ink-200 bg-white p-1 disabled:opacity-60"
+                  className="h-10 w-12 rounded-lg border border-ink-200 bg-surface p-1 disabled:opacity-60"
                 />
                 <Input aria-label="Accent colour hex code" value={form.accentColor} disabled={!canEdit}
                   onChange={(e) => set("accentColor", e.target.value)} className="w-28" />
@@ -189,7 +189,7 @@ export function DocumentSettingsForm() {
               onChange={(e) => set("termsText", e.target.value)}
               rows={4}
               placeholder="Shown at the bottom of documents that carry terms (e.g. POs)."
-              className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 disabled:bg-ink-50"
+              className="w-full rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 disabled:bg-ink-50"
             />
           </div>
         </Card>

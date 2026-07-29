@@ -141,7 +141,7 @@ export function SkillProfileFields({
                           "h-4 w-4 rounded-full border transition-colors",
                           current === l
                             ? "border-brand-500 bg-brand-500"
-                            : "border-ink-300 bg-white hover:border-brand-400"
+                            : "border-ink-300 bg-surface hover:border-brand-400"
                         )}
                       />
                     </td>

@@ -42,7 +42,7 @@ export function OrderEtaPanel({
   const late = data?.ok && data.risk?.late;
 
   return (
-    <div className="rounded-lg border border-ink-200 bg-white px-4 py-3">
+    <div className="rounded-lg border border-ink-200 bg-surface px-4 py-3">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-brand-500" />
         <span className="text-sm font-medium">AI completion estimate</span>

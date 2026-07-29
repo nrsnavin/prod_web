@@ -250,7 +250,7 @@ function PayDialog({ row, onClose }: { row: PayrollEmployeeRow; onClose: () => v
                       placeholder="0"
                       value={recover[a._id] ?? ""}
                       onChange={(e) => setRecover((r) => ({ ...r, [a._id]: e.target.value }))}
-                      className="h-9 w-24 rounded-lg border border-ink-200 bg-white px-2 text-sm tabular-nums"
+                      className="h-9 w-24 rounded-lg border border-ink-200 bg-surface px-2 text-sm tabular-nums"
                     />
                     <Button
                       type="button"
@@ -757,7 +757,7 @@ export function PayrollPage() {
               onClick={() => setTab(t)}
               className={cn(
                 "px-3 py-1.5 rounded-md text-sm font-medium capitalize",
-                tab === t ? "bg-white shadow-sm text-ink-900" : "text-ink-600"
+                tab === t ? "bg-surface shadow-sm text-ink-900" : "text-ink-600"
               )}
             >
               {t}
@@ -776,7 +776,7 @@ export function PayrollPage() {
                   onClick={() => setMode(m)}
                   className={cn(
                     "px-3 py-1.5 rounded-md text-sm font-medium capitalize",
-                    mode === m ? "bg-white shadow-sm text-ink-900" : "text-ink-600"
+                    mode === m ? "bg-surface shadow-sm text-ink-900" : "text-ink-600"
                   )}
                 >
                   {m === "month" ? "Single month" : "Range"}

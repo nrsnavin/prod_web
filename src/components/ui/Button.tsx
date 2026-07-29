@@ -15,9 +15,12 @@ const variantClasses: Record<Variant, string> = {
   primary:
     "bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 shadow-sm",
   secondary:
-    "bg-white text-ink-900 border border-ink-200 hover:border-ink-400 hover:bg-ink-100",
+    "bg-surface text-ink-900 border border-ink-200 hover:border-ink-400 hover:bg-ink-100",
   ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-900",
-  danger: "bg-status-danger text-white hover:opacity-90",
+  // `dangerSolid`, not `danger`: the plain danger token is tuned to be
+  // legible as *text* on a dark background, which makes it too light to
+  // carry white button text. This one stays dark enough in both themes.
+  danger: "bg-status-dangerSolid text-white hover:opacity-90",
 };
 
 const sizeClasses: Record<Size, string> = {

@@ -49,7 +49,7 @@ function ShiftSlice({
   return (
     <button
       onClick={() => slice.shiftPlanId && onOpen(slice.shiftPlanId)}
-      className="flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm hover:border-brand-500 transition-colors w-full"
+      className="flex items-center gap-2 rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm hover:border-brand-500 transition-colors w-full"
     >
       {icon}
       <span className="font-medium">{label}</span>
@@ -334,7 +334,7 @@ export function ProductionViewPage() {
             className={cn(
               "px-3 py-1.5 rounded-md text-sm font-medium",
               presetRange(p.days).startDate === range.startDate
-                ? "bg-ink-900 text-white"
+                ? "bg-ink-900 text-canvas"
                 : "bg-ink-100 text-ink-600 hover:text-ink-900"
             )}
           >

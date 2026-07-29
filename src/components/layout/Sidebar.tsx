@@ -24,14 +24,14 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       {/* Mobile scrim */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-30 app-scrim lg:hidden"
           onClick={onMobileClose}
         />
       )}
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 bg-white border-r border-ink-100 flex flex-col",
+          "fixed inset-y-0 left-0 z-40 bg-surface border-r border-ink-100 flex flex-col",
           "transition-all lg:translate-x-0",
           collapsed ? "w-64 lg:w-16" : "w-64",
           mobileOpen ? "translate-x-0" : "-translate-x-full"

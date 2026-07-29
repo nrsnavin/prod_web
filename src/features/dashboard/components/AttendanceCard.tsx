@@ -39,7 +39,10 @@ export function AttendanceCard({
     { key: "half_day", label: "Half day", count: b.half_day, color: chartTheme.status.serious, Icon: CircleMinus },
     { key: "absent", label: "Absent", count: b.absent, color: chartTheme.status.critical, Icon: CircleSlash2 },
     { key: "on_leave", label: "On leave", count: b.on_leave, color: chartTheme.mutedInk, Icon: Plane },
-    { key: "unmarked", label: "Unmarked", count: data.unmarked, color: "#E0E0E0", Icon: CircleHelp },
+    // "Unmarked" is deliberately the faintest segment — via the ink token so
+    // it stays faint against the card in either theme rather than becoming a
+    // bright light-grey block on dark.
+    { key: "unmarked", label: "Unmarked", count: data.unmarked, color: "rgb(var(--color-ink-200))", Icon: CircleHelp },
   ];
   const total = segments.reduce((s, x) => s + x.count, 0);
 

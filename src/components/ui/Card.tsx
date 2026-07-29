@@ -9,7 +9,7 @@ export function Card({ interactive, className, ...rest }: CardProps) {
   return (
     <div
       className={cn(
-        "bg-white rounded-card shadow-card",
+        "bg-surface rounded-card shadow-card",
         interactive &&
           "transition-shadow hover:shadow-card-hover cursor-pointer",
         className

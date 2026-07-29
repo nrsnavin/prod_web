@@ -3,6 +3,7 @@ import { Menu, Search, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/auth/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ThemeToggle } from "./ThemeToggle";
 
 export interface TopbarProps {
   onMenuClick: () => void;
@@ -27,7 +28,7 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 h-16 bg-white/90 backdrop-blur border-b border-ink-100 flex items-center gap-3 px-4 lg:px-6">
+    <header className="sticky top-0 z-20 h-16 bg-surface/90 backdrop-blur border-b border-ink-100 flex items-center gap-3 px-4 lg:px-6">
       <button
         className="lg:hidden p-2 rounded-lg text-ink-600 hover:bg-ink-100"
         onClick={onMenuClick}
@@ -42,12 +43,13 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
       >
         <Search className="h-4 w-4" />
         <span className="flex-1 text-left">Search anything…</span>
-        <kbd className="hidden md:inline-block text-[11px] font-medium bg-white border border-ink-200 rounded px-1.5 py-0.5">
+        <kbd className="hidden md:inline-block text-[11px] font-medium bg-surface border border-ink-200 rounded px-1.5 py-0.5">
           ⌘K
         </kbd>
       </button>
 
       <div className="ml-auto flex items-center gap-3">
+        <ThemeToggle />
         <div className="hidden sm:block text-right leading-tight">
           <p className="text-sm font-semibold">{user?.username}</p>
           <p className="text-xs text-ink-400 capitalize">{user?.role}</p>

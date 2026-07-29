@@ -28,7 +28,7 @@ function ChartTooltip({ active, payload, label }: {
   if (!active || !payload?.length) return null;
   const v = payload[0].value;
   return (
-    <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm shadow-card">
+    <div className="rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm shadow-card">
       <p className="font-medium">{label}</p>
       <p className="text-ink-600 tabular-nums">Net {v >= 0 ? "+" : ""}{nf(v)} kg</p>
     </div>
@@ -36,7 +36,7 @@ function ChartTooltip({ active, payload, label }: {
 }
 
 function Tile({ label, value, tone }: { label: string; value: string; tone?: "up" | "down" }) {
-  const color = tone === "up" ? "text-emerald-600" : tone === "down" ? "text-red-600" : "";
+  const color = tone === "up" ? "text-status-success" : tone === "down" ? "text-status-danger" : "";
   return (
     <Card className="p-4">
       <p className="text-xs text-ink-400">{label}</p>
@@ -118,7 +118,7 @@ export function StockMovementsReportPage() {
               <XAxis dataKey="date" tick={{ fontSize: 12, fill: chartTheme.axis }} />
               <YAxis tick={{ fontSize: 12, fill: chartTheme.axis }} />
               <ReferenceLine y={0} stroke={chartTheme.axis} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: chartTheme.cursor }} />
               <Bar dataKey="net" radius={[4, 4, 0, 0]}>
                 {(data?.series ?? []).map((p, i) => (
                   <Cell key={i} fill={p.net >= 0 ? chartTheme.series[1] : chartTheme.status.critical} />

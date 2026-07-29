@@ -49,7 +49,7 @@ export function FilterBar({
             className={cn(
               "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
               activePreset?.label === p.label
-                ? "bg-white shadow-sm text-ink-900"
+                ? "bg-surface shadow-sm text-ink-900"
                 : "text-ink-600 hover:text-ink-900"
             )}
           >
@@ -87,7 +87,7 @@ export function FilterBar({
             className={cn(
               "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
               filters.shift === s.value
-                ? "bg-white shadow-sm text-ink-900"
+                ? "bg-surface shadow-sm text-ink-900"
                 : "text-ink-600 hover:text-ink-900"
             )}
           >

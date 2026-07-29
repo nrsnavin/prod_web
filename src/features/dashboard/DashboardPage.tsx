@@ -113,7 +113,7 @@ export function DashboardPage() {
               <Link
                 key={r.path}
                 to={r.path}
-                className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-3 py-1.5 text-sm hover:border-brand-500 hover:text-brand-600 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-surface px-3 py-1.5 text-sm hover:border-brand-500 hover:text-brand-600 transition-colors"
               >
                 <span className="text-xs text-ink-400">{r.type}</span>
                 {r.label}

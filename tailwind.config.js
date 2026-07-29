@@ -1,36 +1,50 @@
 /** @type {import('tailwindcss').Config} */
+
+// Every colour token resolves through a CSS variable holding space-separated
+// RGB channels ("28 28 28"), so the `/opacity` modifier keeps working
+// (`bg-ink-900/50` → `rgb(28 28 28 / 0.5)`). The light and dark values live
+// in src/index.css under `:root` and `.dark`; flipping that one class
+// re-themes every screen without a single `dark:` utility in the markup.
+const token = (name) => `rgb(var(--color-${name}) / <alpha-value>)`;
+
+const ramp = (prefix, stops) =>
+  Object.fromEntries(stops.map((s) => [s, token(`${prefix}-${s}`)]));
+
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
         // Brand — one bold accent, used sparingly (Zomato-style)
-        brand: {
-          50: "#FEF1F2",
-          100: "#FDE0E2",
-          500: "#E23744",
-          600: "#C42B37",
-          700: "#A3212C",
+        brand: ramp("brand", [50, 100, 400, 500, 600, 700]),
+
+        // Page background, and the raised sheet that cards/inputs sit on.
+        // `surface` is what used to be a hardcoded `bg-white`.
+        canvas: token("canvas"),
+        surface: {
+          DEFAULT: token("surface"),
+          muted: token("surface-muted"),
         },
-        // Neutral canvas
-        canvas: "#F8F8F8",
-        ink: {
-          900: "#1C1C1C",
-          600: "#4F4F4F",
-          400: "#828282",
-          200: "#E0E0E0",
-          100: "#F0F0F0",
-        },
-        // Semantic status colors (chips, banners)
+        // Text and lines. The scale runs dark→light in the light theme and
+        // inverts in dark, so `text-ink-900` is always "strongest text" and
+        // `border-ink-200` is always "a hairline".
+        ink: ramp("ink", [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]),
+
+        // Semantic status colors (chips, banners). The base tone is tuned to
+        // be legible *as text*, which is how it is used almost everywhere;
+        // `dangerSolid` is the filled-button variant that has to carry white
+        // text, so it stays dark enough for that in both themes.
         status: {
-          success: "#1E8E3E",
-          successBg: "#E6F4EA",
-          warning: "#B26A00",
-          warningBg: "#FFF4E0",
-          info: "#1967D2",
-          infoBg: "#E8F0FE",
-          danger: "#C5221F",
-          dangerBg: "#FCE8E6",
+          success: token("status-success"),
+          successBg: token("status-success-bg"),
+          warning: token("status-warning"),
+          warningBg: token("status-warning-bg"),
+          info: token("status-info"),
+          infoBg: token("status-info-bg"),
+          danger: token("status-danger"),
+          dangerBg: token("status-danger-bg"),
+          dangerSolid: token("status-danger-solid"),
         },
       },
       fontFamily: {
@@ -44,8 +58,8 @@ export default {
         ],
       },
       boxShadow: {
-        card: "0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
-        "card-hover": "0 4px 12px rgba(0,0,0,0.10)",
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
       },
       borderRadius: {
         card: "12px",

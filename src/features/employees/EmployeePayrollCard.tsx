@@ -202,10 +202,10 @@ function LedgerView({ empId }: { empId: string }) {
       <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
         <span className="text-ink-400">From</span>
         <input aria-label="Ledger from date" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)}
-          className="h-9 rounded-lg border border-ink-200 bg-white px-2 text-sm" />
+          className="h-9 rounded-lg border border-ink-200 bg-surface px-2 text-sm" />
         <span className="text-ink-400">to</span>
         <input aria-label="Ledger to date" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)}
-          className="h-9 rounded-lg border border-ink-200 bg-white px-2 text-sm" />
+          className="h-9 rounded-lg border border-ink-200 bg-surface px-2 text-sm" />
       </div>
 
       {q.isLoading ? (
@@ -328,7 +328,7 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
                 onClick={() => setView(v)}
                 className={cn(
                   "px-3 py-1 rounded-md text-sm font-medium capitalize",
-                  view === v ? "bg-white shadow-sm text-ink-900" : "text-ink-600"
+                  view === v ? "bg-surface shadow-sm text-ink-900" : "text-ink-600"
                 )}
               >
                 {v === "month" ? "Month" : v === "range" ? "Range" : "Ledger"}

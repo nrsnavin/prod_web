@@ -63,7 +63,7 @@ export function ProductionModeControl({
             chipBase,
             !isOutsource
               ? "bg-brand-50 border-brand-500 text-brand-600"
-              : "bg-white border-ink-200 text-ink-600 hover:border-ink-400"
+              : "bg-surface border-ink-200 text-ink-600 hover:border-ink-400"
           )}
         >
           <Factory className="h-4 w-4" /> In-house
@@ -77,7 +77,7 @@ export function ProductionModeControl({
             chipBase,
             isOutsource
               ? "bg-status-warningBg border-status-warning text-status-warning"
-              : "bg-white border-ink-200 text-ink-600 hover:border-ink-400"
+              : "bg-surface border-ink-200 text-ink-600 hover:border-ink-400"
           )}
         >
           <Truck className="h-4 w-4" /> Outsource

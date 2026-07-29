@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import { useThemeEffect } from "@/core/ui/theme";
 import { AppRouter } from "./router";
 
 const queryClient = new QueryClient({
@@ -19,6 +20,10 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
+  // Keeps <html class="dark"> in step with the saved preference, and follows
+  // the OS while that preference is "system".
+  useThemeEffect();
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>

@@ -58,7 +58,7 @@ export function SidePanel({ open, onClose, title, children, width = "max-w-md" }
     <div className="fixed inset-0 z-50">
       <div
         className={cn(
-          "absolute inset-0 bg-ink-900/30 transition-opacity duration-200",
+          "absolute inset-0 app-scrim transition-opacity duration-200",
           shown ? "opacity-100" : "opacity-0"
         )}
         onClick={onClose}
@@ -72,7 +72,7 @@ export function SidePanel({ open, onClose, title, children, width = "max-w-md" }
           shown ? "translate-x-0" : "translate-x-full"
         )}
       >
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-ink-100 bg-white px-4">
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b border-ink-100 bg-surface px-4">
           <div className="min-w-0 flex-1 truncate text-base font-semibold text-ink-900">{title}</div>
           <button
             onClick={onClose}

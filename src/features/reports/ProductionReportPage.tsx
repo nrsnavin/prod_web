@@ -33,7 +33,7 @@ function ChartTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm shadow-card">
+    <div className="rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm shadow-card">
       <p className="font-medium">{label}</p>
       <p className="text-ink-600 tabular-nums">{nf(payload[0].value)} m</p>
     </div>
@@ -57,7 +57,7 @@ function Delta({ value, pct, invert }: { value: number; pct?: number | null; inv
   const good = invert ? !up : up;
   const Icon = up ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className={good ? "text-emerald-600" : "text-red-600"}>
+    <span className={good ? "text-status-success" : "text-status-danger"}>
       <Icon className="inline h-3 w-3" /> {up ? "+" : ""}{nf(value)}
       {pct != null ? ` (${up ? "+" : ""}${pct}%)` : ""}
     </span>
@@ -147,7 +147,7 @@ export function ProductionReportPage() {
               <CartesianGrid stroke={chartTheme.grid} vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 12, fill: chartTheme.axis }} />
               <YAxis tick={{ fontSize: 12, fill: chartTheme.axis }} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: chartTheme.cursor }} />
               <Bar dataKey="meters" fill={chartTheme.series[0]} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

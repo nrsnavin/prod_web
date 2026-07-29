@@ -64,7 +64,7 @@ export function CoveringLabels({
               <button
                 type="button"
                 onClick={() => setSoloId(entry._id)}
-                className="print:hidden absolute right-2 top-2 inline-flex items-center gap-1 rounded-md border border-ink-200 bg-white px-2 py-1 text-xs font-medium text-ink-600 hover:border-ink-400"
+                className="print:hidden absolute right-2 top-2 inline-flex items-center gap-1 rounded-md border border-ink-200 bg-surface px-2 py-1 text-xs font-medium text-ink-600 hover:border-ink-400"
                 aria-label={`Print beam ${entry.beamNo} label`}
               >
                 <Printer className="h-3.5 w-3.5" /> Print

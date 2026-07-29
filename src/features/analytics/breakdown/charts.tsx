@@ -27,7 +27,7 @@ function Tip({
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   return (
-    <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm shadow-card">
+    <div className="rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm shadow-card">
       <p className="font-medium">{row.label}</p>
       <p className="tabular-nums text-ink-600">
         Production: {row.production.toLocaleString("en-IN")} m
@@ -50,7 +50,7 @@ export function BreakdownBarChart({ rows }: { rows: BreakdownRow[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
         <XAxis dataKey="name" tick={axisStyle} interval={0} angle={-25} textAnchor="end" height={60} />
         <YAxis tick={axisStyle} />
-        <Tooltip content={<Tip />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+        <Tooltip content={<Tip />} cursor={{ fill: chartTheme.cursor }} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
         <Bar dataKey="production" name="Production (m)" fill={chartTheme.series[0]} radius={[3, 3, 0, 0]} />
         <Bar dataKey="wastageQty" name="Wastage (m)" fill={chartTheme.status.critical} radius={[3, 3, 0, 0]} />

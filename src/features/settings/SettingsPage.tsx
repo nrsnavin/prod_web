@@ -1,20 +1,22 @@
 import { useState } from "react";
-import { FileText, PanelLeft, LayoutTemplate } from "lucide-react";
+import { FileText, PanelLeft, LayoutTemplate, Palette } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/components/ui/cn";
 import { useAuth } from "@/core/auth/useAuth";
+import { AppearanceSettings } from "./AppearanceSettings";
 import { DocumentSettingsForm } from "./DocumentSettingsForm";
 import { SidebarLayoutEditor } from "./SidebarLayoutEditor";
 import { PdfDesignerPage } from "@/features/pdfTemplates/PdfDesignerPage";
 
-type Tab = "sidebar" | "documents" | "designer";
+type Tab = "appearance" | "sidebar" | "documents" | "designer";
 
 export function SettingsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [tab, setTab] = useState<Tab>("sidebar");
+  const [tab, setTab] = useState<Tab>("appearance");
 
   const TABS: { id: Tab; label: string; icon: typeof FileText; adminOnly?: boolean }[] = [
+    { id: "appearance", label: "Appearance", icon: Palette },
     { id: "sidebar", label: "Sidebar layout", icon: PanelLeft },
     { id: "documents", label: "Documents & Branding", icon: FileText },
     { id: "designer", label: "PDF Designer", icon: LayoutTemplate, adminOnly: true },
@@ -23,7 +25,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Personalize your sidebar and configure document branding" />
+      <PageHeader title="Settings" subtitle="Personalize the app's look and configure document branding" />
 
       <div className="mb-6 flex gap-1 border-b border-ink-100">
         {tabs.map((t) => (
@@ -42,6 +44,7 @@ export function SettingsPage() {
         ))}
       </div>
 
+      {tab === "appearance" && <AppearanceSettings />}
       {tab === "sidebar" && <SidebarLayoutEditor />}
       {tab === "documents" && <DocumentSettingsForm />}
       {tab === "designer" && isAdmin && <PdfDesignerPage />}

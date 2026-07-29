@@ -70,7 +70,7 @@ export function SidebarLayoutEditor() {
                       key={item.path}
                       className={cn(
                         "flex items-center gap-2 rounded-lg border px-2.5 py-1.5",
-                        isHidden ? "border-ink-100 bg-ink-50" : "border-ink-100 bg-white"
+                        isHidden ? "border-ink-100 bg-ink-50" : "border-ink-100 bg-surface"
                       )}
                     >
                       <item.icon className={cn("h-4 w-4 shrink-0", isHidden ? "text-ink-300" : "text-ink-500")} />

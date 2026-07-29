@@ -88,7 +88,7 @@ export function FormScreen({
       aria-modal="true"
       aria-label={title}
     >
-      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-ink-100 bg-white px-4 lg:px-6">
+      <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-3 border-b border-ink-100 bg-surface px-4 lg:px-6">
         <button
           onClick={requestClose}
           className="-ml-2 flex items-center gap-1 rounded-lg p-2 text-ink-600 hover:bg-ink-100 hover:text-ink-900"
@@ -114,7 +114,7 @@ export function FormScreen({
             dirtyRef.current = true;
           }}
         >
-          <div className="rounded-card bg-white p-5 shadow-card sm:p-6">{children}</div>
+          <div className="rounded-card bg-surface p-5 shadow-card sm:p-6">{children}</div>
         </div>
       </div>
     </div>

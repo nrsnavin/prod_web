@@ -75,7 +75,7 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[10vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center app-scrim p-4 pt-[10vh]"
       onMouseDown={(e) => e.target === e.currentTarget && requestClose()}
       role="dialog"
       aria-modal="true"
@@ -83,7 +83,7 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
     >
       <div
         ref={panelRef}
-        className={cn("w-full bg-white rounded-card shadow-card-hover flex flex-col max-h-[85vh]", width)}
+        className={cn("w-full bg-surface rounded-card shadow-card-hover flex flex-col max-h-[85vh]", width)}
         onInput={() => {
           dirtyRef.current = true;
         }}

@@ -110,7 +110,7 @@ export function MaterialForecastPage() {
             onClick={() => setHorizon(d)}
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium",
-              horizon === d ? "bg-white text-ink-900 shadow-sm" : "text-ink-600"
+              horizon === d ? "bg-surface text-ink-900 shadow-sm" : "text-ink-600"
             )}
           >
             {d}-day

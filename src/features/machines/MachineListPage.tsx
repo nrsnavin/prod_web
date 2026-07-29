@@ -129,7 +129,7 @@ export function MachineListPage() {
                   <li key={d.machineId}>
                     <button
                       onClick={() => navigate(`/machines/${d.machineId}`)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-white px-2.5 py-1 text-xs font-medium hover:border-ink-400"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-ink-200 bg-surface px-2.5 py-1 text-xs font-medium hover:border-ink-400"
                     >
                       {d.overdue && <AlertTriangle className="h-3 w-3 text-status-danger" />}
                       {d.ID}

@@ -26,7 +26,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             rest.onFocus?.(e);
           }}
           className={cn(
-            "w-full h-10 px-3 rounded-lg border bg-white text-sm text-ink-900 placeholder:text-ink-400",
+            "w-full h-10 px-3 rounded-lg border bg-surface text-sm text-ink-900 placeholder:text-ink-400",
             "focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 transition-colors",
             error ? "border-status-danger" : "border-ink-200",
             className

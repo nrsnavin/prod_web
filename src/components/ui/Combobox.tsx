@@ -109,7 +109,7 @@ export function Combobox({
             setTimeout(() => inputRef.current?.focus(), 0);
           }}
           className={cn(
-            "w-full h-10 px-3 rounded-lg border bg-white text-sm text-left flex items-center gap-2",
+            "w-full h-10 px-3 rounded-lg border bg-surface text-sm text-left flex items-center gap-2",
             "focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500",
             "disabled:opacity-50",
             error ? "border-status-danger" : "border-ink-200",
@@ -124,7 +124,7 @@ export function Combobox({
         </button>
 
         {open && (
-          <div className="absolute z-30 mt-1 w-full rounded-lg border border-ink-200 bg-white shadow-card-hover">
+          <div className="absolute z-30 mt-1 w-full rounded-lg border border-ink-200 bg-surface shadow-card-hover">
             <div className="flex items-center gap-2 border-b border-ink-100 px-3 py-2">
               <Search className="h-4 w-4 text-ink-400 shrink-0" />
               <input

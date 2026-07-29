@@ -117,7 +117,7 @@ export function MaterialListPage() {
             "px-3 py-1.5 rounded-full text-sm font-medium border transition-colors inline-flex items-center gap-1.5",
             lowStock
               ? "bg-status-dangerBg border-status-danger text-status-danger"
-              : "bg-white border-ink-200 text-ink-600 hover:border-ink-400"
+              : "bg-surface border-ink-200 text-ink-600 hover:border-ink-400"
           )}
         >
           <TriangleAlert className="h-3.5 w-3.5" /> Low stock only

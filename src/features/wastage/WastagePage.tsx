@@ -395,7 +395,7 @@ export function WastagePage() {
                 onClick={() => setDays(d)}
                 className={cn(
                   "px-3 py-1.5 rounded-md text-sm font-medium",
-                  days === d ? "bg-white shadow-sm text-ink-900" : "text-ink-600"
+                  days === d ? "bg-surface shadow-sm text-ink-900" : "text-ink-600"
                 )}
               >
                 {d}D
@@ -482,7 +482,7 @@ export function WastagePage() {
                 onClick={() => setDays(d)}
                 className={cn(
                   "px-3 py-1.5 rounded-md text-sm font-medium",
-                  days === d ? "bg-white shadow-sm text-ink-900" : "text-ink-600"
+                  days === d ? "bg-surface shadow-sm text-ink-900" : "text-ink-600"
                 )}
               >
                 {d}D

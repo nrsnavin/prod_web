@@ -125,7 +125,7 @@ function MarkModal({
                 disabled={!worked}
                 value={worked ? checkIn[e.id] ?? "" : ""}
                 onChange={(ev) => setCheckIn((c) => ({ ...c, [e.id]: ev.target.value }))}
-                className="h-9 w-full rounded-lg border border-ink-200 bg-white px-1.5 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
+                className="h-9 w-full rounded-lg border border-ink-200 bg-surface px-1.5 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
               />
               <input aria-label="Clock-out time"
                 type="time"
@@ -133,7 +133,7 @@ function MarkModal({
                 disabled={!worked}
                 value={worked ? checkOut[e.id] ?? "" : ""}
                 onChange={(ev) => setCheckOut((c) => ({ ...c, [e.id]: ev.target.value }))}
-                className="h-9 w-full rounded-lg border border-ink-200 bg-white px-1.5 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
+                className="h-9 w-full rounded-lg border border-ink-200 bg-surface px-1.5 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
               />
               <input aria-label="Overtime minutes"
                 type="number"
@@ -143,7 +143,7 @@ function MarkModal({
                 disabled={!worked}
                 value={worked ? ot[e.id] ?? "" : ""}
                 onChange={(ev) => setOt((o) => ({ ...o, [e.id]: ev.target.value }))}
-                className="h-9 w-full rounded-lg border border-ink-200 bg-white px-2 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
+                className="h-9 w-full rounded-lg border border-ink-200 bg-surface px-2 text-sm tabular-nums disabled:bg-ink-100 disabled:text-ink-400"
               />
             </div>
           );
@@ -216,7 +216,7 @@ export function AttendancePage() {
           value={date}
           max={toISODate(new Date())}
           onChange={(e) => setDate(e.target.value)}
-          className="h-10 rounded-lg border border-ink-200 px-3 text-sm bg-white focus:outline-none focus:border-brand-500"
+          className="h-10 rounded-lg border border-ink-200 px-3 text-sm bg-surface focus:outline-none focus:border-brand-500"
         />
         <FilterChips
           options={[

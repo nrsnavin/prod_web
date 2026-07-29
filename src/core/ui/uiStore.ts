@@ -8,11 +8,24 @@ export interface RecentItem {
   at: number;
 }
 
+/** "system" follows the OS setting live; the other two pin the theme. */
+export type ThemeMode = "light" | "dark" | "system";
+
+/**
+ * localStorage key this store persists under. index.html reads the same key
+ * in a pre-paint script to apply the theme before React mounts, so keep the
+ * two in sync if it ever changes.
+ */
+export const UI_STORAGE_KEY = "jarvis-ui";
+
 interface UiState {
   sidebarCollapsed: boolean;
   toggleSidebar(): void;
   recent: RecentItem[];
   addRecent(item: Omit<RecentItem, "at">): void;
+
+  theme: ThemeMode;
+  setTheme(theme: ThemeMode): void;
 
   // ── Per-user sidebar customization (persisted in this browser) ──
   // navHidden: item paths the user chose to hide from the sidebar
@@ -39,6 +52,9 @@ export const useUiStore = create<UiState>()(
           ].slice(0, 8),
         })),
 
+      theme: "system",
+      setTheme: (theme) => set({ theme }),
+
       navHidden: [],
       navOrder: {},
       toggleNavHidden: (path) =>
@@ -51,7 +67,7 @@ export const useUiStore = create<UiState>()(
         set((s) => ({ navOrder: { ...s.navOrder, [sectionLabel]: paths } })),
       resetNavPrefs: () => set({ navHidden: [], navOrder: {} }),
     }),
-    { name: "jarvis-ui" }
+    { name: UI_STORAGE_KEY }
   )
 );
 

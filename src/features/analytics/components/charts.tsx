@@ -28,7 +28,7 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-lg border border-ink-200 bg-white px-3 py-2 shadow-card text-sm">
+    <div className="rounded-lg border border-ink-200 bg-surface px-3 py-2 shadow-card text-sm">
       <p className="font-medium">{label}</p>
       {payload.map((p) => (
         <p key={p.name} className="text-ink-600 tabular-nums">
@@ -97,7 +97,7 @@ export function WeeklyPatternChart({ data }: { data: WeeklyPatternPoint[] }) {
           width={52}
           tickFormatter={(v: number) => v.toLocaleString("en-IN")}
         />
-        <Tooltip content={<ChartTooltip unit=" m avg" />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+        <Tooltip content={<ChartTooltip unit=" m avg" />} cursor={{ fill: chartTheme.cursor }} />
         <Bar
           dataKey="avgProduction"
           name="Avg production"

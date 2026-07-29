@@ -2,12 +2,164 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme tokens ───────────────────────────────────────────────────────
+   Values are space-separated RGB channels so Tailwind's alpha modifier
+   works (`bg-ink-900/50`). tailwind.config.js maps every colour utility
+   onto these, so adding `.dark` to <html> re-themes the whole app.
+
+   The ink ramp is *semantic*, not literal: 900 always means "strongest
+   text" and 100 "faintest fill". That is why the dark values run the
+   other way round — every `text-ink-900` in the codebase stays correct.  */
+:root {
+  color-scheme: light;
+
+  --color-canvas: 248 248 248;
+  --color-surface: 255 255 255;
+  --color-surface-muted: 250 250 250;
+
+  --color-brand-50: 254 241 242;
+  --color-brand-100: 253 224 226;
+  --color-brand-400: 236 86 97;
+  --color-brand-500: 226 55 68;
+  --color-brand-600: 196 43 55;
+  --color-brand-700: 163 33 44;
+
+  --color-ink-900: 28 28 28;
+  --color-ink-800: 43 43 43;
+  --color-ink-700: 59 59 59;
+  --color-ink-600: 79 79 79;
+  --color-ink-500: 102 102 102;
+  --color-ink-400: 130 130 130;
+  --color-ink-300: 184 184 184;
+  --color-ink-200: 224 224 224;
+  --color-ink-100: 240 240 240;
+  --color-ink-50: 247 247 247;
+
+  --color-status-success: 30 142 62;
+  --color-status-success-bg: 230 244 234;
+  --color-status-warning: 178 106 0;
+  --color-status-warning-bg: 255 244 224;
+  --color-status-info: 25 103 210;
+  --color-status-info-bg: 232 240 254;
+  --color-status-danger: 197 34 31;
+  --color-status-danger-bg: 252 232 230;
+  --color-status-danger-solid: 197 34 31;
+
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-card-hover: 0 4px 12px rgb(0 0 0 / 0.1);
+
+  --scrim: rgb(0 0 0 / 0.4);
+  --skeleton-sheen: rgb(255 255 255 / 0.7);
+
+  /* Chart tokens — consumed by src/core/charts/theme.ts as var() refs so
+     recharts SVG fills follow the theme. Full colours, not channels. */
+  --chart-grid: #e1e0d9;
+  --chart-axis: #898781;
+  --chart-ink: #1c1c1c;
+  --chart-muted-ink: #828282;
+  --chart-surface: #ffffff;
+  --chart-border: #e0e0e0;
+  --chart-cursor: rgb(0 0 0 / 0.04);
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #1baf7a;
+  --chart-series-3: #eda100;
+  --chart-series-4: #4a3aa7;
+  --chart-good: #0ca30c;
+  --chart-warning: #fab219;
+  --chart-serious: #ec835a;
+  --chart-critical: #d03b3b;
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* Near-black rather than pure black: pure #000 makes the elevation
+     between canvas and card impossible to see, and haloes light text. */
+  --color-canvas: 19 19 22;
+  --color-surface: 28 28 32;
+  --color-surface-muted: 35 35 40;
+
+  /* Brand red stays vivid enough to read as an accent on a dark surface
+     while remaining a usable fill behind white button text. 600/700 are
+     the hover/active steps, so on dark they get *lighter*, not darker. */
+  --color-brand-50: 44 20 23;
+  --color-brand-100: 60 26 31;
+  --color-brand-400: 247 99 112;
+  --color-brand-500: 240 74 87;
+  --color-brand-600: 255 129 138;
+  --color-brand-700: 255 158 165;
+
+  --color-ink-900: 244 244 245;
+  --color-ink-800: 228 228 231;
+  --color-ink-700: 208 208 213;
+  --color-ink-600: 176 176 184;
+  --color-ink-500: 151 151 159;
+  /* Tuned so muted text clears 4.5:1 against the *chip* fill (ink-100), not
+     just against the card — it is the single most-used text colour here. */
+  --color-ink-400: 144 144 152;
+  --color-ink-300: 90 90 99;
+  --color-ink-200: 52 52 58;
+  --color-ink-100: 38 38 43;
+  --color-ink-50: 32 32 36;
+
+  --color-status-success: 69 196 106;
+  --color-status-success-bg: 20 48 30;
+  --color-status-warning: 232 163 61;
+  --color-status-warning-bg: 51 38 15;
+  --color-status-info: 107 166 245;
+  --color-status-info-bg: 18 35 61;
+  --color-status-danger: 248 113 104;
+  --color-status-danger-bg: 58 27 25;
+  /* Deeper than `danger` so white text on the filled danger button keeps
+     its contrast — the bright tone above is tuned for text, not fills. */
+  --color-status-danger-solid: 214 65 55;
+
+  /* Shadows read as almost nothing on dark, so lean on a stronger cast
+     plus the canvas/surface lightness difference for elevation. */
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-card-hover: 0 4px 14px rgb(0 0 0 / 0.6);
+
+  /* A 40% scrim barely separates a dark dialog from a dark page, so the
+     dark theme dims harder to keep the modal clearly in front. */
+  --scrim: rgb(0 0 0 / 0.65);
+  --skeleton-sheen: rgb(255 255 255 / 0.06);
+
+  --chart-grid: #2e2e34;
+  --chart-axis: #86868e;
+  --chart-ink: #f4f4f5;
+  --chart-muted-ink: #86868e;
+  --chart-surface: #23232a;
+  --chart-border: #34343a;
+  --chart-cursor: rgb(255 255 255 / 0.06);
+  --chart-series-1: #5b9be8;
+  --chart-series-2: #3fcb96;
+  --chart-series-3: #f2bc3f;
+  --chart-series-4: #8f7fe0;
+  --chart-good: #3fbf5a;
+  --chart-warning: #f2bc3f;
+  --chart-serious: #f0906a;
+  --chart-critical: #f0605c;
+}
+
 @layer base {
   html {
     @apply antialiased;
   }
   body {
     @apply bg-canvas text-ink-900 font-sans;
+  }
+  /* Recolour the browser's own furniture so scrollbars, autofill and the
+     native date/time pickers stop showing up as light rectangles. */
+  ::selection {
+    @apply bg-brand-500/25;
+  }
+}
+
+@layer components {
+  /* Backdrop behind modals, drawers and the mobile sidebar. Its opacity is
+     theme-dependent, so it can't be expressed as a Tailwind colour token. */
+  .app-scrim {
+    background: var(--scrim);
   }
 }
 
@@ -29,6 +181,50 @@
 /* Print: only the .print-area content is put on paper (DC, MRP sheet,
    PO document, packing slip, etc.). */
 @media print {
+  /* Paper is always white. Reverting the dark palette to its light values
+     for print means every document keeps its designed contrast instead of
+     printing light text onto a background the printer drops. Redeclaring
+     the variables (rather than overriding each rule) themes the whole
+     sheet — chips, table headers, rules — in one place. */
+  .dark {
+    color-scheme: light;
+
+    --color-canvas: 255 255 255;
+    --color-surface: 255 255 255;
+    --color-surface-muted: 250 250 250;
+
+    --color-brand-50: 254 241 242;
+    --color-brand-100: 253 224 226;
+    --color-brand-400: 236 86 97;
+    --color-brand-500: 226 55 68;
+    --color-brand-600: 196 43 55;
+    --color-brand-700: 163 33 44;
+
+    --color-ink-900: 28 28 28;
+    --color-ink-800: 43 43 43;
+    --color-ink-700: 59 59 59;
+    --color-ink-600: 79 79 79;
+    --color-ink-500: 102 102 102;
+    --color-ink-400: 130 130 130;
+    --color-ink-300: 184 184 184;
+    --color-ink-200: 224 224 224;
+    --color-ink-100: 240 240 240;
+    --color-ink-50: 247 247 247;
+
+    --color-status-success: 30 142 62;
+    --color-status-success-bg: 230 244 234;
+    --color-status-warning: 178 106 0;
+    --color-status-warning-bg: 255 244 224;
+    --color-status-info: 25 103 210;
+    --color-status-info-bg: 232 240 254;
+    --color-status-danger: 197 34 31;
+    --color-status-danger-bg: 252 232 230;
+    --color-status-danger-solid: 197 34 31;
+
+    --shadow-card: none;
+    --shadow-card-hover: none;
+  }
+
   html,
   body {
     background: #fff !important;

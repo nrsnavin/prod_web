@@ -78,7 +78,7 @@ export function OrderAnalytics({ elastics }: { elastics: OrderElasticProgress[] 
                   <Cell key={i} fill={donutColors[i]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip {...chartTheme.tooltip} />
             </PieChart>
           </ResponsiveContainer>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -102,7 +102,7 @@ export function OrderAnalytics({ elastics }: { elastics: OrderElasticProgress[] 
             <CartesianGrid horizontal={false} stroke={chartTheme.grid} />
             <XAxis type="number" tick={{ fontSize: 12, fill: chartTheme.axis }} />
             <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12, fill: chartTheme.axis }} />
-            <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} />
+            <Tooltip cursor={{ fill: chartTheme.cursor }} {...chartTheme.tooltip} />
             <Legend />
             <Bar dataKey="Produced" stackId="a" fill={C_PRODUCED} />
             <Bar dataKey="Pending" stackId="a" fill={C_PENDING} radius={[0, 4, 4, 0]} />
