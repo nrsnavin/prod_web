@@ -43,6 +43,7 @@ export function JobCreateForm({
       <Input label="Job date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       <div>
         <p className="text-sm font-medium text-ink-600 mb-1.5">Quantities (pending shown)</p>
+        <div className="grid grid-cols-[1fr_120px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Elastic</span><span>Qty (m)</span></div>
         <div className="space-y-2">
           {pending.map((e) => {
             const entered = Number(qty[e.id]) || 0;
