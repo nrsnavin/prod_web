@@ -102,7 +102,7 @@ export function ElasticGroupForm({
 
       <div>
         <p className="mb-1.5 text-sm font-medium text-ink-600">Elastics *</p>
-        <div className="hidden grid-cols-[1fr_120px_36px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+        <div className="grid grid-cols-[1fr_120px_36px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">
           <span>Elastic</span>
           <span className="text-right">Default qty (m)</span>
           <span />

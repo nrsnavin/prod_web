@@ -136,6 +136,7 @@ function BeamFields({
           </button>
         )}
       </div>
+      <div className="grid grid-cols-[1fr_90px_90px_32px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Warp yarn</span><span>Ends</span><span>Length</span><span className="sr-only">Remove</span></div>
       <div className="space-y-2">
         {sections.fields.map((s, si) => (
           <div key={s.id} className="grid grid-cols-[1fr_90px_90px_32px] gap-2 items-start">

@@ -95,6 +95,7 @@ function QcForm({ job, onClose }: { job: JobDetail; onClose: () => void }) {
         />
         <div>
           <p className="text-sm font-medium text-ink-600 mb-1.5">Test results *</p>
+          <div className="grid grid-cols-[1fr_90px_90px_52px_32px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Parameter</span><span>Expected</span><span>Measured</span><span>Pass</span><span className="sr-only">Remove</span></div>
           <div className="space-y-2">
             {rows.map((r, i) => (
               <div key={i} className="grid grid-cols-[1fr_90px_90px_52px_32px] gap-2 items-center">
