@@ -144,10 +144,22 @@ export function DcForm({
         <p className="text-sm font-medium text-ink-600 mb-1.5">Items *</p>
         {/* Column headers label the repeating row inputs — a per-input label
             on every row would repeat itself down the whole table. */}
+        {/* Rate is captured but never printed: a delivery challan is not a
+            tax invoice, so the document carries quantity only. The value is
+            kept because the Dispatch Report is built on it. Saying so here
+            stops it looking like an omission on the printed challan. */}
         <div className="grid grid-cols-[1fr_90px_100px_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400">
           <span>{type === "elastic" ? "Elastic" : "Part description"}</span>
           <span>Qty</span>
-          <span>Rate (₹)</span>
+          <span className="flex items-center gap-1">
+            Rate (₹)
+            <span
+              title="Internal only — used by the Dispatch Report. Never printed on the challan."
+              className="cursor-help rounded bg-ink-100 px-1 text-[10px] font-semibold uppercase tracking-wide text-ink-500"
+            >
+              internal
+            </span>
+          </span>
           <span className="sr-only">Remove</span>
         </div>
         <div className="space-y-2">
@@ -169,8 +181,9 @@ export function DcForm({
               <Input
                 type="number"
                 step="0.01"
-                aria-label="Rate in rupees"
+                aria-label="Rate in rupees (internal — not printed on the challan)"
                 placeholder="Rate ₹"
+                title="Internal only — used by the Dispatch Report. Never printed on the challan."
                 {...register(`items.${i}.rate`)}
               />
               <button
@@ -198,9 +211,18 @@ export function DcForm({
 
       <Input label="Remarks" {...register("remarks")} />
 
-      <p className="text-sm text-ink-600 text-right">
-        Total: <span className="font-bold tabular-nums">₹{total.toLocaleString("en-IN")}</span>
-      </p>
+      <div className="rounded-lg bg-ink-50 px-3 py-2 text-right text-sm text-ink-600">
+        <p>
+          Dispatch value:{" "}
+          <span className="font-bold tabular-nums text-ink-900">
+            ₹{total.toLocaleString("en-IN")}
+          </span>
+        </p>
+        <p className="text-xs text-ink-400">
+          Internal — feeds the Dispatch Report. The printed challan shows
+          quantity only.
+        </p>
+      </div>
 
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
