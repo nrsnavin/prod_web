@@ -173,14 +173,18 @@ export function DcDetailPage() {
             </div>
           </div>
 
-          <table className="w-full text-sm border-t border-ink-200">
+          {/* A challan accompanies goods; it is not a tax invoice, so it
+              carries no rate, amount or value. Ruled on every side to match
+              the generated PDF, which is the copy that travels. */}
+          <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
-                <th className="py-2 text-left">#</th>
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-right">Qty</th>
-                <th className="py-2 text-right">Rate (₹)</th>
-                <th className="py-2 text-right">Amount (₹)</th>
+              <tr className="bg-ink-100 text-xs uppercase tracking-wide text-ink-900">
+                <th className="border border-ink-300 px-2 py-1.5 text-left font-semibold">S.No</th>
+                <th className="border border-ink-300 px-2 py-1.5 text-left font-semibold">
+                  Description of Goods
+                </th>
+                <th className="border border-ink-300 px-2 py-1.5 text-center font-semibold">UOM</th>
+                <th className="border border-ink-300 px-2 py-1.5 text-right font-semibold">Quantity</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100">
@@ -192,28 +196,28 @@ export function DcDetailPage() {
                   "—";
                 return (
                   <tr key={item._id ?? i}>
-                    <td className="py-2">{i + 1}</td>
-                    <td className="py-2 font-medium">{name}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {item.quantity.toLocaleString("en-IN")} {item.unit || "m"}
+                    <td className="border border-ink-300 px-2 py-1.5 tabular-nums">{i + 1}</td>
+                    <td className="border border-ink-300 px-2 py-1.5">{name}</td>
+                    <td className="border border-ink-300 px-2 py-1.5 text-center">
+                      {item.unit || "m"}
                     </td>
-                    <td className="py-2 text-right tabular-nums">{item.rate.toLocaleString("en-IN")}</td>
-                    <td className="py-2 text-right tabular-nums">
-                      {(item.amount ?? item.quantity * item.rate).toLocaleString("en-IN")}
+                    <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums">
+                      {item.quantity.toLocaleString("en-IN")}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t border-ink-200 font-semibold">
-                <td className="py-2" colSpan={2}>Total</td>
-                <td className="py-2 text-right tabular-nums">
-                  {(dc.totalQuantity ?? 0).toLocaleString("en-IN")}
+              <tr className="font-semibold">
+                <td className="border border-ink-300 px-2 py-1.5" colSpan={2}>
+                  Total line items: {(dc.items ?? []).length}
                 </td>
-                <td />
-                <td className="py-2 text-right tabular-nums">
-                  ₹{(dc.totalAmount ?? 0).toLocaleString("en-IN")}
+                <td className="border border-ink-300 px-2 py-1.5 text-right text-xs uppercase tracking-wide text-ink-600">
+                  Total qty
+                </td>
+                <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums">
+                  {(dc.totalQuantity ?? 0).toLocaleString("en-IN")}
                 </td>
               </tr>
             </tfoot>
@@ -225,9 +229,10 @@ export function DcDetailPage() {
             </p>
           )}
 
-          <div className="mt-12 grid grid-cols-2 gap-6 text-sm text-ink-600">
-            <div className="border-t border-ink-200 pt-2">Receiver's signature</div>
-            <div className="border-t border-ink-200 pt-2 text-right">Authorised signatory</div>
+          <div className="mt-10 grid grid-cols-3 border border-ink-300 text-xs text-ink-600">
+            <div className="border-r border-ink-300 px-2 pb-2 pt-10">Prepared by</div>
+            <div className="border-r border-ink-300 px-2 pb-2 pt-10">Checked by</div>
+            <div className="px-2 pb-2 pt-10">Receiver&apos;s signature &amp; seal</div>
           </div>
 
           <CompanyDocumentFooter />
