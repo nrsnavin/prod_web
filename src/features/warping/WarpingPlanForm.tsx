@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Trash2 } from "lucide-react";
+import { Merge, Plus, Trash2, Unlink, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useWarpYarnOptions, useWarpingMutations } from "./hooks";
+import { combineBeams, separateBeam, totalEnds } from "./beamCombine";
 
 const sectionSchema = z.object({
   warpYarn: z.string().min(1, "Yarn required"),
@@ -17,7 +21,14 @@ const sectionSchema = z.object({
 const schema = z.object({
   remarks: z.string().optional(),
   beams: z
-    .array(z.object({ sections: z.array(sectionSchema).min(1) }))
+    .array(
+      z.object({
+        beamNo: z.coerce.number().optional(),
+        // Set when this beam is run together with another; see beamCombine.ts.
+        pairedBeamNo: z.coerce.number().nullable().optional(),
+        sections: z.array(sectionSchema).min(1),
+      })
+    )
     .min(1, "Add at least one beam"),
 });
 type PlanValues = z.infer<typeof schema>;
@@ -41,6 +52,8 @@ export function WarpingPlanForm({
     register,
     control,
     handleSubmit,
+    getValues,
+    watch,
     formState: { errors },
   } = useForm<PlanValues>({
     resolver: zodResolver(schema),
@@ -53,11 +66,54 @@ export function WarpingPlanForm({
 
   const yarnOptions = (yarns.data ?? []).map((y) => ({ value: y.id, label: y.name }));
 
+  // ── Combine mode ────────────────────────────────────────────────
+  // Pick two beams and they are run together: both end up carrying every
+  // section from both, with each section's ends split down the middle.
+  const [combining, setCombining] = useState(false);
+  const [picked, setPicked] = useState<number[]>([]);
+
+  const exitCombine = () => { setCombining(false); setPicked([]); };
+
+  const pickBeam = (index: number) => {
+    if (picked.includes(index)) {
+      setPicked(picked.filter((i) => i !== index));
+      return;
+    }
+    const next = [...picked, index];
+    if (next.length < 2) { setPicked(next); return; }
+
+    const [i, j] = next;
+    const current = getValues("beams");
+    // beamNo is assigned from position here so the pairing has stable numbers
+    // to refer to — the form does not otherwise ask the user for one.
+    const numbered = current.map((b, k) => ({ ...b, beamNo: b.beamNo ?? k + 1 }));
+    beams.replace(combineBeams(numbered, i, j));
+    exitCombine();
+    toast(`Beam ${i + 1} + Beam ${j + 1} combined — ends split across both`, "success");
+  };
+
+  const unpair = (index: number) => {
+    beams.replace(separateBeam(getValues("beams"), index));
+    toast("Beams separated", "success");
+  };
+
+  const watched = watch("beams");
+
   return (
     <form
       onSubmit={handleSubmit((values) =>
         createPlan.mutate(
-          { warpingId, beams: values.beams, remarks: values.remarks },
+          {
+            warpingId,
+            // Number every beam on the way out, not just the combined ones,
+            // so the saved plan is self-describing.
+            beams: values.beams.map((b, i) => ({
+              ...b,
+              beamNo: b.beamNo ?? i + 1,
+              pairedBeamNo: b.pairedBeamNo ?? null,
+            })),
+            remarks: values.remarks,
+          },
           {
             onSuccess: () => {
               toast("Warping plan created", "success");
@@ -71,6 +127,25 @@ export function WarpingPlanForm({
       className="space-y-4"
       noValidate
     >
+      {combining && (
+        <div className="flex items-center gap-2 rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info">
+          <Merge className="h-4 w-4 shrink-0" />
+          <span className="flex-1">
+            Pick two beams to run together. Every section from both goes onto
+            both beams, with each section&apos;s ends split down the middle.
+            {picked.length === 1 && " One more to go."}
+          </span>
+          <button
+            type="button"
+            onClick={exitCombine}
+            aria-label="Cancel combining"
+            className="rounded p-1 hover:bg-status-info/10"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {beams.fields.map((beam, bi) => (
         <BeamFields
           key={beam.id}
@@ -80,16 +155,34 @@ export function WarpingPlanForm({
           errors={errors}
           yarnOptions={yarnOptions}
           onRemove={beams.fields.length > 1 ? () => beams.remove(bi) : undefined}
+          combining={combining}
+          picked={picked.includes(bi)}
+          onPick={() => pickBeam(bi)}
+          pairedWith={watched?.[bi]?.pairedBeamNo ?? null}
+          endsTotal={totalEnds({ sections: watched?.[bi]?.sections ?? [] })}
+          onUnpair={() => unpair(bi)}
         />
       ))}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => beams.append({ sections: [{ warpYarn: "", ends: 0, maxMeters: 0 }] })}
-      >
-        <Plus className="h-4 w-4" /> Add beam
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => beams.append({ sections: [{ warpYarn: "", ends: 0, maxMeters: 0 }] })}
+        >
+          <Plus className="h-4 w-4" /> Add beam
+        </Button>
+        {beams.fields.length > 1 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => (combining ? exitCombine() : setCombining(true))}
+          >
+            <Merge className="h-4 w-4" /> {combining ? "Cancel combine" : "Combine beams"}
+          </Button>
+        )}
+      </div>
 
       <Input label="Remarks" {...register("remarks")} />
 
@@ -112,6 +205,12 @@ function BeamFields({
   errors,
   yarnOptions,
   onRemove,
+  combining,
+  picked,
+  onPick,
+  pairedWith,
+  endsTotal,
+  onUnpair,
 }: {
   index: number;
   control: Control<PlanValues>;
@@ -119,17 +218,54 @@ function BeamFields({
   errors: FieldErrors<PlanValues>;
   yarnOptions: { value: string; label: string }[];
   onRemove?: () => void;
+  combining: boolean;
+  picked: boolean;
+  onPick: () => void;
+  pairedWith: number | null;
+  endsTotal: number;
+  onUnpair: () => void;
 }) {
   const sections = useFieldArray({ control, name: `beams.${index}.sections` });
   return (
-    <div className="rounded-xl border border-ink-200 p-3">
-      <div className="flex items-center justify-between mb-2">
+    <div
+      className={cn(
+        "rounded-xl border p-3 transition-colors",
+        picked ? "border-brand-500 ring-2 ring-brand-500/25" : "border-ink-200"
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        {combining && (
+          <input
+            type="checkbox"
+            checked={picked}
+            onChange={onPick}
+            aria-label={`Select beam ${index + 1} to combine`}
+            className="h-4 w-4 accent-brand-500"
+          />
+        )}
         <p className="text-sm font-semibold">Beam {index + 1}</p>
+        <span className="text-xs text-ink-400 tabular-nums">
+          {endsTotal.toLocaleString("en-IN")} ends
+        </span>
+        {pairedWith != null && (
+          <>
+            <StatusChip tone="info">run with beam {pairedWith}</StatusChip>
+            <button
+              type="button"
+              onClick={onUnpair}
+              className="inline-flex items-center gap-1 rounded p-1 text-xs text-ink-400 hover:text-ink-900"
+              aria-label={`Separate beam ${index + 1} from beam ${pairedWith}`}
+              title="Separate — leaves the ends as they were split"
+            >
+              <Unlink className="h-3.5 w-3.5" /> Separate
+            </button>
+          </>
+        )}
         {onRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="p-1 rounded text-ink-400 hover:text-status-danger"
+            className="ml-auto p-1 rounded text-ink-400 hover:text-status-danger"
             aria-label={`Remove beam ${index + 1}`}
           >
             <Trash2 className="h-4 w-4" />

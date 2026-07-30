@@ -185,6 +185,11 @@ export function WarpingDetailPage() {
                         {beam.totalEnds} total ends
                       </span>
                     ) : null}
+                    {beam.pairedBeamNo ? (
+                      <span className="ml-2 text-xs font-normal text-status-info">
+                        run with beam {beam.pairedBeamNo}
+                      </span>
+                    ) : null}
                   </p>
                   <ul className="mt-1.5 divide-y divide-ink-100">
                     {beam.sections.map((s, si) => (

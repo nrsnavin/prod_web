@@ -26,6 +26,8 @@ export interface WarpingPlanSection {
 export interface WarpingPlanBeam {
   beamNo?: number;
   totalEnds?: number;
+  /** Set when this beam is run together with another — see beamCombine.ts. */
+  pairedBeamNo?: number | null;
   sections: WarpingPlanSection[];
 }
 

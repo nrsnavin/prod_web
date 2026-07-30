@@ -65,6 +65,7 @@ export function WarpingProgrammeSheet({
                   <th className="py-1.5 px-2 text-left" colSpan={2}>
                     Beam {beam.beamNo ?? bi + 1}
                     {beam.totalEnds ? ` — ${beam.totalEnds} total ends` : ""}
+                    {beam.pairedBeamNo ? ` · run with beam ${beam.pairedBeamNo}` : ""}
                   </th>
                   <th className="py-1.5 px-2 text-right">Ends</th>
                   <th className="py-1.5 px-2 text-right">Length (m)</th>

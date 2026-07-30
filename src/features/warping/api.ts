@@ -37,7 +37,14 @@ export const warpingService = {
 
   createPlan: (body: {
     warpingId: string;
-    beams: Array<{ sections: Array<{ warpYarn: string; ends: number; maxMeters?: number }> }>;
+    // beamNo is sent so combined beams can refer to each other by number;
+    // the web previously sent neither, leaving stored beams unnumbered and
+    // every view falling back to the array position.
+    beams: Array<{
+      beamNo?: number;
+      pairedBeamNo?: number | null;
+      sections: Array<{ warpYarn: string; ends: number; maxMeters?: number }>;
+    }>;
     remarks?: string;
   }) => httpClient.post("/warping/warpingPlan/create", body),
 
