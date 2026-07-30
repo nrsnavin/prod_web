@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderService } from "./api";
 import { OrderFilter, OrderFormValues } from "./types";
 
@@ -20,12 +20,30 @@ export function useOrderEstimate(
   });
 }
 
-export function useOrders(status: OrderFilter) {
-  return useQuery({
-    queryKey: [KEY, status],
-    queryFn: () => orderService.list(status),
+/**
+ * Orders for a status, one page at a time.
+ *
+ * /order/list is paginated — it used to return every order ever placed —
+ * so this walks pages on demand rather than assuming one response is the
+ * whole set. `orders` is what has been loaded so far; `total` is how many
+ * match, so a screen can say "showing 200 of 340" honestly instead of
+ * quietly presenting a truncated list as complete.
+ */
+export function useOrders(status: OrderFilter, limit = 200) {
+  const query = useInfiniteQuery({
+    queryKey: [KEY, status, limit],
+    queryFn: ({ pageParam }) => orderService.list(status, { page: pageParam, limit }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
     placeholderData: (prev) => prev,
   });
+
+  const pages = query.data?.pages ?? [];
+  return {
+    ...query,
+    orders: pages.flatMap((p) => p.orders),
+    total: pages[0]?.total ?? 0,
+  };
 }
 
 export function useOrder(id: string | undefined) {

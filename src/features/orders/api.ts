@@ -1,13 +1,14 @@
 import { httpClient } from "@/core/http/httpClient";
-import { OrderDetail, OrderEtaEstimate, OrderFilter, OrderFormValues, OrderListItem } from "./types";
+import { OrderDetail, OrderEtaEstimate, OrderFilter, OrderFormValues, OrderListPage } from "./types";
 
 export const orderService = {
-  async list(status: OrderFilter): Promise<OrderListItem[]> {
-    const res = await httpClient.get<{ success: boolean; orders: OrderListItem[] }>(
-      "/order/list",
-      { status }
-    );
-    return res.orders;
+  // Paged. The endpoint used to return every order ever placed; it now caps
+  // each response, so the caller has to walk the pages to be complete.
+  async list(
+    status: OrderFilter,
+    { page = 1, limit = 200 }: { page?: number; limit?: number } = {}
+  ): Promise<OrderListPage> {
+    return httpClient.get<OrderListPage>("/order/list", { status, page, limit });
   },
 
   async getById(id: string): Promise<OrderDetail> {

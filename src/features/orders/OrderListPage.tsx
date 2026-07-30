@@ -45,7 +45,10 @@ export function OrderListPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { data, isLoading, isError, error } = useOrders(status);
+  const {
+    orders, total, isLoading, isError, error,
+    hasNextPage, fetchNextPage, isFetchingNextPage,
+  } = useOrders(status);
   const { create } = useOrderMutations();
 
   const scope = status === "All" ? "" : `${orderFilterLabel[status].toLowerCase()} `;
@@ -54,7 +57,15 @@ export function OrderListPage() {
     <>
       <PageHeader
         title="Orders"
-        subtitle={data ? `${data.length} ${scope}orders` : undefined}
+        // Honest about truncation: the endpoint is paged, so say how many
+        // of the matching orders are actually on screen.
+        subtitle={
+          isLoading
+            ? undefined
+            : orders.length < total
+              ? `${orders.length} of ${total} ${scope}orders`
+              : `${total} ${scope}orders`
+        }
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" /> New order
@@ -75,12 +86,23 @@ export function OrderListPage() {
       <Card>
         <DataTable
           columns={columns}
-          rows={data ?? []}
+          rows={orders}
           rowKey={(o) => o._id}
           onRowClick={(o) => navigate(`/orders/${o._id}`)}
           loading={isLoading}
           emptyTitle={`No ${scope}orders`}
         />
+        {hasNextPage && (
+          <div className="border-t border-ink-100 p-3 text-center">
+            <Button
+              variant="secondary"
+              loading={isFetchingNextPage}
+              onClick={() => fetchNextPage()}
+            >
+              Load more ({total - orders.length} remaining)
+            </Button>
+          </div>
+        )}
       </Card>
 
       <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New order" width="max-w-2xl">

@@ -25,6 +25,17 @@ export interface OrderListItem {
   createdAt?: string;
 }
 
+/** One page of /order/list. `total` is the count matching the filter. */
+export interface OrderListPage {
+  success: boolean;
+  orders: OrderListItem[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
 export interface OrderElasticProgress {
   id: string;
   name: string;

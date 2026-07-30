@@ -17,11 +17,13 @@ export function useDeliveryForecast() {
   const orders = useQuery({
     queryKey: ["forecast-orders"],
     queryFn: async () => {
+      // The forecast only plots in-flight work, which is a bounded set —
+      // one page each is the whole picture, and /order/list is paged now.
       const [approved, inProgress] = await Promise.all([
-        orderService.list("Approved"),
-        orderService.list("InProgress"),
+        orderService.list("Approved", { limit: 500 }),
+        orderService.list("InProgress", { limit: 500 }),
       ]);
-      return [...inProgress, ...approved];
+      return [...inProgress.orders, ...approved.orders];
     },
   });
 

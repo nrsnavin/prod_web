@@ -74,7 +74,7 @@ export function DcForm({
   const type = watch("type");
   const items = watch("items");
 
-  const orderOptions = [...(approved.data ?? []), ...(inProgress.data ?? [])].map((o) => ({
+  const orderOptions = [...approved.orders, ...inProgress.orders].map((o) => ({
     value: o._id,
     label: `#${o.orderNo} — ${o.customer?.name ?? ""} (${o.status})`,
   }));
