@@ -22,10 +22,14 @@ export interface ServiceLog {
   resolved?: boolean;
 }
 
+export type ShiftDetailStatus = "open" | "running" | "pending_verification" | "closed";
+
 export interface MachineShiftRow {
   id: string;
   date: string;
   shift: "DAY" | "NIGHT";
+  /** Until this is "closed" the figures are the operator's own, unverified. */
+  status: ShiftDetailStatus;
   employee: string;
   runtimeMinutes: number;
   outputMeters: number;

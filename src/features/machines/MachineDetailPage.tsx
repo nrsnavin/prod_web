@@ -30,6 +30,29 @@ const statusTone: Record<MachineStatus, ChipTone> = {
   maintenance: "warning",
 };
 
+// Minutes → "6h 30m", which reads faster than a raw 390 on a shift row.
+function fmtRuntime(mins: number): string {
+  if (!mins || mins <= 0) return "—";
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  if (!h) return `${m}m`;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+const shiftStatusTone: Record<MachineShiftRow["status"], ChipTone> = {
+  closed: "success",
+  pending_verification: "warning",
+  running: "info",
+  open: "neutral",
+};
+
+const shiftStatusLabel: Record<MachineShiftRow["status"], string> = {
+  closed: "verified",
+  pending_verification: "to verify",
+  running: "running",
+  open: "open",
+};
+
 const shiftColumns: Column<MachineShiftRow>[] = [
   { key: "date", header: "Date", render: (s) => new Date(s.date).toLocaleDateString() },
   {
@@ -38,9 +61,34 @@ const shiftColumns: Column<MachineShiftRow>[] = [
     render: (s) => <StatusChip tone={s.shift === "DAY" ? "info" : "neutral"}>{s.shift}</StatusChip>,
   },
   { key: "emp", header: "Operator", render: (s) => s.employee },
-  { key: "runtime", header: "Runtime (min)", align: "right", render: (s) => s.runtimeMinutes },
-  { key: "output", header: "Output (m)", align: "right", render: (s) => s.outputMeters.toLocaleString("en-IN") },
-  { key: "eff", header: "Efficiency", align: "right", render: (s) => `${s.efficiency}%` },
+  {
+    key: "status",
+    header: "Status",
+    // Without this an unverified shift's figures look like an idle machine.
+    render: (s) => (
+      <StatusChip tone={shiftStatusTone[s.status] ?? "neutral"}>
+        {shiftStatusLabel[s.status] ?? s.status}
+      </StatusChip>
+    ),
+  },
+  {
+    key: "runtime",
+    header: "Runtime",
+    align: "right",
+    render: (s) => <span className="tabular-nums">{fmtRuntime(s.runtimeMinutes)}</span>,
+  },
+  {
+    key: "output",
+    header: "Output (m)",
+    align: "right",
+    render: (s) => <span className="tabular-nums">{s.outputMeters.toLocaleString("en-IN")}</span>,
+  },
+  {
+    key: "eff",
+    header: "Efficiency",
+    align: "right",
+    render: (s) => <span className="tabular-nums">{s.efficiency}%</span>,
+  },
 ];
 
 const headElasticColumns: Column<MachineHeadElastic>[] = [
@@ -234,12 +282,20 @@ export function MachineDetailPage() {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card>
-          <h3 className="font-semibold px-5 pt-5">Recent shifts</h3>
+          <div className="flex items-baseline gap-3 px-5 pt-5">
+            <h3 className="font-semibold">Recent shifts</h3>
+            {(machine.result?.length ?? 0) > 0 && (
+              <span className="text-xs text-ink-400">
+                Last {machine.result.length}, newest first
+              </span>
+            )}
+          </div>
           <DataTable
             columns={shiftColumns}
             rows={machine.result ?? []}
             rowKey={(s) => s.id}
             emptyTitle="No shifts recorded"
+            emptyDescription="Shifts appear here once this machine is included in a shift plan."
           />
         </Card>
 
