@@ -31,6 +31,14 @@ export interface TodayShiftSummary {
   plan?: unknown[];
 }
 
+/** What /shift/today returns for a given date. */
+export interface ShiftDaySummary {
+  /** The date the server resolved, so the UI can confirm what it asked for. */
+  date?: string;
+  dayShift: TodayShiftSummary;
+  nightShift: TodayShiftSummary;
+}
+
 export interface PendingShift {
   _id: string;
   productionMeters?: number;

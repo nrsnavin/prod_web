@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Sun, Moon, ArrowRight } from "lucide-react";
+import { Plus, Sun, Moon, ArrowRight, CalendarDays } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { usePlansOnDate, useShiftMutations, useTodayShifts } from "./hooks";
+import { useShiftDay, useShiftMutations } from "./hooks";
 import { TodayShiftSummary } from "./types";
 import { toISODate } from "@/features/analytics/components/FilterBar";
 
@@ -74,15 +74,23 @@ function ShiftCard({
   );
 }
 
+type Tab = "today" | "by-date";
+
 export function ShiftPlansPage() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>("today");
   const [date, setDate] = useState(toISODate(new Date()));
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const today = useTodayShifts();
-  const onDate = usePlansOnDate(date);
+  const today = useShiftDay();
+  // Same endpoint, same summary shape — so a past date shows the identical
+  // day/night cards rather than a bare list of links.
+  const onDate = useShiftDay(date);
   const { createPlan } = useShiftMutations();
+
+  const view = tab === "today" ? today : onDate;
+  const isToday = date === toISODate(new Date());
 
   const openPlan = (id: string) => navigate(`/shift-plans/${id}`);
 
@@ -98,8 +106,49 @@ export function ShiftPlansPage() {
         }
       />
 
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-400 mb-2">Today</h3>
-      {today.isLoading ? (
+      <div className="mb-4 flex gap-1 border-b border-ink-100">
+        {([
+          { id: "today", label: "Today" },
+          { id: "by-date", label: "By date" },
+        ] as const).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={
+              "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors " +
+              (tab === t.id
+                ? "border-brand-500 text-brand-600"
+                : "border-transparent text-ink-500 hover:text-ink-900")
+            }
+          >
+            {t.id === "by-date" && <CalendarDays className="h-4 w-4" />}
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "by-date" && (
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <label htmlFor="plan-date" className="text-sm font-medium text-ink-600">
+            Date
+          </label>
+          <input
+            id="plan-date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="h-10 rounded-lg border border-ink-200 bg-surface px-3 text-sm focus:outline-none focus:border-brand-500"
+          />
+          <span className="text-sm text-ink-400">
+            {new Date(date).toLocaleDateString("en-IN", {
+              weekday: "long", day: "2-digit", month: "long", year: "numeric",
+            })}
+            {isToday && " · today"}
+          </span>
+        </div>
+      )}
+
+      {view.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
@@ -107,55 +156,19 @@ export function ShiftPlansPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           <ShiftCard
-            summary={today.data?.dayShift}
+            summary={view.data?.dayShift}
             icon={<Sun className="h-4 w-4" />}
             label="Day shift"
             onOpen={openPlan}
           />
           <ShiftCard
-            summary={today.data?.nightShift}
+            summary={view.data?.nightShift}
             icon={<Moon className="h-4 w-4" />}
             label="Night shift"
             onOpen={openPlan}
           />
         </div>
       )}
-
-      <div className="mt-6 flex items-center gap-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-400">
-          Browse a date
-        </h3>
-        <input aria-label="Plan date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="h-9 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500"
-        />
-      </div>
-      <Card className="mt-2 p-4">
-        {onDate.isLoading ? (
-          <Skeleton className="h-10 w-full" />
-        ) : (onDate.data?.length ?? 0) === 0 ? (
-          <p className="text-sm text-ink-400">No shift plans on {new Date(date).toLocaleDateString()}.</p>
-        ) : (
-          <ul className="divide-y divide-ink-100">
-            {onDate.data!.map((p) => (
-              <li key={p._id}>
-                <button
-                  onClick={() => openPlan(p._id)}
-                  className="w-full flex items-center justify-between py-2.5 text-left text-sm hover:bg-ink-100/40 rounded-lg px-2 -mx-2"
-                >
-                  <span className="font-medium flex items-center gap-2">
-                    {p.shift === "DAY" ? <Sun className="h-4 w-4 text-status-warning" /> : <Moon className="h-4 w-4 text-ink-400" />}
-                    {p.shift} shift
-                  </span>
-                  <ArrowRight className="h-4 w-4 text-ink-400" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
 
       <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New shift plan" width="max-w-2xl">
         <ShiftPlanFormLazy

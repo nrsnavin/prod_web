@@ -6,15 +6,17 @@ import {
   RunningMachineOption,
   ShiftPlanDetail,
   ShiftPlanFormValues,
-  TodayShiftSummary,
+  ShiftDaySummary,
 } from "./types";
 
 export const shiftService = {
-  async today(): Promise<{ dayShift: TodayShiftSummary; nightShift: TodayShiftSummary }> {
-    const res = await httpClient.get<{
-      success: boolean;
-      data: { dayShift: TodayShiftSummary; nightShift: TodayShiftSummary };
-    }>("/shift/today");
+  // Day/night summary for a date. Omit `dateIso` for today, which is what
+  // the dashboard wants; the shift-plans page passes a date to browse.
+  async today(dateIso?: string): Promise<ShiftDaySummary> {
+    const res = await httpClient.get<{ success: boolean; data: ShiftDaySummary }>(
+      "/shift/today",
+      dateIso ? { date: dateIso } : undefined
+    );
     return res.data;
   },
 

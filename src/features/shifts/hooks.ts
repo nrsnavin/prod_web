@@ -4,8 +4,16 @@ import { ShiftPlanFormValues } from "./types";
 
 const KEY = "shifts";
 
+/** Day/night summary. No date = today; pass one to browse another day. */
+export function useShiftDay(dateIso?: string) {
+  return useQuery({
+    queryKey: [KEY, "day", dateIso ?? "today"],
+    queryFn: () => shiftService.today(dateIso),
+  });
+}
+
 export function useTodayShifts() {
-  return useQuery({ queryKey: [KEY, "today"], queryFn: shiftService.today });
+  return useShiftDay();
 }
 
 export function useShiftPlan(id: string | undefined) {
