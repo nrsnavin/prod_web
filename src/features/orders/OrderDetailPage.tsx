@@ -16,7 +16,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useOrder, useOrderMutations } from "./hooks";
-import { OrderElasticProgress, OrderJobRef, RawMaterialRequirement, StockShortfall } from "./types";
+import { OrderElasticProgress, RawMaterialRequirement, StockShortfall } from "./types";
+import { jobRefId } from "./orderJobRef";
+import { OrderJobGlance } from "./OrderJobGlance";
 import { OrderAnalytics } from "./OrderAnalytics";
 import { orderStatusTone, orderStatusLabel } from "./orderStatus";
 import { JobCreateForm } from "@/features/jobs/JobCreateForm";
@@ -71,24 +73,6 @@ const elasticColumns: Column<OrderElasticProgress>[] = [
     ),
   },
 ];
-
-// `get-orderDetail` populates `jobs.job` into the full JobOrder document,
-// so `j.job` is an object (id lives at `j.job._id`), not a string. Reading
-// `j.job` directly produced `/jobs/[object Object]` → "Invalid job ID".
-export function jobRefId(j: OrderJobRef): string | undefined {
-  if (j.job && typeof j.job === "object") return j.job._id;
-  if (typeof j.job === "string") return j.job;
-  return j._id;
-}
-export function jobRefNo(j: OrderJobRef): number | undefined {
-  if (j.no != null) return j.no;
-  if (j.job && typeof j.job === "object") return j.job.jobOrderNo;
-  return j.jobOrderNo;
-}
-export function jobRefStatus(j: OrderJobRef): string | undefined {
-  if (j.job && typeof j.job === "object" && j.job.status) return j.job.status;
-  return j.status;
-}
 
 function requirementName(r: RawMaterialRequirement): string {
   if (r.name) return r.name;
@@ -434,7 +418,12 @@ export function OrderDetailPage() {
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card className="p-5">
-          <h3 className="font-semibold">Jobs</h3>
+          <div className="flex items-baseline gap-3">
+            <h3 className="font-semibold">Jobs</h3>
+            {(order.jobs?.length ?? 0) > 0 && (
+              <span className="text-xs text-ink-400">Expand one to see its elastics</span>
+            )}
+          </div>
           {(order.jobs?.length ?? 0) === 0 ? (
             <EmptyState
               title="No jobs yet"
@@ -442,23 +431,9 @@ export function OrderDetailPage() {
             />
           ) : (
             <ul className="mt-3 divide-y divide-ink-100">
-              {order.jobs.map((j, i) => {
-                const jobId = jobRefId(j);
-                const jobNo = jobRefNo(j);
-                const jobStatus = jobRefStatus(j);
-                return (
-                  <li key={jobId ?? i}>
-                    <button
-                      onClick={() => jobId && navigate(`/jobs/${jobId}`)}
-                      disabled={!jobId}
-                      className="w-full flex items-center justify-between py-2.5 text-left hover:bg-ink-100/40 rounded-lg px-2 -mx-2 disabled:cursor-default disabled:hover:bg-transparent"
-                    >
-                      <span className="font-medium text-sm">Job J-{jobNo}</span>
-                      {jobStatus && <StatusChip tone="info">{jobStatus}</StatusChip>}
-                    </button>
-                  </li>
-                );
-              })}
+              {order.jobs.map((j, i) => (
+                <OrderJobGlance key={jobRefId(j) ?? i} job={j} />
+              ))}
             </ul>
           )}
         </Card>

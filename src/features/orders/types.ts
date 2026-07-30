@@ -42,6 +42,20 @@ export interface PopulatedJob {
   status?: string;
 }
 
+/**
+ * One elastic inside a job. `pending` here means "committed to this job but
+ * not yet woven" (planned − produced) — a different question from the
+ * order-level pending, which means "not yet committed to any job".
+ */
+export interface JobElasticSummary {
+  id: string;
+  name: string;
+  planned: number;
+  produced: number;
+  packed: number;
+  pending: number;
+}
+
 export interface OrderJobRef {
   // Populated to the JobOrder document by the detail endpoint; a bare id
   // string when unpopulated.
@@ -50,6 +64,8 @@ export interface OrderJobRef {
   _id?: string;
   jobOrderNo?: number;
   status?: string;
+  /** Per-elastic breakdown; absent when the job ref wasn't populated. */
+  elasticSummary?: JobElasticSummary[];
 }
 
 export interface RawMaterialRequirement {

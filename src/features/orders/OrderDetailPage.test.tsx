@@ -1,11 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  requirementRequired,
-  requirementAvailable,
-  jobRefId,
-  jobRefNo,
-  jobRefStatus,
-} from "./OrderDetailPage";
+import { requirementRequired, requirementAvailable } from "./OrderDetailPage";
+import { jobRefId, jobRefNo, jobRefStatus } from "./orderJobRef";
 import { RawMaterialRequirement } from "./types";
 
 describe("raw material requirement mapping", () => {
