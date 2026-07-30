@@ -6,6 +6,8 @@ import {
   MachineHealthResponse,
   MachineStatus,
   MaintenanceDueItem,
+  ServiceBill,
+  ServiceBillUpload,
   ServiceLogFormValues,
 } from "./types";
 
@@ -38,8 +40,48 @@ export const machineService = {
     await httpClient.patch("/machine/status", { id, status });
   },
 
-  async addServiceLog(machineId: string, body: ServiceLogFormValues): Promise<void> {
-    await httpClient.post("/machine/add-service-log", { machineId, ...body });
+  async addServiceLog(
+    machineId: string,
+    body: ServiceLogFormValues
+  ): Promise<{ log: { _id: string }; status: MachineStatus; statusChanged: boolean }> {
+    return httpClient.post("/machine/add-service-log", { machineId, ...body });
+  },
+
+  // ── Service & spare bills ────────────────────────────────────────
+  // Every bill for the machine in one request; the detail page groups them
+  // by service log rather than firing a query per log.
+  async serviceBills(machineId: string): Promise<ServiceBill[]> {
+    const res = await httpClient.get<{ success: boolean; bills: ServiceBill[] }>(
+      "/machine/service-bills",
+      { machineId }
+    );
+    return res.bills;
+  },
+
+  async uploadServiceBill({ file, ...meta }: ServiceBillUpload): Promise<ServiceBill> {
+    const form = new FormData();
+    form.append("file", file);
+    for (const [key, value] of Object.entries(meta)) {
+      if (value !== undefined && value !== null && value !== "") {
+        form.append(key, String(value));
+      }
+    }
+    const res = await httpClient.post<{ success: boolean; bill: ServiceBill }>(
+      "/machine/service-bill",
+      form
+    );
+    return res.bill;
+  },
+
+  async deleteServiceBill(id: string): Promise<void> {
+    await httpClient.delete(`/machine/service-bill/${id}`);
+  },
+
+  // Fetched as a blob rather than linked directly: the auth cookie is
+  // httpOnly and the API may be cross-origin in production, so a bare
+  // <a href> would not carry credentials.
+  async serviceBillFile(id: string): Promise<Blob> {
+    return httpClient.getBlob(`/machine/service-bill/${id}/file`);
   },
 
   // Replace the machine's head → elastic map. Each entry pairs a head

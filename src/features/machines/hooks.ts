@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { machineService } from "./api";
-import { MachineFormValues, MachineStatus, ServiceLogFormValues } from "./types";
+import { MachineFormValues, MachineStatus, ServiceBillUpload, ServiceLogFormValues } from "./types";
 
 const KEY = "machines";
 
@@ -17,6 +17,15 @@ export function useMachine(id: string | undefined) {
     queryKey: [KEY, "detail", id],
     queryFn: () => machineService.getById(id!),
     enabled: !!id,
+  });
+}
+
+/** Every service/spare bill on the machine, grouped by log at the call site. */
+export function useServiceBills(machineId: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "service-bills", machineId],
+    queryFn: () => machineService.serviceBills(machineId!),
+    enabled: !!machineId,
   });
 }
 
@@ -50,5 +59,20 @@ export function useMachineMutations() {
       machineService.updateElasticMap(id, elastics),
     onSuccess: invalidate,
   });
-  return { create, setStatus, addServiceLog, updateElasticMap };
+  const uploadServiceBill = useMutation({
+    mutationFn: (payload: ServiceBillUpload) => machineService.uploadServiceBill(payload),
+    onSuccess: invalidate,
+  });
+  const deleteServiceBill = useMutation({
+    mutationFn: (id: string) => machineService.deleteServiceBill(id),
+    onSuccess: invalidate,
+  });
+  return {
+    create,
+    setStatus,
+    addServiceLog,
+    updateElasticMap,
+    uploadServiceBill,
+    deleteServiceBill,
+  };
 }

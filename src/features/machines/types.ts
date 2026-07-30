@@ -20,6 +20,42 @@ export interface ServiceLog {
   cost?: number;
   nextServiceDate?: string | null;
   resolved?: boolean;
+  /** Rollup of the attached bills, so the history renders in one request. */
+  billCount?: number;
+  billTotal?: number;
+}
+
+export type ServiceBillKind = "service_bill" | "spare_bill";
+
+/** A bill filed against a service log. The file itself is fetched on demand. */
+export interface ServiceBill {
+  _id: string;
+  machine: string;
+  serviceLog: string;
+  kind: ServiceBillKind;
+  filename: string;
+  contentType: string;
+  size: number;
+  amount: number;
+  vendor?: string;
+  billNo?: string;
+  billDate?: string | null;
+  partName?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface ServiceBillUpload {
+  machineId: string;
+  serviceLogId: string;
+  kind: ServiceBillKind;
+  file: File;
+  amount?: number;
+  vendor?: string;
+  billNo?: string;
+  billDate?: string;
+  partName?: string;
+  notes?: string;
 }
 
 export type ShiftDetailStatus = "open" | "running" | "pending_verification" | "closed";
@@ -112,4 +148,6 @@ export interface ServiceLogFormValues {
   technician?: string;
   cost?: number;
   nextServiceDate?: string;
+  /** Take the machine off the floor as part of booking the work in. */
+  setMaintenance?: boolean;
 }

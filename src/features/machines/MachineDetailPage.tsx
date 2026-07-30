@@ -17,9 +17,10 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { useMachine, useMachineMutations } from "./hooks";
+import { useMachine, useMachineMutations, useServiceBills } from "./hooks";
 import { MachineHealthCard } from "./MachineHealth";
 import { MachineHeadMapEditModal } from "./MachineHeadMapEditModal";
+import { ServiceBills } from "./ServiceBills";
 import { MachineHeadElastic, MachineShiftRow, MachineStatus, ServiceLogFormValues } from "./types";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { Pencil } from "lucide-react";
@@ -115,14 +116,17 @@ const logSchema = z.object({
   technician: z.string().optional(),
   cost: z.coerce.number().min(0).optional(),
   nextServiceDate: z.string().optional(),
+  setMaintenance: z.boolean().optional(),
 });
 
 function ServiceLogForm({
   submitting,
+  machineStatus,
   onSubmit,
   onCancel,
 }: {
   submitting: boolean;
+  machineStatus: MachineStatus;
   onSubmit: (v: ServiceLogFormValues) => void;
   onCancel: () => void;
 }) {
@@ -132,7 +136,13 @@ function ServiceLogForm({
     formState: { errors },
   } = useForm<ServiceLogFormValues>({
     resolver: zodResolver(logSchema),
-    defaultValues: { type: "Preventive", description: "" },
+    // Booking work in usually means the machine is coming off the floor, so
+    // that is the default — except when it is already there.
+    defaultValues: {
+      type: "Preventive",
+      description: "",
+      setMaintenance: machineStatus === "free",
+    },
   });
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -149,12 +159,40 @@ function ServiceLogForm({
       </div>
       <Input label="Description *" error={errors.description?.message} {...register("description")} />
       <div className="grid grid-cols-2 gap-3">
-        <Input label="Cost (₹)" type="number" {...register("cost")} />
+        <Input label="Cost (₹)" type="number" {...register("cost")} hint="Or leave it to the bills" />
         <Input label="Next service due" type="date" {...register("nextServiceDate")} />
       </div>
+
+      {/* Taking the machine off the floor is part of booking the work in,
+          so it happens here rather than as a second, forgettable step. */}
+      {machineStatus === "maintenance" ? (
+        <p className="rounded-lg bg-status-warningBg px-3 py-2 text-sm text-status-warning">
+          This machine is already under maintenance.
+        </p>
+      ) : machineStatus === "running" ? (
+        <p className="rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info">
+          This machine is running a job. Stop the job first if it needs to come
+          off the floor — the log can still be recorded now.
+        </p>
+      ) : (
+        <label className="flex items-start gap-2.5 rounded-lg border border-ink-200 p-3">
+          <input
+            type="checkbox"
+            {...register("setMaintenance")}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500"
+          />
+          <span>
+            <span className="block text-sm font-medium">Send the machine to maintenance</span>
+            <span className="block text-xs text-ink-400">
+              Marks it unavailable for planning until you mark it free again.
+            </span>
+          </span>
+        </label>
+      )}
+
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" loading={submitting}>Add log</Button>
+        <Button type="submit" loading={submitting}>Save log</Button>
       </div>
     </form>
   );
@@ -165,6 +203,8 @@ export function MachineDetailPage() {
   const { toast } = useToast();
   const { data: machine, isLoading, isError, error } = useMachine(id);
   const { setStatus, addServiceLog } = useMachineMutations();
+  // One query for the whole machine, grouped per log below.
+  const { data: bills, isLoading: billsLoading } = useServiceBills(id);
   const [logOpen, setLogOpen] = useState(false);
   const [mapEditOpen, setMapEditOpen] = useState(false);
   useTrackRecent("Machine", `/machines/${id}`, machine ? `Machine ${machine.id}` : undefined);
@@ -310,32 +350,55 @@ export function MachineDetailPage() {
             <EmptyState title="No service logs" description="Record maintenance work as it happens." />
           ) : (
             <ul className="mt-3 divide-y divide-ink-100">
-              {machine.serviceLogs.map((log, i) => (
-                <li key={log._id ?? i} className="py-3">
-                  <div className="flex items-center gap-2">
-                    <StatusChip
-                      tone={log.type === "Breakdown" ? "danger" : log.type === "Preventive" ? "info" : "neutral"}
-                    >
-                      {log.type}
-                    </StatusChip>
-                    <span className="text-xs text-ink-400">
-                      {new Date(log.date).toLocaleDateString()}
-                    </span>
-                    {log.cost ? (
-                      <span className="ml-auto text-sm font-semibold tabular-nums">
-                        ₹{log.cost.toLocaleString("en-IN")}
+              {machine.serviceLogs.map((log, i) => {
+                const logBills = (bills ?? []).filter((b) => b.serviceLog === log._id);
+                const billTotal = log.billTotal ?? 0;
+                // A cost typed on the log and the bills attached to it are
+                // entered separately, so surface the gap rather than letting
+                // one silently contradict the other.
+                const mismatch =
+                  !!log.cost && billTotal > 0 && Math.round(billTotal) !== Math.round(log.cost);
+                return (
+                  <li key={log._id ?? i} className="py-3">
+                    <div className="flex items-center gap-2">
+                      <StatusChip
+                        tone={log.type === "Breakdown" ? "danger" : log.type === "Preventive" ? "info" : "neutral"}
+                      >
+                        {log.type}
+                      </StatusChip>
+                      <span className="text-xs text-ink-400">
+                        {new Date(log.date).toLocaleDateString()}
                       </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-sm">{log.description}</p>
-                  <p className="mt-0.5 text-xs text-ink-400">
-                    {log.technician && <>By {log.technician} · </>}
-                    {log.nextServiceDate && (
-                      <>Next service {new Date(log.nextServiceDate).toLocaleDateString()}</>
+                      {log.cost ? (
+                        <span className="ml-auto text-sm font-semibold tabular-nums">
+                          ₹{log.cost.toLocaleString("en-IN")}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm">{log.description}</p>
+                    <p className="mt-0.5 text-xs text-ink-400">
+                      {log.technician && <>By {log.technician} · </>}
+                      {log.nextServiceDate && (
+                        <>Next service {new Date(log.nextServiceDate).toLocaleDateString()}</>
+                      )}
+                    </p>
+                    {mismatch && (
+                      <p className="mt-1 text-xs text-status-warning">
+                        Bills total ₹{billTotal.toLocaleString("en-IN")}, but the log records
+                        ₹{log.cost!.toLocaleString("en-IN")}.
+                      </p>
                     )}
-                  </p>
-                </li>
-              ))}
+                    {id && log._id && (
+                      <ServiceBills
+                        machineId={id}
+                        serviceLogId={log._id}
+                        bills={logBills}
+                        loading={billsLoading}
+                      />
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Card>
@@ -344,14 +407,20 @@ export function MachineDetailPage() {
       <FormScreen open={logOpen} onClose={() => setLogOpen(false)} title="Add service log">
         <ServiceLogForm
           submitting={addServiceLog.isPending}
+          machineStatus={machine.status}
           onCancel={() => setLogOpen(false)}
           onSubmit={(values) =>
             addServiceLog.mutate(
               { machineId: id!, body: values },
               {
-                onSuccess: () => {
+                onSuccess: (res) => {
                   setLogOpen(false);
-                  toast("Service log added", "success");
+                  toast(
+                    res.statusChanged
+                      ? "Service log added — machine sent to maintenance"
+                      : "Service log added. Attach the bills to it below.",
+                    "success"
+                  );
                 },
                 onError: (e) =>
                   toast(e instanceof ApiError ? e.message : "Failed to add log", "error"),
