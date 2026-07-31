@@ -58,9 +58,25 @@ export const materialService = {
     await httpClient.delete("/materials/delete-raw-material", { id });
   },
 
-  async adjustStock(id: string, adjustment: number, reason: string): Promise<void> {
+  async adjustStock(
+    id: string,
+    adjustment: number,
+    reason: string,
+    // The lot side of the same movement. Adding names a lot number
+    // (opening the bucket if new); removing picks an existing lot by id.
+    lot: { lotNo?: string; shade?: string; yarnLot?: string } = {}
+  ): Promise<void> {
     await httpClient.post("/materials/bulk-adjust-stock", {
-      adjustments: [{ _id: id, adjustment, reason }],
+      adjustments: [
+        {
+          _id: id,
+          adjustment,
+          reason,
+          lotNo: lot.lotNo || undefined,
+          shade: lot.shade || undefined,
+          yarnLot: lot.yarnLot || undefined,
+        },
+      ],
     });
   },
 

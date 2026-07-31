@@ -105,9 +105,27 @@ export function useMaterialMutations() {
     onSuccess: invalidate,
   });
   const adjustStock = useMutation({
-    mutationFn: ({ id, adjustment, reason }: { id: string; adjustment: number; reason: string }) =>
-      materialService.adjustStock(id, adjustment, reason),
-    onSuccess: invalidate,
+    mutationFn: ({
+      id,
+      adjustment,
+      reason,
+      lotNo,
+      shade,
+      yarnLot,
+    }: {
+      id: string;
+      adjustment: number;
+      reason: string;
+      lotNo?: string;
+      shade?: string;
+      yarnLot?: string;
+    }) => materialService.adjustStock(id, adjustment, reason, { lotNo, shade, yarnLot }),
+    // An adjustment that names a lot moves the lot ledger too, so the
+    // lot queries are stale as well as the material ones.
+    onSuccess: () => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: [LOT_KEY] });
+    },
   });
   return { create, update, remove, adjustStock };
 }

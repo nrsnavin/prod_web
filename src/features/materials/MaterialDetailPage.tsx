@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -16,7 +17,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { useMaterial, useMaterialMutations } from "./hooks";
+import { useMaterial, useMaterialMutations, useYarnLots } from "./hooks";
 import { StockMovement } from "./types";
 import { MaterialForm } from "./MaterialForm";
 import { MaterialLots } from "./MaterialLots";
@@ -50,15 +51,25 @@ const adjustSchema = z.object({
     .number()
     .refine((v) => v !== 0, "Adjustment cannot be zero"),
   reason: z.string().min(1, "Reason is required"),
+  // Which dye lot the stock is going into or coming out of. Adding names
+  // a lot number (opening the bucket if it is new); removing picks an
+  // existing one. Optional either way — untracked or undyed material has
+  // no lot, and stock nobody can place should not be blocked on
+  // inventing one.
+  lotNo: z.string().optional(),
+  shade: z.string().optional(),
+  yarnLot: z.string().optional(),
 });
 type AdjustValues = z.infer<typeof adjustSchema>;
 
 function AdjustStockForm({
+  materialId,
   currentStock,
   submitting,
   onSubmit,
   onCancel,
 }: {
+  materialId: string;
   currentStock: number;
   submitting: boolean;
   onSubmit: (v: AdjustValues) => void;
@@ -71,9 +82,12 @@ function AdjustStockForm({
     formState: { errors },
   } = useForm<AdjustValues>({
     resolver: zodResolver(adjustSchema),
-    defaultValues: { adjustment: 0, reason: "" },
+    defaultValues: { adjustment: 0, reason: "", lotNo: "", shade: "", yarnLot: "" },
   });
   const adj = Number(watch("adjustment")) || 0;
+  // Only lots with something left can be drawn from.
+  const { data: lots } = useYarnLots({ material: materialId, issuable: true, enabled: adj < 0 });
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <Input
@@ -89,6 +103,49 @@ function AdjustStockForm({
         error={errors.reason?.message}
         {...register("reason")}
       />
+
+      {/* The lot side of the same movement. Without it a count
+          correction moves the aggregate while leaving the lot ledger
+          behind, and the two drift apart with every adjustment. */}
+      {adj > 0 && (
+        <div className="rounded-xl border border-ink-100 p-3">
+          <p className="text-sm font-medium">Dye lot</p>
+          <p className="text-xs text-ink-400">
+            Which lot this stock belongs to. A new number opens a lot; an existing
+            one is topped up. Leave blank if it cannot be placed.
+          </p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <Input aria-label="Lot no" placeholder="Lot no" {...register("lotNo")} />
+            <Input aria-label="Shade" placeholder="Shade (optional)" {...register("shade")} />
+          </div>
+        </div>
+      )}
+
+      {adj < 0 && (
+        <div className="rounded-xl border border-ink-100 p-3">
+          <p className="text-sm font-medium">Dye lot</p>
+          <p className="text-xs text-ink-400">
+            Which lot the stock is coming out of. Leave blank if it cannot be placed.
+          </p>
+          {(lots?.length ?? 0) === 0 ? (
+            <p className="mt-1 text-xs text-status-warning">
+              No open lots for this material.
+            </p>
+          ) : (
+            <Select
+              className="mt-2"
+              aria-label="Dye lot"
+              placeholder="No lot"
+              options={(lots ?? []).map((l) => ({
+                value: l._id,
+                label: `${l.lotNo}${l.shade ? ` \u00b7 ${l.shade}` : ""} \u2014 ${l.balance.toLocaleString("en-IN")} left`,
+              }))}
+              {...register("yarnLot")}
+            />
+          )}
+        </div>
+      )}
+
       <p className="text-sm text-ink-600">
         New stock:{" "}
         <span className="font-semibold tabular-nums">
@@ -225,12 +282,13 @@ export function MaterialDetailPage() {
 
       <FormScreen open={adjustOpen} onClose={() => setAdjustOpen(false)} title="Adjust stock">
         <AdjustStockForm
+          materialId={material._id}
           currentStock={material.stock}
           submitting={adjustStock.isPending}
           onCancel={() => setAdjustOpen(false)}
-          onSubmit={({ adjustment, reason }) =>
+          onSubmit={({ adjustment, reason, lotNo, shade, yarnLot }) =>
             adjustStock.mutate(
-              { id: material._id, adjustment, reason },
+              { id: material._id, adjustment, reason, lotNo, shade, yarnLot },
               {
                 onSuccess: () => {
                   setAdjustOpen(false);
