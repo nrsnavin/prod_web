@@ -10,8 +10,68 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { useWarpYarnOptions, useWarpingMutations } from "./hooks";
+import { usePlanContext, useWarpingMutations } from "./hooks";
 import { combineBeams, separateBeam, totalEnds } from "./beamCombine";
+import { YarnLotStock } from "./types";
+
+/**
+ * Lot-wise stock for the yarns this plan can call on.
+ *
+ * Programming a beam is where the lot decision is really made — a beam
+ * wants to come off one lot, because two lots meeting inside it show as
+ * a shade band. So the largest single lot is shown alongside the total:
+ * 300 kg spread over six lots of 50 will not carry a section that 300 kg
+ * on one lot would, and the aggregate figure hides exactly that.
+ */
+function LotStockPanel({ stock }: { stock: YarnLotStock[] }) {
+  if (stock.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-ink-100 p-3">
+      <p className="text-sm font-medium">Lot-wise stock</p>
+      <p className="text-xs text-ink-400">
+        A beam should come off one lot — mixing lots shows as a shade band.
+      </p>
+      <div className="mt-2 space-y-2">
+        {stock.map((s) => (
+          <div key={s.warpYarnId}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-sm">{s.warpYarnName}</span>
+              <span className="text-xs text-ink-600">
+                <span className="tabular-nums font-semibold">
+                  {s.totalAvailable.toLocaleString("en-IN")}
+                </span>{" "}
+                kg over {s.lots.length} lot{s.lots.length === 1 ? "" : "s"}
+                {s.lots.length > 1 && (
+                  <>
+                    {" · largest "}
+                    <span className="tabular-nums font-semibold">
+                      {s.largestLot.toLocaleString("en-IN")}
+                    </span>{" "}
+                    kg
+                  </>
+                )}
+              </span>
+            </div>
+            {s.lots.length === 0 ? (
+              <p className="text-xs text-status-warning">
+                No open lots — receive stock against a lot number before warping.
+              </p>
+            ) : (
+              <p className="text-xs text-ink-400">
+                {s.lots
+                  .map(
+                    (l) =>
+                      `${l.lotNo}${l.shade ? ` (${l.shade})` : ""} — ${l.balance.toLocaleString("en-IN")}`
+                  )
+                  .join(" · ")}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const sectionSchema = z.object({
   warpYarn: z.string().min(1, "Yarn required"),
@@ -45,7 +105,8 @@ export function WarpingPlanForm({
   onCancel: () => void;
 }) {
   const { toast } = useToast();
-  const yarns = useWarpYarnOptions(jobId);
+  const context = usePlanContext(jobId);
+  const yarns = { data: context.data?.warpYarns };
   const { createPlan } = useWarpingMutations();
 
   const {
@@ -145,6 +206,8 @@ export function WarpingPlanForm({
           </button>
         </div>
       )}
+
+      <LotStockPanel stock={context.data?.lotStock ?? []} />
 
       {beams.fields.map((beam, bi) => (
         <BeamFields

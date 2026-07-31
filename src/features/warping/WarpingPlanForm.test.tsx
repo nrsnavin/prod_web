@@ -2,18 +2,26 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { WarpingPlanForm } from "./WarpingPlanForm";
+import { YarnLotStock } from "./types";
 
 const createMutate = vi.fn(
   (_a: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.()
 );
 const toast = vi.fn();
 
+let lotStock: YarnLotStock[] = [];
+
 vi.mock("./hooks", () => ({
-  useWarpYarnOptions: () => ({
-    data: [
-      { id: "y1", name: "Nylon 40D" },
-      { id: "y2", name: "Poly 70D" },
-    ],
+  usePlanContext: () => ({
+    data: {
+      success: true,
+      jobId: "j1",
+      warpYarns: [
+        { id: "y1", name: "Nylon 40D" },
+        { id: "y2", name: "Poly 70D" },
+      ],
+      lotStock,
+    },
   }),
   useWarpingMutations: () => ({ createPlan: { mutate: createMutate, isPending: false } }),
 }));
@@ -164,5 +172,64 @@ describe("WarpingPlanForm — combining beams", () => {
     renderForm();
     await fillBeam(user, 0, 1250);
     expect(await screen.findByText("1,250 ends")).toBeInTheDocument();
+  });
+});
+
+describe("WarpingPlanForm — lot-wise stock", () => {
+  beforeEach(() => {
+    createMutate.mockClear();
+    toast.mockClear();
+    lotStock = [];
+  });
+
+  it("shows nothing when no lot stock is known", () => {
+    renderForm();
+    expect(screen.queryByText("Lot-wise stock")).not.toBeInTheDocument();
+  });
+
+  it("shows the largest single lot alongside the total", () => {
+    // A beam wants to come off one lot, so 300 kg over three lots is a
+    // different thing from 300 on one — the aggregate hides exactly that.
+    lotStock = [
+      {
+        warpYarnId: "y1",
+        warpYarnName: "Nylon 40D",
+        totalAvailable: 300,
+        largestLot: 150,
+        lots: [
+          { id: "l1", lotNo: "D-1", shade: "Ecru", balance: 150 },
+          { id: "l2", lotNo: "D-2", shade: "", balance: 100 },
+          { id: "l3", lotNo: "D-3", shade: "", balance: 50 },
+        ],
+      },
+    ];
+    renderForm();
+
+    expect(screen.getByText("Lot-wise stock")).toBeInTheDocument();
+    expect(screen.getByText(/over 3 lots/)).toBeInTheDocument();
+    expect(screen.getByText("150")).toBeInTheDocument();
+    expect(screen.getByText(/D-1 \(Ecru\) — 150/)).toBeInTheDocument();
+  });
+
+  it("omits the largest-lot figure when there is only one lot", () => {
+    lotStock = [
+      {
+        warpYarnId: "y1",
+        warpYarnName: "Nylon 40D",
+        totalAvailable: 90,
+        largestLot: 90,
+        lots: [{ id: "l1", lotNo: "D-1", shade: "", balance: 90 }],
+      },
+    ];
+    renderForm();
+    expect(screen.queryByText(/largest/)).not.toBeInTheDocument();
+  });
+
+  it("warns when a yarn has no open lots at all", () => {
+    lotStock = [
+      { warpYarnId: "y1", warpYarnName: "Nylon 40D", totalAvailable: 0, largestLot: 0, lots: [] },
+    ];
+    renderForm();
+    expect(screen.getByText(/No open lots/)).toBeInTheDocument();
   });
 });

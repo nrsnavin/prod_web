@@ -36,6 +36,14 @@ export function useMrp(id: string | undefined) {
   });
 }
 
+export function useJobYarnLots(id: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "yarn-lots", id],
+    queryFn: () => jobService.yarnLots(id!),
+    enabled: !!id,
+  });
+}
+
 export function useJobMutations() {
   const qc = useQueryClient();
   const invalidate = () => {

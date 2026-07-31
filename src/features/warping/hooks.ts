@@ -30,12 +30,17 @@ export function useWarpingPlan(warpingId: string | undefined) {
   });
 }
 
-export function useWarpYarnOptions(jobId: string | undefined) {
+export function usePlanContext(jobId: string | undefined) {
   return useQuery({
     queryKey: [WARP_KEY, "plan-context", jobId],
     queryFn: () => warpingService.planContext(jobId!),
     enabled: !!jobId,
   });
+}
+
+export function useWarpYarnOptions(jobId: string | undefined) {
+  const ctx = usePlanContext(jobId);
+  return { ...ctx, data: ctx.data?.warpYarns };
 }
 
 export function useWarpingMutations() {

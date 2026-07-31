@@ -1,6 +1,6 @@
 import { httpClient } from "@/core/http/httpClient";
 import { config } from "@/app/config";
-import { JobDetail, JobListItem, JobStatus, JobSummaryRow, MrpData } from "./types";
+import { JobDetail, JobListItem, JobStatus, JobSummaryRow, JobYarnLots, MrpData } from "./types";
 
 export const jobService = {
   async list(params: { page: number; limit?: number; status: JobStatus | "all"; search?: string }) {
@@ -60,6 +60,13 @@ export const jobService = {
   },
 
   mrpPdfUrl: (jobId: string) => `${config.apiBaseUrl}/job/${jobId}/mrp.pdf`,
+
+  async yarnLots(jobId: string): Promise<JobYarnLots> {
+    const res = await httpClient.get<{ success: boolean; data: JobYarnLots }>(
+      `/job/${jobId}/yarn-lots`
+    );
+    return res.data;
+  },
 
   setProductionMode: (jobId: string, productionMode: "in_house" | "outsource", outsourceVendor?: string) =>
     httpClient.patch(`/job/${jobId}/production-mode`, { productionMode, outsourceVendor }),

@@ -106,15 +106,19 @@ function LotPicker({
 
 function NewBatchForm({
   plan,
+  elasticOptions,
   submitting,
   onSubmit,
   onCancel,
 }: {
   plan?: WarpingPlan;
+  /** Elastics on the parent job — empty or single means nothing to choose. */
+  elasticOptions: Array<{ id: string; name: string }>;
   submitting: boolean;
   onSubmit: (body: {
     beamNos: number[];
     allocations: Array<{ rawMaterial: string; yarnLot: string; quantity: number }>;
+    elastics?: string[];
     remarks?: string;
   }) => void;
   onCancel: () => void;
@@ -123,6 +127,7 @@ function NewBatchForm({
   const beams = (plan?.beams ?? []).map((b, i) => b.beamNo ?? i + 1);
 
   const [picked, setPicked] = useState<number[]>([]);
+  const [forElastics, setForElastics] = useState<string[]>([]);
   const [alloc, setAlloc] = useState<Record<string, { yarnLot: string; quantity: string }>>({});
   const [remarks, setRemarks] = useState("");
 
@@ -165,6 +170,43 @@ function NewBatchForm({
         </div>
       </div>
 
+      {/* Only worth asking when there is a choice — a single-elastic job
+          is filled in server-side. Without an answer the lot can only be
+          traced as far as the job, which the notice below says outright. */}
+      {elasticOptions.length > 1 && (
+        <div>
+          <p className="text-sm font-medium">Warping for</p>
+          <p className="text-xs text-ink-400">
+            Which elastic this batch is for. Leave it unset and the lot traces
+            only as far as the job, not to a particular elastic.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {elasticOptions.map((e) => (
+              <label
+                key={e.id}
+                className={`cursor-pointer rounded-lg border px-3 py-1.5 text-sm ${
+                  forElastics.includes(e.id)
+                    ? "border-brand-500 bg-brand-50 text-brand-700"
+                    : "border-ink-200"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={forElastics.includes(e.id)}
+                  onChange={(ev) =>
+                    setForElastics((p) =>
+                      ev.target.checked ? [...p, e.id] : p.filter((x) => x !== e.id)
+                    )
+                  }
+                />
+                {e.name}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
         <p className="text-sm font-medium">Yarn drawn</p>
         <div className="mt-2 space-y-2">
@@ -198,7 +240,12 @@ function NewBatchForm({
           disabled={allocations.length === 0}
           loading={submitting}
           onClick={() =>
-            onSubmit({ beamNos: picked, allocations, remarks: remarks.trim() || undefined })
+            onSubmit({
+              beamNos: picked,
+              allocations,
+              elastics: forElastics.length ? forElastics : undefined,
+              remarks: remarks.trim() || undefined,
+            })
           }
         >
           Create batch
@@ -211,9 +258,11 @@ function NewBatchForm({
 export function WarpingBatches({
   warpingId,
   plan,
+  elasticOptions = [],
 }: {
   warpingId: string;
   plan?: WarpingPlan;
+  elasticOptions?: Array<{ id: string; name: string }>;
 }) {
   const { toast } = useToast();
   const { data: batches } = useWarpingBatches(warpingId);
@@ -267,6 +316,18 @@ export function WarpingBatches({
                   <StatusChip tone={batchTone[b.status]}>{b.status}</StatusChip>
                   {b.beamNos.length > 0 && (
                     <span className="text-xs text-ink-400">beam {b.beamNos.join(", ")}</span>
+                  )}
+                  {/* Say when a batch is not pinned to an elastic, rather
+                      than leaving the gap to be read as "all of them". */}
+                  {(b.elastics?.length ?? 0) > 0 ? (
+                    <span className="text-xs text-ink-600">
+                      for{" "}
+                      {b.elastics!
+                        .map((e) => (typeof e === "object" ? e.name : e))
+                        .join(", ")}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-status-warning">no elastic set</span>
                   )}
                   <div className="ml-auto flex gap-1">
                     {b.status === "planned" && (
@@ -328,6 +389,7 @@ export function WarpingBatches({
       <FormScreen open={open} onClose={() => setOpen(false)} title="New warping batch" width="max-w-2xl">
         <NewBatchForm
           plan={plan}
+          elasticOptions={elasticOptions}
           submitting={create.isPending}
           onCancel={() => setOpen(false)}
           onSubmit={(body) =>

@@ -67,6 +67,28 @@ export interface WarpYarnOption {
   name: string;
 }
 
+/**
+ * Lot-wise stock for one warp yarn, as of programming time.
+ *
+ * `largestLot` matters as much as `totalAvailable`: a beam wants to come
+ * off a single lot, so 300 kg spread over six lots of 50 will not carry
+ * a section that 300 kg on one lot would.
+ */
+export interface YarnLotStock {
+  warpYarnId: string;
+  warpYarnName: string;
+  lots: Array<{ id: string; lotNo: string; shade: string; balance: number }>;
+  totalAvailable: number;
+  largestLot: number;
+}
+
+export interface PlanContext {
+  success: boolean;
+  jobId: string;
+  warpYarns: WarpYarnOption[];
+  lotStock: YarnLotStock[];
+}
+
 // ── Batches ─────────────────────────────────────────────────────────────
 // A plan says what to build; a batch records which dye lots were actually
 // drawn to build it. One plan is routinely run over several sittings from
@@ -89,6 +111,8 @@ export interface WarpingBatch {
   warping: string;
   job?: { _id: string; jobOrderNo: number; status?: string } | string | null;
   beamNos: number[];
+  /** Empty when nobody said — the lot then traces only as far as the job. */
+  elastics?: Array<{ _id: string; name: string } | string>;
   allocations: BatchAllocation[];
   status: BatchStatus;
   issuedDate?: string;

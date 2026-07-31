@@ -66,9 +66,16 @@ const plan: WarpingPlan = {
 
 // No default parameter here: `renderBatches(undefined)` would fall back to
 // `plan` and silently test the opposite of the no-plan case.
-const renderBatches = (p: WarpingPlan | undefined) =>
-  render(<WarpingBatches warpingId="w1" plan={p} />);
+const renderBatches = (
+  p: WarpingPlan | undefined,
+  elasticOptions: Array<{ id: string; name: string }> = []
+) => render(<WarpingBatches warpingId="w1" plan={p} elasticOptions={elasticOptions} />);
 const renderWithPlan = () => renderBatches(plan);
+
+const TWO_ELASTICS = [
+  { id: "e1", name: "25mm Woven" },
+  { id: "e2", name: "32mm Woven" },
+];
 
 describe("WarpingBatches", () => {
   beforeEach(() => {
@@ -165,6 +172,55 @@ describe("WarpingBatches", () => {
     await userEvent.type(screen.getByLabelText(/quantity from lot for Nylon 70D/i), "50");
 
     expect(screen.getByText(/Only 30 kg left on lot D-4471/i)).toBeInTheDocument();
+  });
+
+  it("shows which elastic a batch was warped for", () => {
+    batches = [batch({ elastics: [{ _id: "e1", name: "25mm Woven" }] })];
+    renderWithPlan();
+    expect(screen.getByText(/for 25mm Woven/)).toBeInTheDocument();
+  });
+
+  it("flags a batch with no elastic set rather than leaving a blank", () => {
+    // A blank would read as "all of them"; it means "nobody said".
+    batches = [batch({ elastics: [] })];
+    renderWithPlan();
+    expect(screen.getByText("no elastic set")).toBeInTheDocument();
+  });
+
+  it("does not ask which elastic when the job only has one", async () => {
+    // The server fills that case in — there is nothing to choose between.
+    renderBatches(plan, [{ id: "e1", name: "25mm Woven" }]);
+    await userEvent.click(screen.getByRole("button", { name: /new batch/i }));
+    expect(screen.queryByText("Warping for")).not.toBeInTheDocument();
+  });
+
+  it("sends the chosen elastic when the job has several", async () => {
+    renderBatches(plan, TWO_ELASTICS);
+    await userEvent.click(screen.getByRole("button", { name: /new batch/i }));
+
+    expect(screen.getByText("Warping for")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: /32mm Woven/i }));
+    await userEvent.selectOptions(screen.getByLabelText(/dye lot for Nylon 70D/i), "lot1");
+    await userEvent.type(screen.getByLabelText(/quantity from lot for Nylon 70D/i), "20");
+    await userEvent.click(screen.getByRole("button", { name: /create batch/i }));
+
+    expect(createMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ elastics: ["e2"] }),
+      expect.anything()
+    );
+  });
+
+  it("leaves the elastic unset when the operator does not choose one", async () => {
+    renderBatches(plan, TWO_ELASTICS);
+    await userEvent.click(screen.getByRole("button", { name: /new batch/i }));
+    await userEvent.selectOptions(screen.getByLabelText(/dye lot for Nylon 70D/i), "lot1");
+    await userEvent.type(screen.getByLabelText(/quantity from lot for Nylon 70D/i), "20");
+    await userEvent.click(screen.getByRole("button", { name: /create batch/i }));
+
+    expect(createMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ elastics: undefined }),
+      expect.anything()
+    );
   });
 
   it("says so when a yarn has no open lots to draw from", async () => {

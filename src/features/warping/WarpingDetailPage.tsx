@@ -214,7 +214,17 @@ export function WarpingDetailPage() {
         </Card>
       </div>
 
-      <WarpingBatches warpingId={warping._id} plan={plan.data?.plan} />
+      <WarpingBatches
+        warpingId={warping._id}
+        plan={plan.data?.plan}
+        elasticOptions={(warping.elasticOrdered ?? [])
+          .map((l) =>
+            l.elastic && typeof l.elastic === "object"
+              ? { id: l.elastic._id, name: l.elastic.name }
+              : null
+          )
+          .filter((e): e is { id: string; name: string } => e !== null)}
+      />
 
       <WarpingProgrammeSheet
         open={printOpen === "sheet"}

@@ -18,6 +18,7 @@ import { JOB_PIPELINE, JobShiftDetail, JobSummaryRow } from "./types";
 import { nextJobStatus } from "./jobStatus";
 import { MachineAssignModal } from "./MachineAssignModal";
 import { QcPanel } from "./QcPanel";
+import { JobYarnLots } from "./JobYarnLots";
 import { useTrackRecent } from "@/core/ui/uiStore";
 
 function Pipeline({ status }: { status: string }) {
@@ -205,6 +206,8 @@ export function JobDetailPage() {
           emptyTitle="No shifts recorded yet"
         />
       </Card>
+
+      <JobYarnLots jobId={job.id} />
 
       <QcPanel job={job} />
 

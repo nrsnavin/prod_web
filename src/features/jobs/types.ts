@@ -138,3 +138,41 @@ export interface MrpData {
     stockKnown?: boolean;
   }>;
 }
+
+// ── Yarn lots behind a job ───────────────────────────────────────────────
+// The backward half of lot traceability: /yarn-lots/:id/trace answers
+// "where did this lot go", this answers "what is in this roll" — the
+// question actually asked when a customer reports a shade band months on.
+export interface JobLotUse {
+  batchId: string;
+  batchNo: string;
+  batchStatus: "planned" | "issued" | "completed";
+  beamNos: number[];
+  yarnLot: string;
+  lotNo: string;
+  shade: string;
+  materialName: string;
+  quantity: number;
+  /**
+   * How many elastics this one draw is answering for. The batch drew its
+   * yarn once, so the quantity is left whole rather than divided by a
+   * split nobody measured.
+   */
+  sharedAcross: number;
+  issuedDate: string | null;
+}
+
+export interface JobLotGroup {
+  /** null for batches never attributed to a particular elastic. */
+  elasticId: string | null;
+  elasticName: string;
+  lots: JobLotUse[];
+}
+
+export interface JobYarnLots {
+  jobId: string;
+  jobOrderNo: number;
+  byElastic: JobLotGroup[];
+  lots: Array<{ yarnLot: string; lotNo: string; shade: string; materialName: string }>;
+  hasUnattributed: boolean;
+}

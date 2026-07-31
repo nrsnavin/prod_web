@@ -1,11 +1,11 @@
 import { httpClient } from "@/core/http/httpClient";
 import {
   Covering,
+  PlanContext,
   ProgrammeStatus,
   Warping,
   WarpingBatch,
   WarpingPlan,
-  WarpYarnOption,
 } from "./types";
 
 export const warpingService = {
@@ -35,11 +35,8 @@ export const warpingService = {
     });
   },
 
-  async planContext(jobId: string): Promise<WarpYarnOption[]> {
-    const res = await httpClient.get<{ success: boolean; warpYarns: WarpYarnOption[] }>(
-      `/warping/plan-context/${jobId}`
-    );
-    return res.warpYarns;
+  async planContext(jobId: string): Promise<PlanContext> {
+    return httpClient.get<PlanContext>(`/warping/plan-context/${jobId}`);
   },
 
   createPlan: (body: {
@@ -76,6 +73,9 @@ export const warpingService = {
     warpingId: string;
     beamNos: number[];
     allocations: Array<{ rawMaterial: string; yarnLot: string; quantity: number }>;
+    // Which elastic(s) this batch warps. Omit when the job has one — the
+    // server fills that in, since there is nothing to choose between.
+    elastics?: string[];
     remarks?: string;
   }): Promise<WarpingBatch> {
     const res = await httpClient.post<{ success: boolean; batch: WarpingBatch }>(
