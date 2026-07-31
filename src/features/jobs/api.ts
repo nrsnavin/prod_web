@@ -9,6 +9,7 @@ import {
   JobYarnLots,
   MrpData,
   RaisePoResult,
+  WeavingReadiness,
 } from "./types";
 
 export const jobService = {
@@ -59,6 +60,14 @@ export const jobService = {
     httpClient.post("/job/update-status", { jobId, nextStatus }),
 
   cancel: (jobId: string, reason?: string) => httpClient.post("/job/cancel", { jobId, reason }),
+
+  // Read-only: what is still open before the job may go to weaving.
+  async weavingReadiness(jobId: string): Promise<WeavingReadiness> {
+    const res = await httpClient.get<{ success: boolean; data: WeavingReadiness }>(
+      `/job/${jobId}/weaving-readiness`
+    );
+    return res.data;
+  },
 
   assignMachine: (jobId: string, machineId: string) =>
     httpClient.post("/job/assign-machine", { jobId, machineId }),

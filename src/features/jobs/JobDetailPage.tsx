@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Cog, ArrowRight, XCircle, FileText, Check } from "lucide-react";
+import { ArrowLeft, Cog, ArrowRight, XCircle, FileText, Check, AlertTriangle } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { useJob, useJobMutations, useJobSummary } from "./hooks";
+import { useJob, useJobMutations, useJobSummary, useWeavingReadiness } from "./hooks";
 import { JOB_PIPELINE, JobShiftDetail, JobSummaryRow } from "./types";
 import { nextJobStatus } from "./jobStatus";
 import { MachineAssignModal } from "./MachineAssignModal";
@@ -95,10 +95,15 @@ export function JobDetailPage() {
   const { toast } = useToast();
   const { data: job, isLoading, isError, error } = useJob(id);
   const summary = useJobSummary(id);
+  const readiness = useWeavingReadiness(id, job?.status === "preparatory");
   const { updateStatus, cancel } = useJobMutations();
   const [assignOpen, setAssignOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  // Set from the server's 409 WEAVING_NOT_READY. Holding the blockers in
+  // state (rather than toasting the message) means the user gets a list
+  // they can read and act on, and the job status is visibly unchanged.
+  const [weavingBlockers, setWeavingBlockers] = useState<string[] | null>(null);
   useTrackRecent("Job", `/jobs/${id}`, job ? `${job.jobNo} · ${job.customerName}` : undefined);
 
   if (isLoading) {
@@ -148,8 +153,21 @@ export function JobDetailPage() {
                     { jobId: job.id, nextStatus: next },
                     {
                       onSuccess: () => toast(`Job moved to ${next}`, "success"),
-                      onError: (e) =>
-                        toast(e instanceof ApiError ? e.message : "Status update failed", "error"),
+                      onError: (e) => {
+                        // Preparatory work still open: show the list of
+                        // what is holding the job back rather than a
+                        // one-line toast the user has to decode.
+                        if (e instanceof ApiError && e.code === "WEAVING_NOT_READY") {
+                          const details = e.data?.details as
+                            | { blockers?: string[] }
+                            | undefined;
+                          setWeavingBlockers(
+                            details?.blockers?.length ? details.blockers : [e.message]
+                          );
+                          return;
+                        }
+                        toast(e instanceof ApiError ? e.message : "Status update failed", "error");
+                      },
                     }
                   )
                 }
@@ -184,6 +202,37 @@ export function JobDetailPage() {
             ]}
           />
         </div>
+
+        {/* Say up front whether the job can leave preparatory, so the
+            answer isn't only available by pressing the button. */}
+        {job.status === "preparatory" && readiness.data && (
+          <div
+            className={cn(
+              "mt-4 rounded-lg px-3 py-2 text-sm",
+              readiness.data.ready
+                ? "bg-status-successBg text-status-success"
+                : "bg-status-warningBg text-status-warning"
+            )}
+          >
+            {readiness.data.ready ? (
+              <span className="inline-flex items-center gap-2">
+                <Check className="h-4 w-4" /> Warping and covering are both completed — this job
+                can move to weaving.
+              </span>
+            ) : (
+              <>
+                <span className="inline-flex items-center gap-2 font-medium">
+                  <AlertTriangle className="h-4 w-4" /> Not ready for weaving
+                </span>
+                <ul className="mt-1 list-disc pl-8 text-xs">
+                  {readiness.data.blockers.map((b) => (
+                    <li key={b}>{b}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
       </Card>
 
       <Card className="mt-4">
@@ -233,6 +282,30 @@ export function JobDetailPage() {
       )}
 
       <MachineAssignModal job={job} open={assignOpen} onClose={() => setAssignOpen(false)} />
+
+      <Modal
+        open={weavingBlockers !== null}
+        onClose={() => setWeavingBlockers(null)}
+        title="Job is not ready for weaving"
+        width="max-w-md"
+        confirmDirtyClose={false}
+      >
+        <p className="text-sm text-ink-600">
+          A job moves to weaving only once its warping and its covering are both completed.{" "}
+          <span className="font-medium">{job.jobNo} has kept its status.</span>
+        </p>
+        <ul className="mt-3 space-y-1.5">
+          {(weavingBlockers ?? []).map((b) => (
+            <li key={b} className="flex items-start gap-2 text-sm text-status-warning">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{b}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-5 flex justify-end">
+          <Button onClick={() => setWeavingBlockers(null)}>Got it</Button>
+        </div>
+      </Modal>
 
       <Modal open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${job.jobNo}?`} width="max-w-sm">
         <p className="text-sm text-ink-600 mb-3">

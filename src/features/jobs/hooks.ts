@@ -28,6 +28,16 @@ export function useJobSummary(id: string | undefined) {
   });
 }
 
+// Only meaningful while the job is still preparatory, so callers pass
+// `enabled` rather than the hook guessing from a status it doesn't hold.
+export function useWeavingReadiness(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: [KEY, "weaving-readiness", id],
+    queryFn: () => jobService.weavingReadiness(id!),
+    enabled: !!id && enabled,
+  });
+}
+
 export function useMrp(id: string | undefined) {
   return useQuery({
     queryKey: [KEY, "mrp", id],

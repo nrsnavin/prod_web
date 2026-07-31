@@ -217,3 +217,21 @@ export interface JobYarnLots {
   lots: Array<{ yarnLot: string; lotNo: string; shade: string; materialName: string }>;
   hasUnattributed: boolean;
 }
+
+// ── Readiness to leave preparatory ───────────────────────────────────────
+// A job is prepared when BOTH its warping and its covering are completed.
+// The server refuses the move otherwise (409 WEAVING_NOT_READY) and hands
+// back these blockers so the UI can say which stage is holding it up.
+export interface WeavingStageReadiness {
+  stage: "warping" | "covering";
+  linked: boolean;
+  status: string | null;
+  done: boolean;
+}
+
+export interface WeavingReadiness {
+  ready: boolean;
+  jobStatus: JobStatus | "unknown";
+  stages: WeavingStageReadiness[];
+  blockers: string[];
+}
