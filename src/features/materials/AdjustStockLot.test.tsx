@@ -166,3 +166,46 @@ describe("naming the dye lot on a stock adjustment", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("the stock movements table", () => {
+  it("renders a populated order reference instead of crashing on it", async () => {
+    // The detail endpoint populates stockMovements.order, so it arrives as
+    // an object. Dropped straight into JSX it took the whole page down with
+    // React error #31 — "objects are not valid as a React child".
+    material.stockMovements = [
+      {
+        date: "2026-07-01T00:00:00.000Z",
+        type: "ORDER_APPROVAL",
+        quantity: -40,
+        balance: 60,
+        order: { _id: "o1", orderNo: 1042 },
+      },
+    ];
+    render(
+      <MemoryRouter initialEntries={["/materials/m1"]}>
+        <Routes>
+          <Route path="/materials/:id" element={<MaterialDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("Order #1042")).toBeInTheDocument();
+    material.stockMovements = [];
+  });
+
+  it("still renders a plain id, for a payload that was never populated", () => {
+    material.stockMovements = [
+      { date: "2026-07-01T00:00:00.000Z", type: "ORDER_APPROVAL", quantity: -40, order: "raw-id" },
+    ];
+    render(
+      <MemoryRouter initialEntries={["/materials/m1"]}>
+        <Routes>
+          <Route path="/materials/:id" element={<MaterialDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("raw-id")).toBeInTheDocument();
+    material.stockMovements = [];
+  });
+});

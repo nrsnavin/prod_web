@@ -228,11 +228,13 @@ export function InwardForm({
 
   const submit = () => onSubmit(rows.map((r) => ({ ...r, remarks: remarks || undefined })));
 
-  // Ask only when the answer is actually required. A delivery inside the
-  // tolerance goes straight through — stopping to justify a rounded-up
-  // bag every time is how a control turns into a rubber stamp.
+  // Raised on ANY over-receipt, not only past the tolerance. Skipping the
+  // small ones left the prompt invisible exactly when someone was looking
+  // for it — a rule you cannot see is worse than one that asks twice. The
+  // reason is still only *required* past 10%; inside it the dialog says so
+  // and the confirm is live straight away.
   const trySubmit = () => {
-    if (overLines.some((l) => l.needsReason)) setReasonOpen(true);
+    if (overLines.length > 0) setReasonOpen(true);
     else submit();
   };
 
@@ -303,8 +305,8 @@ export function InwardForm({
                 {over.excess.toLocaleString("en-IN")} over the{" "}
                 {it.quantity.toLocaleString("en-IN")} ordered
                 {over.needsReason
-                  ? " — past the 10% tolerance, so a reason will be asked for."
-                  : " — within the 10% tolerance."}
+                  ? " — past the 10% tolerance, so a reason is required."
+                  : " — within the 10% tolerance; a reason is optional."}
               </p>
             )}
             </div>

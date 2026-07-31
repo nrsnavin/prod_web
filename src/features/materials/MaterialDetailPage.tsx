@@ -43,7 +43,19 @@ const movementColumns: Column<StockMovement>[] = [
     ),
   },
   { key: "balance", header: "Balance", align: "right", render: (m) => m.balance?.toLocaleString("en-IN") ?? "—" },
-  { key: "reason", header: "Reason / Ref", render: (m) => m.reason || m.order || "—" },
+  {
+    key: "reason",
+    header: "Reason / Ref",
+    // `order` arrives populated from the detail endpoint, so it must be
+    // read for its number rather than dropped into JSX — rendering the
+    // object crashed the whole page with React error #31.
+    render: (m) => {
+      if (m.reason) return m.reason;
+      if (!m.order) return "—";
+      if (typeof m.order === "string") return m.order;
+      return m.order.orderNo != null ? `Order #${m.order.orderNo}` : "—";
+    },
+  },
 ];
 
 const adjustSchema = z.object({

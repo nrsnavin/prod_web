@@ -4,7 +4,11 @@ export type MaterialCategory = (typeof MATERIAL_CATEGORIES)[number];
 export interface StockMovement {
   date: string;
   type: string; // inward | outward | adjustment...
-  order?: string;
+  // The detail endpoint populates this (`.populate("stockMovements.order",
+  // "orderNo")`), so it arrives as an object, not an id. Typed as `string`
+  // it was rendered straight into JSX and crashed the page with React
+  // error #31 — "objects are not valid as a React child".
+  order?: string | { _id: string; orderNo?: number } | null;
   quantity: number;
   balance?: number;
   reason?: string;

@@ -42,20 +42,33 @@ describe("recording an inward that exceeds the order", () => {
     expect(screen.queryByLabelText(/Reason for the excess/i)).not.toBeInTheDocument();
   });
 
-  it("notes an excess inside the tolerance and submits without asking why", async () => {
-    // Stopping to justify a rounded-up bag every time is how a control
-    // turns into a rubber stamp.
+  it("still raises the dialog inside the tolerance, with the reason optional", async () => {
+    // Skipping the small ones left the prompt invisible exactly when
+    // someone went looking for it.
     renderForm();
     await typeQty("108");
 
     expect(screen.getByText(/8 over the 100 ordered/)).toBeInTheDocument();
-    expect(screen.getByText(/within the 10% tolerance/)).toBeInTheDocument();
+    expect(screen.getByText(/a reason is optional/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /record inward/i }));
-    expect(screen.queryByText(/This delivery is over the order/)).not.toBeInTheDocument();
+    expect(screen.getByText("This delivery is over the order")).toBeInTheDocument();
+    // Nothing is required, so the confirm is live straight away.
+    expect(confirmButton()).toBeEnabled();
+
+    await userEvent.click(confirmButton());
     expect(onSubmit).toHaveBeenCalledWith([
       expect.objectContaining({ quantity: 108, excessReason: undefined }),
     ]);
+  });
+
+  it("does not raise the dialog when nothing is over", async () => {
+    renderForm();
+    await typeQty("80");
+    await userEvent.click(screen.getByRole("button", { name: /record inward/i }));
+
+    expect(screen.queryByText("This delivery is over the order")).not.toBeInTheDocument();
+    expect(onSubmit).toHaveBeenCalled();
   });
 
   it("raises the dialog past the tolerance rather than disabling the button", async () => {
@@ -127,6 +140,7 @@ describe("recording an inward that exceeds the order", () => {
 
     expect(screen.getByText(/2 over the 100 ordered/)).toBeInTheDocument();
     expect(screen.getByText(/within the 10% tolerance/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /record inward/i })).toBeEnabled();
   });
 
   it("still offers a fully received line, so extra can be recorded against it", async () => {
