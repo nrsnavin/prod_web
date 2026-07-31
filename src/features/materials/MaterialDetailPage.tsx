@@ -28,21 +28,43 @@ const movementColumns: Column<StockMovement>[] = [
     key: "type",
     header: "Type",
     render: (m) => (
-      <StatusChip tone={m.quantity >= 0 ? "success" : "warning"}>{m.type}</StatusChip>
+      <StatusChip tone={m.quantity > 0 ? "success" : m.quantity < 0 ? "danger" : "neutral"}>
+        {m.type}
+      </StatusChip>
     ),
   },
   {
     key: "qty",
     header: "Quantity",
     align: "right",
+    // Sign written explicitly rather than left to toLocaleString: the
+    // minus is the whole point of the column, and a "+" has to be added
+    // by hand anyway. A zero gets neither, and is not coloured as a gain.
     render: (m) => (
-      <span className={m.quantity < 0 ? "text-status-danger" : "text-status-success"}>
-        {m.quantity > 0 ? "+" : ""}
-        {m.quantity.toLocaleString("en-IN")}
+      <span
+        className={
+          m.quantity > 0
+            ? "text-status-success font-semibold tabular-nums"
+            : m.quantity < 0
+              ? "text-status-danger font-semibold tabular-nums"
+              : "text-ink-400 tabular-nums"
+        }
+      >
+        {m.quantity > 0 ? "+" : m.quantity < 0 ? "−" : ""}
+        {Math.abs(m.quantity).toLocaleString("en-IN")}
       </span>
     ),
   },
-  { key: "balance", header: "Balance", align: "right", render: (m) => m.balance?.toLocaleString("en-IN") ?? "—" },
+  {
+    key: "balance",
+    header: "Balance",
+    align: "right",
+    render: (m) => (
+      <span className="tabular-nums">
+        {m.balance != null ? m.balance.toLocaleString("en-IN") : "—"}
+      </span>
+    ),
+  },
   {
     key: "reason",
     header: "Reason / Ref",

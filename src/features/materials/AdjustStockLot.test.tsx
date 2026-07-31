@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { MaterialDetailPage } from "./MaterialDetailPage";
-import { RawMaterial, YarnLot } from "./types";
+import { RawMaterial, StockMovement, YarnLot } from "./types";
 
 const adjustMutate = vi.fn(
   (_a: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.()
@@ -207,5 +207,69 @@ describe("the stock movements table", () => {
 
     expect(screen.getByText("raw-id")).toBeInTheDocument();
     material.stockMovements = [];
+  });
+});
+
+describe("the ledger's quantity column", () => {
+  const renderPage = () =>
+    render(
+      <MemoryRouter initialEntries={["/materials/m1"]}>
+        <Routes>
+          <Route path="/materials/:id" element={<MaterialDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+  const movement = (over: Partial<StockMovement> = {}): StockMovement => ({
+    date: "2026-07-01T00:00:00.000Z",
+    type: "STOCK_ADJUST",
+    quantity: 0,
+    ...over,
+  });
+
+  afterEach(() => {
+    material.stockMovements = [];
+  });
+
+  it("shows a deduction in red, with a minus", () => {
+    material.stockMovements = [movement({ type: "ORDER_APPROVAL", quantity: -40, balance: 60 })];
+    renderPage();
+
+    const cell = screen.getByText("−40");
+    expect(cell).toHaveClass("text-status-danger");
+    expect(screen.getByText("60")).toBeInTheDocument();
+  });
+
+  it("shows an addition in green, with a plus", () => {
+    material.stockMovements = [movement({ type: "PO_INWARD", quantity: 100, balance: 160 })];
+    renderPage();
+
+    const cell = screen.getByText("+100");
+    expect(cell).toHaveClass("text-status-success");
+  });
+
+  // The page carries other zeros and dashes (min stock, empty panels), so
+  // these assertions are scoped to the ledger row rather than the page.
+  const ledgerRow = (type: string) => {
+    const chip = screen.getByText(type.replace(/_/g, " "));
+    return within(chip.closest("tr")!);
+  };
+
+  it("does not colour a zero movement as a gain", () => {
+    material.stockMovements = [movement({ type: "STOCK_ADJUST", quantity: 0, balance: 60 })];
+    renderPage();
+
+    expect(ledgerRow("STOCK_ADJUST").getByText("0")).not.toHaveClass("text-status-success");
+  });
+
+  it("shows a dash when no balance was ever recorded", () => {
+    material.stockMovements = [movement({ type: "PO_INWARD", quantity: 10 })];
+    renderPage();
+
+    // Balance is the 4th column: date | type | quantity | balance | ref.
+    // Reason/Ref also renders a dash here, so the cell has to be picked
+    // by position rather than by its text.
+    const cells = screen.getByText("PO INWARD").closest("tr")!.querySelectorAll("td");
+    expect(cells[3]).toHaveTextContent("—");
   });
 });
