@@ -193,16 +193,28 @@ export function WarpingDetailPage() {
                     ) : null}
                   </p>
                   <ul className="mt-1.5 divide-y divide-ink-100">
-                    {beam.sections.map((s, si) => (
-                      <li key={si} className="flex justify-between py-1.5 text-sm">
-                        <span>
-                          {typeof s.warpYarn === "object" && s.warpYarn ? s.warpYarn.name : "—"}
-                        </span>
-                        <span className="tabular-nums text-ink-600">
-                          {s.ends} ends{s.maxMeters ? ` · ${s.maxMeters} m` : ""}
-                        </span>
-                      </li>
-                    ))}
+                    {beam.sections.map((s, si) => {
+                      // Snapshot first — it is what the printed programme
+                      // said, and it outlives the lot record.
+                      const lotNo =
+                        s.lotNo ||
+                        (typeof s.yarnLot === "object" && s.yarnLot ? s.yarnLot.lotNo : "");
+                      return (
+                        <li key={si} className="flex justify-between gap-2 py-1.5 text-sm">
+                          <span className="min-w-0">
+                            {typeof s.warpYarn === "object" && s.warpYarn ? s.warpYarn.name : "—"}
+                            {lotNo ? (
+                              <span className="ml-2 text-xs text-ink-600">lot {lotNo}</span>
+                            ) : (
+                              <span className="ml-2 text-xs text-ink-400">no lot set</span>
+                            )}
+                          </span>
+                          <span className="shrink-0 tabular-nums text-ink-600">
+                            {s.ends} ends{s.maxMeters ? ` · ${s.maxMeters} m` : ""}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))}

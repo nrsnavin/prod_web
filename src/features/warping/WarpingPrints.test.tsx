@@ -41,6 +41,78 @@ describe("WarpingProgrammeSheet", () => {
       ],
     };
     render(<WarpingProgrammeSheet open warping={warping} plan={noMeters} onClose={() => {}} />);
-    expect(screen.getByText("—")).toBeInTheDocument();
+    // Scoped to the Length cell: the Dye lot column also shows an em dash
+    // when no lot is set, so a bare getByText would now match two nodes.
+    expect(sectionCells()).toHaveLength(5);
+    expect(sectionCells()[4]).toHaveTextContent("—");
+  });
+});
+
+/** The section row's cells: no. | yarn | dye lot | ends | length. */
+function sectionCells() {
+  const row = screen.getByText("Nylon 40D").closest("tr")!;
+  return Array.from(row.querySelectorAll("td"));
+}
+
+describe("WarpingProgrammeSheet — dye lot", () => {
+  const withLot = (section: Partial<WarpingPlan["beams"][0]["sections"][0]>): WarpingPlan => ({
+    ...plan,
+    beams: [
+      {
+        ...plan.beams[0],
+        sections: [
+          { warpYarn: { _id: "y1", name: "Nylon 40D" }, ends: 240, maxMeters: 1800, ...section },
+        ],
+      },
+    ],
+  });
+
+  it("prints the lot the section runs off", () => {
+    // This is the instruction the warper acts on: pull this section off
+    // this bag, not whatever is nearest.
+    render(
+      <WarpingProgrammeSheet
+        open
+        warping={warping}
+        plan={withLot({ lotNo: "D-4471", shade: "Off White" })}
+        onClose={() => {}}
+      />
+    );
+    expect(screen.getByText("D-4471 · Off White")).toBeInTheDocument();
+  });
+
+  it("prefers the stored snapshot over the live lot record", () => {
+    // The sheet is the copy that goes to the machine and gets filed, so
+    // it must keep saying what it said on the day.
+    render(
+      <WarpingProgrammeSheet
+        open
+        warping={warping}
+        plan={withLot({
+          lotNo: "D-4471",
+          yarnLot: { _id: "l1", lotNo: "RENUMBERED-9", shade: "" },
+        })}
+        onClose={() => {}}
+      />
+    );
+    expect(screen.getByText("D-4471")).toBeInTheDocument();
+    expect(screen.queryByText(/RENUMBERED-9/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to the populated lot when there is no snapshot", () => {
+    render(
+      <WarpingProgrammeSheet
+        open
+        warping={warping}
+        plan={withLot({ yarnLot: { _id: "l1", lotNo: "D-9000" } })}
+        onClose={() => {}}
+      />
+    );
+    expect(screen.getByText("D-9000")).toBeInTheDocument();
+  });
+
+  it("shows an em dash in the lot cell when no lot is set", () => {
+    render(<WarpingProgrammeSheet open warping={warping} plan={plan} onClose={() => {}} />);
+    expect(sectionCells()[2]).toHaveTextContent("—");
   });
 });

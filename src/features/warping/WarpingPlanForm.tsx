@@ -77,6 +77,9 @@ const sectionSchema = z.object({
   warpYarn: z.string().min(1, "Yarn required"),
   ends: z.coerce.number().positive("Ends > 0"),
   maxMeters: z.coerce.number().min(0).optional(),
+  // Which dye lot this section runs off. Optional: an undyed or
+  // untracked yarn has none, and the section is still valid without one.
+  yarnLot: z.string().optional(),
 });
 const schema = z.object({
   remarks: z.string().optional(),
@@ -120,7 +123,7 @@ export function WarpingPlanForm({
     resolver: zodResolver(schema),
     defaultValues: {
       remarks: "",
-      beams: [{ sections: [{ warpYarn: "", ends: 0, maxMeters: 0 }] }],
+      beams: [{ sections: [{ warpYarn: "", ends: 0, maxMeters: 0, yarnLot: "" }] }],
     },
   });
   const beams = useFieldArray({ control, name: "beams" });
@@ -217,6 +220,8 @@ export function WarpingPlanForm({
           register={register}
           errors={errors}
           yarnOptions={yarnOptions}
+          lotStock={context.data?.lotStock ?? []}
+          watchedSections={watched?.[bi]?.sections}
           onRemove={beams.fields.length > 1 ? () => beams.remove(bi) : undefined}
           combining={combining}
           picked={picked.includes(bi)}
@@ -231,7 +236,7 @@ export function WarpingPlanForm({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => beams.append({ sections: [{ warpYarn: "", ends: 0, maxMeters: 0 }] })}
+          onClick={() => beams.append({ sections: [{ warpYarn: "", ends: 0, maxMeters: 0, yarnLot: "" }] })}
         >
           <Plus className="h-4 w-4" /> Add beam
         </Button>
@@ -267,6 +272,8 @@ function BeamFields({
   register,
   errors,
   yarnOptions,
+  lotStock,
+  watchedSections,
   onRemove,
   combining,
   picked,
@@ -280,6 +287,9 @@ function BeamFields({
   register: UseFormRegister<PlanValues>;
   errors: FieldErrors<PlanValues>;
   yarnOptions: { value: string; label: string }[];
+  lotStock: YarnLotStock[];
+  /** This beam's live section values, so the lot list follows the yarn. */
+  watchedSections?: PlanValues["beams"][number]["sections"];
   onRemove?: () => void;
   combining: boolean;
   picked: boolean;
@@ -335,41 +345,63 @@ function BeamFields({
           </button>
         )}
       </div>
-      <div className="grid grid-cols-[1fr_90px_90px_32px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Warp yarn</span><span>Ends</span><span>Length</span><span className="sr-only">Remove</span></div>
+      <div className="grid grid-cols-[1fr_1fr_80px_80px_32px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Warp yarn</span><span>Dye lot</span><span>Ends</span><span>Length</span><span className="sr-only">Remove</span></div>
       <div className="space-y-2">
-        {sections.fields.map((s, si) => (
-          <div key={s.id} className="grid grid-cols-[1fr_90px_90px_32px] gap-2 items-start">
-            <Select aria-label="Warp yarn"
-              placeholder="Warp yarn"
-              options={yarnOptions}
-              error={errors.beams?.[index]?.sections?.[si]?.warpYarn?.message}
-              {...register(`beams.${index}.sections.${si}.warpYarn`)}
-            />
-            <Input aria-label="Ends"
-              type="number"
-              placeholder="Ends"
-              error={errors.beams?.[index]?.sections?.[si]?.ends?.message}
-              {...register(`beams.${index}.sections.${si}.ends`)}
-            />
-            <Input aria-label="Length" type="number" placeholder="Length" {...register(`beams.${index}.sections.${si}.maxMeters`)} />
-            <button
-              type="button"
-              onClick={() => sections.fields.length > 1 && sections.remove(si)}
-              className="h-10 grid place-items-center rounded-lg text-ink-400 hover:text-status-danger disabled:opacity-40"
-              disabled={sections.fields.length <= 1}
-              aria-label="Remove section"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
+        {sections.fields.map((s, si) => {
+          // Lots are offered only for the yarn actually chosen on this
+          // row — a lot from another yarn is refused server-side, and
+          // offering it here would be inviting the mistake.
+          const chosenYarn = watchedSections?.[si]?.warpYarn ?? "";
+          const forYarn = lotStock.find((l) => l.warpYarnId === chosenYarn);
+          return (
+            <div key={s.id} className="grid grid-cols-[1fr_1fr_80px_80px_32px] gap-2 items-start">
+              <Select aria-label="Warp yarn"
+                placeholder="Warp yarn"
+                options={yarnOptions}
+                error={errors.beams?.[index]?.sections?.[si]?.warpYarn?.message}
+                {...register(`beams.${index}.sections.${si}.warpYarn`)}
+              />
+              <Select aria-label="Dye lot"
+                placeholder={
+                  !chosenYarn
+                    ? "Pick a yarn first"
+                    : (forYarn?.lots.length ?? 0) === 0
+                      ? "No open lots"
+                      : "Any lot"
+                }
+                disabled={!chosenYarn || (forYarn?.lots.length ?? 0) === 0}
+                options={(forYarn?.lots ?? []).map((l) => ({
+                  value: l.id,
+                  label: `${l.lotNo}${l.shade ? ` · ${l.shade}` : ""} — ${l.balance.toLocaleString("en-IN")} kg`,
+                }))}
+                {...register(`beams.${index}.sections.${si}.yarnLot`)}
+              />
+              <Input aria-label="Ends"
+                type="number"
+                placeholder="Ends"
+                error={errors.beams?.[index]?.sections?.[si]?.ends?.message}
+                {...register(`beams.${index}.sections.${si}.ends`)}
+              />
+              <Input aria-label="Length" type="number" placeholder="Length" {...register(`beams.${index}.sections.${si}.maxMeters`)} />
+              <button
+                type="button"
+                onClick={() => sections.fields.length > 1 && sections.remove(si)}
+                className="h-10 grid place-items-center rounded-lg text-ink-400 hover:text-status-danger disabled:opacity-40"
+                disabled={sections.fields.length <= 1}
+                aria-label="Remove section"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          );
+        })}
       </div>
       <Button
         type="button"
         variant="ghost"
         size="sm"
         className="mt-2"
-        onClick={() => sections.append({ warpYarn: "", ends: 0, maxMeters: 0 })}
+        onClick={() => sections.append({ warpYarn: "", ends: 0, maxMeters: 0, yarnLot: "" })}
       >
         <Plus className="h-4 w-4" /> Add section
       </Button>

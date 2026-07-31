@@ -21,6 +21,12 @@ export interface WarpingPlanSection {
   // Run length in metres — persisted as `maxMeters` on the WarpingPlan
   // schema. (An earlier `length` alias never reached the DB.)
   maxMeters?: number;
+  /** The dye lot this section runs off, chosen at programming time. */
+  yarnLot?: { _id: string; lotNo: string; shade?: string; status?: string } | string | null;
+  /** Snapshots — what the printed programme said, proof against the lot
+   *  record being archived or renumbered later. Prefer these for display. */
+  lotNo?: string;
+  shade?: string;
 }
 
 export interface WarpingPlanBeam {

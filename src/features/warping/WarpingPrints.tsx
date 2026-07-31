@@ -3,11 +3,29 @@ import {
   SheetHeader, SheetPane, SheetSection, SheetTable, SheetSignatures, Th, Td,
 } from "@/components/print/SheetForm";
 import { QrImg } from "@/components/print/QrImg";
-import { Warping, WarpingPlan } from "./types";
+import { Warping, WarpingPlan, WarpingPlanSection } from "./types";
 import { elasticLineName } from "./programmeShared";
 
 function yarnName(y: unknown): string {
   return typeof y === "object" && y !== null ? ((y as { name?: string }).name ?? "—") : "—";
+}
+
+/**
+ * The dye lot this section runs off, as it should read on paper.
+ *
+ * The stored snapshot wins over the populated lot record: this sheet is
+ * the copy that goes to the machine and gets filed, so it must still say
+ * what it said on the day, even if the lot is later renumbered or gone.
+ */
+function sectionLot(sec: WarpingPlanSection): string {
+  const lotNo =
+    sec.lotNo ||
+    (typeof sec.yarnLot === "object" && sec.yarnLot ? sec.yarnLot.lotNo : "");
+  if (!lotNo) return "—";
+  const shade =
+    sec.shade ||
+    (typeof sec.yarnLot === "object" && sec.yarnLot ? sec.yarnLot.shade : "");
+  return shade ? `${lotNo} · ${shade}` : lotNo;
 }
 
 // ── Warping programme sheet (A4) ────────────────────────────────────────
@@ -75,6 +93,9 @@ export function WarpingProgrammeSheet({
                     {beam.totalEnds ? ` — ${beam.totalEnds} total ends` : ""}
                     {beam.pairedBeamNo ? ` · run with beam ${beam.pairedBeamNo}` : ""}
                   </Th>
+                  {/* The lot is the instruction the warper acts on: pull
+                      this section off this bag, not whatever is nearest. */}
+                  <Th>Dye lot</Th>
                   <Th align="right">Ends</Th>
                   <Th align="right">Length (m)</Th>
                 </tr>
@@ -85,6 +106,7 @@ export function WarpingProgrammeSheet({
                   <tr key={si}>
                     <Td className="w-8 text-ink-600">{si + 1}</Td>
                     <Td>{yarnName(sec.warpYarn)}</Td>
+                    <Td>{sectionLot(sec)}</Td>
                     <Td align="right">{sec.ends}</Td>
                     <Td align="right">{sec.maxMeters ?? "—"}</Td>
                   </tr>
@@ -143,6 +165,9 @@ export function BeamLabels({
                   <p key={si} className="truncate">
                     <span className="font-medium">{yarnName(s.warpYarn)}</span>
                     <span className="text-ink-600"> · {s.ends} ends</span>
+                    {sectionLot(s) !== "—" && (
+                      <span className="text-ink-600"> · lot {sectionLot(s)}</span>
+                    )}
                   </p>
                 ))}
                 <p className="text-ink-600">

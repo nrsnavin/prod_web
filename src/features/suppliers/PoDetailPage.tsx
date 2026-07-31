@@ -64,7 +64,9 @@ const itemColumns: Column<PoItem>[] = [
   },
 ];
 
-function InwardForm({
+// Exported for its own tests — the over-receipt rules live here, and
+// reaching them through the page would drag in routing and queries.
+export function InwardForm({
   items,
   submitting,
   onSubmit,
@@ -83,17 +85,22 @@ function InwardForm({
       remarks?: string;
       lotNo?: string;
       shade?: string;
-    }>
+    }>,
+    excessReason?: string
   ) => void;
   onCancel: () => void;
 }) {
-  const pending = items.filter((it) => (it.received ?? 0) < it.quantity);
+  // Every line, not just the unfilled ones. A supplier can send extra
+  // against a line that is already complete, and hiding it would leave
+  // no way to record the delivery except a stock adjustment — which
+  // credits the same goods while losing the link to this PO.
   const [qty, setQty] = useState<Record<string, string>>({});
   const [lots, setLots] = useState<Record<string, string>>({});
   const [shades, setShades] = useState<Record<string, string>>({});
   const [remarks, setRemarks] = useState("");
+  const [excessReason, setExcessReason] = useState("");
 
-  const rows = pending
+  const rows = items
     .map((it) => ({
       rawMaterial: materialId(it),
       quantity: Number(qty[materialId(it)]) || 0,
@@ -102,8 +109,28 @@ function InwardForm({
     }))
     .filter((r) => r.quantity > 0);
 
-  if (pending.length === 0) {
-    return <EmptyState title="Fully received" description="All items on this PO have been received." />;
+  /** Excess over the line's ordered quantity, and whether it needs a reason. */
+  const overage = items
+    .map((it) => {
+      const entered = Number(qty[materialId(it)]) || 0;
+      if (entered <= 0) return null;
+      const excess = (it.received ?? 0) + entered - it.quantity;
+      if (excess <= 0) return null;
+      return {
+        name: materialName(it),
+        excess,
+        // Mirrors OVER_RECEIPT_TOLERANCE on the server. Kept in step so
+        // the form asks for a reason exactly when the server will.
+        needsReason: excess > it.quantity * 0.1,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  const reasonRequired = overage.some((o) => o.needsReason);
+  const reasonMissing = reasonRequired && excessReason.trim().length < 5;
+
+  if (items.length === 0) {
+    return <EmptyState title="Nothing on this PO" description="This purchase order has no lines." />;
   }
 
   return (
@@ -117,7 +144,7 @@ function InwardForm({
         <span>Shade</span>
       </div>
       <div className="space-y-2">
-        {pending.map((it) => {
+        {items.map((it) => {
           const idKey = materialId(it);
           const remaining = it.quantity - (it.received ?? 0);
           return (
@@ -125,14 +152,17 @@ function InwardForm({
               <div>
                 <p className="text-sm font-medium">{materialName(it)}</p>
                 <p className="text-xs text-ink-400">
-                  {remaining.toLocaleString("en-IN")} of {it.quantity.toLocaleString("en-IN")} pending
+                  {remaining > 0
+                    ? `${remaining.toLocaleString("en-IN")} of ${it.quantity.toLocaleString("en-IN")} pending`
+                    : `fully received (${it.quantity.toLocaleString("en-IN")} ordered)`}
                 </p>
               </div>
+              {/* No max: over-receipt is allowed. The overage notice below
+                  says what it will cost — a reason, past 10%. */}
               <Input
                 type="number"
                 step="0.01"
                 min={0}
-                max={remaining}
                 aria-label={`Quantity received for ${materialName(it)}`}
                 placeholder="Qty"
                 value={qty[idKey] ?? ""}
@@ -154,6 +184,39 @@ function InwardForm({
           );
         })}
       </div>
+      {/* Say what is over and whether it needs explaining, before the
+          submit fails. A supplier sending a full bag instead of a part
+          one is routine; the notice is information, not an accusation. */}
+      {overage.length > 0 && (
+        <div
+          className={`rounded-lg px-3 py-2 text-sm ${
+            reasonRequired
+              ? "bg-status-warningBg text-status-warning"
+              : "bg-status-infoBg text-status-info"
+          }`}
+        >
+          <p>
+            {overage
+              .map((o) => `${o.name}: ${o.excess.toLocaleString("en-IN")} over`)
+              .join(" · ")}
+          </p>
+          <p className="mt-0.5 text-xs">
+            {reasonRequired
+              ? "Past the 10% tolerance — give a reason to record it."
+              : "Within the 10% tolerance, no reason needed."}
+          </p>
+        </div>
+      )}
+
+      {overage.length > 0 && (
+        <Input
+          label={reasonRequired ? "Reason for the excess (required)" : "Reason for the excess"}
+          placeholder="e.g. Supplier made up an earlier shortfall"
+          value={excessReason}
+          onChange={(e) => setExcessReason(e.target.value)}
+        />
+      )}
+
       <Input
         label="Remarks"
         placeholder="e.g. Invoice no, lot no"
@@ -163,10 +226,13 @@ function InwardForm({
       <div className="flex justify-end gap-2 pt-1">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button
-          disabled={rows.length === 0}
+          disabled={rows.length === 0 || reasonMissing}
           loading={submitting}
           onClick={() =>
-            onSubmit(rows.map((r) => ({ ...r, remarks: remarks || undefined })))
+            onSubmit(
+              rows.map((r) => ({ ...r, remarks: remarks || undefined })),
+              excessReason.trim() || undefined
+            )
           }
         >
           Record inward
@@ -468,8 +534,18 @@ export function PoDetailPage() {
                   </p>
                   <p className="text-xs text-ink-400">
                     {new Date(rec.inwardDate ?? rec.createdAt ?? "").toLocaleDateString()}
+                    {rec.lotNo && ` · lot ${rec.lotNo}`}
                     {rec.remarks && ` · ${rec.remarks}`}
                   </p>
+                  {/* An over-receipt is the thing someone opens this
+                      page to look for, so it gets its own line rather
+                      than being tacked onto the meta text above. */}
+                  {(rec.excessQuantity ?? 0) > 0 && (
+                    <p className="mt-0.5 text-xs text-status-warning">
+                      {rec.excessQuantity!.toLocaleString("en-IN")} over the ordered quantity
+                      {rec.excessReason ? ` — ${rec.excessReason}` : " (within tolerance)"}
+                    </p>
+                  )}
                 </div>
                 <span className="text-sm font-semibold tabular-nums text-status-success">
                   +{rec.quantity.toLocaleString("en-IN")}
@@ -489,9 +565,9 @@ export function PoDetailPage() {
           items={po.items}
           submitting={inward.isPending}
           onCancel={() => setInwardOpen(false)}
-          onSubmit={(rows) =>
+          onSubmit={(rows, excessReason) =>
             inward.mutate(
-              { poId: po._id, items: rows },
+              { poId: po._id, items: rows, excessReason },
               {
                 onSuccess: (res) => {
                   setInwardOpen(false);

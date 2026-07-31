@@ -58,6 +58,11 @@ export interface InwardRecord {
   inwardDate?: string;
   createdAt?: string;
   remarks?: string;
+  /** How much this receipt put the line over its ordered quantity. */
+  excessQuantity?: number;
+  /** Why, when the excess went past the free tolerance. */
+  excessReason?: string;
+  lotNo?: string;
 }
 
 export interface PoFormItem {
