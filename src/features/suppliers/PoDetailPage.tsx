@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
+import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
@@ -64,6 +65,83 @@ const itemColumns: Column<PoItem>[] = [
   },
 ];
 
+/**
+ * Asks why a receipt went over what was ordered.
+ *
+ * Raised on submit rather than sitting in the form, because that is the
+ * moment the answer is needed and the only moment it is certain — a
+ * quantity typed and then corrected should not leave an explanation
+ * behind it.
+ *
+ * Every over-received line appears, not just the ones past tolerance.
+ * If the dialog is open anyway, someone noting "supplier rounded up to a
+ * full bag" against a small excess costs nothing and is worth having.
+ */
+function ExcessReasonDialog({
+  open,
+  lines,
+  reasons,
+  onChange,
+  onCancel,
+  onConfirm,
+  submitting,
+}: {
+  open: boolean;
+  lines: Array<{ id: string; name: string; excess: number; ordered: number; needsReason: boolean }>;
+  reasons: Record<string, string>;
+  onChange: (id: string, value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  submitting: boolean;
+}) {
+  const blocked = lines.some(
+    (l) => l.needsReason && (reasons[l.id] ?? "").trim().length < 5
+  );
+
+  return (
+    <Modal open={open} onClose={onCancel} title="This delivery is over the order" width="max-w-lg">
+      <p className="text-sm text-ink-600">
+        A supplier sending more than ordered is routine — a full bag rather than a
+        part one. Anything past 10% of the ordered quantity needs a reason on record.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        {lines.map((l) => (
+          <div key={l.id}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-sm font-medium">{l.name}</span>
+              <span
+                className={`text-xs ${
+                  l.needsReason ? "text-status-warning" : "text-ink-400"
+                }`}
+              >
+                {l.excess.toLocaleString("en-IN")} over {l.ordered.toLocaleString("en-IN")}
+                {l.needsReason ? " · past 10%" : " · within 10%"}
+              </span>
+            </div>
+            <Input
+              className="mt-1"
+              aria-label={`Reason for the excess on ${l.name}`}
+              placeholder={l.needsReason ? "Reason (required)" : "Reason (optional)"}
+              value={reasons[l.id] ?? ""}
+              onChange={(e) => onChange(l.id, e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 flex justify-end gap-2">
+        <Button variant="secondary" onClick={onCancel} disabled={submitting}>
+          Back
+        </Button>
+        <Button disabled={blocked} loading={submitting} onClick={onConfirm}>
+          Record inward
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
 // Exported for its own tests — the over-receipt rules live here, and
 // reaching them through the page would drag in routing and queries.
 export function InwardForm({
@@ -101,6 +179,7 @@ export function InwardForm({
   const [shades, setShades] = useState<Record<string, string>>({});
   const [remarks, setRemarks] = useState("");
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [reasonOpen, setReasonOpen] = useState(false);
 
   /**
    * How far this line goes over what was ordered, and whether that needs
@@ -132,12 +211,30 @@ export function InwardForm({
     })
     .filter((r) => r.quantity > 0);
 
-  // Any line that is over its tolerance and still unexplained blocks the
-  // submit. Named per line, so the operator is told which one.
-  const unexplained = items.filter((it) => {
-    const over = overageFor(it);
-    return over?.needsReason && (reasons[materialId(it)] ?? "").trim().length < 5;
-  });
+  /** Every line currently over its order, for the reason dialog. */
+  const overLines = items
+    .map((it) => {
+      const over = overageFor(it);
+      if (!over) return null;
+      return {
+        id: materialId(it),
+        name: materialName(it),
+        excess: over.excess,
+        ordered: it.quantity,
+        needsReason: over.needsReason,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  const submit = () => onSubmit(rows.map((r) => ({ ...r, remarks: remarks || undefined })));
+
+  // Ask only when the answer is actually required. A delivery inside the
+  // tolerance goes straight through — stopping to justify a rounded-up
+  // bag every time is how a control turns into a rubber stamp.
+  const trySubmit = () => {
+    if (overLines.some((l) => l.needsReason)) setReasonOpen(true);
+    else submit();
+  };
 
   if (items.length === 0) {
     return <EmptyState title="Nothing on this PO" description="This purchase order has no lines." />;
@@ -194,41 +291,21 @@ export function InwardForm({
               />
             </div>
 
-            {/* The excess and its explanation sit on the line they belong
-                to. A supplier sending a full bag instead of a part one is
-                routine, so this is information, not an accusation — and
-                two lines can be over for entirely different reasons. */}
+            {/* Live feedback as the quantity is typed, so the overage is
+                visible before committing. The reason itself is asked for
+                on submit — see ExcessReasonDialog. */}
             {over && (
-              <div
-                className={`mt-1 rounded-lg px-3 py-2 ${
-                  over.needsReason
-                    ? "bg-status-warningBg"
-                    : "bg-status-infoBg"
+              <p
+                className={`mt-1 text-xs ${
+                  over.needsReason ? "text-status-warning" : "text-ink-400"
                 }`}
               >
-                <p
-                  className={`text-xs ${
-                    over.needsReason ? "text-status-warning" : "text-status-info"
-                  }`}
-                >
-                  {over.excess.toLocaleString("en-IN")} over the{" "}
-                  {it.quantity.toLocaleString("en-IN")} ordered
-                  {over.needsReason
-                    ? " — past the 10% tolerance, so this needs a reason."
-                    : " — within the 10% tolerance, no reason needed."}
-                </p>
-                <Input
-                  className="mt-1.5"
-                  aria-label={`Reason for the excess on ${materialName(it)}`}
-                  placeholder={
-                    over.needsReason
-                      ? "Reason (required) — e.g. made up an earlier shortfall"
-                      : "Reason (optional)"
-                  }
-                  value={reasons[idKey] ?? ""}
-                  onChange={(e) => setReasons((r) => ({ ...r, [idKey]: e.target.value }))}
-                />
-              </div>
+                {over.excess.toLocaleString("en-IN")} over the{" "}
+                {it.quantity.toLocaleString("en-IN")} ordered
+                {over.needsReason
+                  ? " — past the 10% tolerance, so a reason will be asked for."
+                  : " — within the 10% tolerance."}
+              </p>
             )}
             </div>
           );
@@ -241,22 +318,26 @@ export function InwardForm({
         onChange={(e) => setRemarks(e.target.value)}
       />
       <div className="flex items-center justify-end gap-2 pt-1">
-        {/* Name the line that is blocking, rather than leaving a disabled
-            button with no explanation. */}
-        {unexplained.length > 0 && (
-          <p className="mr-auto text-xs text-status-warning">
-            Reason needed for {unexplained.map(materialName).join(", ")}
-          </p>
-        )}
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button
-          disabled={rows.length === 0 || unexplained.length > 0}
-          loading={submitting}
-          onClick={() => onSubmit(rows.map((r) => ({ ...r, remarks: remarks || undefined })))}
-        >
+        {/* Never disabled for a missing reason — the dialog asks for it.
+            A dead button with no way to satisfy it is the worse option. */}
+        <Button disabled={rows.length === 0} loading={submitting} onClick={trySubmit}>
           Record inward
         </Button>
       </div>
+
+      <ExcessReasonDialog
+        open={reasonOpen}
+        lines={overLines}
+        reasons={reasons}
+        submitting={submitting}
+        onChange={(id, value) => setReasons((r) => ({ ...r, [id]: value }))}
+        onCancel={() => setReasonOpen(false)}
+        onConfirm={() => {
+          setReasonOpen(false);
+          submit();
+        }}
+      />
     </div>
   );
 }
