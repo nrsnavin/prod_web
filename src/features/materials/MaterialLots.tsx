@@ -30,40 +30,63 @@ const lotTone: Record<YarnLotStatus, ChipTone> = {
   closed: "neutral",
 };
 
-const lotSchema = z.object({
-  lotNo: z.string().min(1, "Lot number is required"),
-  quantity: z.coerce.number().positive("Quantity must be greater than zero"),
-  shade: z.string().optional(),
-  dyer: z.string().optional(),
-  remarks: z.string().optional(),
-});
-type LotValues = z.infer<typeof lotSchema>;
+/**
+ * A lot assigns stock that exists — the quantity is capped at what the
+ * material holds and has not already been placed in another lot. Without
+ * that it was free text, and a material holding 10 kg could carry a lot
+ * claiming 500.
+ */
+const makeLotSchema = (unplaced: number) =>
+  z.object({
+    lotNo: z.string().min(1, "Lot number is required"),
+    quantity: z.coerce
+      .number()
+      .positive("Quantity must be greater than zero")
+      .max(unplaced, `Only ${unplaced.toLocaleString("en-IN")} is unassigned`),
+    shade: z.string().optional(),
+    dyer: z.string().optional(),
+    remarks: z.string().optional(),
+  });
+type LotValues = z.infer<ReturnType<typeof makeLotSchema>>;
 
 function AddLotForm({
+  unplaced,
   submitting,
   onSubmit,
   onCancel,
 }: {
+  unplaced: number;
   submitting: boolean;
   onSubmit: (v: LotValues) => void;
   onCancel: () => void;
 }) {
   const { register, handleSubmit, formState } = useForm<LotValues>({
-    resolver: zodResolver(lotSchema),
+    resolver: zodResolver(makeLotSchema(unplaced)),
   });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    // noValidate: the browser's own constraint check on max blocks the
+    // submit silently, so the zod message explaining the cap never gets
+    // rendered. Every other form here does the same.
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <p className="text-sm text-ink-400">
         For yarn already on the rack. Lots normally open themselves when a
         purchase order is received with a lot number against the line.
       </p>
+      <p className="rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info">
+        <span className="font-semibold tabular-nums">
+          {unplaced.toLocaleString("en-IN")}
+        </span>{" "}
+        of this material is not yet assigned to a lot. A lot cannot claim more
+        than that.
+      </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Lot no" placeholder="e.g. D-4471" error={formState.errors.lotNo?.message} {...register("lotNo")} />
         <Input
-          label="Quantity (kg)"
+          label={`Quantity (kg) — up to ${unplaced.toLocaleString("en-IN")}`}
           type="number"
           step="0.01"
+          max={unplaced}
           error={formState.errors.quantity?.message}
           {...register("quantity")}
         />
@@ -129,7 +152,16 @@ function LotTrace({ lotId, onClose }: { lotId: string; onClose: () => void }) {
   );
 }
 
-export function MaterialLots({ materialId, lots }: { materialId: string; lots: YarnLot[] }) {
+export function MaterialLots({
+  materialId,
+  lots,
+  unplaced = 0,
+}: {
+  materialId: string;
+  lots: YarnLot[];
+  /** Stock not yet assigned to any lot — the ceiling for a new lot. */
+  unplaced?: number;
+}) {
   const { toast } = useToast();
   const { create, setStatus } = useLotMutations();
   const [addOpen, setAddOpen] = useState(false);
@@ -149,8 +181,32 @@ export function MaterialLots({ materialId, lots }: { materialId: string; lots: Y
               {onRack.toLocaleString("en-IN")} kg on the rack across open lots. Lot balances
               track physical yarn and will not match stock, which is committed at order approval.
             </p>
+            {/* What is left to assign. A lot is an assignment of stock that
+                exists, so this is the ceiling on opening one by hand. */}
+            <p className="text-xs">
+              {unplaced > 0 ? (
+                <span className="text-ink-600">
+                  <span className="font-semibold tabular-nums">
+                    {unplaced.toLocaleString("en-IN")}
+                  </span>{" "}
+                  not yet assigned to a lot
+                </span>
+              ) : (
+                <span className="text-ink-400">All stock is accounted for by lots</span>
+              )}
+            </p>
           </div>
-          <Button size="sm" variant="secondary" onClick={() => setAddOpen(true)}>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={unplaced <= 0}
+            title={
+              unplaced <= 0
+                ? "No unassigned stock — receive or adjust stock in first"
+                : undefined
+            }
+            onClick={() => setAddOpen(true)}
+          >
             <Plus className="h-4 w-4" /> Add lot
           </Button>
         </div>
@@ -230,6 +286,7 @@ export function MaterialLots({ materialId, lots }: { materialId: string; lots: Y
 
       <FormScreen open={addOpen} onClose={() => setAddOpen(false)} title="Add a dye lot">
         <AddLotForm
+          unplaced={unplaced}
           submitting={create.isPending}
           onCancel={() => setAddOpen(false)}
           onSubmit={(v) =>

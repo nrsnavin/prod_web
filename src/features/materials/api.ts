@@ -112,6 +112,8 @@ export const materialService = {
   async createLot(body: {
     rawMaterial: string;
     lotNo: string;
+    // Bounded server-side by the material's unassigned stock: a lot is an
+    // assignment of stock that exists, not a number typed from nothing.
     quantity: number;
     shade?: string;
     dyer?: string;

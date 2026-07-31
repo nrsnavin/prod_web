@@ -38,6 +38,12 @@ export interface RawMaterial {
     createdAt?: string;
   }>;
   lots?: YarnLot[];
+  /**
+   * Stock that exists but sits in no lot — the pool a hand-opened lot may
+   * draw on. Zero when lots already account for everything (or, in the
+   * window between order approval and batch issue, for more).
+   */
+  unplacedQty?: number;
 }
 
 // ── Dye lots ────────────────────────────────────────────────────────────

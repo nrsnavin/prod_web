@@ -280,7 +280,11 @@ export function MaterialDetailPage() {
         />
       </Card>
 
-      <MaterialLots materialId={material._id} lots={material.lots ?? []} />
+      <MaterialLots
+        materialId={material._id}
+        lots={material.lots ?? []}
+        unplaced={material.unplacedQty ?? 0}
+      />
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Stock movements</h3>

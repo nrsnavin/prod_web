@@ -31,8 +31,8 @@ const lot = (over: Partial<YarnLot> = {}): YarnLot => ({
   ...over,
 });
 
-const renderLots = (lots: YarnLot[] = []) =>
-  render(<MaterialLots materialId="mat1" lots={lots} />);
+const renderLots = (lots: YarnLot[] = [], unplaced = 500) =>
+  render(<MaterialLots materialId="mat1" lots={lots} unplaced={unplaced} />);
 
 describe("MaterialLots", () => {
   beforeEach(() => {
@@ -144,5 +144,59 @@ describe("MaterialLots", () => {
     renderLots([lot()]);
     await userEvent.click(screen.getByRole("button", { name: /trace/i }));
     expect(screen.getByText("Not issued yet")).toBeInTheDocument();
+  });
+});
+
+describe("a lot only claims stock that exists", () => {
+  beforeEach(() => {
+    createMutate.mockClear();
+    toast.mockClear();
+  });
+
+  it("reports what is still unassigned", () => {
+    renderLots([lot()], 120);
+    expect(screen.getByText(/not yet assigned to a lot/)).toBeInTheDocument();
+    expect(screen.getByText("120")).toBeInTheDocument();
+  });
+
+  it("says so when everything is already accounted for", () => {
+    renderLots([lot()], 0);
+    expect(screen.getByText("All stock is accounted for by lots")).toBeInTheDocument();
+  });
+
+  it("will not open the form with nothing left to assign", () => {
+    // The whole point: a lot is an assignment of stock that exists.
+    renderLots([lot()], 0);
+    expect(screen.getByRole("button", { name: /add lot/i })).toBeDisabled();
+  });
+
+  it("shows the ceiling on the quantity field", async () => {
+    renderLots([], 120);
+    await userEvent.click(screen.getByRole("button", { name: /add lot/i }));
+    expect(screen.getByLabelText(/Quantity \(kg\) — up to 120/)).toBeInTheDocument();
+  });
+
+  it("refuses a quantity beyond what is unassigned", async () => {
+    renderLots([], 120);
+    await userEvent.click(screen.getByRole("button", { name: /add lot/i }));
+    await userEvent.type(screen.getByLabelText(/lot no/i), "H-1");
+    await userEvent.type(screen.getByLabelText(/Quantity/i), "500");
+    await userEvent.click(screen.getByRole("button", { name: /open lot/i }));
+
+    expect(await screen.findByText(/Only 120 is unassigned/)).toBeInTheDocument();
+    expect(createMutate).not.toHaveBeenCalled();
+  });
+
+  it("accepts exactly what is unassigned", async () => {
+    renderLots([], 120);
+    await userEvent.click(screen.getByRole("button", { name: /add lot/i }));
+    await userEvent.type(screen.getByLabelText(/lot no/i), "H-1");
+    await userEvent.type(screen.getByLabelText(/Quantity/i), "120");
+    await userEvent.click(screen.getByRole("button", { name: /open lot/i }));
+
+    expect(createMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ lotNo: "H-1", quantity: 120 }),
+      expect.anything()
+    );
   });
 });
