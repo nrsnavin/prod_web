@@ -19,6 +19,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useMaterial, useMaterialMutations } from "./hooks";
 import { StockMovement } from "./types";
 import { MaterialForm } from "./MaterialForm";
+import { MaterialLots } from "./MaterialLots";
 
 const movementColumns: Column<StockMovement>[] = [
   { key: "date", header: "Date", render: (m) => new Date(m.date).toLocaleDateString() },
@@ -187,6 +188,8 @@ export function MaterialDetailPage() {
           ]}
         />
       </Card>
+
+      <MaterialLots materialId={material._id} lots={material.lots ?? []} />
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Stock movements</h3>

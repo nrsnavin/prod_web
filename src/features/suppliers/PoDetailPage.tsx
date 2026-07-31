@@ -72,12 +72,25 @@ function InwardForm({
 }: {
   items: PoItem[];
   submitting: boolean;
-  onSubmit: (rows: Array<{ rawMaterial: string; quantity: number; remarks?: string }>) => void;
+  // lotNo/shade were already being sent but were missing from this type.
+  // They matter now: a row carrying a lot number opens a YarnLot bucket
+  // server-side, which is what lets a warping batch be tied to the exact
+  // dye lot it was warped from.
+  onSubmit: (
+    rows: Array<{
+      rawMaterial: string;
+      quantity: number;
+      remarks?: string;
+      lotNo?: string;
+      shade?: string;
+    }>
+  ) => void;
   onCancel: () => void;
 }) {
   const pending = items.filter((it) => (it.received ?? 0) < it.quantity);
   const [qty, setQty] = useState<Record<string, string>>({});
   const [lots, setLots] = useState<Record<string, string>>({});
+  const [shades, setShades] = useState<Record<string, string>>({});
   const [remarks, setRemarks] = useState("");
 
   const rows = pending
@@ -85,6 +98,7 @@ function InwardForm({
       rawMaterial: materialId(it),
       quantity: Number(qty[materialId(it)]) || 0,
       lotNo: lots[materialId(it)]?.trim() || undefined,
+      shade: shades[materialId(it)]?.trim() || undefined,
     }))
     .filter((r) => r.quantity > 0);
 
@@ -96,17 +110,18 @@ function InwardForm({
     <div className="space-y-4">
       {/* Column headers label the repeating row inputs below — the inputs
           themselves only carried placeholders, which vanish once typed. */}
-      <div className="grid grid-cols-[1fr_100px_110px] gap-2 px-1 text-xs font-medium text-ink-400">
+      <div className="grid grid-cols-[1fr_90px_100px_100px] gap-2 px-1 text-xs font-medium text-ink-400">
         <span>Material</span>
         <span>Qty received</span>
         <span>Lot no</span>
+        <span>Shade</span>
       </div>
       <div className="space-y-2">
         {pending.map((it) => {
           const idKey = materialId(it);
           const remaining = it.quantity - (it.received ?? 0);
           return (
-            <div key={idKey} className="grid grid-cols-[1fr_100px_110px] gap-2 items-center">
+            <div key={idKey} className="grid grid-cols-[1fr_90px_100px_100px] gap-2 items-center">
               <div>
                 <p className="text-sm font-medium">{materialName(it)}</p>
                 <p className="text-xs text-ink-400">
@@ -128,6 +143,12 @@ function InwardForm({
                 placeholder="Lot no"
                 value={lots[idKey] ?? ""}
                 onChange={(e) => setLots((l) => ({ ...l, [idKey]: e.target.value }))}
+              />
+              <Input
+                aria-label={`Shade for ${materialName(it)}`}
+                placeholder="Shade"
+                value={shades[idKey] ?? ""}
+                onChange={(e) => setShades((s) => ({ ...s, [idKey]: e.target.value }))}
               />
             </div>
           );

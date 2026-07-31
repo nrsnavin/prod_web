@@ -4,6 +4,7 @@ import { ProgrammeStatus } from "./types";
 
 const WARP_KEY = "warpings";
 const COVER_KEY = "coverings";
+const BATCH_KEY = "warping-batches";
 
 export function useWarpings(params: { status: ProgrammeStatus | "all"; search: string; page: number }) {
   return useQuery({
@@ -56,6 +57,30 @@ export function useWarpingMutations() {
     onSuccess: invalidate,
   });
   return { start, complete, cancel, createPlan, deletePlan };
+}
+
+export function useWarpingBatches(warpingId: string | undefined) {
+  return useQuery({
+    queryKey: [BATCH_KEY, warpingId],
+    queryFn: () => warpingService.batches(warpingId!),
+    enabled: !!warpingId,
+  });
+}
+
+export function useBatchMutations() {
+  const qc = useQueryClient();
+  // Issuing draws yarn off a lot, so the material pages and lot pickers
+  // are stale too — not just the batch list.
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: [BATCH_KEY] });
+    qc.invalidateQueries({ queryKey: ["yarn-lots"] });
+    qc.invalidateQueries({ queryKey: ["materials"] });
+  };
+  const create = useMutation({ mutationFn: warpingService.createBatch, onSuccess: invalidate });
+  const issue = useMutation({ mutationFn: warpingService.issueBatch, onSuccess: invalidate });
+  const complete = useMutation({ mutationFn: warpingService.completeBatch, onSuccess: invalidate });
+  const cancel = useMutation({ mutationFn: warpingService.cancelBatch, onSuccess: invalidate });
+  return { create, issue, complete, cancel };
 }
 
 export function useCoverings(params: { status: ProgrammeStatus | "all"; search: string; page: number }) {

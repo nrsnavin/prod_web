@@ -33,6 +33,50 @@ export interface RawMaterial {
     date?: string;
     createdAt?: string;
   }>;
+  lots?: YarnLot[];
+}
+
+// ── Dye lots ────────────────────────────────────────────────────────────
+// A lot is a bucket of one material, dyed together and so of one shade.
+// Its balance is deliberately NOT a subdivision that adds up to
+// `RawMaterial.stock`: stock is debited at order approval, a lot is drawn
+// when the yarn physically leaves the rack for a warping batch. See
+// prod/models/YarnLot.js.
+export type YarnLotStatus = "open" | "exhausted" | "quarantined" | "closed";
+
+export interface YarnLot {
+  _id: string;
+  rawMaterial: { _id: string; name: string; category?: string } | string;
+  lotNo: string;
+  shade?: string;
+  dyer?: string;
+  supplier?: { _id: string; name: string } | string | null;
+  receivedDate?: string;
+  receivedQty: number;
+  consumedQty: number;
+  /** Virtual on the server — receivedQty − consumedQty, never negative. */
+  balance: number;
+  status: YarnLotStatus;
+  remarks?: string;
+}
+
+/** One hop of a lot's forward trail — see GET /yarn-lots/:id/trace. */
+export interface LotTraceEntry {
+  batchId: string;
+  batchNo: string;
+  status: "planned" | "issued" | "completed" | "cancelled";
+  beamNos: number[];
+  issuedDate?: string;
+  completedDate?: string;
+  quantity: number;
+  job: { _id: string; jobOrderNo: number; status?: string } | null;
+  order: { _id: string; orderNo?: number; po?: string; customer: string | null } | null;
+}
+
+export interface LotTrace {
+  lot: YarnLot;
+  batches: LotTraceEntry[];
+  issuedQty: number;
 }
 
 export interface MaterialFormValues {

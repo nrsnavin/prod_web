@@ -75,7 +75,7 @@ export function usePoMutations() {
       items,
     }: {
       poId: string;
-      items: Array<{ rawMaterial: string; quantity: number; remarks?: string; lotNo?: string }>;
+      items: Array<{ rawMaterial: string; quantity: number; remarks?: string; lotNo?: string; shade?: string }>;
     }) => poService.inwardStock(poId, items),
     onSuccess: invalidate,
   });

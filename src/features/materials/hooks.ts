@@ -3,6 +3,7 @@ import { materialService } from "./api";
 import { MaterialFormValues } from "./types";
 
 const KEY = "materials";
+const LOT_KEY = "yarn-lots";
 
 export function useMaterials(params: { search: string; category: string; lowStock: boolean }) {
   return useQuery({
@@ -34,6 +35,56 @@ export function useSupplierOptions() {
     queryFn: () => materialService.supplierOptions(),
     staleTime: 5 * 60_000,
   });
+}
+
+export function useYarnLots(params: {
+  material?: string;
+  issuable?: boolean;
+  enabled?: boolean;
+}) {
+  return useQuery({
+    queryKey: [LOT_KEY, params.material, params.issuable],
+    queryFn: () =>
+      materialService.lots({ material: params.material, issuable: params.issuable }),
+    enabled: params.enabled !== false && !!params.material,
+  });
+}
+
+export function useLotTrace(id: string | undefined) {
+  return useQuery({
+    queryKey: [LOT_KEY, "trace", id],
+    queryFn: () => materialService.traceLot(id!),
+    enabled: !!id,
+  });
+}
+
+export function useLotMutations() {
+  const qc = useQueryClient();
+  // A lot move changes the material detail page too — its Lots panel is
+  // served by the material query, not the lot one.
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: [LOT_KEY] });
+    qc.invalidateQueries({ queryKey: [KEY] });
+  };
+
+  const create = useMutation({
+    mutationFn: (body: Parameters<typeof materialService.createLot>[0]) =>
+      materialService.createLot(body),
+    onSuccess: invalidate,
+  });
+  const setStatus = useMutation({
+    mutationFn: ({
+      id,
+      status,
+      remarks,
+    }: {
+      id: string;
+      status: "open" | "quarantined" | "closed";
+      remarks?: string;
+    }) => materialService.setLotStatus(id, status, remarks),
+    onSuccess: invalidate,
+  });
+  return { create, setStatus };
 }
 
 export function useMaterialMutations() {

@@ -1,5 +1,12 @@
 import { httpClient } from "@/core/http/httpClient";
-import { Covering, ProgrammeStatus, Warping, WarpingPlan, WarpYarnOption } from "./types";
+import {
+  Covering,
+  ProgrammeStatus,
+  Warping,
+  WarpingBatch,
+  WarpingPlan,
+  WarpYarnOption,
+} from "./types";
 
 export const warpingService = {
   async list(params: { status: ProgrammeStatus | "all"; search: string; page: number }) {
@@ -55,6 +62,32 @@ export const warpingService = {
 
   optimizeLayout: (warpingId: string, capacity = 600): Promise<OptimizedLayout> =>
     httpClient.get<OptimizedLayout>(`/warping/optimize-layout/${warpingId}`, { capacity }),
+
+  // ── Batches ───────────────────────────────────────────────────────
+  async batches(warpingId: string): Promise<WarpingBatch[]> {
+    const res = await httpClient.get<{ success: boolean; batches: WarpingBatch[] }>(
+      "/warping/batch/list",
+      { warpingId }
+    );
+    return res.batches;
+  },
+
+  async createBatch(body: {
+    warpingId: string;
+    beamNos: number[];
+    allocations: Array<{ rawMaterial: string; yarnLot: string; quantity: number }>;
+    remarks?: string;
+  }): Promise<WarpingBatch> {
+    const res = await httpClient.post<{ success: boolean; batch: WarpingBatch }>(
+      "/warping/batch/create",
+      body
+    );
+    return res.batch;
+  },
+
+  issueBatch: (id: string) => httpClient.post(`/warping/batch/${id}/issue`, {}),
+  completeBatch: (id: string) => httpClient.post(`/warping/batch/${id}/complete`, {}),
+  cancelBatch: (id: string) => httpClient.patch(`/warping/batch/${id}/cancel`, {}),
 };
 
 export interface OptimizedBeam {

@@ -66,3 +66,33 @@ export interface WarpYarnOption {
   id: string;
   name: string;
 }
+
+// ── Batches ─────────────────────────────────────────────────────────────
+// A plan says what to build; a batch records which dye lots were actually
+// drawn to build it. One plan is routinely run over several sittings from
+// different lots, which is the whole reason the lot is worth recording.
+export type BatchStatus = "planned" | "issued" | "completed" | "cancelled";
+
+export interface BatchAllocation {
+  rawMaterial: string;
+  yarnLot: string | { _id: string; lotNo: string; shade?: string; status?: string };
+  /** Snapshots taken at issue time, so the trail survives the lot record. */
+  lotNo?: string;
+  shade?: string;
+  materialName?: string;
+  quantity: number;
+}
+
+export interface WarpingBatch {
+  _id: string;
+  batchNo: string;
+  warping: string;
+  job?: { _id: string; jobOrderNo: number; status?: string } | string | null;
+  beamNos: number[];
+  allocations: BatchAllocation[];
+  status: BatchStatus;
+  issuedDate?: string;
+  completedDate?: string;
+  machine?: { _id: string; ID?: string } | string | null;
+  remarks?: string;
+}

@@ -18,6 +18,7 @@ import { useWarping, useWarpingPlan, useWarpingMutations } from "./hooks";
 import { ProgrammeChip, ElasticLines } from "./programmeShared";
 import { WarpingPlanForm } from "./WarpingPlanForm";
 import { WarpingProgrammeSheet, BeamLabels } from "./WarpingPrints";
+import { WarpingBatches } from "./WarpingBatches";
 
 export function WarpingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -212,6 +213,8 @@ export function WarpingDetailPage() {
           )}
         </Card>
       </div>
+
+      <WarpingBatches warpingId={warping._id} plan={plan.data?.plan} />
 
       <WarpingProgrammeSheet
         open={printOpen === "sheet"}

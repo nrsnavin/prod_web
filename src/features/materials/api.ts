@@ -1,10 +1,13 @@
 import { httpClient } from "@/core/http/httpClient";
 import {
   BulkPriceResult,
+  LotTrace,
   MaterialFormValues,
   RawMaterial,
   ReplenishmentForecast,
   SupplierOption,
+  YarnLot,
+  YarnLotStatus,
 } from "./types";
 
 export const materialService = {
@@ -69,6 +72,56 @@ export const materialService = {
       updates,
       reason,
     });
+  },
+
+  // ── Dye lots ──────────────────────────────────────────────────────
+  async lots(params: {
+    material?: string;
+    status?: YarnLotStatus | "all";
+    issuable?: boolean;
+    search?: string;
+  }): Promise<YarnLot[]> {
+    const query: Record<string, unknown> = {};
+    if (params.material) query.material = params.material;
+    if (params.status) query.status = params.status;
+    if (params.issuable) query.issuable = "true";
+    if (params.search) query.search = params.search;
+    const res = await httpClient.get<{ success: boolean; lots: YarnLot[] }>(
+      "/yarn-lots/list",
+      query
+    );
+    return res.lots;
+  },
+
+  async createLot(body: {
+    rawMaterial: string;
+    lotNo: string;
+    quantity: number;
+    shade?: string;
+    dyer?: string;
+    remarks?: string;
+  }): Promise<YarnLot> {
+    const res = await httpClient.post<{ success: boolean; lot: YarnLot }>(
+      "/yarn-lots/create",
+      body
+    );
+    return res.lot;
+  },
+
+  async setLotStatus(
+    id: string,
+    status: "open" | "quarantined" | "closed",
+    remarks?: string
+  ): Promise<YarnLot> {
+    const res = await httpClient.patch<{ success: boolean; lot: YarnLot }>(
+      `/yarn-lots/${id}/status`,
+      { status, remarks }
+    );
+    return res.lot;
+  },
+
+  traceLot(id: string): Promise<LotTrace> {
+    return httpClient.get<LotTrace>(`/yarn-lots/${id}/trace`);
   },
 
   async supplierOptions(search?: string): Promise<SupplierOption[]> {
