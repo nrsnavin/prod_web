@@ -85,8 +85,10 @@ export function InwardForm({
       remarks?: string;
       lotNo?: string;
       shade?: string;
-    }>,
-    excessReason?: string
+      // Per row, not per submit: two materials can both be over for
+      // entirely different reasons, and one shared box cannot say so.
+      excessReason?: string;
+    }>
   ) => void;
   onCancel: () => void;
 }) {
@@ -98,36 +100,44 @@ export function InwardForm({
   const [lots, setLots] = useState<Record<string, string>>({});
   const [shades, setShades] = useState<Record<string, string>>({});
   const [remarks, setRemarks] = useState("");
-  const [excessReason, setExcessReason] = useState("");
+  const [reasons, setReasons] = useState<Record<string, string>>({});
+
+  /**
+   * How far this line goes over what was ordered, and whether that needs
+   * explaining. Measured against the ordered quantity rather than what is
+   * still pending, matching OVER_RECEIPT_TOLERANCE on the server so the
+   * form asks for a reason exactly when the server would refuse without
+   * one — no round trip to find out.
+   */
+  const overageFor = (it: PoItem) => {
+    const entered = Number(qty[materialId(it)]) || 0;
+    if (entered <= 0) return null;
+    const excess = (it.received ?? 0) + entered - it.quantity;
+    if (excess <= 0) return null;
+    return { excess, needsReason: excess > it.quantity * 0.1 };
+  };
 
   const rows = items
-    .map((it) => ({
-      rawMaterial: materialId(it),
-      quantity: Number(qty[materialId(it)]) || 0,
-      lotNo: lots[materialId(it)]?.trim() || undefined,
-      shade: shades[materialId(it)]?.trim() || undefined,
-    }))
-    .filter((r) => r.quantity > 0);
-
-  /** Excess over the line's ordered quantity, and whether it needs a reason. */
-  const overage = items
     .map((it) => {
-      const entered = Number(qty[materialId(it)]) || 0;
-      if (entered <= 0) return null;
-      const excess = (it.received ?? 0) + entered - it.quantity;
-      if (excess <= 0) return null;
+      const over = overageFor(it);
       return {
-        name: materialName(it),
-        excess,
-        // Mirrors OVER_RECEIPT_TOLERANCE on the server. Kept in step so
-        // the form asks for a reason exactly when the server will.
-        needsReason: excess > it.quantity * 0.1,
+        rawMaterial: materialId(it),
+        quantity: Number(qty[materialId(it)]) || 0,
+        lotNo: lots[materialId(it)]?.trim() || undefined,
+        shade: shades[materialId(it)]?.trim() || undefined,
+        // Only carried when the line is actually over — a reason left
+        // behind by an edited-down quantity would be misleading.
+        excessReason: over ? reasons[materialId(it)]?.trim() || undefined : undefined,
       };
     })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
+    .filter((r) => r.quantity > 0);
 
-  const reasonRequired = overage.some((o) => o.needsReason);
-  const reasonMissing = reasonRequired && excessReason.trim().length < 5;
+  // Any line that is over its tolerance and still unexplained blocks the
+  // submit. Named per line, so the operator is told which one.
+  const unexplained = items.filter((it) => {
+    const over = overageFor(it);
+    return over?.needsReason && (reasons[materialId(it)] ?? "").trim().length < 5;
+  });
 
   if (items.length === 0) {
     return <EmptyState title="Nothing on this PO" description="This purchase order has no lines." />;
@@ -147,8 +157,10 @@ export function InwardForm({
         {items.map((it) => {
           const idKey = materialId(it);
           const remaining = it.quantity - (it.received ?? 0);
+          const over = overageFor(it);
           return (
-            <div key={idKey} className="grid grid-cols-[1fr_90px_100px_100px] gap-2 items-center">
+            <div key={idKey}>
+            <div className="grid grid-cols-[1fr_90px_100px_100px] gap-2 items-center">
               <div>
                 <p className="text-sm font-medium">{materialName(it)}</p>
                 <p className="text-xs text-ink-400">
@@ -181,59 +193,66 @@ export function InwardForm({
                 onChange={(e) => setShades((s) => ({ ...s, [idKey]: e.target.value }))}
               />
             </div>
+
+            {/* The excess and its explanation sit on the line they belong
+                to. A supplier sending a full bag instead of a part one is
+                routine, so this is information, not an accusation — and
+                two lines can be over for entirely different reasons. */}
+            {over && (
+              <div
+                className={`mt-1 rounded-lg px-3 py-2 ${
+                  over.needsReason
+                    ? "bg-status-warningBg"
+                    : "bg-status-infoBg"
+                }`}
+              >
+                <p
+                  className={`text-xs ${
+                    over.needsReason ? "text-status-warning" : "text-status-info"
+                  }`}
+                >
+                  {over.excess.toLocaleString("en-IN")} over the{" "}
+                  {it.quantity.toLocaleString("en-IN")} ordered
+                  {over.needsReason
+                    ? " — past the 10% tolerance, so this needs a reason."
+                    : " — within the 10% tolerance, no reason needed."}
+                </p>
+                <Input
+                  className="mt-1.5"
+                  aria-label={`Reason for the excess on ${materialName(it)}`}
+                  placeholder={
+                    over.needsReason
+                      ? "Reason (required) — e.g. made up an earlier shortfall"
+                      : "Reason (optional)"
+                  }
+                  value={reasons[idKey] ?? ""}
+                  onChange={(e) => setReasons((r) => ({ ...r, [idKey]: e.target.value }))}
+                />
+              </div>
+            )}
+            </div>
           );
         })}
       </div>
-      {/* Say what is over and whether it needs explaining, before the
-          submit fails. A supplier sending a full bag instead of a part
-          one is routine; the notice is information, not an accusation. */}
-      {overage.length > 0 && (
-        <div
-          className={`rounded-lg px-3 py-2 text-sm ${
-            reasonRequired
-              ? "bg-status-warningBg text-status-warning"
-              : "bg-status-infoBg text-status-info"
-          }`}
-        >
-          <p>
-            {overage
-              .map((o) => `${o.name}: ${o.excess.toLocaleString("en-IN")} over`)
-              .join(" · ")}
-          </p>
-          <p className="mt-0.5 text-xs">
-            {reasonRequired
-              ? "Past the 10% tolerance — give a reason to record it."
-              : "Within the 10% tolerance, no reason needed."}
-          </p>
-        </div>
-      )}
-
-      {overage.length > 0 && (
-        <Input
-          label={reasonRequired ? "Reason for the excess (required)" : "Reason for the excess"}
-          placeholder="e.g. Supplier made up an earlier shortfall"
-          value={excessReason}
-          onChange={(e) => setExcessReason(e.target.value)}
-        />
-      )}
-
       <Input
         label="Remarks"
         placeholder="e.g. Invoice no, lot no"
         value={remarks}
         onChange={(e) => setRemarks(e.target.value)}
       />
-      <div className="flex justify-end gap-2 pt-1">
+      <div className="flex items-center justify-end gap-2 pt-1">
+        {/* Name the line that is blocking, rather than leaving a disabled
+            button with no explanation. */}
+        {unexplained.length > 0 && (
+          <p className="mr-auto text-xs text-status-warning">
+            Reason needed for {unexplained.map(materialName).join(", ")}
+          </p>
+        )}
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button
-          disabled={rows.length === 0 || reasonMissing}
+          disabled={rows.length === 0 || unexplained.length > 0}
           loading={submitting}
-          onClick={() =>
-            onSubmit(
-              rows.map((r) => ({ ...r, remarks: remarks || undefined })),
-              excessReason.trim() || undefined
-            )
-          }
+          onClick={() => onSubmit(rows.map((r) => ({ ...r, remarks: remarks || undefined })))}
         >
           Record inward
         </Button>
@@ -565,9 +584,9 @@ export function PoDetailPage() {
           items={po.items}
           submitting={inward.isPending}
           onCancel={() => setInwardOpen(false)}
-          onSubmit={(rows, excessReason) =>
+          onSubmit={(rows) =>
             inward.mutate(
-              { poId: po._id, items: rows, excessReason },
+              { poId: po._id, items: rows },
               {
                 onSuccess: (res) => {
                   setInwardOpen(false);

@@ -102,14 +102,23 @@ export const poService = {
 
   async inwardStock(
     poId: string,
-    items: Array<{ rawMaterial: string; quantity: number; inwardDate?: string; remarks?: string; lotNo?: string; shade?: string }>,
-    excessReason?: string
+    items: Array<{
+      rawMaterial: string;
+      quantity: number;
+      inwardDate?: string;
+      remarks?: string;
+      lotNo?: string;
+      shade?: string;
+      // Why this line went over what was ordered. Per row, because two
+      // materials can be over for entirely different reasons.
+      excessReason?: string;
+    }>
   ): Promise<{ message: string; poStatus: PoStatus }> {
     const res = await httpClient.post<{
       success: boolean;
       message: string;
       poStatus: PoStatus;
-    }>("/supplier/inward-stock", { poId, items, excessReason });
+    }>("/supplier/inward-stock", { poId, items });
     return res;
   },
 

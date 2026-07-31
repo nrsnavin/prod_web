@@ -73,12 +73,17 @@ export function usePoMutations() {
     mutationFn: ({
       poId,
       items,
-      excessReason,
     }: {
       poId: string;
-      items: Array<{ rawMaterial: string; quantity: number; remarks?: string; lotNo?: string; shade?: string }>;
-      excessReason?: string;
-    }) => poService.inwardStock(poId, items, excessReason),
+      items: Array<{
+        rawMaterial: string;
+        quantity: number;
+        remarks?: string;
+        lotNo?: string;
+        shade?: string;
+        excessReason?: string;
+      }>;
+    }) => poService.inwardStock(poId, items),
     onSuccess: invalidate,
   });
   const update = useMutation({
