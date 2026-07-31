@@ -169,3 +169,50 @@ export interface OrderEtaEstimate {
     consistencyScore: number;
   };
 }
+
+
+// ── Order-level material requirement ────────────────────────────────────
+export interface OrderMrpMaterial {
+  rawMaterial?: string;
+  name?: string;
+  category?: string;
+  requiredWeight?: number;
+  inStock?: number;
+  shortfall?: number;
+  unitPrice?: number;
+  stockKnown?: boolean;
+  supplierId?: string | null;
+  supplierName?: string;
+}
+
+export interface OrderMrp {
+  orderId: string;
+  orderNo: number | null;
+  customerPo: string;
+  customerName: string;
+  status: string;
+  materials: OrderMrpMaterial[];
+}
+
+export interface RaisePoResult {
+  success: boolean;
+  purchaseOrders: Array<{
+    poId: string;
+    poNo: number;
+    supplierId: string;
+    supplierName: string;
+    lines: Array<{ rawMaterial: string; name: string; quantity: number; price: number }>;
+    value: number;
+  }>;
+  /** Short materials that could not be ordered, and why. Never silent. */
+  skipped: Array<{ rawMaterial: string; name: string; reason: string }>;
+}
+
+export interface OrderPurchaseOrder {
+  _id: string;
+  poNo?: number;
+  status: string;
+  supplier?: { _id: string; name: string } | null;
+  forJob?: { _id: string; jobOrderNo: number } | null;
+  items: Array<{ quantity: number }>;
+}

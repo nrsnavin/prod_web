@@ -95,3 +95,35 @@ export function useOrderMutations() {
   });
   return { create, approve, cancel, startProduction, complete, update, remove };
 }
+
+
+export function useOrderMrp(id: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "mrp", id],
+    queryFn: () => orderService.mrp(id!),
+    enabled: !!id,
+  });
+}
+
+export function useOrderPurchaseOrders(id: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "purchase-orders", id],
+    queryFn: () => orderService.purchaseOrders(id!),
+    enabled: !!id,
+  });
+}
+
+export function useOrderRaisePo(orderId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { materials?: string[]; expectedDate?: string; notes?: string }) =>
+      orderService.raisePo(orderId!, body),
+    // The order's own PO list and the global one both go stale, and so
+    // does the MRP — buying does not change the requirement, but it
+    // changes what is on order against it.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "purchase-orders", orderId] });
+      qc.invalidateQueries({ queryKey: ["purchase-orders"] });
+    },
+  });
+}

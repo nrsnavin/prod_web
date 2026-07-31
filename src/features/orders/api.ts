@@ -1,5 +1,15 @@
 import { httpClient } from "@/core/http/httpClient";
-import { OrderDetail, OrderEtaEstimate, OrderFilter, OrderFormValues, OrderListPage } from "./types";
+import { config } from "@/app/config";
+import {
+  OrderDetail,
+  OrderEtaEstimate,
+  OrderFilter,
+  OrderFormValues,
+  OrderListPage,
+  OrderMrp,
+  OrderPurchaseOrder,
+  RaisePoResult,
+} from "./types";
 
 export const orderService = {
   // Paged. The endpoint used to return every order ever placed; it now caps
@@ -50,4 +60,32 @@ export const orderService = {
   }): Promise<OrderEtaEstimate> {
     return httpClient.post<OrderEtaEstimate>("/order/estimate-completion", body);
   },
+
+  // ── Material requirement for the whole order ──────────────────────
+  // The job-level MRP answers what one run needs. This answers what the
+  // order needs, including quantities no job has been raised for — which
+  // is the point at which yarn actually has to be bought.
+  async mrp(orderId: string): Promise<OrderMrp> {
+    const res = await httpClient.get<{ success: boolean; data: OrderMrp }>(
+      `/order/${orderId}/mrp`
+    );
+    return res.data;
+  },
+
+  raisePo(
+    orderId: string,
+    body: { materials?: string[]; expectedDate?: string; notes?: string } = {}
+  ): Promise<RaisePoResult> {
+    return httpClient.post<RaisePoResult>(`/order/${orderId}/raise-po`, body);
+  },
+
+  async purchaseOrders(orderId: string): Promise<OrderPurchaseOrder[]> {
+    const res = await httpClient.get<{ success: boolean; purchaseOrders: OrderPurchaseOrder[] }>(
+      `/order/${orderId}/purchase-orders`
+    );
+    return res.purchaseOrders;
+  },
+
+  statusReportPdfUrl: (orderId: string) =>
+    `${config.apiBaseUrl}/order/${orderId}/status-report.pdf`,
 };

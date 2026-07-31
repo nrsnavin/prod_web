@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2, Sparkles, FileText } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +16,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useOrder, useOrderMutations } from "./hooks";
+import { orderService } from "./api";
+import { OrderMaterialPo } from "./OrderMaterialPo";
 import { OrderElasticProgress, RawMaterialRequirement, StockShortfall } from "./types";
 import { jobRefId } from "./orderJobRef";
 import { OrderJobGlance } from "./OrderJobGlance";
@@ -74,12 +76,6 @@ const elasticColumns: Column<OrderElasticProgress>[] = [
   },
 ];
 
-function requirementName(r: RawMaterialRequirement): string {
-  if (r.name) return r.name;
-  if (typeof r.material === "object" && r.material) return r.material.name;
-  return "—";
-}
-
 // The order-detail endpoint names these `requiredWeight` and `inStock`;
 // the other spellings are fallbacks for any legacy caller.
 export function requirementRequired(r: RawMaterialRequirement): number {
@@ -88,35 +84,6 @@ export function requirementRequired(r: RawMaterialRequirement): number {
 export function requirementAvailable(r: RawMaterialRequirement): number | null {
   return r.inStock ?? r.available ?? r.stock ?? null;
 }
-
-const materialColumns: Column<RawMaterialRequirement>[] = [
-  { key: "name", header: "Raw material", render: (r) => requirementName(r) },
-  {
-    key: "required",
-    header: "Required",
-    align: "right",
-    render: (r) => requirementRequired(r).toLocaleString("en-IN"),
-  },
-  {
-    key: "available",
-    header: "In stock",
-    align: "right",
-    render: (r) => {
-      const avail = requirementAvailable(r);
-      // See MrpPage: a missing value means the server omitted the field,
-      // not that stock is zero.
-      if (avail == null) {
-        return (
-          <span className="text-ink-400" title="Stock not returned by the server for this material">
-            not available
-          </span>
-        );
-      }
-      const short = avail < requirementRequired(r);
-      return <span className={short ? "text-status-danger font-semibold" : ""}>{avail.toLocaleString("en-IN")}</span>;
-    },
-  },
-];
 
 function OrderEditModal({
   order,
@@ -302,6 +269,18 @@ export function OrderDetailPage() {
         subtitle={order.customer?.name}
         actions={
           <>
+            {/* Opens in a new tab rather than fetching — the report is a
+                document to hand over, and the browser's own PDF viewer
+                gives print and save for free. */}
+            <a
+              href={orderService.statusReportPdfUrl(order._id)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Button variant="secondary">
+                <FileText className="h-4 w-4" /> Status report
+              </Button>
+            </a>
             {(order.status === "Open" || order.status === "Approved") && (
               <Button variant="secondary" onClick={() => setPlanOpen(true)}>
                 <Sparkles className="h-4 w-4" /> Suggested plan
@@ -416,38 +395,30 @@ export function OrderDetailPage() {
         />
       </Card>
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <Card className="p-5">
-          <div className="flex items-baseline gap-3">
-            <h3 className="font-semibold">Jobs</h3>
-            {(order.jobs?.length ?? 0) > 0 && (
-              <span className="text-xs text-ink-400">Expand one to see its elastics</span>
-            )}
-          </div>
-          {(order.jobs?.length ?? 0) === 0 ? (
-            <EmptyState
-              title="No jobs yet"
-              description="Create a job to send this order to the floor."
-            />
-          ) : (
-            <ul className="mt-3 divide-y divide-ink-100">
-              {order.jobs.map((j, i) => (
-                <OrderJobGlance key={jobRefId(j) ?? i} job={j} />
-              ))}
-            </ul>
+      <Card className="mt-4 p-5">
+        <div className="flex items-baseline gap-3">
+          <h3 className="font-semibold">Jobs</h3>
+          {(order.jobs?.length ?? 0) > 0 && (
+            <span className="text-xs text-ink-400">Expand one to see its elastics</span>
           )}
-        </Card>
-
-        <Card>
-          <h3 className="font-semibold px-5 pt-5">Raw material requirement</h3>
-          <DataTable
-            columns={materialColumns}
-            rows={order.rawMaterialRequired ?? []}
-            rowKey={(r, ) => requirementName(r)}
-            emptyTitle="No requirement computed"
+        </div>
+        {(order.jobs?.length ?? 0) === 0 ? (
+          <EmptyState
+            title="No jobs yet"
+            description="Create a job to send this order to the floor."
           />
-        </Card>
-      </div>
+        ) : (
+          <ul className="mt-3 divide-y divide-ink-100">
+            {order.jobs.map((j, i) => (
+              <OrderJobGlance key={jobRefId(j) ?? i} job={j} />
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {/* Replaces the old read-only requirement table: same figures, but
+          live and with the shortfall actually orderable from here. */}
+      <OrderMaterialPo orderId={order._id} />
 
       {confirm && (
         <ConfirmDialog
