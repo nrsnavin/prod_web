@@ -1,0 +1,12 @@
+{
+  "name": "Jarvis ERP",
+  "short_name": "Jarvis",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "type": "image/png", "sizes": "180x180" }
+  ],
+  "theme_color": "#E23744",
+  "background_color": "#F8F8F8",
+  "display": "standalone",
+  "start_url": "/"
+}

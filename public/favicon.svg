@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Jarvis ERP">
+  <!--
+    Jarvis ERP tab mark. Brand red (the color-brand-500 token in
+    src/index.css, rgb(226 55 68)) with a white J drawn as a stroked
+    path rather than as text: a favicon
+    cannot rely on any font being present, and a 7px round-capped stroke
+    stays legible when the browser scales this to 16px.
+
+    Deliberately a solid tile in both themes — a mark that inverts is a
+    different-looking tab, and users find their tab by its colour.
+  -->
+  <rect width="64" height="64" rx="14" fill="#E23744"/>
+  <path
+    d="M20 18 H44 M37 18 V37 C37 45.5 28.5 48.5 22 43.5"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>
