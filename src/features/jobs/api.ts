@@ -1,6 +1,15 @@
 import { httpClient } from "@/core/http/httpClient";
 import { config } from "@/app/config";
-import { JobDetail, JobListItem, JobStatus, JobSummaryRow, JobYarnLots, MrpData } from "./types";
+import {
+  JobDetail,
+  JobListItem,
+  JobPurchaseOrder,
+  JobStatus,
+  JobSummaryRow,
+  JobYarnLots,
+  MrpData,
+  RaisePoResult,
+} from "./types";
 
 export const jobService = {
   async list(params: { page: number; limit?: number; status: JobStatus | "all"; search?: string }) {
@@ -60,6 +69,20 @@ export const jobService = {
   },
 
   mrpPdfUrl: (jobId: string) => `${config.apiBaseUrl}/job/${jobId}/mrp.pdf`,
+
+  raisePo(
+    jobId: string,
+    body: { materials?: string[]; expectedDate?: string; notes?: string } = {}
+  ): Promise<RaisePoResult> {
+    return httpClient.post<RaisePoResult>(`/job/${jobId}/raise-po`, body);
+  },
+
+  async jobPurchaseOrders(jobId: string): Promise<JobPurchaseOrder[]> {
+    const res = await httpClient.get<{ success: boolean; purchaseOrders: JobPurchaseOrder[] }>(
+      `/job/${jobId}/purchase-orders`
+    );
+    return res.purchaseOrders;
+  },
 
   async yarnLots(jobId: string): Promise<JobYarnLots> {
     const res = await httpClient.get<{ success: boolean; data: JobYarnLots }>(

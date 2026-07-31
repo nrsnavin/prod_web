@@ -44,6 +44,28 @@ export function useJobYarnLots(id: string | undefined) {
   });
 }
 
+export function useJobPurchaseOrders(id: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "purchase-orders", id],
+    queryFn: () => jobService.jobPurchaseOrders(id!),
+    enabled: !!id,
+  });
+}
+
+export function useRaisePo(jobId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { materials?: string[]; expectedDate?: string; notes?: string }) =>
+      jobService.raisePo(jobId!, body),
+    // Raising a PO changes what is on order for the job, and adds rows to
+    // the purchase-order list elsewhere in the app.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "purchase-orders", jobId] });
+      qc.invalidateQueries({ queryKey: ["purchase-orders"] });
+    },
+  });
+}
+
 export function useJobMutations() {
   const qc = useQueryClient();
   const invalidate = () => {

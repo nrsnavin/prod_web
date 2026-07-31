@@ -122,6 +122,9 @@ export interface MrpData {
   elastics: Array<{ name: string; quantity: number }>;
   materials: Array<{
     id?: string;
+    // The RawMaterial reference, as utils/materialRequirement.js names it.
+    rawMaterial?: string;
+    unitPrice?: number;
     name?: string;
     materialName?: string;
     category?: string;
@@ -136,6 +139,44 @@ export interface MrpData {
     shortfall?: number;
     // false when the RawMaterial reference could not be resolved.
     stockKnown?: boolean;
+    // Carried so a shortfall can be turned straight into a purchase
+    // order; null when the material has no supplier and so cannot be
+    // ordered at all.
+    supplierId?: string | null;
+    supplierName?: string;
+  }>;
+}
+
+// ── Raising POs from the shortfall ──────────────────────────────────────
+export interface RaisedPo {
+  poId: string;
+  poNo: number;
+  supplierId: string;
+  supplierName: string;
+  lines: Array<{ rawMaterial: string; name: string; quantity: number; price: number }>;
+  value: number;
+}
+
+export interface RaisePoResult {
+  success: boolean;
+  purchaseOrders: RaisedPo[];
+  /** Short materials that could not be ordered, and why. Never silent. */
+  skipped: Array<{ rawMaterial: string; name: string; reason: string }>;
+}
+
+/** A PO already raised against this job — what is on order to cover it. */
+export interface JobPurchaseOrder {
+  _id: string;
+  poNo?: number;
+  status: string;
+  createdAt?: string;
+  expectedDate?: string;
+  supplier?: { _id: string; name: string } | null;
+  items: Array<{
+    rawMaterial?: { _id: string; name: string } | string;
+    quantity: number;
+    receivedQuantity?: number;
+    price?: number;
   }>;
 }
 

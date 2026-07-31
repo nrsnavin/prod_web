@@ -10,6 +10,7 @@ import { useMrp } from "./hooks";
 import { jobService } from "./api";
 import { MrpData } from "./types";
 import { ProductionModeControl } from "./ProductionModeControl";
+import { MrpShortfallPo } from "./MrpShortfallPo";
 
 type MrpMaterial = MrpData["materials"][number];
 
@@ -112,6 +113,10 @@ export function MrpPage() {
           (utils/mrpPdf.js), so this no longer carries a print-only header
           pretending to be it. */}
       <div className="space-y-4">
+
+        {/* Above the material table on purpose: a shortfall is the thing
+            that needs doing, not a footnote to the numbers. */}
+        <MrpShortfallPo jobId={id!} materials={data.materials} />
 
         <Card className="p-5">
           <div className="flex flex-wrap items-center gap-2">
