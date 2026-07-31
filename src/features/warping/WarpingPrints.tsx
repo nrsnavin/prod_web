@@ -1,4 +1,7 @@
 import { PrintModal } from "@/components/print/PrintModal";
+import {
+  SheetHeader, SheetPane, SheetSection, SheetTable, SheetSignatures, Th, Td,
+} from "@/components/print/SheetForm";
 import { QrImg } from "@/components/print/QrImg";
 import { Warping, WarpingPlan } from "./types";
 import { elasticLineName } from "./programmeShared";
@@ -23,72 +26,80 @@ export function WarpingProgrammeSheet({
   return (
     <PrintModal open={open} onClose={onClose} title="Warping programme">
       <div className="text-ink-900">
-        <div className="flex items-start justify-between border-b-2 border-ink-900 pb-3">
-          <div>
-            <h1 className="text-xl font-bold">WARPING PROGRAMME</h1>
-            <p className="text-sm">Job J-{jobNo} · {warping.job?.customer?.name ?? ""}</p>
-          </div>
-          <div className="text-right text-sm">
-            <p>Opened: {warping.date ? new Date(warping.date).toLocaleDateString() : "—"}</p>
-            <p className="capitalize">Status: {warping.status.replace("_", " ")}</p>
-          </div>
-        </div>
+        <SheetHeader
+          title="Warping Programme"
+          subtitle="Beam build sheet for one job order"
+          fields={[
+            { label: "Job order", value: <strong>J-{jobNo}</strong> },
+            { label: "Opened", value: warping.date ? new Date(warping.date).toLocaleDateString() : "—" },
+            { label: "Status", value: <span className="capitalize">{warping.status.replace("_", " ")}</span> },
+            { label: "Beams", value: plan ? plan.noOfBeams : "—" },
+          ]}
+        />
 
-        <h2 className="mt-4 text-sm font-bold uppercase tracking-wide">Elastics</h2>
-        <table className="mt-1 w-full text-sm border border-ink-200">
-          <thead>
-            <tr className="border-b border-ink-200 bg-ink-100/50">
-              <th className="py-1.5 px-2 text-left">Elastic</th>
-              <th className="py-1.5 px-2 text-right">Quantity (m)</th>
+        <SheetPane label="Customer" className="mt-3">
+          <strong>{warping.job?.customer?.name ?? "—"}</strong>
+        </SheetPane>
+
+        <SheetSection>Elastics</SheetSection>
+        <SheetTable
+          head={
+            <tr>
+              <Th>Elastic</Th>
+              <Th align="right">Quantity (m)</Th>
             </tr>
-          </thead>
+          }
+        >
           <tbody>
             {(warping.elasticOrdered ?? []).map((l, i) => (
-              <tr key={i} className="border-b border-ink-100">
-                <td className="py-1.5 px-2 font-medium">{elasticLineName(l)}</td>
-                <td className="py-1.5 px-2 text-right tabular-nums">
-                  {l.quantity.toLocaleString("en-IN")}
-                </td>
+              <tr key={i}>
+                <Td>{elasticLineName(l)}</Td>
+                <Td align="right">{l.quantity.toLocaleString("en-IN")}</Td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </SheetTable>
 
-        <h2 className="mt-4 text-sm font-bold uppercase tracking-wide">
-          Beam plan {plan ? `(${plan.noOfBeams} beams)` : "(not created)"}
-        </h2>
+        <SheetSection>
+          Beam plan {plan ? `— ${plan.noOfBeams} beam(s)` : "— not created"}
+        </SheetSection>
         {plan &&
           plan.beams.map((beam, bi) => (
-            <table key={bi} className="mt-2 w-full text-sm border border-ink-200 print-label">
-              <thead>
-                <tr className="border-b border-ink-200 bg-ink-100/50">
-                  <th className="py-1.5 px-2 text-left" colSpan={2}>
+            <SheetTable
+              key={bi}
+              className="mb-2 print-label"
+              head={
+                <tr>
+                  <Th colSpan={2}>
                     Beam {beam.beamNo ?? bi + 1}
                     {beam.totalEnds ? ` — ${beam.totalEnds} total ends` : ""}
                     {beam.pairedBeamNo ? ` · run with beam ${beam.pairedBeamNo}` : ""}
-                  </th>
-                  <th className="py-1.5 px-2 text-right">Ends</th>
-                  <th className="py-1.5 px-2 text-right">Length (m)</th>
+                  </Th>
+                  <Th align="right">Ends</Th>
+                  <Th align="right">Length (m)</Th>
                 </tr>
-              </thead>
+              }
+            >
               <tbody>
-                {beam.sections.map((s, si) => (
-                  <tr key={si} className="border-b border-ink-100">
-                    <td className="py-1.5 px-2 w-10 text-ink-400">#{si + 1}</td>
-                    <td className="py-1.5 px-2 font-medium">{yarnName(s.warpYarn)}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">{s.ends}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">{s.maxMeters ?? "—"}</td>
+                {beam.sections.map((sec, si) => (
+                  <tr key={si}>
+                    <Td className="w-8 text-ink-600">{si + 1}</Td>
+                    <Td>{yarnName(sec.warpYarn)}</Td>
+                    <Td align="right">{sec.ends}</Td>
+                    <Td align="right">{sec.maxMeters ?? "—"}</Td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SheetTable>
           ))}
-        {plan?.remarks && <p className="mt-2 text-sm">Remarks: {plan.remarks}</p>}
 
-        <div className="mt-10 grid grid-cols-2 gap-6 text-sm">
-          <div className="border-t border-ink-400 pt-1">Warper's signature</div>
-          <div className="border-t border-ink-400 pt-1 text-right">Supervisor</div>
-        </div>
+        {plan?.remarks && (
+          <SheetPane label="Remarks" className="mt-3">
+            {plan.remarks}
+          </SheetPane>
+        )}
+
+        <SheetSignatures labels={["Warper", "Supervisor", "Checked by"]} />
       </div>
     </PrintModal>
   );

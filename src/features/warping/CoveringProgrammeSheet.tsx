@@ -1,4 +1,7 @@
 import { PrintModal } from "@/components/print/PrintModal";
+import {
+  SheetHeader, SheetPane, SheetSection, SheetTable, SheetSignatures, Th, Td,
+} from "@/components/print/SheetForm";
 import { Covering, ElasticOrderedLine } from "./types";
 
 // The detail endpoint populates each planned elastic with its composition,
@@ -46,83 +49,73 @@ export function CoveringProgrammeSheet({
   return (
     <PrintModal open={open} onClose={onClose} title="Covering programme">
       <div className="text-ink-900">
-        <div className="flex items-start justify-between border-b-2 border-ink-900 pb-3">
-          <div>
-            <h1 className="text-xl font-bold">COVERING PROGRAM</h1>
-            <p className="text-sm">
-              Job J-{covering.job?.jobOrderNo ?? "—"} · {covering.job?.customer?.name ?? ""}
-            </p>
-          </div>
-          <div className="text-right text-sm">
-            <p>Opened: {covering.date ? new Date(covering.date).toLocaleDateString() : "—"}</p>
-            <p className="capitalize">Status: {covering.status.replace("_", " ")}</p>
-          </div>
-        </div>
+        <SheetHeader
+          title="Covering Programme"
+          subtitle="Covering build sheet for one job order"
+          fields={[
+            { label: "Job order", value: <strong>J-{covering.job?.jobOrderNo ?? "—"}</strong> },
+            { label: "Opened", value: covering.date ? new Date(covering.date).toLocaleDateString() : "—" },
+            { label: "Status", value: <span className="capitalize">{covering.status.replace("_", " ")}</span> },
+            { label: "Lines", value: lines.length },
+          ]}
+        />
 
-        <h2 className="mt-4 text-sm font-bold uppercase tracking-wide">
-          Elastics ({lines.length} items)
-        </h2>
+        <SheetPane label="Customer" className="mt-3">
+          <strong>{covering.job?.customer?.name ?? "—"}</strong>
+        </SheetPane>
+
+        <SheetSection>Elastics — {lines.length} item(s)</SheetSection>
         <div className="overflow-x-auto">
-          <table className="mt-1 w-full text-sm border border-ink-200">
-            <thead>
-              <tr className="border-b border-ink-200 bg-ink-100/50 text-left">
-                <th className="py-1.5 px-2">#</th>
-                <th className="py-1.5 px-2">Elastic</th>
-                <th className="py-1.5 px-2 text-right">Qty (m)</th>
-                <th className="py-1.5 px-2">Warp spandex</th>
-                <th className="py-1.5 px-2">Sp. covering</th>
-                <th className="py-1.5 px-2 text-right">Sp. ends</th>
-                <th className="py-1.5 px-2 text-right">Total wt (g/m)</th>
-                <th className="py-1.5 px-2 text-right">Exp. produce (kg)</th>
+          <SheetTable
+            head={
+              <tr>
+                <Th>S.No</Th>
+                <Th>Elastic</Th>
+                <Th align="right">Qty (m)</Th>
+                <Th>Warp spandex</Th>
+                <Th>Sp. covering</Th>
+                <Th align="right">Sp. ends</Th>
+                <Th align="right">Total wt (g/m)</Th>
+                <Th align="right">Exp. produce (kg)</Th>
               </tr>
-            </thead>
+            }
+          >
             <tbody>
               {lines.map((line, i) => {
                 const el = asPopulated(line);
                 const wt = totalWeight(el);
                 return (
-                  <tr key={i} className="border-b border-ink-100">
-                    <td className="py-1.5 px-2 text-ink-400">{i + 1}</td>
-                    <td className="py-1.5 px-2 font-medium">{el?.name ?? "—"}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">
-                      {line.quantity.toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-1.5 px-2">{materialName(el?.warpSpandex)}</td>
-                    <td className="py-1.5 px-2">{materialName(el?.spandexCovering)}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">
-                      {el?.spandexEnds ?? "—"}
-                    </td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">
-                      {wt > 0 ? wt.toFixed(2) : "—"}
-                    </td>
-                    <td className="py-1.5 px-2 text-right tabular-nums">
-                      {wt > 0 ? ((line.quantity * wt) / 1000).toFixed(2) : "—"}
-                    </td>
+                  <tr key={i}>
+                    <Td>{i + 1}</Td>
+                    <Td>{el?.name ?? "—"}</Td>
+                    <Td align="right">{line.quantity.toLocaleString("en-IN")}</Td>
+                    <Td>{materialName(el?.warpSpandex)}</Td>
+                    <Td>{materialName(el?.spandexCovering)}</Td>
+                    <Td align="right">{el?.spandexEnds ?? "—"}</Td>
+                    <Td align="right">{wt > 0 ? wt.toFixed(2) : "—"}</Td>
+                    <Td align="right">{wt > 0 ? ((line.quantity * wt) / 1000).toFixed(2) : "—"}</Td>
                   </tr>
                 );
               })}
             </tbody>
             {expectedTotalKg > 0 && (
               <tfoot>
-                <tr className="border-t border-ink-300 font-semibold">
-                  <td className="py-1.5 px-2" colSpan={7}>
-                    Expected covering weight (total)
-                  </td>
-                  <td className="py-1.5 px-2 text-right tabular-nums">
-                    {expectedTotalKg.toFixed(2)} kg
-                  </td>
+                <tr className="font-semibold">
+                  <Td colSpan={7}>Expected covering weight (total)</Td>
+                  <Td align="right">{expectedTotalKg.toFixed(2)} kg</Td>
                 </tr>
               </tfoot>
             )}
-          </table>
+          </SheetTable>
         </div>
 
-        {covering.remarks && <p className="mt-2 text-sm">Remarks: {covering.remarks}</p>}
+        {covering.remarks && (
+          <SheetPane label="Remarks" className="mt-3">
+            {covering.remarks}
+          </SheetPane>
+        )}
 
-        <div className="mt-10 grid grid-cols-2 gap-6 text-sm">
-          <div className="border-t border-ink-400 pt-1">Covering operator</div>
-          <div className="border-t border-ink-400 pt-1 text-right">Supervisor</div>
-        </div>
+        <SheetSignatures labels={["Covering operator", "Supervisor", "Checked by"]} />
       </div>
     </PrintModal>
   );

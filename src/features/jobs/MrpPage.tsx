@@ -77,7 +77,7 @@ export function MrpPage() {
 
   return (
     <>
-      <div className="print:hidden">
+      <div>
         <Link
           to={`/jobs/${id}`}
           className="inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900 mb-2"
@@ -94,25 +94,26 @@ export function MrpPage() {
                   <Download className="h-4 w-4" /> Download PDF
                 </Button>
               </a>
-              <Button onClick={() => window.print()}>
-                <Printer className="h-4 w-4" /> Print
-              </Button>
+              {/* Print the SAME sheet that downloads — the server-rendered
+                  PDF. Printing the on-page HTML produced a second,
+                  different-looking MRP sheet for the same job, which is the
+                  divergence the delivery challan already had. */}
+              <a href={jobService.mrpPdfUrl(id!)} target="_blank" rel="noreferrer">
+                <Button>
+                  <Printer className="h-4 w-4" /> Print
+                </Button>
+              </a>
             </>
           }
         />
       </div>
 
-      <div className="print-area space-y-4">
-        {/* Print header (visible only on paper) */}
-        <div className="hidden print:block border-b border-ink-200 pb-3">
-          <h1 className="text-xl font-bold">Material Requirement Program — Job J-{data.jobOrderNo}</h1>
-          <p className="text-sm">
-            {data.customerName}
-            {data.orderNo ? ` · Order #${data.orderNo}` : ""} · {data.dateLabel}
-          </p>
-        </div>
+      {/* Screen view only. The printed/downloaded sheet is the server PDF
+          (utils/mrpPdf.js), so this no longer carries a print-only header
+          pretending to be it. */}
+      <div className="space-y-4">
 
-        <Card className="p-5 print:shadow-none print:p-0">
+        <Card className="p-5">
           <div className="flex flex-wrap items-center gap-2">
             <StatusChip tone="info">{data.status}</StatusChip>
             {/* Read-only badge on paper; the interactive control below is
@@ -124,7 +125,7 @@ export function MrpPage() {
             </StatusChip>
           </div>
 
-          <div className="mt-4 print:hidden">
+          <div className="mt-4">
             <h3 className="text-sm font-medium text-ink-600 mb-1.5">Production</h3>
             <ProductionModeControl
               jobId={id!}
@@ -144,7 +145,7 @@ export function MrpPage() {
           </ul>
         </Card>
 
-        <Card className="print:shadow-none">
+        <Card>
           <h3 className="font-semibold px-5 pt-5">Material requirement</h3>
           <DataTable
             columns={materialColumns}
