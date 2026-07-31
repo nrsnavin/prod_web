@@ -2,11 +2,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { InwardForm } from "./PoDetailPage";
+import { PoItem } from "./types";
 
 const onSubmit = vi.fn();
 
-const line = (over: Partial<{ quantity: number; received: number }> = {}) => ({
+// Typed as PoItem so the fixture has to keep up with the real line shape
+// rather than drifting into whatever the form happens to read today.
+const line = (over: Partial<PoItem> = {}): PoItem => ({
   rawMaterial: { _id: "m1", name: "Nylon 70D" },
+  price: 320,
   quantity: 100,
   received: 0,
   ...over,
