@@ -15,6 +15,7 @@ import { useElastic, useElasticMutations } from "./hooks";
 import { MaterialWeight } from "./types";
 import { ElasticForm } from "./ElasticForm";
 import { ElasticStockCard } from "./ElasticStockCard";
+import { ElasticWarpingTemplate } from "./ElasticWarpingTemplate";
 
 function materialName(mw?: MaterialWeight): string {
   if (!mw?.id) return "—";
@@ -206,6 +207,8 @@ export function ElasticDetailPage() {
           </div>
         </Card>
       </div>
+
+      <ElasticWarpingTemplate elastic={elastic} />
 
       <ElasticStockCard elasticId={elastic._id} />
 

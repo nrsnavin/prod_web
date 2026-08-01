@@ -7,6 +7,12 @@ import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { useMaterialsByCategory } from "./hooks";
 import { Elastic, ElasticFormValues, MaterialRef } from "./types";
+import {
+  WarpingTemplateEditor,
+  WithTemplate,
+  formToTemplate,
+  templateToForm,
+} from "./WarpingTemplateEditor";
 
 const materialWeight = z.object({
   id: z.string().min(1, "Select material"),
@@ -26,6 +32,26 @@ const schema = z.object({
   noOfHook: z.coerce.number().min(0).optional(),
   weight: z.coerce.number().min(0).optional(),
   conversionCost: z.coerce.number().min(0).optional(),
+  // Validated by shape only. A half-filled beam is not an error to
+  // shout about — formToTemplate drops the blanks on the way out, so a
+  // user who starts a template and changes their mind is not blocked
+  // from saving the elastic.
+  warpingPlanTemplate: z
+    .object({
+      beams: z.array(
+        z.object({
+          beamNo: z.coerce.number().optional(),
+          sections: z.array(
+            z.object({
+              warpYarn: z.string().optional(),
+              ends: z.coerce.number().min(0).optional(),
+              maxMeters: z.coerce.number().min(0).optional(),
+            })
+          ),
+        })
+      ),
+    })
+    .optional(),
 });
 
 function refId(mw?: { id?: MaterialRef | string | null }): string {
@@ -75,6 +101,7 @@ export function ElasticForm({
       noOfHook: initial?.noOfHook ?? 0,
       weight: initial?.weight ?? 0,
       conversionCost: initial?.conversionCost ?? initial?.costing?.conversionCost ?? 0,
+      warpingPlanTemplate: { beams: templateToForm(initial?.warpingPlanTemplate) },
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "warpYarn" });
@@ -82,7 +109,15 @@ export function ElasticForm({
   const m = materials.data;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <form
+      // The template is stripped of half-filled rows here rather than in
+      // the schema, so an abandoned beam never blocks saving the elastic.
+      onSubmit={handleSubmit((v) =>
+        onSubmit({ ...v, warpingPlanTemplate: formToTemplate(v.warpingPlanTemplate?.beams) })
+      )}
+      className="space-y-4"
+      noValidate
+    >
       <div className="grid grid-cols-2 gap-3">
         <Input label="Elastic name *" error={errors.name?.message} {...register("name")} />
         <Input label="Weave type" placeholder="e.g. Plain" {...register("weaveType")} />
@@ -178,6 +213,14 @@ export function ElasticForm({
         <Input label="Hooks" type="number" {...register("noOfHook")} />
         <Input label="Weight (g/m)" type="number" step="0.01" {...register("weight")} />
         <Input label="Conversion cost (₹)" type="number" step="0.01" {...register("conversionCost")} />
+      </div>
+
+      <div className="border-t border-ink-100 pt-4">
+        <WarpingTemplateEditor
+          control={control as unknown as import("react-hook-form").Control<WithTemplate>}
+          register={register as unknown as import("react-hook-form").UseFormRegister<WithTemplate>}
+          warpMaterials={m?.warp}
+        />
       </div>
 
       <div className="flex justify-end gap-2 pt-1">

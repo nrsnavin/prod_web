@@ -17,6 +17,26 @@ export interface ElasticCosting {
   details?: Array<{ name?: string; cost?: number; weight?: number }>;
 }
 
+/** A section of a beam in the elastic's warping template. */
+export interface TemplateSection {
+  warpYarn?: MaterialRef | string | null;
+  ends?: number;
+  maxMeters?: number;
+}
+export interface TemplateBeam {
+  beamNo?: number;
+  totalEnds?: number;
+  sections?: TemplateSection[];
+}
+/**
+ * How this elastic is warped, recorded once on the product rather than
+ * re-entered per job. The warping plan starts from a copy of it.
+ */
+export interface WarpingPlanTemplate {
+  noOfBeams?: number;
+  beams?: TemplateBeam[];
+}
+
 export interface Elastic {
   _id: string;
   name: string;
@@ -39,6 +59,7 @@ export interface Elastic {
   reservedStock?: number;
   conversionCost?: number;
   costing?: ElasticCosting;
+  warpingPlanTemplate?: WarpingPlanTemplate | null;
   createdAt?: string;
 }
 
@@ -62,4 +83,6 @@ export interface ElasticFormValues {
   noOfHook?: number;
   weight?: number;
   conversionCost?: number;
+  /** Omitted entirely when the form left the template empty. */
+  warpingPlanTemplate?: { beams: Array<{ beamNo: number; sections: Array<{ warpYarn: string; ends: number; maxMeters: number }> }> };
 }

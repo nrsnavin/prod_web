@@ -60,5 +60,10 @@ export function useElasticMutations() {
     mutationFn: (id: string) => elasticService.remove(id),
     onSuccess: invalidate,
   });
-  return { create, update, recalculate, setArchived, remove };
+  const saveTemplate = useMutation({
+    mutationFn: ({ id, template }: { id: string; template?: ElasticFormValues["warpingPlanTemplate"] }) =>
+      elasticService.saveWarpingTemplate(id, template),
+    onSuccess: invalidate,
+  });
+  return { create, update, recalculate, setArchived, remove, saveTemplate };
 }

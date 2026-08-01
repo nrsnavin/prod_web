@@ -36,6 +36,20 @@ export const elasticService = {
     return res.elastic;
   },
 
+  // Saving the template on its own, so the detail page can edit it
+  // without pushing the whole elastic (and re-running its costing)
+  // through /update-elastic. Passing an absent template clears it.
+  async saveWarpingTemplate(
+    elasticId: string,
+    template?: { beams: Array<{ beamNo: number; sections: Array<{ warpYarn: string; ends: number; maxMeters: number }> }> }
+  ): Promise<Elastic> {
+    const res = await httpClient.put<{ success: boolean; elastic: Elastic }>(
+      "/elastic/warping-plan-template",
+      { elasticId, template: template ?? null }
+    );
+    return res.elastic;
+  },
+
   async recalculateCost(elasticId: string): Promise<void> {
     await httpClient.post("/elastic/recalculate-elastic-cost", { elasticId });
   },
