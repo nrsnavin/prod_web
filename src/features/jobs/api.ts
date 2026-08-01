@@ -7,6 +7,7 @@ import {
   JobStatus,
   JobSummaryRow,
   JobYarnLots,
+  MachineAssignResult,
   MrpData,
   RaisePoResult,
   WeavingReadiness,
@@ -54,7 +55,7 @@ export const jobService = {
   },
 
   planWeaving: (jobId: string, machineId: string, headElasticMap: Record<string, string>) =>
-    httpClient.post("/job/plan-weaving", { jobId, machineId, headElasticMap }),
+    httpClient.post<MachineAssignResult>("/job/plan-weaving", { jobId, machineId, headElasticMap }),
 
   updateStatus: (jobId: string, nextStatus: JobStatus) =>
     httpClient.post("/job/update-status", { jobId, nextStatus }),
@@ -70,7 +71,7 @@ export const jobService = {
   },
 
   assignMachine: (jobId: string, machineId: string) =>
-    httpClient.post("/job/assign-machine", { jobId, machineId }),
+    httpClient.post<MachineAssignResult>("/job/assign-machine", { jobId, machineId }),
 
   async mrp(jobId: string): Promise<MrpData> {
     const res = await httpClient.get<{ success: boolean; data: MrpData }>(`/job/${jobId}/mrp`);

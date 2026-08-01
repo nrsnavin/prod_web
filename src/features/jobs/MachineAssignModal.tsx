@@ -22,7 +22,9 @@ function useFreeMachines(enabled: boolean) {
 }
 
 // Assign a free machine and map each head to one of the job's planned
-// elastics (POST /job/plan-weaving) — advances preparatory → weaving.
+// elastics (POST /job/plan-weaving). The machine is claimed either way;
+// the job only leaves preparatory if its warping and covering are both
+// completed, and the server says which it did.
 export function MachineAssignModal({
   job,
   open,
@@ -132,8 +134,20 @@ export function MachineAssignModal({
                   ),
                 },
                 {
-                  onSuccess: () => {
-                    toast(`Machine assigned — ${job.jobNo} is now weaving`, "success");
+                  // The machine is claimed either way. Whether the job
+                  // actually moved to weaving is the server's answer,
+                  // not an assumption — saying "is now weaving" when it
+                  // was held in preparatory is how the stage silently
+                  // disagrees with the screen.
+                  onSuccess: (res) => {
+                    if (res?.weavingHeld) {
+                      toast(
+                        `Machine assigned. ${job.jobNo} stays in preparatory — ${res.weavingHeld.blockers.join("; ")}.`,
+                        "info"
+                      );
+                    } else {
+                      toast(`Machine assigned — ${job.jobNo} is now weaving`, "success");
+                    }
                     onClose();
                   },
                   onError: (e) =>
@@ -142,7 +156,7 @@ export function MachineAssignModal({
               )
             }
           >
-            Assign & start weaving
+            Assign machine
           </Button>
         </div>
       </div>

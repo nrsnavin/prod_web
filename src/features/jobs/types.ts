@@ -235,3 +235,17 @@ export interface WeavingReadiness {
   stages: WeavingStageReadiness[];
   blockers: string[];
 }
+
+/**
+ * What /plan-weaving and /assign-machine answer with.
+ *
+ * The machine is claimed either way — reserving capacity before
+ * preparation finishes is legitimate. `weavingHeld` is present when the
+ * status was withheld because warping or covering is still running, and
+ * carries the reasons; the job advances on its own once they finish.
+ */
+export interface MachineAssignResult {
+  success: boolean;
+  message: string;
+  weavingHeld: { blockers: string[] } | null;
+}
