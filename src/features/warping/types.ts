@@ -88,11 +88,32 @@ export interface YarnLotStock {
   largestLot: number;
 }
 
+/**
+ * A beam as the elastics' warping templates define it — merged across
+ * every elastic on the job, exactly as the beams a warping raised on its
+ * own would get. Filling the form from anything else would let a
+ * hand-made plan disagree with an auto-made one for the same job.
+ */
+export interface TemplateBeam {
+  beamNo: number;
+  totalEnds: number;
+  elasticId: string | null;
+  elasticName: string;
+  sections: Array<{
+    warpYarnId: string;
+    warpYarnName: string;
+    ends: number;
+    maxMeters: number;
+  }>;
+}
+
 export interface PlanContext {
   success: boolean;
   jobId: string;
   warpYarns: WarpYarnOption[];
   lotStock: YarnLotStock[];
+  /** Empty when no elastic on the job carries a template. */
+  templateBeams?: TemplateBeam[];
 }
 
 // ── Batches ─────────────────────────────────────────────────────────────

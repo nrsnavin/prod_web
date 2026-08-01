@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Merge, Plus, Trash2, Unlink, X } from "lucide-react";
+import { Layers, Merge, Plus, Trash2, Unlink, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -12,7 +12,31 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { usePlanContext, useWarpingMutations } from "./hooks";
 import { combineBeams, separateBeam, totalEnds } from "./beamCombine";
-import { YarnLotStock } from "./types";
+import { TemplateBeam, YarnLotStock } from "./types";
+
+const emptySection = () => ({ warpYarn: "", ends: 0, maxMeters: 0, yarnLot: "" });
+const emptyBeams = () => [{ sections: [emptySection()] }];
+
+/**
+ * The elastics' templates, as beams this form can edit.
+ *
+ * The lot is deliberately left blank: a template says how the elastic is
+ * built, not which dye lot this run comes off, and that is decided here
+ * against what is actually in stock.
+ */
+function templateToBeams(beams: TemplateBeam[]) {
+  return beams.map((b) => ({
+    beamNo: b.beamNo,
+    elastic: b.elasticId,
+    pairedBeamNo: null,
+    sections: b.sections.map((s) => ({
+      warpYarn: s.warpYarnId,
+      ends: s.ends,
+      maxMeters: s.maxMeters,
+      yarnLot: "",
+    })),
+  }));
+}
 
 /**
  * Lot-wise stock for the yarns this plan can call on.
@@ -87,6 +111,11 @@ const schema = z.object({
     .array(
       z.object({
         beamNo: z.coerce.number().optional(),
+        // Which elastic this beam warps, when the plan was filled from a
+        // template. Carried so a hand-saved plan keeps the attribution
+        // an auto-created one has; the server drops anything that is not
+        // one of the job's own elastics.
+        elastic: z.string().nullable().optional(),
         // Set when this beam is run together with another; see beamCombine.ts.
         pairedBeamNo: z.coerce.number().nullable().optional(),
         sections: z.array(sectionSchema).min(1),
@@ -118,15 +147,43 @@ export function WarpingPlanForm({
     handleSubmit,
     getValues,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<PlanValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       remarks: "",
-      beams: [{ sections: [{ warpYarn: "", ends: 0, maxMeters: 0, yarnLot: "" }] }],
+      beams: emptyBeams(),
     },
   });
   const beams = useFieldArray({ control, name: "beams" });
+
+  // ── Fill from the elastics' templates ───────────────────────────────
+  // The context arrives after the form mounts, so the beams are replaced
+  // once it does. Guarded by a ref rather than by comparing values: it
+  // must fill exactly once, and never overwrite what someone has already
+  // typed while the request was in flight.
+  const templateBeams = context.data?.templateBeams ?? [];
+  const hasTemplate = templateBeams.length > 0;
+  const [filledFromTemplate, setFilledFromTemplate] = useState(false);
+  const prefilled = useRef(false);
+
+  const applyTemplate = () => {
+    beams.replace(templateToBeams(templateBeams));
+    setFilledFromTemplate(true);
+    prefilled.current = true;
+  };
+
+  useEffect(() => {
+    if (prefilled.current || !hasTemplate) return;
+    if (isDirty) { prefilled.current = true; return; }
+    applyTemplate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasTemplate]);
+
+  const clearBeams = () => {
+    beams.replace(emptyBeams());
+    setFilledFromTemplate(false);
+  };
 
   const yarnOptions = (yarns.data ?? []).map((y) => ({ value: y.id, label: y.name }));
 
@@ -175,6 +232,7 @@ export function WarpingPlanForm({
               ...b,
               beamNo: b.beamNo ?? i + 1,
               pairedBeamNo: b.pairedBeamNo ?? null,
+              elastic: b.elastic ?? null,
             })),
             remarks: values.remarks,
           },
@@ -212,6 +270,32 @@ export function WarpingPlanForm({
 
       <LotStockPanel stock={context.data?.lotStock ?? []} />
 
+      {hasTemplate && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info">
+          <Layers className="h-4 w-4 shrink-0" />
+          <span className="flex-1">
+            {filledFromTemplate ? (
+              <>
+                Filled from the warping template of{" "}
+                {Array.from(new Set(templateBeams.map((b) => b.elasticName).filter(Boolean))).join(
+                  ", "
+                )}
+                . Change anything before saving — the template is not touched.
+              </>
+            ) : (
+              <>This job&apos;s elastics have a warping template you can start from.</>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={filledFromTemplate ? clearBeams : applyTemplate}
+            className="rounded px-2 py-1 text-xs font-semibold hover:bg-status-info/10"
+          >
+            {filledFromTemplate ? "Start empty" : "Use template"}
+          </button>
+        </div>
+      )}
+
       {beams.fields.map((beam, bi) => (
         <BeamFields
           key={beam.id}
@@ -221,6 +305,10 @@ export function WarpingPlanForm({
           errors={errors}
           yarnOptions={yarnOptions}
           lotStock={context.data?.lotStock ?? []}
+          elasticName={
+            templateBeams.find((t) => t.elasticId && t.elasticId === watched?.[bi]?.elastic)
+              ?.elasticName ?? ""
+          }
           watchedSections={watched?.[bi]?.sections}
           onRemove={beams.fields.length > 1 ? () => beams.remove(bi) : undefined}
           combining={combining}
@@ -236,7 +324,7 @@ export function WarpingPlanForm({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => beams.append({ sections: [{ warpYarn: "", ends: 0, maxMeters: 0, yarnLot: "" }] })}
+          onClick={() => beams.append({ sections: [emptySection()] })}
         >
           <Plus className="h-4 w-4" /> Add beam
         </Button>
@@ -268,6 +356,7 @@ import { Control, UseFormRegister, FieldErrors } from "react-hook-form";
 
 function BeamFields({
   index,
+  elasticName,
   control,
   register,
   errors,
@@ -283,6 +372,8 @@ function BeamFields({
   onUnpair,
 }: {
   index: number;
+  /** Empty unless this beam came from a template. */
+  elasticName?: string;
   control: Control<PlanValues>;
   register: UseFormRegister<PlanValues>;
   errors: FieldErrors<PlanValues>;
@@ -317,6 +408,11 @@ function BeamFields({
           />
         )}
         <p className="text-sm font-semibold">Beam {index + 1}</p>
+        {/* On a job carrying more than one product, which beam belongs
+            to which is the first thing the programme has to say. */}
+        {elasticName && (
+          <span className="text-xs text-ink-400">{elasticName}</span>
+        )}
         <span className="text-xs text-ink-400 tabular-nums">
           {endsTotal.toLocaleString("en-IN")} ends
         </span>
