@@ -16,9 +16,16 @@ vi.mock("./hooks", () => ({
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 
+// Shaped like the real /shift/today response: the server returns the
+// lean ShiftPlan document, so `_id` is present alongside the explicit
+// `id` the card reads. Feeding only `id` here is what let the missing
+// field go unnoticed — the page passed while the browser saw nothing.
 const summary = (production: number) => ({
-  dayShift: { shift: "DAY", id: "p1", status: "confirmed", production, machinesRunning: 2, operatorCount: 2 },
-  nightShift: { shift: "NIGHT", status: "not_created", production: 0 },
+  dayShift: {
+    _id: "p1", id: "p1", shift: "DAY", status: "confirmed",
+    production, machinesRunning: 2, operatorCount: 2, plan: [{}, {}],
+  },
+  nightShift: { id: null, shift: "NIGHT", status: "not_created", production: 0, plan: [] },
 });
 
 const renderPage = () =>
@@ -64,5 +71,40 @@ describe("ShiftPlansPage", () => {
     renderPage();
     await userEvent.click(screen.getByRole("button", { name: /by date/i }));
     expect(screen.getAllByText(/no plan yet for this shift/i).length).toBeGreaterThan(0);
+  });
+});
+
+// ── The reported fault ───────────────────────────────────────────────
+// A date with a plan showed "not created". The card decides a shift
+// exists by reading `id`, and the server answered with a lean document
+// carrying only `_id` — so the plan was fetched, counted and returned,
+// and then rendered as nothing.
+describe("a date that has a plan", () => {
+  beforeEach(() => {
+    days["2026-07-15"] = summary(1200);
+  });
+
+  it("shows the plan rather than 'not created'", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole("button", { name: "By date" }));
+    await user.clear(screen.getByLabelText("Date"));
+    await user.type(screen.getByLabelText("Date"), "2026-07-15");
+
+    expect(await screen.findByText("1,200")).toBeInTheDocument();
+    expect(screen.getByText("planned")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /view plan/i })).toBeInTheDocument();
+  });
+
+  it("treats a summary with no id as nothing to show", () => {
+    // Pins the contract the fix depends on: identity is what makes a
+    // shift real to this page, so the server must always send it.
+    days["today"] = {
+      dayShift: { _id: "p1", shift: "DAY", status: "confirmed", production: 999, plan: [{}] },
+      nightShift: { id: null, shift: "NIGHT", status: "not_created", production: 0, plan: [] },
+    };
+    renderPage();
+    expect(screen.queryByText("999")).not.toBeInTheDocument();
+    expect(screen.getAllByText(/no plan yet for this shift/i)).toHaveLength(2);
   });
 });

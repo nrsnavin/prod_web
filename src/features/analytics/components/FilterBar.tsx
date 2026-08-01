@@ -15,8 +15,16 @@ const SHIFTS: { label: string; value: ShiftFilter }[] = [
   { label: "Night", value: "night" },
 ];
 
+// The calendar date as the USER sees it, not as UTC sees it.
+//
+// toISOString() converts to UTC first, so anywhere ahead of UTC the
+// small hours belong to the previous UTC day: at 02:00 in IST this
+// returned yesterday. Every caller feeds an <input type="date">, which
+// is local by definition — so a night-shift supervisor opening the
+// shift plans at 2am was shown, and defaulted to, the wrong day.
 export function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export function presetRange(days: number): { startDate: string; endDate: string } {
