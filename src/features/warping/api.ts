@@ -25,8 +25,11 @@ export const warpingService = {
     return res.warping;
   },
 
-  start: (id: string) => httpClient.put(`/warping/start?id=${encodeURIComponent(id)}`),
-  complete: (id: string) => httpClient.put(`/warping/complete?id=${encodeURIComponent(id)}`),
+  // POST, not PUT: the routes are declared POST, and Express answers a
+  // known path with an unknown verb by 404ing — so pressing Start
+  // reported "not found" for a warping that plainly existed.
+  start: (id: string) => httpClient.post("/warping/start", { id }),
+  complete: (id: string) => httpClient.post("/warping/complete", { id }),
   cancel: (id: string) => httpClient.patch(`/warping/cancel/${id}`),
 
   async getPlan(warpingId: string): Promise<{ exists: boolean; plan?: WarpingPlan }> {
