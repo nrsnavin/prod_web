@@ -34,6 +34,14 @@ export interface WarpingPlanBeam {
   totalEnds?: number;
   /** Set when this beam is run together with another — see beamCombine.ts. */
   pairedBeamNo?: number | null;
+  /**
+   * Which tape this beam belongs to, when the plan repeats one build.
+   * Null for a beam added by hand, and for every plan made before tapes
+   * existed — the programme falls back to a flat list for those.
+   */
+  tapeNo?: number | null;
+  /** Which elastic this beam warps; only set when it came from a template. */
+  elastic?: { _id: string; name: string } | string | null;
   sections: WarpingPlanSection[];
 }
 

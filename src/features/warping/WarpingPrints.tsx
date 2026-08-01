@@ -4,7 +4,7 @@ import {
 } from "@/components/print/SheetForm";
 import { QrImg } from "@/components/print/QrImg";
 import { Warping, WarpingPlan, WarpingPlanSection } from "./types";
-import { elasticLineName } from "./programmeShared";
+import { beamElasticName, elasticLineName, groupBeamsByTape } from "./programmeShared";
 
 function yarnName(y: unknown): string {
   return typeof y === "object" && y !== null ? ((y as { name?: string }).name ?? "—") : "—";
@@ -41,6 +41,10 @@ export function WarpingProgrammeSheet({
   plan?: WarpingPlan;
 }) {
   const jobNo = warping.job?.jobOrderNo ?? "—";
+  const tapeGroups = groupBeamsByTape(plan?.beams ?? []);
+  const tapeCount = new Set(
+    (plan?.beams ?? []).map((b) => b.tapeNo).filter((t) => t != null)
+  ).size;
   return (
     <PrintModal open={open} onClose={onClose} title="Warping programme">
       <div className="text-ink-900">
@@ -52,6 +56,7 @@ export function WarpingProgrammeSheet({
             { label: "Opened", value: warping.date ? new Date(warping.date).toLocaleDateString() : "—" },
             { label: "Status", value: <span className="capitalize">{warping.status.replace("_", " ")}</span> },
             { label: "Beams", value: plan ? plan.noOfBeams : "—" },
+            ...(tapeCount > 1 ? [{ label: "Tapes", value: tapeCount }] : []),
           ]}
         />
 
@@ -79,41 +84,59 @@ export function WarpingProgrammeSheet({
         </SheetTable>
 
         <SheetSection>
-          Beam plan {plan ? `— ${plan.noOfBeams} beam(s)` : "— not created"}
+          Beam plan {plan ? `— ${plan.noOfBeams} beam(s)${tapeCount > 1 ? ` over ${tapeCount} tapes` : ""}` : "— not created"}
         </SheetSection>
-        {plan &&
-          plan.beams.map((beam, bi) => (
-            <SheetTable
-              key={bi}
-              className="mb-2 print-label"
-              head={
-                <tr>
-                  <Th colSpan={2}>
-                    Beam {beam.beamNo ?? bi + 1}
-                    {beam.totalEnds ? ` — ${beam.totalEnds} total ends` : ""}
-                    {beam.pairedBeamNo ? ` · run with beam ${beam.pairedBeamNo}` : ""}
-                  </Th>
-                  {/* The lot is the instruction the warper acts on: pull
-                      this section off this bag, not whatever is nearest. */}
-                  <Th>Dye lot</Th>
-                  <Th align="right">Ends</Th>
-                  <Th align="right">Length (m)</Th>
-                </tr>
-              }
-            >
-              <tbody>
-                {beam.sections.map((sec, si) => (
-                  <tr key={si}>
-                    <Td className="w-8 text-ink-600">{si + 1}</Td>
-                    <Td>{yarnName(sec.warpYarn)}</Td>
-                    <Td>{sectionLot(sec)}</Td>
-                    <Td align="right">{sec.ends}</Td>
-                    <Td align="right">{sec.maxMeters ?? "—"}</Td>
+        {tapeGroups.map((group, gi) => (
+          <div key={gi}>
+            {/* A tape heading only where there are tapes — an old plan and
+                a hand-built one print exactly as they did before. */}
+            {group.tapeNo != null && (
+              <p className="mt-3 mb-1 border-b border-ink-900 pb-0.5 text-sm font-bold uppercase tracking-wide">
+                Tape {group.tapeNo}
+                <span className="float-right font-medium normal-case tracking-normal">
+                  {group.beams.length} beam{group.beams.length === 1 ? "" : "s"} ·{" "}
+                  {group.beams
+                    .reduce((sum, b) => sum + (b.totalEnds ?? 0), 0)
+                    .toLocaleString("en-IN")}{" "}
+                  ends
+                </span>
+              </p>
+            )}
+            {group.beams.map((beam, bi) => (
+              <SheetTable
+                key={bi}
+                className="mb-2 print-label"
+                head={
+                  <tr>
+                    <Th colSpan={2}>
+                      Beam {beam.beamNo ?? bi + 1}
+                      {beamElasticName(beam) ? ` · ${beamElasticName(beam)}` : ""}
+                      {beam.totalEnds ? ` — ${beam.totalEnds} total ends` : ""}
+                      {beam.pairedBeamNo ? ` · run with beam ${beam.pairedBeamNo}` : ""}
+                    </Th>
+                    {/* The lot is the instruction the warper acts on: pull
+                        this section off this bag, not whatever is nearest. */}
+                    <Th>Dye lot</Th>
+                    <Th align="right">Ends</Th>
+                    <Th align="right">Length (m)</Th>
                   </tr>
-                ))}
-              </tbody>
-            </SheetTable>
-          ))}
+                }
+              >
+                <tbody>
+                  {beam.sections.map((sec, si) => (
+                    <tr key={si}>
+                      <Td className="w-8 text-ink-600">{si + 1}</Td>
+                      <Td>{yarnName(sec.warpYarn)}</Td>
+                      <Td>{sectionLot(sec)}</Td>
+                      <Td align="right">{sec.ends}</Td>
+                      <Td align="right">{sec.maxMeters ?? "—"}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </SheetTable>
+            ))}
+          </div>
+        ))}
 
         {plan?.remarks && (
           <SheetPane label="Remarks" className="mt-3">
@@ -153,12 +176,19 @@ export function BeamLabels({
               <div className="text-center">
                 <p className="text-[10px] uppercase tracking-wide">Beam</p>
                 <p className="text-3xl font-black leading-none">{beam.beamNo ?? bi + 1}</p>
+                {/* A label found loose on the floor has to say which tape
+                    it belongs to, or it cannot be put back. */}
+                {beam.tapeNo != null && (
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                    Tape {beam.tapeNo}
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex-1 p-3">
               <div className="flex justify-between text-sm font-bold border-b border-ink-200 pb-1.5">
                 <span>JOB J-{jobNo}</span>
-                <span>{warping.job?.customer?.name ?? ""}</span>
+                <span>{beamElasticName(beam) || warping.job?.customer?.name || ""}</span>
               </div>
               <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 {beam.sections.map((s, si) => (
@@ -179,7 +209,12 @@ export function BeamLabels({
               </div>
             </div>
             <div className="shrink-0 self-center pr-3">
-              <QrImg value={`WARP|J:${jobNo}|B:${beam.beamNo ?? bi + 1}|W:${warping._id}`} size={56} />
+              <QrImg
+                value={`WARP|J:${jobNo}|B:${beam.beamNo ?? bi + 1}${
+                  beam.tapeNo != null ? `|T:${beam.tapeNo}` : ""
+                }|W:${warping._id}`}
+                size={56}
+              />
             </div>
           </div>
         ))}
