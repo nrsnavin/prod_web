@@ -1,6 +1,8 @@
 export interface Customer {
   _id: string;
   name: string;
+  /** Soft-deleted: hidden from lists and pickers, never removed. */
+  archived?: boolean;
   email?: string;
   gstin?: string;
   status?: string; // "Active" | "Inactive"

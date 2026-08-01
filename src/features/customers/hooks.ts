@@ -33,9 +33,10 @@ export function useCustomerMutations() {
       customerService.update(id, body),
     onSuccess: invalidate,
   });
-  const deactivate = useMutation({
-    mutationFn: (id: string) => customerService.deactivate(id),
+  const setArchived = useMutation({
+    mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
+      customerService.setArchived(id, archived),
     onSuccess: invalidate,
   });
-  return { create, update, deactivate };
+  return { create, update, setArchived };
 }

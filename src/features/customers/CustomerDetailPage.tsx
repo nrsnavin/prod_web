@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Pencil, UserX } from "lucide-react";
+import { ArrowLeft, Pencil, UserCheck, UserX } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -22,7 +22,7 @@ export function CustomerDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: customer, isLoading, isError, error } = useCustomer(id);
-  const { update, deactivate } = useCustomerMutations();
+  const { update, setArchived } = useCustomerMutations();
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   useTrackRecent("Customer", `/customers/${id}`, customer?.name);
@@ -56,9 +56,28 @@ export function CustomerDetailPage() {
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" /> Edit
             </Button>
-            {customer.status !== "Inactive" && (
+            {/* Archiving is reversible, so restoring is offered in the
+                same place rather than needing the archived list. */}
+            {customer.archived ? (
+              <Button
+                variant="secondary"
+                loading={setArchived.isPending}
+                onClick={() =>
+                  setArchived.mutate(
+                    { id: customer._id, archived: false },
+                    {
+                      onSuccess: () => toast(`${customer.name} restored`, "success"),
+                      onError: (e) =>
+                        toast(e instanceof ApiError ? e.message : "Failed to restore", "error"),
+                    }
+                  )
+                }
+              >
+                <UserCheck className="h-4 w-4" /> Restore
+              </Button>
+            ) : (
               <Button variant="danger" onClick={() => setConfirmOpen(true)}>
-                <UserX className="h-4 w-4" /> Deactivate
+                <UserX className="h-4 w-4" /> Archive
               </Button>
             )}
           </>
@@ -128,22 +147,28 @@ export function CustomerDetailPage() {
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Deactivate customer?"
-        message={`${customer.name} will be marked Inactive. Existing orders are unaffected.`}
-        confirmLabel="Deactivate"
+        title="Archive customer?"
+        message={`${customer.name} will be hidden from lists and pickers. Nothing is deleted — their orders, challans and history keep their references, and they can be restored at any time. A customer with open orders cannot be archived.`}
+        confirmLabel="Archive"
         danger
-        loading={deactivate.isPending}
+        loading={setArchived.isPending}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() =>
-          deactivate.mutate(customer._id, {
-            onSuccess: () => {
-              setConfirmOpen(false);
-              toast("Customer deactivated", "success");
-              navigate("/customers");
-            },
-            onError: (e) =>
-              toast(e instanceof ApiError ? e.message : "Failed to deactivate", "error"),
-          })
+          setArchived.mutate(
+            { id: customer._id, archived: true },
+            {
+              onSuccess: () => {
+                setConfirmOpen(false);
+                toast(`${customer.name} archived`, "success");
+                navigate("/customers");
+              },
+              // The refusal names the open orders, so it is worth showing.
+              onError: (e) => {
+                setConfirmOpen(false);
+                toast(e instanceof ApiError ? e.message : "Failed to archive", "error");
+              },
+            }
+          )
         }
       />
     </>

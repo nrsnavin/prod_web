@@ -36,8 +36,11 @@ export const customerService = {
     return res.data;
   },
 
-  async deactivate(id: string): Promise<void> {
-    await httpClient.delete("/customer/delete-customer", { id });
+  // Soft delete. The old call went to /delete-customer, a route that
+  // never existed — so the button 404'd. Archiving hides the customer
+  // from lists while their orders and challans keep their references.
+  async setArchived(id: string, archived: boolean): Promise<void> {
+    await httpClient.patch(`/customer/${id}/archive`, { archived });
   },
 
   async orders(id: string): Promise<CustomerOrders> {
