@@ -190,6 +190,13 @@ export interface OrderMrpMaterial {
   category?: string;
   requiredWeight?: number;
   inStock?: number;
+  /**
+   * Bought but not yet delivered — outstanding on open purchase orders.
+   * Shown BESIDE the shortfall, never netted off it: yarn on order is
+   * not yarn in the building, and treating it as covered leaves a
+   * machine with nothing to run.
+   */
+  onOrder?: number;
   shortfall?: number;
   unitPrice?: number;
   stockKnown?: boolean;

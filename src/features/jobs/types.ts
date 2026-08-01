@@ -136,6 +136,13 @@ export interface MrpData {
     // Actual backend field names (utils/materialRequirement.js).
     requiredWeight?: number;
     inStock?: number;
+    /**
+     * Bought but not yet delivered — the outstanding quantity on open
+     * purchase orders. Shown BESIDE the shortfall, never netted off it:
+     * yarn on order is not yarn in the building, and treating it as
+     * covered leaves a machine with nothing to run.
+     */
+    onOrder?: number;
     shortfall?: number;
     // false when the RawMaterial reference could not be resolved.
     stockKnown?: boolean;

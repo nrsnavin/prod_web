@@ -107,6 +107,10 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
                   <th className="px-3 py-2 text-left font-semibold">Supplier</th>
                   <th className="px-3 py-2 text-right font-semibold">Required</th>
                   <th className="px-3 py-2 text-right font-semibold">In stock</th>
+                  {/* On order sits between stock and shortfall because
+                      that is the order the question is asked in: what is
+                      here, what is coming, what is still missing. */}
+                  <th className="px-3 py-2 text-right font-semibold">On order</th>
                   <th className="px-5 py-2 text-right font-semibold">Shortfall</th>
                 </tr>
               </thead>
@@ -131,6 +135,18 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
                           ? "unknown"
                           : (m.inStock ?? 0).toLocaleString("en-IN")}
                       </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {(m.onOrder ?? 0) > 0 ? (
+                          <span
+                            className="text-status-info"
+                            title="Outstanding on open purchase orders — bought, not yet received"
+                          >
+                            {(m.onOrder ?? 0).toLocaleString("en-IN")}
+                          </span>
+                        ) : (
+                          <span className="text-ink-400">—</span>
+                        )}
+                      </td>
                       <td
                         className={`px-5 py-2 text-right tabular-nums ${
                           s > 0 ? "font-semibold text-status-danger" : "text-ink-400"
@@ -144,6 +160,18 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* A shortfall that is already covered by an open PO needs no
+            second purchase order — saying so prevents one. */}
+        {short.some((m) => (m.onOrder ?? 0) > 0) && (
+          <p className="px-5 pt-2 text-xs text-status-info">
+            {short
+              .filter((m) => (m.onOrder ?? 0) > 0)
+              .map((m) => `${nameOf(m)} (${(m.onOrder ?? 0).toLocaleString("en-IN")})`)
+              .join(", ")}{" "}
+            already on order and not yet received — check before buying again.
+          </p>
         )}
 
         {noSupplier.length > 0 && (

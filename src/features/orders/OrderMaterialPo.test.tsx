@@ -63,8 +63,11 @@ describe("OrderMaterialPo", () => {
     expect(screen.getByText("Nylon 70D")).toBeInTheDocument();
     expect(screen.getByText("Spandex 40D")).toBeInTheDocument();
     // The covered material shows a dash rather than a zero shortfall.
+    // Scoped to the last cell: "on order" also dashes when there is
+    // none, and an unscoped query cannot tell the two apart.
     const covered = screen.getByText("Spandex 40D").closest("tr")!;
-    expect(within(covered).getByText("—")).toBeInTheDocument();
+    const cells = within(covered).getAllByRole("cell");
+    expect(cells[cells.length - 1]).toHaveTextContent("—");
   });
 
   it("raises a PO for the shortfall of the whole order", async () => {

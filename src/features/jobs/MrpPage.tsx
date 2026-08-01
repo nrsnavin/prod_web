@@ -54,6 +54,24 @@ const materialColumns: Column<MrpMaterial>[] = [
       );
     },
   },
+  {
+    // Deliberately its own column rather than folded into stock. Yarn
+    // that has been bought is not yarn that has arrived, and a shortfall
+    // that looks covered is how the same purchase order gets raised
+    // twice.
+    key: "onOrder",
+    header: "On order",
+    align: "right",
+    render: (m) => {
+      const due = m.onOrder ?? 0;
+      if (due <= 0) return <span className="text-ink-400">—</span>;
+      return (
+        <span className="text-status-info" title="Outstanding on open purchase orders — not yet received">
+          {due.toLocaleString("en-IN")}
+        </span>
+      );
+    },
+  },
 ];
 
 export function MrpPage() {
