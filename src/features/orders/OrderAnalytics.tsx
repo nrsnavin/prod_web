@@ -38,7 +38,7 @@ export function OrderAnalytics({ elastics }: { elastics: OrderElasticProgress[] 
       ordered: a.ordered + (e.ordered || 0),
       produced: a.produced + (e.produced || 0),
       packed: a.packed + (e.packed || 0),
-      pending: a.pending + Math.max(0, e.pending || 0),
+      pending: a.pending + Math.max(0, e.pendingDelivery || 0),
     }),
     { ordered: 0, produced: 0, packed: 0, pending: 0 },
   );
@@ -53,7 +53,7 @@ export function OrderAnalytics({ elastics }: { elastics: OrderElasticProgress[] 
   const bars = elastics.map((e) => ({
     name: e.name,
     Produced: e.produced || 0,
-    Pending: Math.max(0, e.pending || 0),
+    Pending: Math.max(0, e.pendingDelivery || 0),
   }));
   const barHeight = Math.max(200, bars.length * 46 + 40);
 

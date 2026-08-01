@@ -23,12 +23,14 @@ export function JobCreateForm({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [qty, setQty] = useState<Record<string, string>>({});
 
-  const pending = (order.elastics ?? []).filter((e) => e.pending > 0);
+  // The cap is what no job has claimed yet — a planning figure, not
+  // what the customer is still owed.
+  const pending = (order.elastics ?? []).filter((e) => e.notAssigned > 0);
   const rows = pending
     .map((e) => ({ elastic: e.id, quantity: Number(qty[e.id]) || 0 }))
     .filter((r) => r.quantity > 0);
 
-  const overLimit = pending.some((e) => (Number(qty[e.id]) || 0) > e.pending);
+  const overLimit = pending.some((e) => (Number(qty[e.id]) || 0) > e.notAssigned);
 
   if (pending.length === 0) {
     return (
@@ -51,16 +53,16 @@ export function JobCreateForm({
               <div key={e.id} className="grid grid-cols-[1fr_120px] gap-2 items-center">
                 <div>
                   <p className="text-sm font-medium">{e.name}</p>
-                  <p className="text-xs text-ink-400">{e.pending.toLocaleString("en-IN")} m pending</p>
+                  <p className="text-xs text-ink-400">{e.notAssigned.toLocaleString("en-IN")} m not assigned</p>
                 </div>
                 <Input aria-label="Qty (m)"
                   type="number"
                   step="0.01"
                   min={0}
-                  max={e.pending}
+                  max={e.notAssigned}
                   placeholder="Qty (m)"
                   value={qty[e.id] ?? ""}
-                  error={entered > e.pending ? "Exceeds pending" : undefined}
+                  error={entered > e.notAssigned ? "Exceeds what is unassigned" : undefined}
                   onChange={(ev) => setQty((q) => ({ ...q, [e.id]: ev.target.value }))}
                 />
               </div>

@@ -65,12 +65,27 @@ const elasticColumns: Column<OrderElasticProgress>[] = [
     },
   },
   {
-    key: "pending",
+    // Not "pending": this is how much of the line no job has been raised
+    // for. Calling it pending hid the question it actually answers, and
+    // collided with the one below.
+    key: "notAssigned",
+    header: "Not assigned to jobs",
+    align: "right",
+    render: (e) => (
+      <span className={e.notAssigned > 0 ? "font-semibold text-status-warning" : "text-ink-400"}>
+        {e.notAssigned.toLocaleString("en-IN")}
+      </span>
+    ),
+  },
+  {
+    // What the customer is still owed: ordered less packed. Work can be
+    // fully assigned and still entirely pending.
+    key: "pendingDelivery",
     header: "Pending",
     align: "right",
     render: (e) => (
-      <span className={e.pending > 0 ? "font-semibold" : "text-ink-400"}>
-        {e.pending.toLocaleString("en-IN")}
+      <span className={e.pendingDelivery > 0 ? "font-semibold" : "text-ink-400"}>
+        {e.pendingDelivery.toLocaleString("en-IN")}
       </span>
     ),
   },

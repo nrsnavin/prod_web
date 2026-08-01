@@ -42,6 +42,18 @@ export interface OrderElasticProgress {
   ordered: number;
   produced: number;
   packed: number;
+  /**
+   * Ordered less what jobs have been raised for — a PLANNING figure,
+   * and the cap when allocating to a job.
+   */
+  notAssigned: number;
+  /**
+   * Ordered less packed — a DELIVERY figure: what the customer is still
+   * owed. A line can be fully assigned to jobs and entirely pending,
+   * which is why one number could not answer both.
+   */
+  pendingDelivery: number;
+  /** @deprecated Legacy alias for `notAssigned`. Prefer the named ones. */
   pending: number;
 }
 
