@@ -126,3 +126,167 @@ describe("filling the plan form from the elastics' templates", () => {
     expect(screen.queryByText("Beam 2")).not.toBeInTheDocument();
   });
 });
+
+// ── Tapes, duplication, and one length for all ────────────────────────
+// The template describes one tape. A plan usually runs that build several
+// times over, and running a single beam twice is routine — retyping it is
+// where two copies that should be identical drift apart.
+
+const saveAndRead = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole("button", { name: /create plan|save/i }));
+  await waitFor(() => expect(createMutate).toHaveBeenCalled());
+  return createMutate.mock.calls[createMutate.mock.calls.length - 1][0] as {
+    beams: Array<{
+      beamNo: number;
+      tapeNo: number | null;
+      elastic: string | null;
+      sections: Array<{ ends: number; maxMeters: number }>;
+    }>;
+  };
+};
+
+describe("repeating the template per tape", () => {
+  it("repeats every beam once per tape, numbered straight through", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+
+    const tapesInput = screen.getByLabelText(/number of tapes/i);
+    await user.clear(tapesInput);
+    await user.type(tapesInput, "3");
+
+    // 2 template beams × 3 tapes.
+    await waitFor(() => expect(screen.getByText("Beam 6")).toBeInTheDocument());
+    const body = await saveAndRead(user);
+    expect(body.beams).toHaveLength(6);
+    expect(body.beams.map((b) => b.beamNo)).toEqual([1, 2, 3, 4, 5, 6]);
+    // Two beam 1s would be two things with one name.
+    expect(new Set(body.beams.map((b) => b.beamNo)).size).toBe(6);
+  });
+
+  it("stamps each beam with the tape it belongs to", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+
+    const tapesInput = screen.getByLabelText(/number of tapes/i);
+    await user.clear(tapesInput);
+    await user.type(tapesInput, "2");
+    await waitFor(() => expect(screen.getByText("Beam 4")).toBeInTheDocument());
+
+    const body = await saveAndRead(user);
+    expect(body.beams.map((b) => b.tapeNo)).toEqual([1, 1, 2, 2]);
+    // Each tape is a full copy, so the elastics repeat with it.
+    expect(body.beams.map((b) => b.elastic)).toEqual(["e1", "e2", "e1", "e2"]);
+  });
+
+  it("shows the tape on each beam", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+    const tapesInput = screen.getByLabelText(/number of tapes/i);
+    await user.clear(tapesInput);
+    await user.type(tapesInput, "2");
+
+    await waitFor(() => expect(screen.getAllByText("Tape 2")).toHaveLength(2));
+  });
+
+  it("never goes below one tape", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+
+    const tapesInput = screen.getByLabelText(/number of tapes/i);
+    await user.clear(tapesInput);
+    await user.type(tapesInput, "0");
+
+    const body = await saveAndRead(user);
+    expect(body.beams).toHaveLength(2);
+  });
+});
+
+describe("duplicating a beam", () => {
+  it("copies it in straight after, and renumbers", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /duplicate beam 1/i }));
+
+    const body = await saveAndRead(user);
+    expect(body.beams).toHaveLength(3);
+    expect(body.beams.map((b) => b.beamNo)).toEqual([1, 2, 3]);
+    // The copy sits next to its original and carries its sections.
+    expect(body.beams[1].sections[0].ends).toBe(120);
+    expect(body.beams[1].elastic).toBe("e1");
+    // …and the one that followed is pushed down, not overwritten.
+    expect(body.beams[2].sections[0].ends).toBe(60);
+  });
+
+  it("copies the sections rather than sharing them", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /duplicate beam 1/i }));
+
+    // Editing the copy must not move the original.
+    const beamTwoEnds = screen.getAllByLabelText("Ends")[1];
+    await user.clear(beamTwoEnds);
+    await user.type(beamTwoEnds, "999");
+
+    const body = await saveAndRead(user);
+    expect(body.beams[0].sections[0].ends).toBe(120);
+    expect(body.beams[1].sections[0].ends).toBe(999);
+  });
+});
+
+describe("one length for every section", () => {
+  it("writes the shared length into all of them", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+
+    await user.click(screen.getByLabelText(/same length for every section/i));
+    const shared = screen.getByLabelText(/shared section length/i);
+    await user.clear(shared);
+    await user.type(shared, "4000");
+
+    const body = await saveAndRead(user);
+    expect(body.beams.flatMap((b) => b.sections).every((s) => s.maxMeters === 4000)).toBe(true);
+  });
+
+  it("adopts a length already entered rather than wiping it", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+
+    // The template's first section already carries 5000.
+    await user.click(screen.getByLabelText(/same length for every section/i));
+    expect(screen.getByLabelText(/shared section length/i)).toHaveValue(5000);
+
+    const body = await saveAndRead(user);
+    expect(body.beams.flatMap((b) => b.sections).every((s) => s.maxMeters === 5000)).toBe(true);
+  });
+
+  it("locks the per-section fields while it is on", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+
+    expect(screen.getAllByLabelText("Length")[0]).not.toHaveAttribute("readonly");
+    await user.click(screen.getByLabelText(/same length for every section/i));
+    // Read-only, not disabled — a disabled input would not be submitted.
+    expect(screen.getAllByLabelText("Length")[0]).toHaveAttribute("readonly");
+  });
+
+  it("lets the per-section fields go again when switched off", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await waitFor(() => expect(screen.getByText("Beam 2")).toBeInTheDocument());
+
+    const toggle = screen.getByLabelText(/same length for every section/i);
+    await user.click(toggle);
+    await user.click(toggle);
+    expect(screen.getAllByLabelText("Length")[0]).not.toHaveAttribute("readonly");
+  });
+});

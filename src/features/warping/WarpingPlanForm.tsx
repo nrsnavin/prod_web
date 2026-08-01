@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Layers, Merge, Plus, Trash2, Unlink, X } from "lucide-react";
+import { Copy, Layers, Merge, Plus, Trash2, Unlink, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -18,24 +18,44 @@ const emptySection = () => ({ warpYarn: "", ends: 0, maxMeters: 0, yarnLot: "" }
 const emptyBeams = () => [{ sections: [emptySection()] }];
 
 /**
- * The elastics' templates, as beams this form can edit.
+ * The elastics' templates, as beams this form can edit, repeated once
+ * per tape.
+ *
+ * The template describes how ONE tape is built. A plan usually runs that
+ * same build several times over, so the beams repeat and each copy is
+ * stamped with the tape it belongs to — a flat list of beams gives the
+ * operator no way to see where one tape ends and the next begins.
+ *
+ * Beam numbers run straight through the whole plan rather than restarting
+ * per tape, because the beam number is how the floor identifies a beam
+ * and two beam 1s would be two things with one name.
  *
  * The lot is deliberately left blank: a template says how the elastic is
  * built, not which dye lot this run comes off, and that is decided here
  * against what is actually in stock.
  */
-function templateToBeams(beams: TemplateBeam[]) {
-  return beams.map((b) => ({
-    beamNo: b.beamNo,
-    elastic: b.elasticId,
-    pairedBeamNo: null,
-    sections: b.sections.map((s) => ({
-      warpYarn: s.warpYarnId,
-      ends: s.ends,
-      maxMeters: s.maxMeters,
-      yarnLot: "",
-    })),
-  }));
+function templateToBeams(beams: TemplateBeam[], tapes = 1) {
+  const count = Math.max(1, Math.floor(tapes) || 1);
+  const out = [];
+  for (let tape = 1; tape <= count; tape++) {
+    for (const b of beams) {
+      out.push({
+        beamNo: out.length + 1,
+        tapeNo: tape,
+        elastic: b.elasticId,
+        // A repeat is an independent copy; carrying a pairing across
+        // would point at a beam in another tape.
+        pairedBeamNo: null,
+        sections: b.sections.map((s) => ({
+          warpYarn: s.warpYarnId,
+          ends: s.ends,
+          maxMeters: s.maxMeters,
+          yarnLot: "",
+        })),
+      });
+    }
+  }
+  return out;
 }
 
 /**
@@ -116,6 +136,8 @@ const schema = z.object({
         // an auto-created one has; the server drops anything that is not
         // one of the job's own elastics.
         elastic: z.string().nullable().optional(),
+        /** Which tape this beam belongs to, when the plan repeats one. */
+        tapeNo: z.coerce.number().nullable().optional(),
         // Set when this beam is run together with another; see beamCombine.ts.
         pairedBeamNo: z.coerce.number().nullable().optional(),
         sections: z.array(sectionSchema).min(1),
@@ -146,6 +168,7 @@ export function WarpingPlanForm({
     control,
     handleSubmit,
     getValues,
+    setValue,
     watch,
     formState: { errors, isDirty },
   } = useForm<PlanValues>({
@@ -167,16 +190,53 @@ export function WarpingPlanForm({
   const [filledFromTemplate, setFilledFromTemplate] = useState(false);
   const prefilled = useRef(false);
 
-  const applyTemplate = () => {
-    beams.replace(templateToBeams(templateBeams));
+  // How many times the template's build is repeated. Changing it rebuilds
+  // the beams, which is only safe while they still ARE the template —
+  // once someone edits a beam, `filledFromTemplate` is what protects it.
+  //
+  // Held as text, not a number: clamping on every keystroke means an
+  // emptied field snaps back to 1, and the next digit typed lands
+  // AFTER it — clearing to type 3 would give 13.
+  const [tapesText, setTapesText] = useState("1");
+  const tapes = Math.max(1, Math.min(99, Math.floor(Number(tapesText)) || 1));
+
+  const applyTemplate = (count = tapes) => {
+    beams.replace(templateToBeams(templateBeams, count));
     setFilledFromTemplate(true);
     prefilled.current = true;
+  };
+
+  const changeTapes = (text: string) => {
+    setTapesText(text);
+    const n = Math.max(1, Math.min(99, Math.floor(Number(text)) || 1));
+    if (filledFromTemplate) applyTemplate(n);
+  };
+
+  /**
+   * Copy a beam and put the copy straight after it.
+   *
+   * Beams are renumbered from position afterwards so the plan stays
+   * self-describing; the copy starts unpaired, since a pairing names a
+   * specific other beam and duplicating it would give that beam two
+   * partners.
+   */
+  const duplicateBeam = (index: number) => {
+    const current = getValues("beams");
+    const source = current[index];
+    const copy = {
+      ...source,
+      pairedBeamNo: null,
+      sections: source.sections.map((sec) => ({ ...sec })),
+    };
+    const next = [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
+    beams.replace(next.map((b, i) => ({ ...b, beamNo: i + 1 })));
+    toast(`Beam ${index + 1} duplicated`, "success");
   };
 
   useEffect(() => {
     if (prefilled.current || !hasTemplate) return;
     if (isDirty) { prefilled.current = true; return; }
-    applyTemplate();
+    applyTemplate(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasTemplate]);
 
@@ -184,6 +244,50 @@ export function WarpingPlanForm({
     beams.replace(emptyBeams());
     setFilledFromTemplate(false);
   };
+
+  // ── One length for every section ────────────────────────────────────
+  // Most plans run every section to the same length, and typing it into
+  // each one is both tedious and the place a typo hides: one section
+  // 500m short is not visible in a list of numbers. Turned on, a single
+  // field drives them all and the per-section inputs become read-only.
+  // Mirrors the mobile app, which already works this way.
+  const [uniformLength, setUniformLength] = useState(false);
+  const [uniformValue, setUniformValue] = useState("");
+
+  const applyLengthToAll = (value: string) => {
+    const n = Number(value) || 0;
+    getValues("beams").forEach((b, bi) =>
+      b.sections.forEach((_, si) =>
+        setValue(`beams.${bi}.sections.${si}.maxMeters`, n, { shouldDirty: true })
+      )
+    );
+  };
+
+  const toggleUniformLength = (on: boolean) => {
+    setUniformLength(on);
+    if (!on) return;
+    // Seed from the first length already entered, so turning this on
+    // adopts what is there rather than wiping it.
+    const seed =
+      getValues("beams")
+        .flatMap((b) => b.sections)
+        .map((sec) => Number(sec.maxMeters) || 0)
+        .find((v) => v > 0) ?? 0;
+    const text = seed > 0 ? String(seed) : "";
+    setUniformValue(text);
+    if (seed > 0) applyLengthToAll(text);
+  };
+
+  const changeUniformLength = (text: string) => {
+    setUniformValue(text);
+    applyLengthToAll(text);
+  };
+
+  /** New rows must not sit outside a uniformity the plan is claiming. */
+  const newSection = () => ({
+    ...emptySection(),
+    maxMeters: uniformLength ? Number(uniformValue) || 0 : 0,
+  });
 
   const yarnOptions = (yarns.data ?? []).map((y) => ({ value: y.id, label: y.name }));
 
@@ -233,6 +337,7 @@ export function WarpingPlanForm({
               beamNo: b.beamNo ?? i + 1,
               pairedBeamNo: b.pairedBeamNo ?? null,
               elastic: b.elastic ?? null,
+              tapeNo: b.tapeNo ?? null,
             })),
             remarks: values.remarks,
           },
@@ -286,15 +391,63 @@ export function WarpingPlanForm({
               <>This job&apos;s elastics have a warping template you can start from.</>
             )}
           </span>
+          {/* The template describes one tape; this is how many of them
+              the plan runs. Rebuilding on change is safe only while the
+              beams still are the template — after Start empty it stops. */}
+          {filledFromTemplate && (
+            <label className="flex items-center gap-2 text-xs font-medium">
+              Tapes
+              <input
+                type="number"
+                min={1}
+                max={99}
+                aria-label="Number of tapes"
+                value={tapesText}
+                onChange={(e) => changeTapes(e.target.value)}
+                onBlur={() => setTapesText(String(tapes))}
+                className="h-8 w-16 rounded-lg border border-ink-200 bg-surface px-2 text-center text-sm tabular-nums text-ink-900 focus:border-brand-500 focus:outline-none"
+              />
+              <span className="text-ink-400">
+                × {templateBeams.length} = {tapes * templateBeams.length} beams
+              </span>
+            </label>
+          )}
           <button
             type="button"
-            onClick={filledFromTemplate ? clearBeams : applyTemplate}
+            onClick={() => (filledFromTemplate ? clearBeams() : applyTemplate())}
             className="rounded px-2 py-1 text-xs font-semibold hover:bg-status-info/10"
           >
             {filledFromTemplate ? "Start empty" : "Use template"}
           </button>
         </div>
       )}
+
+      {/* One length for every section — see toggleUniformLength. */}
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-ink-100 px-3 py-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={uniformLength}
+            aria-label="Same length for every section"
+            onChange={(e) => toggleUniformLength(e.target.checked)}
+            className="h-4 w-4 accent-brand-500"
+          />
+          Same length for every section
+        </label>
+        {uniformLength && (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="number"
+              min={0}
+              aria-label="Shared section length"
+              value={uniformValue}
+              onChange={(e) => changeUniformLength(e.target.value)}
+              className="h-9 w-28 rounded-lg border border-ink-200 bg-surface px-2 text-sm tabular-nums focus:border-brand-500 focus:outline-none"
+            />
+            <span className="text-xs text-ink-400">m on every section</span>
+          </label>
+        )}
+      </div>
 
       {beams.fields.map((beam, bi) => (
         <BeamFields
@@ -309,7 +462,11 @@ export function WarpingPlanForm({
             templateBeams.find((t) => t.elasticId && t.elasticId === watched?.[bi]?.elastic)
               ?.elasticName ?? ""
           }
+          tapeNo={watched?.[bi]?.tapeNo ?? null}
+          lengthLocked={uniformLength}
+          newSection={newSection}
           watchedSections={watched?.[bi]?.sections}
+          onDuplicate={() => duplicateBeam(bi)}
           onRemove={beams.fields.length > 1 ? () => beams.remove(bi) : undefined}
           combining={combining}
           picked={picked.includes(bi)}
@@ -324,7 +481,7 @@ export function WarpingPlanForm({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => beams.append({ sections: [emptySection()] })}
+          onClick={() => beams.append({ sections: [newSection()] })}
         >
           <Plus className="h-4 w-4" /> Add beam
         </Button>
@@ -357,6 +514,10 @@ import { Control, UseFormRegister, FieldErrors } from "react-hook-form";
 function BeamFields({
   index,
   elasticName,
+  tapeNo,
+  onDuplicate,
+  lengthLocked,
+  newSection,
   control,
   register,
   errors,
@@ -374,6 +535,12 @@ function BeamFields({
   index: number;
   /** Empty unless this beam came from a template. */
   elasticName?: string;
+  /** Null for a beam added by hand, which belongs to no tape. */
+  tapeNo?: number | null;
+  onDuplicate: () => void;
+  /** True while one shared field drives every section's length. */
+  lengthLocked: boolean;
+  newSection: () => { warpYarn: string; ends: number; maxMeters: number; yarnLot: string };
   control: Control<PlanValues>;
   register: UseFormRegister<PlanValues>;
   errors: FieldErrors<PlanValues>;
@@ -408,6 +575,11 @@ function BeamFields({
           />
         )}
         <p className="text-sm font-semibold">Beam {index + 1}</p>
+        {/* Which tape this beam is part of — a flat list of beams gives
+            the operator no way to see where one tape ends. */}
+        {tapeNo != null && (
+          <StatusChip tone="neutral">Tape {tapeNo}</StatusChip>
+        )}
         {/* On a job carrying more than one product, which beam belongs
             to which is the first thing the programme has to say. */}
         {elasticName && (
@@ -430,11 +602,22 @@ function BeamFields({
             </button>
           </>
         )}
+        {/* Running the same beam twice is routine, and retyping every
+            section to do it is where the two copies drift apart. */}
+        <button
+          type="button"
+          onClick={onDuplicate}
+          className="ml-auto rounded p-1 text-ink-400 hover:text-ink-900"
+          aria-label={`Duplicate beam ${index + 1}`}
+          title="Duplicate this beam into the programme"
+        >
+          <Copy className="h-4 w-4" />
+        </button>
         {onRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="ml-auto p-1 rounded text-ink-400 hover:text-status-danger"
+            className="p-1 rounded text-ink-400 hover:text-status-danger"
             aria-label={`Remove beam ${index + 1}`}
           >
             <Trash2 className="h-4 w-4" />
@@ -478,7 +661,17 @@ function BeamFields({
                 error={errors.beams?.[index]?.sections?.[si]?.ends?.message}
                 {...register(`beams.${index}.sections.${si}.ends`)}
               />
-              <Input aria-label="Length" type="number" placeholder="Length" {...register(`beams.${index}.sections.${si}.maxMeters`)} />
+              <Input
+                aria-label="Length"
+                type="number"
+                placeholder="Length"
+                // Read-only rather than disabled: a disabled input is
+                // dropped from the form, and the value still has to be
+                // submitted with the section.
+                readOnly={lengthLocked}
+                className={lengthLocked ? "bg-ink-100/50 text-ink-400" : undefined}
+                {...register(`beams.${index}.sections.${si}.maxMeters`)}
+              />
               <button
                 type="button"
                 onClick={() => sections.fields.length > 1 && sections.remove(si)}
@@ -497,7 +690,7 @@ function BeamFields({
         variant="ghost"
         size="sm"
         className="mt-2"
-        onClick={() => sections.append({ warpYarn: "", ends: 0, maxMeters: 0, yarnLot: "" })}
+        onClick={() => sections.append(newSection())}
       >
         <Plus className="h-4 w-4" /> Add section
       </Button>
