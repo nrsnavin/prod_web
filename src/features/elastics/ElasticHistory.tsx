@@ -3,7 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/Card";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { Pagination } from "@/components/ui/Pagination";
-import { StatusChip } from "@/components/ui/StatusChip";
+import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
+import { orderStatusTone, orderStatusLabel } from "../orders/orderStatus";
+import { jobStatusTone } from "../jobs/jobStatus";
+import type { OrderStatus } from "../orders/types";
+import type { JobStatus } from "../jobs/types";
 import { useElasticOrders, useElasticJobs } from "./hooks";
 import type { ElasticJobRow, ElasticOrderRow } from "./types";
 
@@ -33,20 +37,23 @@ const fmtDate = (d: string | null) =>
 
 const fmtQty = (n: number) => (n > 0 ? n.toLocaleString("en-IN") : "—");
 
-/** Order lifecycle → chip tone. Kept at the call site, per StatusChip. */
-const orderTone = (status: string) => {
-  if (status === "Completed") return "success" as const;
-  if (status === "Cancelled" || status === "Deleted") return "danger" as const;
-  if (status === "InProgress") return "info" as const;
-  return "neutral" as const;
-};
+/**
+ * Status → tone and label, delegated to the maps the rest of the app
+ * already uses. Writing a second set here would drift from them, and
+ * the first symptom is what this panel first shipped with: the raw
+ * enum "INPROGRESS" on screen where every other page says "In
+ * production".
+ *
+ * Both fall back, because these lists can show a state the maps do not
+ * cover — a Deleted order is hidden by default but askable for.
+ */
+const orderTone = (status: string): ChipTone =>
+  orderStatusTone[status as OrderStatus] ?? (status === "Deleted" ? "danger" : "neutral");
 
-const jobTone = (status: string) => {
-  if (status === "completed") return "success" as const;
-  if (status === "cancelled") return "danger" as const;
-  if (status === "preparatory") return "neutral" as const;
-  return "info" as const;
-};
+const orderLabel = (status: string) => orderStatusLabel[status as OrderStatus] ?? status;
+
+const jobTone = (status: string): ChipTone =>
+  jobStatusTone[status as JobStatus] ?? "neutral";
 
 export function ElasticHistory({ elasticId }: { elasticId: string }) {
   return (
@@ -85,7 +92,7 @@ function ElasticOrders({ elasticId }: { elasticId: string }) {
     {
       key: "status",
       header: "Status",
-      render: (o) => <StatusChip tone={orderTone(o.status)}>{o.status}</StatusChip>,
+      render: (o) => <StatusChip tone={orderTone(o.status)}>{orderLabel(o.status)}</StatusChip>,
     },
     {
       key: "ordered",

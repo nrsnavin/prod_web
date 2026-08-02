@@ -105,6 +105,32 @@ describe("orders for an elastic", () => {
     expect(screen.getByText("Never ordered")).toBeInTheDocument();
   });
 
+  it("labels a status the way the rest of the app does", () => {
+    // Shipped once printing the raw enum "INPROGRESS" while every other
+    // screen said "In production". A second, local status map is how
+    // that happens, so this asserts the shared one is used.
+    orderPage = {
+      orders: [order({ status: "InProgress" })],
+      page: 1, limit: 10, total: 1, hasMore: false,
+    };
+    renderPanel();
+
+    expect(screen.getByText("In production")).toBeInTheDocument();
+    expect(screen.queryByText(/INPROGRESS/i)).not.toBeInTheDocument();
+  });
+
+  it("still shows a status the shared map has never heard of", () => {
+    // These lists can surface a state the map does not cover — a
+    // Deleted order is hidden by default but askable for. Showing the
+    // raw value beats showing nothing.
+    orderPage = {
+      orders: [order({ status: "Deleted" })],
+      page: 1, limit: 10, total: 1, hasMore: false,
+    };
+    renderPanel();
+    expect(screen.getByText("Deleted")).toBeInTheDocument();
+  });
+
   it("opens the order that was clicked", async () => {
     const user = userEvent.setup();
     orderPage = { orders: [order()], page: 1, limit: 10, total: 1, hasMore: false };
