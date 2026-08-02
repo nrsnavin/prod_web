@@ -10,6 +10,7 @@ import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -23,7 +24,11 @@ import { WarpingBatches } from "./WarpingBatches";
 export function WarpingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
-  const { data: warping, isLoading, isError, error } = useWarping(id);
+  // The detail route hands back the warping and, alongside it, the dye
+  // lots its programme names — the same sections summarised.
+  const { data: detail, isLoading, isError, error } = useWarping(id);
+  const warping = detail?.warping;
+  const lotTrail = detail?.yarnLots;
   const plan = useWarpingPlan(id);
   const { start, complete, cancel, deletePlan } = useWarpingMutations();
   const [planOpen, setPlanOpen] = useState(false);
@@ -177,6 +182,45 @@ export function WarpingDetailPage() {
             />
           ) : (
             <div className="mt-2 space-y-3">
+              {/* The lots this programme commits to, at a size a person
+                  can read. The beam list below has them section by
+                  section; what it cannot say without being counted is how
+                  many sections are still waiting for a choice. */}
+              {lotTrail && lotTrail.sections.total > 0 && (
+                <div className="rounded-xl bg-ink-50 px-3 py-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+                      Dye lots
+                    </span>
+                    {lotTrail.lots.length === 0 ? (
+                      <span className="text-xs text-ink-400">none chosen</span>
+                    ) : (
+                      lotTrail.lots.map((l) => (
+                        <StatusChip key={`${l.yarnLot ?? l.lotNo}`} tone="info">
+                          {l.lotNo}
+                        </StatusChip>
+                      ))
+                    )}
+                    {lotTrail.sections.open > 0 && (
+                      <StatusChip tone="warning">
+                        {lotTrail.sections.open} of {lotTrail.sections.total} open
+                      </StatusChip>
+                    )}
+                  </div>
+                  {lotTrail.sections.open > 0 && (
+                    <p className="mt-1 text-xs text-ink-400">
+                      {/* Left open on purpose is a legitimate state — undyed
+                          yarn has no lot — so this names it rather than
+                          treating it as an error. */}
+                      No lot set on
+                      {lotTrail.openBeamNos.length > 0
+                        ? ` beam ${lotTrail.openBeamNos.join(", ")}`
+                        : " some sections"}
+                      . Those sections stay open until one is chosen.
+                    </p>
+                  )}
+                </div>
+              )}
               {(plan.data?.plan?.beams ?? []).map((beam, bi) => (
                 <div key={bi} className="rounded-xl border border-ink-100 p-3">
                   <p className="text-sm font-semibold">

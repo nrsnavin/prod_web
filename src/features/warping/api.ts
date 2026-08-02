@@ -5,6 +5,8 @@ import {
   ProgrammeStatus,
   Warping,
   WarpingBatch,
+  WarpingDetail,
+  WarpingLotTrail,
   WarpingPlan,
 } from "./types";
 
@@ -18,11 +20,22 @@ export const warpingService = {
     return res;
   },
 
-  async getById(id: string): Promise<Warping> {
-    const res = await httpClient.get<{ success: boolean; warping: Warping }>(
-      `/warping/detail/${id}`
-    );
-    return res.warping;
+  async getById(id: string): Promise<WarpingDetail> {
+    const res = await httpClient.get<
+      { success: boolean; warping: Warping; yarnLots?: WarpingLotTrail }
+    >(`/warping/detail/${id}`);
+    return {
+      warping: res.warping,
+      // A server that predates the lot roll-up sends no trail. An empty
+      // one keeps the page rendering rather than throwing on a missing key.
+      yarnLots:
+        res.yarnLots ?? {
+          planned: [],
+          lots: [],
+          sections: { total: 0, withLot: 0, open: 0 },
+          openBeamNos: [],
+        },
+    };
   },
 
   // POST, not PUT: the routes are declared POST, and Express answers a

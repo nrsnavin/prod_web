@@ -235,3 +235,54 @@ export interface OrderPurchaseOrder {
   forJob?: { _id: string; jobOrderNo: number } | null;
   items: Array<{ quantity: number }>;
 }
+
+// ── Dye lots on an order ─────────────────────────────────────────────────
+// Shade complaints arrive quoting an order or a delivery note, not a
+// warping batch, so the lot trail has to be answerable from this end.
+// Rolled up per job: what each job's warping programme committed to, and
+// what its batches actually issued.
+export interface OrderLotRow {
+  /** "planned" can still change; "issued" is yarn already off the rack. */
+  source: "planned" | "issued";
+  yarnLot: string | null;
+  lotNo: string;
+  shade: string;
+  materialName: string;
+  beamNos: number[];
+  /** Planned rows only — how many beam sections run off this lot. */
+  sections?: number;
+  /** Issued rows only — kg drawn. Programming does not weigh a lot. */
+  quantity?: number;
+  batchNo?: string;
+  batchStatus?: string;
+  elasticNames?: string[];
+  elasticName?: string | null;
+  lotStatus?: string | null;
+  issuedDate?: string | null;
+}
+
+export interface OrderLotJob {
+  jobId: string;
+  jobOrderNo: number;
+  jobNo: string;
+  status: string;
+  elastics: string[];
+  planned: OrderLotRow[];
+  issued: OrderLotRow[];
+  sections: { total: number; withLot: number; open: number };
+  openBeamNos: number[];
+}
+
+export interface OrderYarnLots {
+  orderId: string;
+  orderNo: number | null;
+  byJob: OrderLotJob[];
+  lots: Array<{
+    yarnLot: string | null;
+    lotNo: string;
+    shade: string;
+    materialName: string;
+    source: "planned" | "issued";
+  }>;
+  sections: { total: number; withLot: number; open: number };
+}

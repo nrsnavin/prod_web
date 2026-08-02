@@ -8,6 +8,7 @@ import {
   OrderListPage,
   OrderMrp,
   OrderPurchaseOrder,
+  OrderYarnLots,
   RaisePoResult,
 } from "./types";
 
@@ -68,6 +69,16 @@ export const orderService = {
   async mrp(orderId: string): Promise<OrderMrp> {
     const res = await httpClient.get<{ success: boolean; data: OrderMrp }>(
       `/order/${orderId}/mrp`
+    );
+    return res.data;
+  },
+
+  // ── Dye lots behind the order's goods ────────────────────────────
+  // Rolled up from its jobs: what each warping programme committed to
+  // and what its batches issued.
+  async yarnLots(orderId: string): Promise<OrderYarnLots> {
+    const res = await httpClient.get<{ success: boolean; data: OrderYarnLots }>(
+      `/order/${orderId}/yarn-lots`
     );
     return res.data;
   },

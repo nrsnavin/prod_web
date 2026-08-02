@@ -192,15 +192,31 @@ export interface JobPurchaseOrder {
 // "where did this lot go", this answers "what is in this roll" — the
 // question actually asked when a customer reports a shade band months on.
 export interface JobLotUse {
-  batchId: string;
-  batchNo: string;
-  batchStatus: "planned" | "issued" | "completed";
+  /**
+   * Where this row comes from, and the two are never merged.
+   *
+   * "planned" — chosen when the warping programme was written. Says
+   *   which lot the beam is meant to run off. It can still change.
+   * "issued"  — drawn against a warping batch. The cones are off the
+   *   rack; this one cannot change.
+   */
+  source: "planned" | "issued";
+  /** Set on planned rows only. */
+  planId?: string | null;
+  batchId: string | null;
+  batchNo: string | null;
+  batchStatus: "planned" | "issued" | "completed" | null;
   beamNos: number[];
   yarnLot: string;
   lotNo: string;
   shade: string;
+  /** The lot's own state — a lot quarantined after programming matters. */
+  lotStatus?: string | null;
   materialName: string;
-  quantity: number;
+  /** null on a planned row: programming names the lot, it does not weigh it. */
+  quantity: number | null;
+  /** How many beam sections a planned lot covers. */
+  sections?: number;
   /**
    * How many elastics this one draw is answering for. The batch drew its
    * yarn once, so the quantity is left whole rather than divided by a
@@ -217,11 +233,27 @@ export interface JobLotGroup {
   lots: JobLotUse[];
 }
 
+/** How many of the programme's beam sections have a lot on them yet. */
+export interface LotSectionCount {
+  total: number;
+  withLot: number;
+  open: number;
+}
+
 export interface JobYarnLots {
   jobId: string;
   jobOrderNo: number;
   byElastic: JobLotGroup[];
-  lots: Array<{ yarnLot: string; lotNo: string; shade: string; materialName: string }>;
+  lots: Array<{
+    yarnLot: string;
+    lotNo: string;
+    shade: string;
+    materialName: string;
+    source: "planned" | "issued";
+  }>;
+  sections: LotSectionCount;
+  /** Beams with at least one section still awaiting a lot. */
+  openBeamNos: number[];
   hasUnattributed: boolean;
 }
 

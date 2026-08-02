@@ -18,6 +18,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useOrder, useOrderMutations } from "./hooks";
 import { orderService } from "./api";
 import { OrderMaterialPo } from "./OrderMaterialPo";
+import { OrderYarnLots } from "./OrderYarnLots";
 import { OrderElasticProgress, RawMaterialRequirement, StockShortfall } from "./types";
 import { jobRefId } from "./orderJobRef";
 import { OrderJobGlance } from "./OrderJobGlance";
@@ -434,6 +435,11 @@ export function OrderDetailPage() {
       {/* Replaces the old read-only requirement table: same figures, but
           live and with the shortfall actually orderable from here. */}
       <OrderMaterialPo orderId={order._id} />
+
+      {/* Which dye lots the goods will carry. Sits below the materials
+          because it answers the later question — not what to buy, but
+          what went in. */}
+      <OrderYarnLots orderId={order._id} />
 
       {confirm && (
         <ConfirmDialog

@@ -155,3 +155,41 @@ export interface WarpingBatch {
   machine?: { _id: string; ID?: string } | string | null;
   remarks?: string;
 }
+
+// ── The lots this warping's programme names ──────────────────────────────
+// The beam list below already carries a lot per section. This is the same
+// fact folded to a size a person can read, plus the one thing the beam
+// list can only be counted for: how many sections are still open.
+export interface WarpingLotEntry {
+  source: "planned";
+  planId: string;
+  elasticId: string | null;
+  elasticName: string | null;
+  yarnLot: string | null;
+  lotNo: string;
+  shade: string;
+  lotStatus: string | null;
+  materialId: string | null;
+  materialName: string;
+  beamNos: number[];
+  sections: number;
+}
+
+export interface WarpingLotTrail {
+  planned: WarpingLotEntry[];
+  lots: Array<{
+    yarnLot: string | null;
+    lotNo: string;
+    shade: string;
+    materialName: string;
+    source: "planned" | "issued";
+  }>;
+  sections: { total: number; withLot: number; open: number };
+  openBeamNos: number[];
+}
+
+/** What /warping/detail/:id hands back. */
+export interface WarpingDetail {
+  warping: Warping;
+  yarnLots: WarpingLotTrail;
+}

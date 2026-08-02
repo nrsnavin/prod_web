@@ -105,6 +105,14 @@ export function useOrderMrp(id: string | undefined) {
   });
 }
 
+export function useOrderYarnLots(id: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "yarn-lots", id],
+    queryFn: () => orderService.yarnLots(id!),
+    enabled: !!id,
+  });
+}
+
 export function useOrderPurchaseOrders(id: string | undefined) {
   return useQuery({
     queryKey: [KEY, "purchase-orders", id],
