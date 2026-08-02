@@ -16,6 +16,7 @@ import { MaterialWeight } from "./types";
 import { ElasticForm } from "./ElasticForm";
 import { ElasticStockCard } from "./ElasticStockCard";
 import { ElasticWarpingTemplate } from "./ElasticWarpingTemplate";
+import { ElasticHistory } from "./ElasticHistory";
 
 function materialName(mw?: MaterialWeight): string {
   if (!mw?.id) return "—";
@@ -211,6 +212,11 @@ export function ElasticDetailPage() {
       <ElasticWarpingTemplate elastic={elastic} />
 
       <ElasticStockCard elasticId={elastic._id} />
+
+      {/* Below the stock card because it answers the later question:
+          not how much there is, but who has bought it and when it last
+          ran. */}
+      <ElasticHistory elasticId={elastic._id} />
 
       <FormScreen open={editOpen} onClose={() => setEditOpen(false)} title="Edit elastic" width="max-w-2xl">
         <ElasticForm

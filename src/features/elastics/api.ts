@@ -1,5 +1,11 @@
 import { httpClient } from "@/core/http/httpClient";
-import { Elastic, ElasticFormValues, MaterialsByCategory } from "./types";
+import {
+  Elastic,
+  ElasticFormValues,
+  ElasticJobRow,
+  ElasticOrderRow,
+  MaterialsByCategory,
+} from "./types";
 
 export const elasticService = {
   async list(params: { page?: number; limit?: number; search?: string; includeArchived?: string }) {
@@ -71,5 +77,34 @@ export const elasticService = {
 
   async materialsByCategory(): Promise<MaterialsByCategory> {
     return httpClient.get<MaterialsByCategory>("/materials/materialForNewElastic");
+  },
+
+  // ── Where this elastic has been ───────────────────────────────────
+  // Both paginate: a product in the catalogue for years has hundreds of
+  // orders and hundreds of jobs, and neither list has a natural end.
+  async orders(
+    id: string,
+    params: { page?: number; limit?: number } = {}
+  ): Promise<{
+    orders: ElasticOrderRow[];
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+  }> {
+    return httpClient.get(`/elastic/${id}/orders`, { limit: 10, ...params });
+  },
+
+  async jobs(
+    id: string,
+    params: { page?: number; limit?: number } = {}
+  ): Promise<{
+    jobs: ElasticJobRow[];
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+  }> {
+    return httpClient.get(`/elastic/${id}/jobs`, { limit: 10, ...params });
   },
 };

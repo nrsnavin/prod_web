@@ -26,6 +26,34 @@ export function useElastic(id: string | undefined) {
   });
 }
 
+/**
+ * The orders that asked for this elastic, one page at a time.
+ *
+ * Paged rather than infinite-scrolled: the two lists sit side by side on
+ * the detail page, and a page you can step back through is easier to
+ * hold a place in than a list that only grows. `placeholderData` keeps
+ * the previous page on screen while the next loads, so paging does not
+ * blank the panel.
+ */
+export function useElasticOrders(id: string | undefined, page: number, limit = 10) {
+  return useQuery({
+    queryKey: [KEY, "orders", id, page, limit],
+    queryFn: () => elasticService.orders(id!, { page, limit }),
+    enabled: !!id,
+    placeholderData: (prev) => prev,
+  });
+}
+
+/** The jobs that made it, same paging. */
+export function useElasticJobs(id: string | undefined, page: number, limit = 10) {
+  return useQuery({
+    queryKey: [KEY, "jobs", id, page, limit],
+    queryFn: () => elasticService.jobs(id!, { page, limit }),
+    enabled: !!id,
+    placeholderData: (prev) => prev,
+  });
+}
+
 export function useMaterialsByCategory() {
   return useQuery({
     queryKey: ["materials-by-category"],
