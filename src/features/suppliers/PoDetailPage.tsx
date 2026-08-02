@@ -20,7 +20,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { usePurchaseOrder, usePoMutations } from "./hooks";
 import { poService } from "./api";
-import { InwardRecord, PoItem } from "./types";
+import { InwardRecord, PoItem, poItemPending, poItemReceived } from "./types";
 import { poStatusTone } from "./PoListPage";
 
 function materialName(item: PoItem): string {
@@ -42,7 +42,7 @@ const itemColumns: Column<PoItem>[] = [
     header: "Received",
     align: "right",
     render: (it) => {
-      const pct = it.quantity > 0 ? ((it.received ?? 0) / it.quantity) * 100 : 0;
+      const pct = it.quantity > 0 ? (poItemReceived(it) / it.quantity) * 100 : 0;
       return (
         <span className="inline-flex items-center gap-2">
           <span className="h-1.5 w-16 rounded-full bg-ink-100 overflow-hidden">
@@ -51,7 +51,7 @@ const itemColumns: Column<PoItem>[] = [
               style={{ width: `${Math.min(100, pct)}%` }}
             />
           </span>
-          <span className="tabular-nums">{(it.received ?? 0).toLocaleString("en-IN")}</span>
+          <span className="tabular-nums">{poItemReceived(it).toLocaleString("en-IN")}</span>
         </span>
       );
     },
@@ -191,7 +191,7 @@ export function InwardForm({
   const overageFor = (it: PoItem) => {
     const entered = Number(qty[materialId(it)]) || 0;
     if (entered <= 0) return null;
-    const excess = (it.received ?? 0) + entered - it.quantity;
+    const excess = poItemReceived(it) + entered - it.quantity;
     if (excess <= 0) return null;
     return { excess, needsReason: excess > it.quantity * 0.1 };
   };
@@ -255,7 +255,10 @@ export function InwardForm({
       <div className="space-y-2">
         {items.map((it) => {
           const idKey = materialId(it);
-          const remaining = it.quantity - (it.received ?? 0);
+          // The server states this; subtracting it here under a field
+          // name the server never sends is what made every line read as
+          // fully pending no matter how much had arrived.
+          const remaining = poItemPending(it);
           const over = overageFor(it);
           return (
             <div key={idKey}>
@@ -529,7 +532,7 @@ export function PoDetailPage() {
   const { po, inwardHistory } = data;
   const supplierName = typeof po.supplier === "object" && po.supplier ? po.supplier.name : "—";
   const total = po.items.reduce((s, it) => s + it.price * it.quantity, 0);
-  const editable = po.status === "Open" && !po.items.some((it) => (it.received ?? 0) > 0);
+  const editable = po.status === "Open" && !po.items.some((it) => poItemReceived(it) > 0);
 
   return (
     <>

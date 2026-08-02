@@ -19,6 +19,7 @@ import { nextJobStatus } from "./jobStatus";
 import { MachineAssignModal } from "./MachineAssignModal";
 import { QcPanel } from "./QcPanel";
 import { JobYarnLots } from "./JobYarnLots";
+import { JobShiftSummary } from "./JobShiftSummary";
 import { useTrackRecent } from "@/core/ui/uiStore";
 
 function Pipeline({ status }: { status: string }) {
@@ -85,7 +86,14 @@ const shiftColumns: Column<JobShiftDetail>[] = [
     key: "prod",
     header: "Output (m)",
     align: "right",
-    render: (s) => s.productionMeters.toLocaleString("en-IN"),
+    // An unverified figure is the operator's own claim. Marking it beats
+    // printing it identically to a checked one.
+    render: (s) => (
+      <span className={s.verified === false ? "text-ink-400" : undefined}>
+        {s.productionMeters.toLocaleString("en-IN")}
+        {s.verified === false ? " *" : ""}
+      </span>
+    ),
   },
   { key: "status", header: "Status", render: (s) => <StatusChip tone="neutral">{s.status}</StatusChip> },
 ];
@@ -248,11 +256,13 @@ export function JobDetailPage() {
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Shifts on this job</h3>
+        <JobShiftSummary summary={job.shiftSummary} />
         <DataTable
           columns={shiftColumns}
           rows={job.shiftDetails ?? []}
           rowKey={(s) => s.id}
           emptyTitle="No shifts recorded yet"
+          emptyDescription="Shifts appear here once one is planned on the machine running this job."
         />
       </Card>
 

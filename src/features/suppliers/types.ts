@@ -26,8 +26,32 @@ export interface PoItem {
   rawMaterial: { _id: string; name: string; category?: string; unit?: string } | string;
   price: number;
   quantity: number;
+  /**
+   * How much has actually arrived. The document field is
+   * `receivedQuantity`; the detail route also emits it under this name,
+   * which is the one every screen here reads. Both are declared so a
+   * response from either shape is usable.
+   */
   received?: number;
+  receivedQuantity?: number;
+  /**
+   * Still to come, stated by the server rather than subtracted here.
+   * Two screens doing the same subtraction under two different field
+   * names is exactly how the pending column came to print the full
+   * order quantity forever.
+   */
+  pending?: number;
 }
+
+/** What has arrived on a line, whichever name the server used. */
+export const poItemReceived = (it: PoItem): number =>
+  Number(it.received ?? it.receivedQuantity ?? 0) || 0;
+
+/** What is still to come. Never negative — over-delivery is allowed. */
+export const poItemPending = (it: PoItem): number =>
+  it.pending != null
+    ? Number(it.pending) || 0
+    : Math.max(0, (Number(it.quantity) || 0) - poItemReceived(it));
 
 export interface PoSupplierRef {
   _id: string;

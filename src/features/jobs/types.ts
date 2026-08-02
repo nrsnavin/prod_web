@@ -53,6 +53,35 @@ export interface JobShiftDetail {
   operatorName: string;
   operatorDept?: string;
   elastics: Array<{ head: number; elasticName: string }>;
+  /**
+   * false while the shift is still the operator's own claim. Until an
+   * admin verifies it, `productionMeters` is what was submitted, not a
+   * checked figure — and the two must not read alike.
+   */
+  verified?: boolean;
+}
+
+/**
+ * What this job's shifts add up to.
+ *
+ * Saves the reader totting up rows by eye, and separates a verified
+ * figure from one still awaiting verification — a claim and a checked
+ * number are not the same fact.
+ */
+export interface JobShiftSummary {
+  shifts: number;
+  produced: number;
+  workedMinutes: number;
+  byShift: { DAY: number; NIGHT: number };
+  closed: number;
+  awaitingVerification: number;
+  open: number;
+  /** Output per hour actually worked, not per hour rostered. */
+  metresPerHour: number;
+  firstDate: string | null;
+  lastDate: string | null;
+  firstDateLabel: string | null;
+  lastDateLabel: string | null;
 }
 
 export interface JobDetail {
@@ -77,6 +106,7 @@ export interface JobDetail {
   warping?: { status: string; date?: string | null } | null;
   covering?: { status: string; date?: string | null } | null;
   shiftDetails: JobShiftDetail[];
+  shiftSummary?: JobShiftSummary;
   wastages: Array<{
     id: string;
     elasticName: string;
