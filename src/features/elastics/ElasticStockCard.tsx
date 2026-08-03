@@ -18,11 +18,39 @@ interface StockMovement {
   date?: string;
   type?: string;
   requested?: number;
+  /** Goods delta: what physically moved. */
   applied?: number;
+  /** Goods balance after the movement. */
   balance?: number;
+  /** Promise delta: how much became (or stopped being) spoken for. */
+  reservedApplied?: number;
+  /** Promise balance after. null on rows written before it was tracked. */
+  reservedBalance?: number | null;
+  /** balance − reservedBalance, from the server. null when unknowable. */
+  available?: number | null;
   refType?: string;
   reason?: string;
 }
+
+/**
+ * What each movement means on the floor.
+ *
+ * The raw enum was printed straight onto the page, so a stock ledger —
+ * the document someone reconciles a warehouse against — read
+ * "PACKING_INWARD" and "DC_OUT". These are the names the people using
+ * it already have for the same events.
+ */
+const MOVEMENT_LABEL: Record<string, string> = {
+  PACKING_INWARD:      "Produced in",
+  PACKING_REVERSE:     "Packing reversed",
+  DC_OUT:              "Dispatched",
+  DC_CANCEL_RETURN:    "Dispatch cancelled",
+  WASTAGE_OUT:         "Wastage",
+  WASTAGE_RETURN:      "Wastage reversed",
+  MANUAL_ADJUST:       "Stock adjustment",
+  RESERVATION_HOLD:    "Reserved for order",
+  RESERVATION_RELEASE: "Reservation released",
+};
 
 interface StockResponse {
   success: boolean;
@@ -43,6 +71,45 @@ interface StockResponse {
 }
 
 const nf = (n?: number) => (n ?? 0).toLocaleString("en-IN");
+
+/**
+ * One side of a movement: what changed, and what it left behind.
+ *
+ * A row that did not touch this side shows a dash rather than a zero —
+ * "nothing happened here" and "it happened and came to nothing" are
+ * different facts, and a column of green +0s was how a reservation
+ * used to read as though it had done nothing at all.
+ */
+function Movement({
+  delta,
+  balance,
+  neutral,
+}: {
+  delta: number;
+  balance: number | null;
+  neutral?: boolean;
+}) {
+  const tone = neutral
+    ? "text-ink-900"
+    : delta < 0
+      ? "text-status-danger"
+      : "text-status-success";
+  return (
+    <div className="leading-tight">
+      {delta === 0 ? (
+        <span className="text-ink-400">—</span>
+      ) : (
+        <span className={`tabular-nums font-medium ${tone}`}>
+          {delta > 0 ? "+" : ""}
+          {nf(delta)}
+        </span>
+      )}
+      <p className="text-xs tabular-nums text-ink-400">
+        {balance === null ? "—" : nf(balance)}
+      </p>
+    </div>
+  );
+}
 
 function Stat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
@@ -111,22 +178,50 @@ export function ElasticStockCard({ elasticId }: { elasticId: string }) {
       header: "Date",
       render: (m) => (m.date ? new Date(m.date).toLocaleDateString("en-IN") : "—"),
     },
-    { key: "type", header: "Type", render: (m) => <span className="capitalize">{m.type ?? "—"}</span> },
     {
-      key: "applied",
-      header: "Qty (m)",
-      align: "right",
-      render: (m) => {
-        const v = m.applied ?? 0;
-        return (
-          <span className={`tabular-nums font-medium ${v < 0 ? "text-status-danger" : "text-status-success"}`}>
-            {v > 0 ? "+" : ""}
-            {nf(v)}
-          </span>
-        );
-      },
+      key: "type",
+      header: "Movement",
+      render: (m) => (
+        <span className="font-medium">
+          {MOVEMENT_LABEL[m.type ?? ""] ?? m.type ?? "—"}
+        </span>
+      ),
     },
-    { key: "balance", header: "Balance", align: "right", render: (m) => nf(m.balance) },
+    {
+      // Delta above, resulting balance below. Both sides of the ledger
+      // read the same way, so "what moved" and "what it left behind"
+      // are one glance rather than two columns apart.
+      key: "goods",
+      header: "Goods · on hand",
+      align: "right",
+      render: (m) => <Movement delta={m.applied ?? 0} balance={m.balance ?? 0} />,
+    },
+    {
+      key: "reserved",
+      header: "Reserved",
+      align: "right",
+      render: (m) => (
+        <Movement
+          delta={m.reservedApplied ?? 0}
+          balance={m.reservedBalance ?? null}
+          // A promise raised is not goods gained; colour it as neither.
+          neutral
+        />
+      ),
+    },
+    {
+      key: "available",
+      header: "Available",
+      align: "right",
+      render: (m) =>
+        m.available === null || m.available === undefined ? (
+          <span className="text-ink-400" title="This movement predates reservation tracking">
+            —
+          </span>
+        ) : (
+          <span className="tabular-nums">{nf(m.available)}</span>
+        ),
+    },
     {
       key: "reason",
       header: "Reason / source",
