@@ -142,6 +142,26 @@ export const materialService = {
     return httpClient.get<LotTrace>(`/yarn-lots/${id}/trace`);
   },
 
+  /** One lot with its own ledger — GET /yarn-lots/:id. */
+  async lot(id: string): Promise<YarnLot> {
+    const res = await httpClient.get<{ success: boolean; lot: YarnLot }>(
+      `/yarn-lots/${id}`
+    );
+    return res.lot;
+  },
+
+  /**
+   * Correct one lot's balance. The lot and the material's aggregate move
+   * together server-side — a lot corrected on its own would put the two
+   * permanently out of step.
+   */
+  adjustLot(id: string, body: { delta: number; reason: string }) {
+    return httpClient.post<{ success: boolean; balance: number; status: string }>(
+      `/yarn-lots/${id}/adjust`,
+      body
+    );
+  },
+
   async supplierOptions(search?: string): Promise<SupplierOption[]> {
     const res = await httpClient.get<{ success: boolean; suppliers: SupplierOption[] }>(
       "/materials/suppliers",

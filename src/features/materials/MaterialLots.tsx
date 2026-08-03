@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
+import { LotAge, LotLedger } from "./LotLedger";
+import { LotAdjustDialog } from "./LotAdjustDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -166,6 +168,8 @@ export function MaterialLots({
   const { create, setStatus } = useLotMutations();
   const [addOpen, setAddOpen] = useState(false);
   const [tracing, setTracing] = useState<string | null>(null);
+  const [openLedger, setOpenLedger] = useState<string | null>(null);
+  const [adjusting, setAdjusting] = useState<YarnLot | null>(null);
 
   const onRack = lots
     .filter((l) => l.status === "open")
@@ -220,12 +224,14 @@ export function MaterialLots({
         ) : (
           <div className="mt-3 divide-y divide-ink-100">
             {lots.map((lot) => (
-              <div key={lot._id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm">
+              <div key={lot._id} className="px-5 py-3 text-sm">
+                <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{lot.lotNo}</span>
                     <StatusChip tone={lotTone[lot.status]}>{lot.status}</StatusChip>
                     {lot.shade && <span className="text-xs text-ink-400">{lot.shade}</span>}
+                    <LotAge lot={lot} />
                   </div>
                   <p className="text-xs text-ink-400">
                     received {lot.receivedQty.toLocaleString("en-IN")} · issued{" "}
@@ -236,6 +242,20 @@ export function MaterialLots({
                 <span className="tabular-nums font-semibold">
                   {lot.balance.toLocaleString("en-IN")} kg
                 </span>
+                {/* The rows behind the balance. Loaded on demand — the
+                    ledger is select:false server-side and no one wants
+                    every lot's history in a list they have not opened. */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-expanded={openLedger === lot._id}
+                  onClick={() => setOpenLedger((id) => (id === lot._id ? null : lot._id))}
+                >
+                  {openLedger === lot._id ? "Hide ledger" : "Ledger"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setAdjusting(lot)}>
+                  Adjust
+                </Button>
                 <Button size="sm" variant="ghost" onClick={() => setTracing(lot._id)}>
                   Trace
                 </Button>
@@ -278,6 +298,8 @@ export function MaterialLots({
                     <ShieldAlert className="h-4 w-4" /> Hold
                   </Button>
                 )}
+                </div>
+                {openLedger === lot._id && <LotLedger lotId={lot._id} />}
               </div>
             ))}
           </div>
@@ -306,6 +328,9 @@ export function MaterialLots({
       </FormScreen>
 
       {tracing && <LotTrace lotId={tracing} onClose={() => setTracing(null)} />}
+      {adjusting && (
+        <LotAdjustDialog lot={adjusting} onClose={() => setAdjusting(null)} />
+      )}
     </>
   );
 }

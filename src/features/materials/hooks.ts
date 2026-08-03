@@ -84,7 +84,27 @@ export function useLotMutations() {
     }) => materialService.setLotStatus(id, status, remarks),
     onSuccess: invalidate,
   });
-  return { create, setStatus };
+  const adjust = useMutation({
+    mutationFn: ({ id, delta, reason }: { id: string; delta: number; reason: string }) =>
+      materialService.adjustLot(id, { delta, reason }),
+    onSuccess: invalidate,
+  });
+  return { create, setStatus, adjust };
+}
+
+/**
+ * One lot with its own ledger.
+ *
+ * Fetched only when a row is expanded — the ledger is select:false on
+ * the server and there is no reason to drag every lot's history into a
+ * list nobody has opened.
+ */
+export function useLot(id: string | undefined) {
+  return useQuery({
+    queryKey: [LOT_KEY, "detail", id],
+    queryFn: () => materialService.lot(id!),
+    enabled: !!id,
+  });
 }
 
 export function useMaterialMutations() {

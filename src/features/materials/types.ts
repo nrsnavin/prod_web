@@ -91,6 +91,43 @@ export interface YarnLot {
   balance: number;
   status: YarnLotStatus;
   remarks?: string;
+
+  // ── How long it has sat on the rack ─────────────────────────────────
+  // Dyed yarn is not indefinitely interchangeable with itself: the lot
+  // that has been there longest is the one to use up first, and the one
+  // to look at when a shade complaint arrives.
+  /** Whole days since it was received. */
+  ageDays?: number | null;
+  /**
+   * null on a lot that holds nothing — an exhausted lot's age is
+   * history, and listing it as critical would bury the ones that matter.
+   */
+  ageBucket?: "fresh" | "watch" | "late" | "critical" | null;
+  /** Only on the detail read — see GET /yarn-lots/:id. */
+  movements?: LotMovement[];
+}
+
+/**
+ * One move on a lot's own ledger.
+ *
+ * `quantity` is the delta, so a draw is negative — the same convention
+ * as the raw material ledger, deliberately, so the two cannot be read
+ * with opposite sign rules.
+ */
+export interface LotMovement {
+  date: string;
+  type: "INWARD" | "BATCH_ISSUE" | "BATCH_RETURN" | "ADJUST" | string;
+  /** Said in words by the server; the raw type is a database value. */
+  typeLabel?: string;
+  quantity: number;
+  balance?: number;
+  /** The batch that drew or returned it, when there was one. */
+  reference?: string | null;
+  referenceId?: string | null;
+  /** Only an adjustment has one — the rest are explained by their document. */
+  reason?: string;
+  /** Who made the adjustment. */
+  by?: string | null;
 }
 
 /** One hop of a lot's forward trail — see GET /yarn-lots/:id/trace. */
