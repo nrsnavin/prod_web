@@ -35,6 +35,10 @@ export function WarpingDetailPage() {
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [delPlanOpen, setDelPlanOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState<null | "sheet" | "labels">(null);
+  // Set from the server's 409. Held rather than toasted: it names
+  // something the operator can go and do.
+  const [yarnBlocker, setYarnBlocker] = useState<string | null>(null);
+  const [forceOpen, setForceOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -57,6 +61,33 @@ export function WarpingDetailPage() {
       onSuccess: () => toast(msg, "success"),
       onError: (e) => toast(e instanceof ApiError ? e.message : "Action failed", "error"),
     });
+
+  /**
+   * Complete, and handle the one refusal that is not a mistake.
+   *
+   * The server rejects completion while the yarn is still on the rack
+   * (409 WARPING_YARN_NOT_ISSUED). That is a state the operator can fix
+   * — issue the batch — so it is held on screen as something to act on
+   * rather than flashed past in a toast, the same way the weaving
+   * readiness blockers are.
+   */
+  const runComplete = (forceReason?: string) =>
+    complete.mutate(
+      { id: warping._id, forceReason },
+      {
+        onSuccess: () => {
+          setYarnBlocker(null);
+          toast("Warping completed", "success");
+        },
+        onError: (e) => {
+          if (e instanceof ApiError && e.code === "WARPING_YARN_NOT_ISSUED") {
+            setYarnBlocker(e.message);
+            return;
+          }
+          toast(e instanceof ApiError ? e.message : "Action failed", "error");
+        },
+      }
+    );
 
   const hasPlan = plan.data?.exists;
 
@@ -99,7 +130,7 @@ export function WarpingDetailPage() {
               </>
             )}
             {warping.status === "in_progress" && (
-              <Button loading={complete.isPending} onClick={() => run(complete, "Warping completed")}>
+              <Button loading={complete.isPending} onClick={() => runComplete()}>
                 <CheckCircle2 className="h-4 w-4" /> Complete
               </Button>
             )}
@@ -129,6 +160,45 @@ export function WarpingDetailPage() {
               onError: (e) => toast(e instanceof ApiError ? e.message : "Delete failed", "error"),
             }
           );
+        }}
+      />
+
+      {yarnBlocker && (
+        <div className="mb-4 rounded-xl bg-status-warningBg px-4 py-3">
+          <p className="text-sm font-medium text-status-warning">
+            Warping not completed — the yarn is still on the rack
+          </p>
+          <p className="mt-0.5 text-sm text-ink-600">{yarnBlocker}</p>
+          <p className="mt-1 text-xs text-ink-500">
+            {/* Say why the rule exists, not just that it fired. */}
+            Issuing the batch is what moves the lot balances and ties these beams to the
+            dye lot inside them. Completing without it leaves the lot ledger claiming yarn
+            that has gone.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={() => setYarnBlocker(null)}>
+              Dismiss
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setForceOpen(true)}>
+              Complete anyway…
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <ReasonDialog
+        open={forceOpen}
+        onClose={() => setForceOpen(false)}
+        title="Complete without issuing the yarn"
+        description="For beams already off the machine — warping that ran before the yarn was recorded against a batch. The reason is kept on the job's audit trail, so this is not mistaken for a completion that met the rule."
+        confirmLabel="Complete anyway"
+        // The route enforces 5; matching it here means the dialog does
+        // not accept a reason the server is about to refuse.
+        minLength={5}
+        loading={complete.isPending}
+        onConfirm={(reason) => {
+          runComplete(reason);
+          setForceOpen(false);
         }}
       />
 

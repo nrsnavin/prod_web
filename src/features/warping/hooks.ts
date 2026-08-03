@@ -50,7 +50,11 @@ export function useWarpingMutations() {
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };
   const start = useMutation({ mutationFn: warpingService.start, onSuccess: invalidate });
-  const complete = useMutation({ mutationFn: warpingService.complete, onSuccess: invalidate });
+  const complete = useMutation({
+    mutationFn: ({ id, forceReason }: { id: string; forceReason?: string }) =>
+      warpingService.complete(id, forceReason ? { forceReason } : undefined),
+    onSuccess: invalidate,
+  });
   const cancel = useMutation({ mutationFn: warpingService.cancel, onSuccess: invalidate });
   const createPlan = useMutation({
     mutationFn: warpingService.createPlan,

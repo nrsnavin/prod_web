@@ -42,7 +42,20 @@ export const warpingService = {
   // known path with an unknown verb by 404ing — so pressing Start
   // reported "not found" for a warping that plainly existed.
   start: (id: string) => httpClient.post("/warping/start", { id }),
-  complete: (id: string) => httpClient.post("/warping/complete", { id }),
+  /**
+   * Completing says the beams are built, so the server refuses while the
+   * yarn is still on the rack — 409 WARPING_YARN_NOT_ISSUED, carrying
+   * the batch counts so the screen can say what is missing.
+   *
+   * `force` + `forceReason` is for warpings already in flight when that
+   * rule arrived: beams on the floor with no issued batch behind them.
+   * The reason is recorded on the fingerprint.
+   */
+  complete: (id: string, force?: { forceReason: string }) =>
+    httpClient.post("/warping/complete", {
+      id,
+      ...(force ? { force: true, forceReason: force.forceReason } : {}),
+    }),
   cancel: (id: string) => httpClient.patch(`/warping/cancel/${id}`),
 
   async getPlan(warpingId: string): Promise<{ exists: boolean; plan?: WarpingPlan }> {

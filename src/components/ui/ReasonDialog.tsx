@@ -13,6 +13,14 @@ export interface ReasonDialogProps {
   confirmLabel?: string;
   tone?: "danger" | "default";
   loading?: boolean;
+  /**
+   * Shortest reason this caller will accept. Defaults to 3.
+   *
+   * Set it to whatever the route enforces: a dialog that accepts a
+   * reason the server then rejects sends the user round a trip to be
+   * told something the form already knew.
+   */
+  minLength?: number;
 }
 
 // Shared confirm-with-reason dialog. Every edit/delete that records an
@@ -26,6 +34,7 @@ export function ReasonDialog({
   confirmLabel = "Confirm",
   tone = "danger",
   loading,
+  minLength = 3,
 }: ReasonDialogProps) {
   const [reason, setReason] = useState("");
   const [touched, setTouched] = useState(false);
@@ -34,7 +43,7 @@ export function ReasonDialog({
     if (open) { setReason(""); setTouched(false); }
   }, [open]);
 
-  const tooShort = reason.trim().length < 3;
+  const tooShort = reason.trim().length < minLength;
 
   return (
     <Modal open={open} onClose={onClose} title={title} width="max-w-md" confirmDirtyClose={false}>
