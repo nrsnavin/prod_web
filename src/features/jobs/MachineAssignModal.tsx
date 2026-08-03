@@ -25,6 +25,10 @@ function useFreeMachines(enabled: boolean) {
 // elastics (POST /job/plan-weaving). The machine is claimed either way;
 // the job only leaves preparatory if its warping and covering are both
 // completed, and the server says which it did.
+//
+// Also used to MOVE a job that is already weaving — a machine can break
+// down mid-run. The machine it was on is freed server-side, inside the
+// same transaction as the new claim, so the job is never on neither.
 export function MachineAssignModal({
   job,
   open,
@@ -71,7 +75,21 @@ export function MachineAssignModal({
   const allMapped = headCount > 0 && [...Array(headCount)].every((_, h) => headMap[h]);
 
   return (
-    <FormScreen open={open} onClose={onClose} title={`Assign machine — ${job.jobNo}`} width="max-w-xl">
+    <FormScreen
+      open={open}
+      onClose={onClose}
+      title={`${job.machine ? "Change" : "Assign"} machine — ${job.jobNo}`}
+      width="max-w-xl"
+    >
+      {/* Say what happens to the machine it is leaving, so moving a
+          running job does not feel like it might strand it. */}
+      {job.machine && (
+        <p className="mb-3 text-sm text-ink-600">
+          {job.jobNo} is on{" "}
+          <span className="font-medium">{job.machine.machineName}</span>. Picking another
+          moves the job across and frees {job.machine.machineName}.
+        </p>
+      )}
       <div className="space-y-4">
         <Combobox
           label="Free machine *"
@@ -156,7 +174,7 @@ export function MachineAssignModal({
               )
             }
           >
-            Assign machine
+            {job.machine ? "Move to this machine" : "Assign machine"}
           </Button>
         </div>
       </div>

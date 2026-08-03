@@ -148,9 +148,16 @@ export function JobDetailPage() {
                 <FileText className="h-4 w-4" /> MRP sheet
               </Button>
             </Link>
-            {job.status === "preparatory" && (
-              <Button onClick={() => setAssignOpen(true)}>
-                <Cog className="h-4 w-4" /> Assign machine
+            {/* Weaving too, not just preparatory: a machine can break
+                down mid-run, and the job then has to be moved to a
+                working one. The old machine is freed server-side. */}
+            {(job.status === "preparatory" || job.status === "weaving") && (
+              <Button
+                variant={job.machine ? "secondary" : "primary"}
+                onClick={() => setAssignOpen(true)}
+              >
+                <Cog className="h-4 w-4" />{" "}
+                {job.machine ? "Change machine" : "Assign machine"}
               </Button>
             )}
             {next && (
