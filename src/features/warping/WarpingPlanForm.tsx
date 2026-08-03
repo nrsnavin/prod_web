@@ -73,7 +73,9 @@ function LotStockPanel({ stock }: { stock: YarnLotStock[] }) {
     <div className="rounded-xl border border-ink-100 p-3">
       <p className="text-sm font-medium">Lot-wise stock</p>
       <p className="text-xs text-ink-400">
-        A beam should come off one lot — mixing lots shows as a shade band.
+        A beam should come off one lot — mixing lots shows as a shade band. Each
+        section starts on the biggest lot of its yarn; change it on the row if the
+        run wants another.
       </p>
       <div className="mt-2 space-y-2">
         {stock.map((s) => (
@@ -324,6 +326,62 @@ export function WarpingPlanForm({
 
   const watched = watch("beams");
 
+  /**
+   * Default each section's dye lot to the biggest lot of the yarn it runs.
+   *
+   * A beam wants to come off ONE lot — two meeting inside it show as a
+   * shade band — so the lot with the most on it is the one most likely
+   * to carry the section without a join. That is the choice the
+   * programmer was making by hand every time, off the same numbers.
+   *
+   * A default, not a decision:
+   *  • only fills a section that has no lot, so a deliberate pick and a
+   *    lot carried in from an edit are both left alone;
+   *  • a lot belonging to a DIFFERENT yarn is replaced rather than
+   *    kept — changing the yarn used to leave the old yarn's lot behind,
+   *    which the server then refused on save with "lot does not belong
+   *    to the yarn on that section";
+   *  • nothing is filled when the yarn has no open lots. Running with no
+   *    lot is legitimate and stays available.
+   */
+  const lotStock = context.data?.lotStock ?? [];
+  const lotKey = JSON.stringify(
+    (watched ?? []).map((b) => (b?.sections ?? []).map((sec) => [sec?.warpYarn, sec?.yarnLot]))
+  );
+  useEffect(() => {
+    if (lotStock.length === 0) return;
+    (watched ?? []).forEach((beam, bi) => {
+      (beam?.sections ?? []).forEach((section, si) => {
+        const yarnId = section?.warpYarn ?? "";
+        if (!yarnId) return;
+
+        const forYarn = lotStock.find((l) => l.warpYarnId === yarnId);
+        const lots = forYarn?.lots ?? [];
+        const current = section?.yarnLot ?? "";
+        // Valid only if it is one of THIS yarn's lots.
+        if (current && lots.some((l) => l.id === current)) return;
+        if (lots.length === 0) {
+          if (current) {
+            setValue(`beams.${bi}.sections.${si}.yarnLot`, "", { shouldDirty: true });
+          }
+          return;
+        }
+
+        // Biggest balance wins. Ties go to whichever the server listed
+        // first — there is nothing to choose between them.
+        const biggest = lots.reduce((best, l) => (l.balance > best.balance ? l : best), lots[0]);
+        if (biggest.id !== current) {
+          setValue(`beams.${bi}.sections.${si}.yarnLot`, biggest.id, { shouldDirty: true });
+        }
+      });
+    });
+    // Keyed on the yarn/lot pairs rather than on `watched` itself.
+    // react-hook-form's watch() hands back the same array reference and
+    // mutates it in place, so a dependency on it never changes and the
+    // effect runs exactly once — which looked like working code, because
+    // the first fill was right and only a later yarn change was not.
+  }, [lotKey, lotStock, setValue]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <form
       onSubmit={handleSubmit((values) =>
@@ -373,7 +431,7 @@ export function WarpingPlanForm({
         </div>
       )}
 
-      <LotStockPanel stock={context.data?.lotStock ?? []} />
+      <LotStockPanel stock={lotStock} />
 
       {hasTemplate && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info">
@@ -457,7 +515,7 @@ export function WarpingPlanForm({
           register={register}
           errors={errors}
           yarnOptions={yarnOptions}
-          lotStock={context.data?.lotStock ?? []}
+          lotStock={lotStock}
           elasticName={
             templateBeams.find((t) => t.elasticId && t.elasticId === watched?.[bi]?.elastic)
               ?.elasticName ?? ""
@@ -651,7 +709,14 @@ function BeamFields({
                 disabled={!chosenYarn || (forYarn?.lots.length ?? 0) === 0}
                 options={(forYarn?.lots ?? []).map((l) => ({
                   value: l.id,
-                  label: `${l.lotNo}${l.shade ? ` · ${l.shade}` : ""} — ${l.balance.toLocaleString("en-IN")} kg`,
+                  // Mark the biggest, so the pre-filled choice reads as
+                  // a default the form made rather than one the operator
+                  // set and forgot.
+                  label:
+                    `${l.lotNo}${l.shade ? ` · ${l.shade}` : ""} — ${l.balance.toLocaleString("en-IN")} kg` +
+                    (forYarn && l.balance === forYarn.largestLot && (forYarn.lots.length ?? 0) > 1
+                      ? " · most stock"
+                      : ""),
                 }))}
                 {...register(`beams.${index}.sections.${si}.yarnLot`)}
               />
