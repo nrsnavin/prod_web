@@ -28,8 +28,21 @@ const shortfallOf = (m: MrpMaterial) => {
   if (typeof m.shortfall === "number") return m.shortfall;
   const req = m.requiredWeight ?? m.required ?? m.quantity ?? 0;
   const stock = m.inStock ?? m.stock ?? m.available ?? 0;
-  return Math.max(0, req - stock);
+  // Approving the parent order already drew this job's share out of
+  // stock, so the part still owed — not the gross requirement — is what
+  // the remaining balance has to cover.
+  return Math.max(0, (m.outstanding ?? req - (m.issued ?? 0)) - stock);
 };
+
+/**
+ * What raising a PO from here would actually buy: the gap less what is
+ * already on an open purchase order. A shortfall waiting on a delivery
+ * has been bought once; buying it again is money out twice.
+ */
+const toBuyOf = (m: MrpMaterial) =>
+  typeof m.toBuy === "number"
+    ? m.toBuy
+    : Math.max(0, shortfallOf(m) - (m.onOrder ?? 0));
 
 const nameOf = (m: MrpMaterial) => m.name ?? m.materialName ?? "—";
 // utils/materialRequirement.js names the reference `rawMaterial`; `id` is
@@ -52,8 +65,14 @@ export function MrpShortfallPo({ jobId, materials }: { jobId: string; materials:
     () => materials.filter((m) => m.stockKnown !== false && shortfallOf(m) > 0),
     [materials]
   );
-  const orderable = short.filter((m) => m.supplierId);
-  const noSupplier = short.filter((m) => !m.supplierId);
+  // Short AND not already bought. Pressing the button while the first
+  // PO was still in transit used to raise a second one for the same
+  // quantity — the shortfall had not moved because the yarn had not
+  // arrived, which is exactly when it must not be ordered again.
+  const toBuy = short.filter((m) => toBuyOf(m) > 0);
+  const awaitingDelivery = short.filter((m) => toBuyOf(m) <= 0);
+  const orderable = toBuy.filter((m) => m.supplierId);
+  const noSupplier = toBuy.filter((m) => !m.supplierId);
 
   const selected = orderable.filter((m) => picked[idOf(m)] ?? true);
 
@@ -66,7 +85,7 @@ export function MrpShortfallPo({ jobId, materials }: { jobId: string; materials:
       if (!map.has(key)) map.set(key, { name: m.supplierName || "Supplier", lines: [], value: 0 });
       const g = map.get(key)!;
       g.lines.push(m);
-      g.value += shortfallOf(m) * (m.unitPrice ?? 0);
+      g.value += toBuyOf(m) * (m.unitPrice ?? 0);
     }
     return Array.from(map.values());
   }, [selected]);
@@ -109,9 +128,21 @@ export function MrpShortfallPo({ jobId, materials }: { jobId: string; materials:
                 <span className="tabular-nums font-semibold text-status-danger">
                   {shortfallOf(m).toLocaleString("en-IN")} short
                 </span>
+                {/* Short, but bought. Different problem, different
+                    answer: chase the supplier, do not buy again. */}
+                {toBuyOf(m) <= 0 && (
+                  <StatusChip tone="info">on order</StatusChip>
+                )}
               </li>
             ))}
           </ul>
+
+          {awaitingDelivery.length > 0 && (
+            <p className="mt-2 text-xs text-status-info">
+              {awaitingDelivery.map(nameOf).join(", ")} already bought and awaiting delivery —
+              nothing further to order.
+            </p>
+          )}
 
           {noSupplier.length > 0 && (
             <p className="mt-2 text-xs text-status-warning">
@@ -146,8 +177,8 @@ export function MrpShortfallPo({ jobId, materials }: { jobId: string; materials:
 
       <Modal open={open} onClose={() => setOpen(false)} title="Raise purchase orders" width="max-w-2xl">
         <p className="text-sm text-ink-600">
-          One purchase order per supplier — that is what the document is. Only the shortfall is
-          ordered, not the whole requirement.
+          One purchase order per supplier — that is what the document is. Only the gap is
+          ordered: not the whole requirement, and not what is already on order.
         </p>
 
         <div className="mt-4 space-y-2">
@@ -167,7 +198,7 @@ export function MrpShortfallPo({ jobId, materials }: { jobId: string; materials:
                   <span className="font-medium">{nameOf(m)}</span>
                   <span className="ml-2 text-xs text-ink-400">{m.supplierName}</span>
                 </span>
-                <span className="tabular-nums">{shortfallOf(m).toLocaleString("en-IN")}</span>
+                <span className="tabular-nums">{toBuyOf(m).toLocaleString("en-IN")}</span>
               </label>
             );
           })}

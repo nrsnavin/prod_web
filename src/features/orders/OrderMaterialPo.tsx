@@ -23,13 +23,36 @@ import { OrderMrpMaterial } from "./types";
  * to its supply date with yarn still unordered.
  */
 
+/**
+ * What still has to come out of stock.
+ *
+ * Approving the order took its material out already, so `inStock` is
+ * the balance with this order's needs removed — the requirement to
+ * measure it against is the part not yet drawn, not the gross one.
+ */
+const outstandingOf = (m: OrderMrpMaterial) =>
+  typeof m.outstanding === "number"
+    ? m.outstanding
+    : Math.max(0, (m.requiredWeight ?? 0) - (m.issued ?? 0));
+
 const shortfallOf = (m: OrderMrpMaterial) =>
   typeof m.shortfall === "number"
     ? m.shortfall
-    : Math.max(0, (m.requiredWeight ?? 0) - (m.inStock ?? 0));
+    : Math.max(0, outstandingOf(m) - (m.inStock ?? 0));
+
+/**
+ * What buying from here would actually order: the gap less what is on
+ * order already. A shortfall waiting on a delivery does not want a
+ * second purchase order.
+ */
+const toBuyOf = (m: OrderMrpMaterial) =>
+  typeof m.toBuy === "number"
+    ? m.toBuy
+    : Math.max(0, shortfallOf(m) - (m.onOrder ?? 0));
 
 const idOf = (m: OrderMrpMaterial) => String(m.rawMaterial ?? "");
 const nameOf = (m: OrderMrpMaterial) => m.name ?? "—";
+const kg = (n: number) => n.toLocaleString("en-IN");
 
 export function OrderMaterialPo({ orderId }: { orderId: string }) {
   const { toast } = useToast();
@@ -49,9 +72,15 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
     () => materials.filter((m) => m.stockKnown !== false && shortfallOf(m) > 0),
     [materials]
   );
-  const orderable = short.filter((m) => m.supplierId);
-  const noSupplier = short.filter((m) => !m.supplierId);
+  // Short AND not already bought. The two used to be the same list, so
+  // pressing the button while the first PO was in transit raised a
+  // second one for the same yarn.
+  const toBuy = short.filter((m) => toBuyOf(m) > 0);
+  const awaitingDelivery = short.filter((m) => toBuyOf(m) <= 0);
+  const orderable = toBuy.filter((m) => m.supplierId);
+  const noSupplier = toBuy.filter((m) => !m.supplierId);
   const selected = orderable.filter((m) => picked[idOf(m)] ?? true);
+  const anyIssued = materials.some((m) => (m.issued ?? 0) > 0);
 
   const bySupplier = useMemo(() => {
     const map = new Map<string, { name: string; lines: OrderMrpMaterial[]; value: number }>();
@@ -60,7 +89,7 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
       if (!map.has(key)) map.set(key, { name: m.supplierName || "Supplier", lines: [], value: 0 });
       const g = map.get(key)!;
       g.lines.push(m);
-      g.value += shortfallOf(m) * (m.unitPrice ?? 0);
+      g.value += toBuyOf(m) * (m.unitPrice ?? 0);
     }
     return Array.from(map.values());
   }, [selected]);
@@ -82,10 +111,11 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
             <h3 className="font-semibold">Raw material for this order</h3>
             <p className="text-xs text-ink-400">
               The requirement for everything ordered, not only what has been planned into
-              jobs. Only the shortfall is bought, and the PO stays linked to this order.
+              jobs. Material already drawn for this order at approval is not asked for again,
+              nor is anything already on an open PO. What is bought stays linked to this order.
             </p>
           </div>
-          {short.length > 0 && (
+          {toBuy.length > 0 && (
             <Button disabled={orderable.length === 0} onClick={() => setOpen(true)}>
               <ShoppingCart className="h-4 w-4" /> Raise PO for shortfall
             </Button>
@@ -106,6 +136,15 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
                   <th className="px-5 py-2 text-left font-semibold">Material</th>
                   <th className="px-3 py-2 text-left font-semibold">Supplier</th>
                   <th className="px-3 py-2 text-right font-semibold">Required</th>
+                  {/* Only once there is something to show. Before
+                      approval every row reads nil, and a column of
+                      dashes is noise on the screen that matters most. */}
+                  {anyIssued && (
+                    <>
+                      <th className="px-3 py-2 text-right font-semibold">Drawn</th>
+                      <th className="px-3 py-2 text-right font-semibold">To draw</th>
+                    </>
+                  )}
                   <th className="px-3 py-2 text-right font-semibold">In stock</th>
                   {/* On order sits between stock and shortfall because
                       that is the order the question is asked in: what is
@@ -128,12 +167,29 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
                         )}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
-                        {(m.requiredWeight ?? 0).toLocaleString("en-IN")}
+                        {kg(m.requiredWeight ?? 0)}
                       </td>
+                      {anyIssued && (
+                        <>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {(m.issued ?? 0) > 0 ? (
+                              <span
+                                className="text-status-success"
+                                title="Taken out of stock when this order was approved — it is no longer in the stock figure beside it"
+                              >
+                                {kg(m.issued ?? 0)}
+                              </span>
+                            ) : (
+                              <span className="text-ink-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">
+                            {kg(outstandingOf(m))}
+                          </td>
+                        </>
+                      )}
                       <td className="px-3 py-2 text-right tabular-nums">
-                        {m.stockKnown === false
-                          ? "unknown"
-                          : (m.inStock ?? 0).toLocaleString("en-IN")}
+                        {m.stockKnown === false ? "unknown" : kg(m.inStock ?? 0)}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {(m.onOrder ?? 0) > 0 ? (
@@ -141,7 +197,7 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
                             className="text-status-info"
                             title="Outstanding on open purchase orders — bought, not yet received"
                           >
-                            {(m.onOrder ?? 0).toLocaleString("en-IN")}
+                            {kg(m.onOrder ?? 0)}
                           </span>
                         ) : (
                           <span className="text-ink-400">—</span>
@@ -152,7 +208,7 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
                           s > 0 ? "font-semibold text-status-danger" : "text-ink-400"
                         }`}
                       >
-                        {s > 0 ? s.toLocaleString("en-IN") : "—"}
+                        {s > 0 ? kg(s) : "—"}
                       </td>
                     </tr>
                   );
@@ -162,15 +218,12 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
           </div>
         )}
 
-        {/* A shortfall that is already covered by an open PO needs no
-            second purchase order — saying so prevents one. */}
-        {short.some((m) => (m.onOrder ?? 0) > 0) && (
+        {/* A shortfall already covered by an open PO needs no second
+            purchase order — and now cannot get one. */}
+        {awaitingDelivery.length > 0 && (
           <p className="px-5 pt-2 text-xs text-status-info">
-            {short
-              .filter((m) => (m.onOrder ?? 0) > 0)
-              .map((m) => `${nameOf(m)} (${(m.onOrder ?? 0).toLocaleString("en-IN")})`)
-              .join(", ")}{" "}
-            already on order and not yet received — check before buying again.
+            {awaitingDelivery.map((m) => `${nameOf(m)} (${kg(m.onOrder ?? 0)})`).join(", ")} already
+            bought and awaiting delivery — nothing further to order.
           </p>
         )}
 
@@ -214,8 +267,8 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Raise purchase orders" width="max-w-2xl">
         <p className="text-sm text-ink-600">
-          One purchase order per supplier. Only the shortfall against the whole order is
-          bought — stock already on hand is not ordered again.
+          One purchase order per supplier. Only the gap is bought — neither stock already on
+          hand nor quantity already on an open purchase order is ordered again.
         </p>
 
         <div className="mt-4 space-y-2">
@@ -238,7 +291,7 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
                   <span className="font-medium">{nameOf(m)}</span>
                   <span className="ml-2 text-xs text-ink-400">{m.supplierName}</span>
                 </span>
-                <span className="tabular-nums">{shortfallOf(m).toLocaleString("en-IN")}</span>
+                <span className="tabular-nums">{kg(toBuyOf(m))}</span>
               </label>
             );
           })}

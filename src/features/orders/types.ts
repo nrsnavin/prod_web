@@ -102,6 +102,10 @@ export interface RawMaterialRequirement {
   // (kg) and current stock as `inStock`; the older `required`/`available`
   // names are kept as fallbacks for other callers.
   requiredWeight?: number;
+  /** Drawn from stock at approval; 0 before it and after a cancel. */
+  issued?: number;
+  /** Still to be drawn — what `stockSufficient` is measured against. */
+  outstanding?: number;
   available?: number;
   inStock?: number;
   stock?: number;
@@ -189,6 +193,15 @@ export interface OrderMrpMaterial {
   name?: string;
   category?: string;
   requiredWeight?: number;
+  /**
+   * Already taken out of stock for this order — approval draws the
+   * requirement there and then. `inStock` no longer contains it, so
+   * comparing it against the full requirement reported an order as
+   * short of the very yarn it was standing on.
+   */
+  issued?: number;
+  /** Requirement still to come out of stock: required − issued. */
+  outstanding?: number;
   inStock?: number;
   /**
    * Bought but not yet delivered — outstanding on open purchase orders.
@@ -198,6 +211,12 @@ export interface OrderMrpMaterial {
    */
   onOrder?: number;
   shortfall?: number;
+  /**
+   * The shortfall less what is already bought — what raising a PO from
+   * here would actually order. Zero means the gap is real but the
+   * purchase order for it already exists.
+   */
+  toBuy?: number;
   unitPrice?: number;
   stockKnown?: boolean;
   supplierId?: string | null;

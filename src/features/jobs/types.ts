@@ -165,6 +165,15 @@ export interface MrpData {
     unit?: string;
     // Actual backend field names (utils/materialRequirement.js).
     requiredWeight?: number;
+    /**
+     * This job's share of what its order already drew from stock at
+     * approval. A job only exists under an approved order, so without
+     * it every job sheet reported a shortfall for yarn standing on the
+     * floor for it.
+     */
+    issued?: number;
+    /** Requirement still to come out of stock: required − issued. */
+    outstanding?: number;
     inStock?: number;
     /**
      * Bought but not yet delivered — the outstanding quantity on open
@@ -174,6 +183,12 @@ export interface MrpData {
      */
     onOrder?: number;
     shortfall?: number;
+    /**
+     * The shortfall less what is already bought — what raising a PO
+     * from here would order. Zero means the gap is real but already
+     * purchased and waiting on delivery.
+     */
+    toBuy?: number;
     // false when the RawMaterial reference could not be resolved.
     stockKnown?: boolean;
     // Carried so a shortfall can be turned straight into a purchase
