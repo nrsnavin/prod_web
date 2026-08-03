@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { MaterialDetailPage } from "./MaterialDetailPage";
+import { MaterialDetailPage, movementColumns } from "./MaterialDetailPage";
 import { RawMaterial, StockMovement, YarnLot } from "./types";
 
 const adjustMutate = vi.fn(
@@ -266,10 +266,14 @@ describe("the ledger's quantity column", () => {
     material.stockMovements = [movement({ type: "PO_INWARD", quantity: 10 })];
     renderPage();
 
-    // Balance is the 4th column: date | type | quantity | balance | ref.
-    // Reason/Ref also renders a dash here, so the cell has to be picked
-    // by position rather than by its text.
+    // More than one cell on this row renders a dash — the Reason column
+    // does too when nothing explains the movement — so the balance cell
+    // cannot be found by its text. Found by the column's position in
+    // `movementColumns` rather than a hard-coded index: this broke once
+    // already when a column was inserted ahead of it, and the number in
+    // the test said nothing about which column it meant.
+    const balanceAt = movementColumns.findIndex((c) => c.key === "balance");
     const cells = screen.getByText("PO INWARD").closest("tr")!.querySelectorAll("td");
-    expect(cells[3]).toHaveTextContent("—");
+    expect(cells[balanceAt]).toHaveTextContent("—");
   });
 });

@@ -22,16 +22,69 @@ import { StockMovement } from "./types";
 import { MaterialForm } from "./MaterialForm";
 import { MaterialLots } from "./MaterialLots";
 
-const movementColumns: Column<StockMovement>[] = [
+/**
+ * The document behind a movement, or the reason someone typed.
+ *
+ * Exported for its own tests: reaching it through the page would mean
+ * mocking every unrelated field the page renders, and the test would
+ * then be about the mock.
+ */
+export function MovementReason({ movement: m }: { movement: StockMovement }) {
+  const to =
+    m.referenceKind === "order"
+      ? `/orders/${m.referenceId}`
+      : m.referenceKind === "purchaseOrder"
+        ? `/purchase-orders/${m.referenceId}`
+        : null;
+
+  if (m.reference) {
+    return (
+      <span className="inline-flex flex-wrap items-baseline gap-1.5">
+        {to && m.referenceId ? (
+          <Link to={to} className="text-brand-600 hover:underline">
+            {m.reference}
+          </Link>
+        ) : (
+          <span>{m.reference}</span>
+        )}
+        {/* Matched from the inward history rather than recorded at the
+            time. Saying so keeps a reconstruction from passing as a
+            record. */}
+        {m.referenceDerived && (
+          <span className="text-xs text-ink-400" title="Matched from the inward history">
+            matched
+          </span>
+        )}
+      </span>
+    );
+  }
+  if (m.reason) return <span className="text-ink-600">{m.reason}</span>;
+  return <span className="text-ink-400">—</span>;
+}
+
+// Exported so a test can assert the Reason column is actually mounted.
+// Testing the cell alone would pass with the column never added.
+export const movementColumns: Column<StockMovement>[] = [
   { key: "date", header: "Date", render: (m) => new Date(m.date).toLocaleDateString() },
   {
     key: "type",
     header: "Type",
     render: (m) => (
       <StatusChip tone={m.quantity > 0 ? "success" : m.quantity < 0 ? "danger" : "neutral"}>
-        {m.type}
+        {/* The server says it in words. `type` is a database value —
+            ORDER_APPROVAL, PO_INWARD — not a sentence. */}
+        {m.typeLabel ?? m.type}
       </StatusChip>
     ),
+  },
+  {
+    key: "why",
+    header: "Reason",
+    cellClassName: "whitespace-normal",
+    // The column the ledger was missing. A row reading "-40" with
+    // nothing beside it is checkable but not explainable, and "why did
+    // this drop by 40 in March" is the question the ledger exists for.
+    render: (m) => <MovementReason movement={m} />,
   },
   {
     key: "qty",

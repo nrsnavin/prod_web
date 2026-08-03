@@ -9,9 +9,32 @@ export interface StockMovement {
   // it was rendered straight into JSX and crashed the page with React
   // error #31 — "objects are not valid as a React child".
   order?: string | { _id: string; orderNo?: number } | null;
+  /**
+   * The purchase order behind a goods receipt. `order` above is
+   * ref:"Order" and could never hold one, which is why every receipt on
+   * this ledger used to carry no reference at all.
+   */
+  purchaseOrder?: string | { _id: string; poNo?: number } | null;
   quantity: number;
   balance?: number;
+  /** What the person typed. Only manual adjustments have one. */
   reason?: string;
+
+  // ── Said in words by the server (utils/stockLedger.js) ──────────────
+  // Computed there rather than here so the material page, the report and
+  // anything added later phrase the same movement identically.
+  /** "Goods received", "Order approved" — not the raw enum. */
+  typeLabel?: string;
+  /** "PO #55" / "Order #1042", or null when nothing identifies it. */
+  reference?: string | null;
+  referenceKind?: "order" | "purchaseOrder" | null;
+  referenceId?: string | null;
+  /**
+   * true when the reference was matched back from the inward history
+   * rather than recorded on the row at the time — receipts predating
+   * the PO field. A reconstruction and a record are not the same claim.
+   */
+  referenceDerived?: boolean;
 }
 
 export interface RawMaterial {
