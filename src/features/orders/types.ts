@@ -102,10 +102,17 @@ export interface RawMaterialRequirement {
   // (kg) and current stock as `inStock`; the older `required`/`available`
   // names are kept as fallbacks for other callers.
   requiredWeight?: number;
-  /** Drawn from stock at approval; 0 before it and after a cancel. */
-  issued?: number;
+  /** Held for this order at approval; 0 before it and after a cancel. */
+  allocated?: number;
   /** Still to be drawn — what `stockSufficient` is measured against. */
   outstanding?: number;
+  /**
+   * full    — the whole requirement is held for this order
+   * partial — a forced approval took what there was; the rest is owed
+   *           and nothing is holding it
+   * none    — not approved yet, or a cancel handed the stock back
+   */
+  allocationState?: "none" | "partial" | "full";
   available?: number;
   inStock?: number;
   stock?: number;
@@ -194,13 +201,13 @@ export interface OrderMrpMaterial {
   category?: string;
   requiredWeight?: number;
   /**
-   * Already taken out of stock for this order — approval draws the
-   * requirement there and then. `inStock` no longer contains it, so
-   * comparing it against the full requirement reported an order as
-   * short of the very yarn it was standing on.
+   * Held for this order — approval takes the requirement out of stock
+   * there and then. `inStock` no longer contains it, so comparing it
+   * against the full requirement reported an order as short of the
+   * very yarn it was standing on.
    */
-  issued?: number;
-  /** Requirement still to come out of stock: required − issued. */
+  allocated?: number;
+  /** Requirement still to come out of stock: required − allocated. */
   outstanding?: number;
   inStock?: number;
   /**

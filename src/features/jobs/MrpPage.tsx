@@ -32,16 +32,16 @@ const materialColumns: Column<MrpMaterial>[] = [
     // out of stock. Without saying so, the sheet showed a requirement
     // it had already met and a stock figure it had already reduced —
     // and every job read as short of yarn standing on the floor for it.
-    key: "issued",
-    header: "Drawn",
+    key: "allocated",
+    header: "Allocated",
     align: "right",
     render: (m) => {
-      const drawn = m.issued ?? 0;
+      const drawn = m.allocated ?? 0;
       if (drawn <= 0) return <span className="text-ink-400">—</span>;
       return (
         <span
           className="text-status-success"
-          title="Already taken out of stock when this job's order was approved"
+          title="Held for this job since its order was approved — out of the stock figure beside it, not available to anything else"
         >
           {drawn.toLocaleString("en-IN")}
         </span>
@@ -69,7 +69,7 @@ const materialColumns: Column<MrpMaterial>[] = [
       const req = m.requiredWeight ?? m.required ?? m.quantity ?? 0;
       // Against what is still to be drawn, not the gross requirement:
       // the drawn part is no longer in the figure being compared.
-      const short = stock < (m.outstanding ?? req - (m.issued ?? 0));
+      const short = stock < (m.outstanding ?? req - (m.allocated ?? 0));
       return (
         <span className={short ? "text-status-danger font-semibold" : ""}>
           {stock.toLocaleString("en-IN")}

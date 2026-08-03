@@ -171,8 +171,8 @@ export interface MrpData {
      * it every job sheet reported a shortfall for yarn standing on the
      * floor for it.
      */
-    issued?: number;
-    /** Requirement still to come out of stock: required − issued. */
+    allocated?: number;
+    /** Requirement still to come out of stock: required − allocated. */
     outstanding?: number;
     inStock?: number;
     /**

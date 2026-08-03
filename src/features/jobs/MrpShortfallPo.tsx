@@ -31,7 +31,7 @@ const shortfallOf = (m: MrpMaterial) => {
   // Approving the parent order already drew this job's share out of
   // stock, so the part still owed — not the gross requirement — is what
   // the remaining balance has to cover.
-  return Math.max(0, (m.outstanding ?? req - (m.issued ?? 0)) - stock);
+  return Math.max(0, (m.outstanding ?? req - (m.allocated ?? 0)) - stock);
 };
 
 /**
