@@ -75,6 +75,7 @@ const AdvisorPage = lazyPage(() => import("@/features/comms/AdvisorPage"), "Advi
 const AssistantPage = lazyPage(() => import("@/features/assistant/AssistantPage"), "AssistantPage");
 const DataIoPage = lazyPage(() => import("@/features/comms/DataIoPage"), "DataIoPage");
 const SettingsPage = lazyPage(() => import("@/features/settings/SettingsPage"), "SettingsPage");
+const ProfilePage = lazyPage(() => import("@/features/profile/ProfilePage"), "ProfilePage");
 
 function PageFallback() {
   return (
@@ -178,7 +179,14 @@ const router = createBrowserRouter([
         <AppShell />
       </RequireAuth>
     ),
-    children: [{ index: true, element: <DashboardPage /> }, ...featureRoutes],
+    children: [
+      { index: true, element: <DashboardPage /> },
+      // Not a nav item — every authenticated user reaches their own
+      // profile regardless of department, so it stays outside the
+      // nav-derived featureRoutes (and the access gate they're built for).
+      { path: "/profile", element: withSuspense(<ProfilePage />) },
+      ...featureRoutes,
+    ],
   },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);

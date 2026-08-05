@@ -50,13 +50,19 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
 
       <div className="ml-auto flex items-center gap-3">
         <ThemeToggle />
-        <div className="hidden sm:block text-right leading-tight">
-          <p className="text-sm font-semibold">{user?.username}</p>
-          <p className="text-xs text-ink-400 capitalize">{user?.role}</p>
-        </div>
-        <span className="h-9 w-9 rounded-full bg-brand-100 text-brand-600 grid place-items-center font-bold text-sm uppercase">
-          {user?.username?.charAt(0) ?? "?"}
-        </span>
+        <button
+          onClick={() => navigate("/profile")}
+          className="flex items-center gap-3 rounded-lg p-1 pr-1 hover:bg-ink-100"
+          aria-label="View profile"
+        >
+          <span className="hidden sm:block text-right leading-tight">
+            <p className="text-sm font-semibold">{user?.username}</p>
+            <p className="text-xs text-ink-400 capitalize">{user?.role}</p>
+          </span>
+          <span className="h-9 w-9 rounded-full bg-brand-100 text-brand-600 grid place-items-center font-bold text-sm uppercase">
+            {user?.username?.charAt(0) ?? "?"}
+          </span>
+        </button>
         <button
           onClick={() => setConfirmLogout(true)}
           className="p-2 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900"
