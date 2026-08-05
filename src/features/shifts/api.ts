@@ -155,7 +155,10 @@ export const productionService = {
       productionMeters: number;
       machine?: { machineID?: string } | null;
       employee?: { name?: string; department?: string } | null;
-      job?: { jobNo?: number; status?: string } | null;
+      job?: {
+        jobNo?: number; status?: string;
+        productionMode?: string; outsourceVendor?: string;
+      } | null;
     }>;
   }> {
     // The backend returns machines/shiftType/totalRunMinutes; map it to
@@ -168,7 +171,10 @@ export const productionService = {
       productionMeters?: number;
       machine?: { machineID?: string } | null;
       employee?: { name?: string; department?: string } | null;
-      job?: { jobNo?: number; status?: string } | null;
+      job?: {
+        jobNo?: number; status?: string;
+        productionMode?: string; outsourceVendor?: string;
+      } | null;
     }
     interface BackendData {
       shiftPlanId: string;
@@ -220,7 +226,14 @@ export const productionService = {
         productionMeters: m.productionMeters ?? 0,
         machine: m.machine ? { machineID: m.machine.machineID } : null,
         employee: m.employee ? { name: m.employee.name, department: m.employee.department } : null,
-        job: m.job ? { jobNo: m.job.jobNo, status: m.job.status } : null,
+        // Carry productionMode/outsourceVendor through: this mapper
+        // rebuilds `job` field-by-field, so anything not named here is
+        // silently dropped between the API and the component.
+        job: m.job ? {
+          jobNo: m.job.jobNo, status: m.job.status,
+          productionMode: m.job.productionMode,
+          outsourceVendor: m.job.outsourceVendor,
+        } : null,
       })),
     };
   },
