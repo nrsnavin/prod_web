@@ -25,7 +25,9 @@ import { usersService, ManagedUser } from "./api";
 
 const deptOptions = DEPARTMENTS.map((d) => ({ value: d, label: DEPARTMENT_LABELS[d] ?? d }));
 
-function UserFormScreen({
+// Exported for tests — the no-access confirmation is the only thing
+// standing between an admin and silently locking someone out.
+export function UserFormScreen({
   user,
   onClose,
 }: {
@@ -67,10 +69,23 @@ function UserFormScreen({
     setFeatures(featuresForDepartment(dept));
   };
 
+  // Never send features outside the role's scope.
+  const scoped = features.filter((k) => allowedSet.has(k));
+
+  // The always-on features (Dashboard, Ask Jarvis, Settings…) are never
+  // gated and their boxes are disabled, so what actually decides whether
+  // this login can open anything is the OPTIONAL set. None granted means
+  // the account reaches only the always-on screens and its own personal
+  // records — worth confirming, because the backend enforces it silently
+  // and the person just meets errors.
+  const alwaysKeys = new Set(
+    FEATURE_GROUPS.flatMap((g) => g.features.filter((f) => f.always).map((f) => f.key))
+  );
+  const grantsNothing = scoped.every((k) => alwaysKeys.has(k));
+  const [confirmNoAccess, setConfirmNoAccess] = useState(false);
+
   const save = useMutation({
     mutationFn: () => {
-      // Never send features outside the role's scope.
-      const scoped = features.filter((k) => allowedSet.has(k));
       return isEdit
         ? usersService.update(user!._id, {
             name,
@@ -84,19 +99,27 @@ function UserFormScreen({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
       toast(isEdit ? "User updated" : "User created", "success");
+      setConfirmNoAccess(false);
       onClose();
     },
-    onError: (e) => toast(e instanceof ApiError ? e.message : "Save failed", "error"),
+    onError: (e) => {
+      setConfirmNoAccess(false);
+      toast(e instanceof ApiError ? e.message : "Save failed", "error");
+    },
   });
 
   const submit = () => {
     if (!name.trim() || !email.trim()) return toast("Name and email are required", "error");
     if (!isEdit && password.length < 4) return toast("Password must be at least 4 characters", "error");
     if (isEdit && password && password.length < 4) return toast("Password must be at least 4 characters", "error");
+    // Saving nobody any access is legitimate — but it is a decision, not a
+    // slip, so make it explicit rather than silent.
+    if (grantsNothing) return setConfirmNoAccess(true);
     save.mutate();
   };
 
   return (
+    <>
     <FormScreen open onClose={onClose} title={isEdit ? "Edit user" : "Add user"} width="max-w-2xl">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
@@ -193,6 +216,20 @@ function UserFormScreen({
         </div>
       </div>
     </FormScreen>
+
+    {/* Rendered AFTER FormScreen, not inside it: both are fixed at z-50,
+        so DOM order is what puts this on top. */}
+    <ConfirmDialog
+      open={confirmNoAccess}
+      danger
+      title="Save with no access?"
+      message={`${name.trim() || "This user"} will only be able to open the always-on screens and their own personal records (payslip, leave, attendance). Every other module will be blocked.`}
+      confirmLabel="Save with no access"
+      loading={save.isPending}
+      onConfirm={() => save.mutate()}
+      onCancel={() => setConfirmNoAccess(false)}
+    />
+    </>
   );
 }
 
