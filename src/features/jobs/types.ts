@@ -90,6 +90,9 @@ export interface JobDetail {
   jobNo: string;
   date?: string;
   status: JobStatus;
+  /** An outsourced job is made by a vendor and has no shifts of its own. */
+  productionMode?: "in_house" | "outsource";
+  outsourceVendor?: string;
   customerName: string;
   orderNo?: number | string;
   machine?: {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Cog, ArrowRight, XCircle, FileText, Check, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Cog, ArrowRight, XCircle, FileText, Check, AlertTriangle, Truck } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -263,14 +263,36 @@ export function JobDetailPage() {
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Shifts on this job</h3>
-        <JobShiftSummary summary={job.shiftSummary} />
-        <DataTable
-          columns={shiftColumns}
-          rows={job.shiftDetails ?? []}
-          rowKey={(s) => s.id}
-          emptyTitle="No shifts recorded yet"
-          emptyDescription="Shifts appear here once one is planned on the machine running this job."
-        />
+        {job.productionMode === "outsource" ? (
+          // An outsourced job is made by a vendor, so it runs no shifts
+          // here. Showing the empty shift table would read as "nobody has
+          // recorded anything yet" — which invites someone to go looking
+          // for the missing entries. Name the vendor instead.
+          <div className="px-5 pb-5 pt-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusChip tone="warning">
+                <span className="inline-flex items-center gap-1">
+                  <Truck className="h-3 w-3" />
+                  Outsourced{job.outsourceVendor ? ` — ${job.outsourceVendor}` : ""}
+                </span>
+              </StatusChip>
+            </div>
+            <p className="mt-2 text-sm text-ink-400">
+              This job is produced by a vendor, so no shifts run against it here.
+            </p>
+          </div>
+        ) : (
+          <>
+            <JobShiftSummary summary={job.shiftSummary} />
+            <DataTable
+              columns={shiftColumns}
+              rows={job.shiftDetails ?? []}
+              rowKey={(s) => s.id}
+              emptyTitle="No shifts recorded yet"
+              emptyDescription="Shifts appear here once one is planned on the machine running this job."
+            />
+          </>
+        )}
       </Card>
 
       <JobYarnLots jobId={job.id} />
