@@ -6,6 +6,8 @@ export interface ShiftPlanMachineRow {
    *  flag work being made by a vendor rather than on this floor. */
   productionMode?: string;
   outsourceVendor?: string;
+  /** The JOB's status (not the shift's) — drives the production lock. */
+  jobStatus?: string;
   operatorName: string;
   production: number;
   timer?: string;
@@ -64,6 +66,7 @@ export interface PendingShift {
       order?: { po?: string; orderNo?: number } | null;
       productionMode?: string;
       outsourceVendor?: string;
+      status?: string;
     } | null;
   } | null;
   shiftPlan?: { date?: string; shift?: "DAY" | "NIGHT" } | null;
@@ -73,6 +76,7 @@ export interface PendingShift {
     customer?: { name?: string } | null;
     productionMode?: string;
     outsourceVendor?: string;
+    status?: string;
   } | null;
 }
 

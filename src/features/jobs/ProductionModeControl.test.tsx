@@ -73,3 +73,32 @@ describe("ProductionModeControl", () => {
     expect(setProductionMode).not.toHaveBeenCalled();
   });
 });
+
+// Once the job leaves the loom the server refuses the change (409), so
+// the control must not offer it — otherwise the only feedback is an error
+// toast after the click.
+describe("ProductionModeControl — production lock", () => {
+  beforeEach(() => setProductionMode.mockClear());
+
+  it.each(["finishing", "checking", "packing", "completed", "cancelled"])(
+    "cannot be changed on a %s job", async (jobStatus) => {
+      const user = userEvent.setup();
+      renderControl({ jobId: "j1", mode: "in_house", jobStatus });
+
+      for (const b of screen.getAllByRole("button")) await user.click(b).catch(() => {});
+      expect(setProductionMode).not.toHaveBeenCalled();
+    });
+
+  it("explains why it is unavailable", () => {
+    renderControl({ jobId: "j1", mode: "in_house", jobStatus: "finishing" });
+    expect(screen.getByText(/Production closed — this job has moved to finishing/)).toBeInTheDocument();
+  });
+
+  it("still works while the job is on the loom", async () => {
+    const user = userEvent.setup();
+    renderControl({ jobId: "j1", mode: "outsource", vendor: "Sunrise", jobStatus: "weaving" });
+
+    await user.click(screen.getByRole("button", { name: /in-house/i }));
+    expect(setProductionMode).toHaveBeenCalled();
+  });
+});

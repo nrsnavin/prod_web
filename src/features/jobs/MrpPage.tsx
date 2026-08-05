@@ -177,6 +177,7 @@ export function MrpPage() {
               jobId={id!}
               mode={data.productionMode}
               vendor={data.outsourceVendor}
+              jobStatus={data.status}
             />
           </div>
 

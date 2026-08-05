@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/components/ui/cn";
 import { ApiError } from "@/core/http/httpClient";
+import { isProductionLocked, productionLockReason } from "./productionLock";
 import { useJobMutations } from "./hooks";
 
 type Mode = "in_house" | "outsource";
@@ -16,17 +17,23 @@ export function ProductionModeControl({
   jobId,
   mode,
   vendor,
+  jobStatus,
 }: {
   jobId: string;
   mode: Mode;
   vendor?: string;
+  /** Drives the production lock — see productionLock.ts. */
+  jobStatus?: string;
 }) {
   const { toast } = useToast();
   const { setProductionMode } = useJobMutations();
   const [vendorOpen, setVendorOpen] = useState(false);
   const [vendorName, setVendorName] = useState(vendor ?? "");
   const isOutsource = mode === "outsource";
-  const pending = setProductionMode.isPending;
+  // Past finishing the job is off the loom: the server refuses the change,
+  // so present it as settled rather than offering a control that 409s.
+  const locked = isProductionLocked(jobStatus);
+  const pending = setProductionMode.isPending || locked;
 
   useEffect(() => {
     if (vendorOpen) setVendorName(vendor ?? "");
@@ -53,7 +60,10 @@ export function ProductionModeControl({
 
   return (
     <div className="print:hidden">
-      <div className="flex flex-wrap items-center gap-2">
+      {locked && (
+        <p className="mb-2 text-xs text-ink-400">{productionLockReason(jobStatus)}</p>
+      )}
+      <div className="flex flex-wrap items-center gap-2" title={locked ? productionLockReason(jobStatus) : undefined}>
         <button
           type="button"
           disabled={pending}

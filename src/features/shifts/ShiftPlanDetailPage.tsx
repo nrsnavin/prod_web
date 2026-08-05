@@ -15,6 +15,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useShiftPlan, useShiftMutations } from "./hooks";
 import { ShiftPlanDetail, ShiftPlanMachineRow } from "./types";
 import { OutsourcedMark } from "./OutsourcedTag";
+import { isProductionLocked, productionLockReason } from "@/features/jobs/productionLock";
 import { sheetService } from "./sheet";
 import { SheetUploadModal } from "./SheetUploadModal";
 
@@ -152,12 +153,23 @@ export function ShiftPlanDetailPage() {
     key: "actions",
     header: "",
     align: "right",
-    render: (m) =>
-      m.status === "closed" ? null : (
+    render: (m) => {
+      if (m.status === "closed") return null;
+      // Past finishing the job is off the loom and the server refuses the
+      // entry, so show why instead of a button that 409s on click.
+      if (isProductionLocked(m.jobStatus)) {
+        return (
+          <span className="text-xs text-ink-400" title={productionLockReason(m.jobStatus)}>
+            Production closed
+          </span>
+        );
+      }
+      return (
         <Button size="sm" variant="secondary" onClick={() => setEntering(m)}>
           <Gauge className="h-4 w-4" /> Enter production
         </Button>
-      ),
+      );
+    },
   };
 
   const downloadSheet = async () => {

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { OutsourcedTag } from "./OutsourcedTag";
+import { isProductionLocked, productionLockReason } from "@/features/jobs/productionLock";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
@@ -26,6 +27,9 @@ function jobMode(s: PendingShift) {
 }
 function jobVendor(s: PendingShift) {
   return shiftJob(s)?.outsourceVendor;
+}
+function jobStatus(s: PendingShift) {
+  return shiftJob(s)?.status;
 }
 
 function VerifyModal({
@@ -178,9 +182,18 @@ export function ShiftVerificationPage() {
                   </p>
                   <p className="text-xs text-ink-400">{s.submittedTimer ?? s.timer ?? "—"}</p>
                 </div>
-                <Button size="sm" onClick={() => setVerifying(s)}>
-                  <ShieldCheck className="h-4 w-4" /> Verify
-                </Button>
+                {isProductionLocked(jobStatus(s)) ? (
+                  // The server refuses verification once the job leaves the
+                  // loom, so the submission is stranded rather than
+                  // verifiable — say so instead of offering the button.
+                  <span className="text-xs text-ink-400" title={productionLockReason(jobStatus(s))}>
+                    Production closed
+                  </span>
+                ) : (
+                  <Button size="sm" onClick={() => setVerifying(s)}>
+                    <ShieldCheck className="h-4 w-4" /> Verify
+                  </Button>
+                )}
               </Card>
             );
           })}
