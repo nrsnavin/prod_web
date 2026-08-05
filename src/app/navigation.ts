@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   TrendingUp,
   FileBarChart,
+  IndianRupee,
   ShoppingCart,
   ClipboardList,
   Truck,
@@ -74,6 +75,10 @@ export const navSections: NavSection[] = [
       { label: "Dashboard", path: "/", icon: LayoutDashboard }, // all
       { label: "Analytics", path: "/analytics", icon: TrendingUp, departments: ["admin", "production"] },
       { label: "Reports", path: "/reports", icon: FileBarChart, departments: ["admin", "finance"] },
+      // Margin is its own permission: opening an order and seeing the
+      // profit on it are different things. Mirrors /order-pnl in
+      // utils/features.js on the backend.
+      { label: "Order P&L", path: "/order-pnl", icon: IndianRupee, departments: ["admin", "finance"] },
       { label: "Audit Trail", path: "/audit", icon: Fingerprint, departments: ["admin"] },
     ],
   },

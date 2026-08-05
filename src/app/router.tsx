@@ -24,6 +24,8 @@ const DispatchReportPage = lazyPage(() => import("@/features/reports/DispatchRep
 const OrderBookReportPage = lazyPage(() => import("@/features/reports/OrderBookReportPage"), "OrderBookReportPage");
 const StockPurchasesReportPage = lazyPage(() => import("@/features/reports/StockPurchasesReportPage"), "StockPurchasesReportPage");
 const StockMovementsReportPage = lazyPage(() => import("@/features/reports/StockMovementsReportPage"), "StockMovementsReportPage");
+const OrderPnlPage = lazyPage(() => import("@/features/pnl/OrderPnlPage"), "OrderPnlPage");
+const OrderPnlDetailPage = lazyPage(() => import("@/features/pnl/OrderPnlDetailPage"), "OrderPnlDetailPage");
 const CustomerListPage = lazyPage(() => import("@/features/customers/CustomerListPage"), "CustomerListPage");
 const CustomerDetailPage = lazyPage(() => import("@/features/customers/CustomerDetailPage"), "CustomerDetailPage");
 const SupplierListPage = lazyPage(() => import("@/features/suppliers/SupplierListPage"), "SupplierListPage");
@@ -96,6 +98,7 @@ const withSuspense = (el: JSX.Element) => (
 const builtPages: Record<string, JSX.Element> = {
   "/analytics": withSuspense(<AnalyticsPage />),
   "/reports": withSuspense(<ReportsLandingPage />),
+  "/order-pnl": withSuspense(<OrderPnlPage />),
   "/customers": withSuspense(<CustomerListPage />),
   "/suppliers": withSuspense(<SupplierListPage />),
   "/purchase-orders": withSuspense(<PoListPage />),
@@ -150,6 +153,7 @@ const detailRoutes = [
   { path: "/machines/:id", element: withSuspense(<MachineDetailPage />) },
   { path: "/employees/:id", element: withSuspense(<EmployeeDetailPage />) },
   { path: "/orders/:id", element: withSuspense(<OrderDetailPage />) },
+  { path: "/order-pnl/:id", element: withSuspense(<OrderPnlDetailPage />) },
   { path: "/jobs/:id", element: withSuspense(<JobDetailPage />) },
   { path: "/jobs/:id/mrp", element: withSuspense(<MrpPage />) },
   { path: "/delivery-challans/:id", element: withSuspense(<DcDetailPage />) },

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2, Sparkles, FileText } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2, Sparkles, FileText, IndianRupee } from "lucide-react";
+import { canAccessPath } from "@/app/navigation";
+import { useAuth } from "@/core/auth/useAuth";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -175,6 +177,7 @@ export function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { data: order, isLoading, isError, error } = useOrder(id);
   const { approve, cancel, startProduction, complete, update, remove } = useOrderMutations();
   const [confirm, setConfirm] = useState<null | "approve" | "cancel" | "start" | "complete">(null);
@@ -297,6 +300,17 @@ export function OrderDetailPage() {
                 <FileText className="h-4 w-4" /> Status report
               </Button>
             </a>
+            {/* Margin is a separate permission from the order itself, so
+                this only appears for people who hold it — the API would
+                403 the page anyway, and offering a door that opens onto
+                a 403 is worse than not offering it. */}
+            {canAccessPath("/order-pnl", user) && (
+              <Link to={`/order-pnl/${order._id}`}>
+                <Button variant="secondary">
+                  <IndianRupee className="h-4 w-4" /> P&L
+                </Button>
+              </Link>
+            )}
             {(order.status === "Open" || order.status === "Approved") && (
               <Button variant="secondary" onClick={() => setPlanOpen(true)}>
                 <Sparkles className="h-4 w-4" /> Suggested plan
