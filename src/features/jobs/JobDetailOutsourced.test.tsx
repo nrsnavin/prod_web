@@ -75,7 +75,7 @@ describe('"Shifts on this job" — outsourced vs in-house', () => {
     renderPage(baseJob({ productionMode: "outsource", outsourceVendor: "Sunrise Weaving", shiftDetails: [] }));
 
     expect(screen.getByText(/Outsourced — Sunrise Weaving/)).toBeInTheDocument();
-    expect(screen.getByText(/produced by a vendor, so no shifts run against it here/i)).toBeInTheDocument();
+    expect(screen.getByText(/no shifts run against it here/i)).toBeInTheDocument();
     // The misleading empty state must be gone.
     expect(screen.queryByText(/No shifts recorded yet/i)).not.toBeInTheDocument();
   });
@@ -89,7 +89,7 @@ describe('"Shifts on this job" — outsourced vs in-house', () => {
   it("keeps the shift list for an in-house job", () => {
     renderPage(baseJob());
     expect(screen.getByText("Ravi Kumar")).toBeInTheDocument();
-    expect(screen.queryByText(/produced by a vendor/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no shifts run against it here/i)).not.toBeInTheDocument();
   });
 
   // Older job documents predate the field; they are in-house work and
@@ -97,6 +97,6 @@ describe('"Shifts on this job" — outsourced vs in-house', () => {
   it("treats a missing production mode as in-house", () => {
     renderPage(baseJob({ productionMode: undefined }));
     expect(screen.getByText("Ravi Kumar")).toBeInTheDocument();
-    expect(screen.queryByText(/produced by a vendor/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no shifts run against it here/i)).not.toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+import { OutsourcingRecord } from "./outsourcing";
 export type JobStatus =
   | "preparatory"
   | "weaving"
@@ -93,6 +94,8 @@ export interface JobDetail {
   /** An outsourced job is made by a vendor and has no shifts of its own. */
   productionMode?: "in_house" | "outsource";
   outsourceVendor?: string;
+  /** The vendor job-work record; null for in-house jobs. */
+  outsourcing?: OutsourcingRecord | null;
   customerName: string;
   orderNo?: number | string;
   machine?: {
