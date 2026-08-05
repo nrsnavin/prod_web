@@ -2,6 +2,10 @@ export interface ShiftPlanMachineRow {
   machineId: string;
   machineName: string;
   jobOrderNo?: string | number;
+  /** "in_house" | "outsource" — the job's production mode, so the row can
+   *  flag work being made by a vendor rather than on this floor. */
+  productionMode?: string;
+  outsourceVendor?: string;
   operatorName: string;
   production: number;
   timer?: string;
@@ -58,6 +62,8 @@ export interface PendingShift {
       jobOrderNo?: number;
       customer?: { name?: string } | null;
       order?: { po?: string; orderNo?: number } | null;
+      productionMode?: string;
+      outsourceVendor?: string;
     } | null;
   } | null;
   shiftPlan?: { date?: string; shift?: "DAY" | "NIGHT" } | null;
@@ -65,6 +71,8 @@ export interface PendingShift {
     _id: string;
     jobOrderNo?: number;
     customer?: { name?: string } | null;
+    productionMode?: string;
+    outsourceVendor?: string;
   } | null;
 }
 

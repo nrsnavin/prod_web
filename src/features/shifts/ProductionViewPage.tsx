@@ -20,6 +20,7 @@ import { useProductionRange, useProductionShiftDetail } from "./hooks";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProductionShiftSlice } from "./types";
 import { presetRange, toISODate } from "@/features/analytics/components/FilterBar";
+import { OutsourcedMark } from "./OutsourcedTag";
 
 const sliceTone: Record<string, ChipTone> = {
   closed: "success",
@@ -73,7 +74,10 @@ type DetailRow = {
   productionMeters: number;
   machine?: { machineID?: string } | null;
   employee?: { name?: string; department?: string } | null;
-  job?: { jobNo?: number; status?: string } | null;
+  job?: {
+    jobNo?: number; status?: string;
+    productionMode?: string; outsourceVendor?: string;
+  } | null;
 };
 
 function useProductionEntryMutations(shiftPlanId: string) {
@@ -184,7 +188,22 @@ function ShiftDetailModal({ shiftPlanId, onClose }: { shiftPlanId: string; onClo
   const detailColumns: Column<DetailRow>[] = [
     { key: "machine", header: "Machine", render: (d) => d.machine?.machineID ?? "—" },
     { key: "operator", header: "Operator", render: (d) => d.employee?.name ?? "—" },
-    { key: "job", header: "Job", render: (d) => (d.job?.jobNo ? `J-${d.job.jobNo}` : "—") },
+    {
+      key: "job",
+      header: "Job",
+      render: (d) =>
+        d.job?.jobNo ? (
+          <span className="inline-flex items-center whitespace-nowrap">
+            J-{d.job.jobNo}
+            <OutsourcedMark
+              productionMode={d.job.productionMode}
+              outsourceVendor={d.job.outsourceVendor}
+            />
+          </span>
+        ) : (
+          "—"
+        ),
+    },
     { key: "timer", header: "Runtime", align: "right", render: (d) => d.timerLabel },
     { key: "prod", header: "Output (m)", align: "right", render: (d) => d.productionMeters.toLocaleString("en-IN") },
     { key: "status", header: "Status", render: (d) => <StatusChip tone={sliceTone[d.status] ?? "neutral"}>{d.status}</StatusChip> },

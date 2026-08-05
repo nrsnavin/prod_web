@@ -14,12 +14,25 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useShiftPlan, useShiftMutations } from "./hooks";
 import { ShiftPlanDetail, ShiftPlanMachineRow } from "./types";
+import { OutsourcedMark } from "./OutsourcedTag";
 import { sheetService } from "./sheet";
 import { SheetUploadModal } from "./SheetUploadModal";
 
 const columns: Column<ShiftPlanMachineRow>[] = [
   { key: "machine", header: "Machine", render: (m) => <span className="font-medium">{m.machineName}</span> },
-  { key: "job", header: "Job", render: (m) => (m.jobOrderNo ? `J-${m.jobOrderNo}` : "—") },
+  {
+    key: "job",
+    header: "Job",
+    render: (m) =>
+      m.jobOrderNo ? (
+        <span className="inline-flex items-center whitespace-nowrap">
+          J-{m.jobOrderNo}
+          <OutsourcedMark productionMode={m.productionMode} outsourceVendor={m.outsourceVendor} />
+        </span>
+      ) : (
+        "—"
+      ),
+  },
   { key: "operator", header: "Operator", render: (m) => m.operatorName },
   { key: "timer", header: "Runtime", align: "right", render: (m) => m.timer || "—" },
   {

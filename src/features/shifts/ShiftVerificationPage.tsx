@@ -7,12 +7,26 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { OutsourcedTag } from "./OutsourcedTag";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { usePendingVerification, useShiftMutations } from "./hooks";
 import { PendingShift } from "./types";
+
+// A shift's job hangs off either the machine's running order or the
+// shift's own job ref — the same fallback the job number uses, so the
+// outsourced marker never disagrees with the "J-42" beside it.
+function shiftJob(s: PendingShift) {
+  return s.machine?.orderRunning ?? s.job ?? null;
+}
+function jobMode(s: PendingShift) {
+  return shiftJob(s)?.productionMode;
+}
+function jobVendor(s: PendingShift) {
+  return shiftJob(s)?.outsourceVendor;
+}
 
 function VerifyModal({
   shift,
@@ -142,6 +156,11 @@ export function ShiftVerificationPage() {
                   <p className="text-xs text-ink-400">
                     {s.machine?.ID ?? "—"} {jobNo && `· J-${jobNo}`} {customer && `· ${customer}`}
                   </p>
+                  {jobMode(s) === "outsource" && (
+                    <div className="mt-1">
+                      <OutsourcedTag productionMode="outsource" outsourceVendor={jobVendor(s)} />
+                    </div>
+                  )}
                 </div>
                 <StatusChip tone={s.shiftPlan?.shift === "DAY" ? "info" : "neutral"}>
                   <span className="inline-flex items-center gap-1">
