@@ -189,8 +189,15 @@ const router = createBrowserRouter([
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },
-]);
+], {
+  // Opt in to the v7 behaviours now, while the v6 fallbacks still exist,
+  // so the upgrade isn't a big-bang change. Relative paths inside splat
+  // routes resolve against the splat rather than its parent.
+  future: { v7_relativeSplatPath: true },
+});
 
 export function AppRouter() {
-  return <RouterProvider router={router} />;
+  // v7_startTransition is a RouterProvider flag, not a router one: it
+  // wraps navigation state updates in React.startTransition.
+  return <RouterProvider router={router} future={{ v7_startTransition: true }} />;
 }
