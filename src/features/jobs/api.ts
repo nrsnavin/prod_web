@@ -38,6 +38,13 @@ export const jobService = {
     orderId: string;
     date: string;
     elastics: Array<{ elastic: string; quantity: number }>;
+    /**
+     * Only needed when a line is planned more than 20% over what the
+     * order asked for. Without it the server answers 409
+     * EXCESS_PLANNING_REASON_REQUIRED, naming the lines — re-send the
+     * same request with this filled in.
+     */
+    excessReason?: string;
   }): Promise<{ job: { _id: string; jobOrderNo: number } }> {
     const res = await httpClient.post<{
       success: boolean;

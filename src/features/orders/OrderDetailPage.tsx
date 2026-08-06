@@ -20,6 +20,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useOrder, useOrderMutations } from "./hooks";
 import { orderService } from "./api";
 import { pnlService } from "@/features/pnl/api";
+import { OrderExcessPlanning } from "./OrderExcessPlanning";
 import { OrderMaterialPo } from "./OrderMaterialPo";
 import { OrderYarnLots } from "./OrderYarnLots";
 import { OrderElasticProgress, RawMaterialRequirement, StockShortfall } from "./types";
@@ -457,6 +458,13 @@ export function OrderDetailPage() {
           </ul>
         )}
       </Card>
+
+      {/* Jobs planned past what the order asked for. Sits ABOVE the
+          material panel because it is the reason that panel's figures
+          moved — reading them in the other order invites the question
+          this card already answers. Renders nothing when there is no
+          excess. */}
+      <OrderExcessPlanning rows={order.excessPlanning ?? []} />
 
       {/* Replaces the old read-only requirement table: same figures, but
           live and with the shortfall actually orderable from here. */}

@@ -132,6 +132,46 @@ export interface OrderDetail {
   elastics: OrderElasticProgress[];
   jobs: OrderJobRef[];
   rawMaterialRequired: RawMaterialRequirement[];
+  /** Jobs planned past what this order asked for. Empty when none. */
+  excessPlanning: ExcessPlanningRow[];
+}
+
+/**
+ * One job planning more of an elastic than the order asked for.
+ *
+ * Up to 20% over is allowed with no comment; past that the planner had
+ * to give a reason, which is kept here. `reason: ""` therefore means
+ * "inside the allowance, never asked" — not "withheld".
+ *
+ * `materialsDrawn` is the yarn the excess took out of stock, over and
+ * above what the order's approval already deducted.
+ */
+export interface ExcessPlanningRow {
+  elastic: string;
+  name: string;
+  job: string;
+  jobOrderNo: number | null;
+  jobNo: string;
+  orderedQuantity: number;
+  plannedQuantity: number;
+  excessQuantity: number;
+  excessPct: number;
+  reason: string;
+  materialsDrawn: Array<{ rawMaterial: string; name: string; quantity: number }>;
+  recordedAt: string | null;
+}
+
+/** Structured body of an EXCESS_PLANNING_REASON_REQUIRED 409. */
+export interface ExcessPlanningPrompt {
+  freeExcessPct: number;
+  lines: Array<{
+    elastic: string;
+    name: string;
+    ordered: number;
+    totalPlanned: number;
+    excess: number;
+    excessPct: number;
+  }>;
 }
 
 // Structured payload the backend attaches to an INSUFFICIENT_STOCK 400

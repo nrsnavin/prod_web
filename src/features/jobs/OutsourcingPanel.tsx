@@ -111,8 +111,11 @@ export function OutsourcingPanel({
       </div>
 
       <div className="mt-3">
-        <label className="mb-1.5 block text-sm font-medium text-ink-600">Notes *</label>
+        <label htmlFor="outsourcing-notes" className="mb-1.5 block text-sm font-medium text-ink-600">
+          Notes *
+        </label>
         <textarea
+          id="outsourcing-notes"
           rows={2}
           value={draft.notes}
           onChange={set("notes")}
