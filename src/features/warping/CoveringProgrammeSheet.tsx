@@ -2,7 +2,7 @@ import { PrintModal } from "@/components/print/PrintModal";
 import {
   SheetHeader, SheetPane, SheetSection, SheetTable, SheetSignatures, Th, Td,
 } from "@/components/print/SheetForm";
-import { Covering, ElasticOrderedLine } from "./types";
+import { BeamEntry, Covering, ElasticOrderedLine } from "./types";
 
 // The detail endpoint populates each planned elastic with its composition,
 // so the sheet can show spandex details like the Flutter covering PDF.
@@ -31,6 +31,69 @@ function totalWeight(el: PopulatedElastic | null): number {
   return (el?.warpSpandex?.weight ?? 0) + (el?.spandexCovering?.weight ?? 0);
 }
 
+// ── Beam weights ────────────────────────────────────────────────────────
+//
+// The programme goes to the machine before a single beam exists, so the
+// sheet carries a fixed grid of 20 rows for the operator to write the
+// weights into by hand. Whatever has already been entered on the covering
+// page is printed in; the rest stay blank.
+//
+// Twenty is a floor, not a cap: a covering that has already recorded more
+// than 20 beams gets a row for every one of them. Dropping a weight
+// somebody entered to keep the sheet a fixed size would be a silent loss.
+const BEAM_ROWS = 20;
+
+const fmtKg = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+
+/** The rows to print, split into two side-by-side halves. */
+export function beamSheetRows(
+  entries: BeamEntry[],
+  minRows = BEAM_ROWS
+): Array<Array<BeamEntry | null>> {
+  const recorded = [...entries].sort((a, b) => a.beamNo - b.beamNo);
+  const count = Math.max(minRows, recorded.length);
+  const half = Math.ceil(count / 2);
+  const cells: Array<BeamEntry | null> = Array.from(
+    { length: half * 2 },
+    (_, i) => recorded[i] ?? null
+  );
+  return [cells.slice(0, half), cells.slice(half)];
+}
+
+function BeamWeightTable({
+  rows,
+  startAt,
+}: {
+  rows: Array<BeamEntry | null>;
+  startAt: number;
+}) {
+  return (
+    <SheetTable
+      head={
+        <tr>
+          <Th align="center">S.No</Th>
+          <Th align="center">Beam #</Th>
+          <Th align="right">Weight (kg)</Th>
+          <Th>Remarks</Th>
+        </tr>
+      }
+    >
+      <tbody>
+        {rows.map((entry, i) => (
+          <tr key={startAt + i}>
+            {/* The serial number is always printed, which is also what
+                gives a blank row its height on paper. */}
+            <Td align="center">{startAt + i}</Td>
+            <Td align="center">{entry ? entry.beamNo : ""}</Td>
+            <Td align="right">{entry ? fmtKg(entry.weight) : ""}</Td>
+            <Td>{entry?.note ?? ""}</Td>
+          </tr>
+        ))}
+      </tbody>
+    </SheetTable>
+  );
+}
+
 export function CoveringProgrammeSheet({
   open,
   onClose,
@@ -45,6 +108,13 @@ export function CoveringProgrammeSheet({
     (s, l) => s + (l.quantity * totalWeight(asPopulated(l))) / 1000,
     0
   );
+
+  const beams = covering.beamEntries ?? [];
+  const [leftRows, rightRows] = beamSheetRows(beams);
+  // producedWeight is the server's own sum; fall back to the entries when
+  // an older covering has none, and print a blank rule when nothing is in.
+  const recordedKg =
+    covering.producedWeight ?? beams.reduce((s, b) => s + (b.weight || 0), 0);
 
   return (
     <PrintModal open={open} onClose={onClose} title="Covering programme">
@@ -107,6 +177,26 @@ export function CoveringProgrammeSheet({
               </tfoot>
             )}
           </SheetTable>
+        </div>
+
+        <SheetSection>
+          Beam weights — {beams.length > 0
+            ? `${beams.length} recorded, rest blank for entry`
+            : "to be entered at the machine"}
+        </SheetSection>
+        <div className="grid grid-cols-2 gap-3">
+          <BeamWeightTable rows={leftRows} startAt={1} />
+          <BeamWeightTable rows={rightRows} startAt={leftRows.length + 1} />
+        </div>
+        <div className="mt-1 flex justify-end">
+          <div className="border border-ink-300 px-2 py-1 text-xs">
+            <span className="font-bold uppercase tracking-wide text-ink-600">
+              Total recorded weight:
+            </span>{" "}
+            <span className="font-semibold tabular-nums">
+              {recordedKg > 0 ? `${fmtKg(recordedKg)} kg` : "____________ kg"}
+            </span>
+          </div>
         </div>
 
         {covering.remarks && (
