@@ -30,6 +30,12 @@ describe("money", () => {
     expect(rupeePrecise(16.7)).toBe("₹16.70");
   });
 
+  // "₹-8,010" reads as a typo before it reads as a loss.
+  it("puts the minus sign outside the rupee symbol", () => {
+    expect(rupee(-8010)).toBe("−₹8,010");
+    expect(rupeePrecise(-16.7)).toBe("−₹16.70");
+  });
+
   it("renders a missing figure as a dash, never as zero", () => {
     expect(rupee(null)).toBe("—");
     expect(rupeePrecise(undefined)).toBe("—");

@@ -1,13 +1,21 @@
 import type { ChipTone } from "@/components/ui/StatusChip";
 
+// The sign goes OUTSIDE the symbol. Formatting the raw number puts it
+// inside — "₹-8,010" — which on a screen full of rupee figures reads as
+// a typo before it reads as a loss.
+const signed = (n: number, body: (abs: number) => string) =>
+  `${n < 0 ? "−" : ""}₹${body(Math.abs(n))}`;
+
 export const rupee = (n: number | null | undefined) =>
-  n == null ? "—" : `₹${Math.round(n).toLocaleString("en-IN")}`;
+  n == null ? "—" : signed(n, (a) => Math.round(a).toLocaleString("en-IN"));
 
 /** Rates and per-meter figures need the paise; totals do not. */
 export const rupeePrecise = (n: number | null | undefined) =>
   n == null
     ? "—"
-    : `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    : signed(n, (a) =>
+        a.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      );
 
 export const meters = (n: number | null | undefined) =>
   n == null ? "—" : `${n.toLocaleString("en-IN")} m`;
