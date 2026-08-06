@@ -1,5 +1,4 @@
 import { httpClient } from "@/core/http/httpClient";
-import { config } from "@/app/config";
 import {
   SampleCreateValues,
   SampleDetail,
@@ -65,9 +64,21 @@ export const sampleService = {
   },
 
   /**
-   * Straight <img src>. The bytes come back from the API with the auth
-   * cookie the browser already holds, so there is nothing to fetch and
-   * hold in memory here.
+   * The bytes, fetched through the authenticated XHR path.
+   *
+   * NOT a plain <img src={apiBaseUrl}/…>. The API sends
+   * `Cross-Origin-Resource-Policy: same-origin` (helmet's default, see
+   * app.js), which is exactly a rule against embedding its responses in
+   * another origin's page — so the request succeeds and the browser
+   * refuses to paint it. In dev the API is same-origin through the Vite
+   * proxy, so an <img> works there and only breaks once deployed.
+   *
+   * A CORS XHR is not an embed, passes the CORS check the API already
+   * grants this origin, and is how every other binary in this app is
+   * fetched (payslips, DC PDFs, service bills). Relaxing CORP on the
+   * route instead would let any site embed a customer's sample photos
+   * for anyone logged in, since the auth cookie is SameSite=None.
    */
-  photoUrl: (photoId: string) => `${config.apiBaseUrl}/sample/photo/${photoId}/file`,
+  photoBlob: (photoId: string): Promise<Blob> =>
+    httpClient.getBlob(`/sample/photo/${photoId}/file`),
 };

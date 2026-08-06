@@ -20,6 +20,22 @@ export function useSample(id: string | undefined) {
   });
 }
 
+/**
+ * The bytes of one photo, cached so a reopened gallery does not re-fetch
+ * what it already has. Never garbage-collected while a tile is mounted;
+ * the object URL built from it is revoked by the component.
+ */
+export function useSamplePhotoBlob(photoId: string) {
+  return useQuery({
+    queryKey: [KEY, "photo", photoId],
+    queryFn: () => sampleService.photoBlob(photoId),
+    // A photo never changes — it is replaced or tombstoned, never edited.
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
+    retry: 1,
+  });
+}
+
 export function useSampleMutations() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: [KEY] });

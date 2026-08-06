@@ -7,7 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useAuth } from "@/core/auth/useAuth";
-import { sampleService } from "./api";
+import { SamplePhotoImage } from "./SamplePhotoImage";
 import { useSampleMutations } from "./hooks";
 import { formatWhen } from "./sampleShared";
 import { SampleDetail, SamplePhoto } from "./types";
@@ -95,10 +95,9 @@ export function SamplePhotos({
                   className="block w-full overflow-hidden rounded-lg border border-ink-200"
                   aria-label={`Open photo${p.caption ? `: ${p.caption}` : ""}`}
                 >
-                  <img
-                    src={sampleService.photoUrl(p._id)}
+                  <SamplePhotoImage
+                    photoId={p._id}
                     alt={p.caption || "Sample photo"}
-                    loading="lazy"
                     className="aspect-square w-full object-cover"
                   />
                 </button>
@@ -176,10 +175,10 @@ export function SamplePhotos({
       >
         {viewing && (
           <div>
-            <img
-              src={sampleService.photoUrl(viewing._id)}
+            <SamplePhotoImage
+              photoId={viewing._id}
               alt={viewing.caption || "Sample photo"}
-              className="max-h-[70vh] w-full rounded-lg object-contain"
+              className="max-h-[70vh] min-h-[12rem] w-full rounded-lg object-contain"
             />
             <p className="mt-2 text-xs text-ink-400">
               {viewing.uploadedByName || "—"} · {formatWhen(viewing.createdAt)}

@@ -20,6 +20,13 @@ const { addLog, setStatus, addPhoto, removePhoto, sample, role } = vi.hoisted(()
 
 vi.mock("./hooks", () => ({
   useSample: () => ({ data: sample.current, isLoading: false, isError: false, error: null }),
+  // The gallery tiles fetch their own bytes; this page's tests are about
+  // the log and the actions, so hand them a ready blob.
+  useSamplePhotoBlob: () => ({
+    data: new Blob(["png"], { type: "image/png" }),
+    isLoading: false,
+    isError: false,
+  }),
   useSampleMutations: () => ({
     create: { mutate: vi.fn(), isPending: false },
     addLog: { mutate: addLog, isPending: false },
