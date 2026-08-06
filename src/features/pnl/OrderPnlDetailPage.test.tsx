@@ -287,3 +287,43 @@ describe("the printed statement", () => {
     expect(link).toHaveAttribute("rel", expect.stringContaining("noreferrer"));
   });
 });
+
+// Number("") is 0, and 0 is this app's signal for "not priced" — so a
+// form that sends a cleared box as a number silently un-prices the line
+// the planner was only mid-edit on, and answers 200 OK.
+describe("a cleared rate box", () => {
+  it("is not sent as a price of zero", async () => {
+    const user = userEvent.setup();
+    renderPage(pnl());
+    await user.clear(screen.getByLabelText(/Rate ₹\/m/i));
+    await user.click(screen.getByRole("button", { name: /save rates/i }));
+    expect(saveRates).not.toHaveBeenCalled();
+  });
+
+  it("does not block the other lines from saving", async () => {
+    const user = userEvent.setup();
+    renderPage(pnl({
+      revenue: {
+        lines: [line(), line({ elasticId: "e2", name: "Elastic 50mm" })],
+        orderValue: 80000,
+        invoiced: { amount: 0, quantity: 0, challans: 0 },
+      },
+    }));
+    const inputs = screen.getAllByLabelText(/Rate ₹\/m/i);
+    await user.clear(inputs[0]);
+    await user.clear(inputs[1]);
+    await user.type(inputs[1], "55");
+    await user.click(screen.getByRole("button", { name: /save rates/i }));
+    expect(saveRates.mock.calls[0][0]).toEqual([{ elastic: "e2", rate: 55 }]);
+  });
+
+  // A fat-fingered exponent multiplies out to Infinity on the server.
+  it("refuses an absurd rate before the round trip", async () => {
+    const user = userEvent.setup();
+    renderPage(pnl());
+    await user.clear(screen.getByLabelText(/Rate ₹\/m/i));
+    await user.type(screen.getByLabelText(/Rate ₹\/m/i), "99999999");
+    expect(screen.getByText(/must be between 0 and/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save rates/i })).toBeDisabled();
+  });
+});

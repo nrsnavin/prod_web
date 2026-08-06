@@ -1,5 +1,14 @@
 import type { ChipTone } from "@/components/ui/StatusChip";
 
+/**
+ * Mirrors MAX_RATE in utils/money.js on the server. Elastic sells for
+ * tens of rupees a meter, so this is orders of magnitude past anything
+ * real — it exists to catch a fat-fingered exponent, which would
+ * otherwise multiply out to Infinity and land on the P&L as a
+ * confident, meaningless figure.
+ */
+export const MAX_RATE = 1_000_000;
+
 // The sign goes OUTSIDE the symbol. Formatting the raw number puts it
 // inside — "₹-8,010" — which on a screen full of rupee figures reads as
 // a typo before it reads as a loss.

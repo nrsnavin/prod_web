@@ -3,6 +3,7 @@ import { Save, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { MAX_RATE } from "./format";
 import { useCostSettings, usePnlMutations } from "./hooks";
 
 // The ₹/meter conversion rate card. Finishing, checking and packing are
@@ -32,9 +33,11 @@ export function RateCardPanel() {
     const body: Record<string, number> = {};
     for (const { key } of FIELDS) {
       const raw = draft[key];
-      if (raw === undefined) continue;
+      // A cleared box means "leave it alone", not "set it to zero" —
+      // and this rate card re-costs every order in the factory.
+      if (raw === undefined || raw.trim() === "") continue;
       const n = Number(raw);
-      if (Number.isFinite(n) && n >= 0) body[key] = n;
+      if (Number.isFinite(n) && n >= 0 && n <= MAX_RATE) body[key] = n;
     }
     if (Object.keys(body).length === 0) return;
     saveSettings.mutate(body, { onSuccess: () => setDraft({}) });

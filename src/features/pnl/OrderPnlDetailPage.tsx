@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { pnlService } from "./api";
 import { useOrderPnl, usePnlMutations } from "./hooks";
-import { marginLabel, marginTone, meters, rupee, rupeePrecise } from "./format";
+import { MAX_RATE, marginLabel, marginTone, meters, rupee, rupeePrecise } from "./format";
 import type { OrderPnl, PnlJobRow } from "./types";
 
 // One order's P&L. Every figure is derived from documents elsewhere in
@@ -37,11 +37,22 @@ function RevenueCard({ pnl }: { pnl: OrderPnl }) {
 
   const save = () => {
     const rates = Object.entries(draft)
+      // A CLEARED box is not a price of zero. Number("") is 0, and 0 is
+      // this app's signal for "not priced" — so sending it would
+      // silently un-price the line the planner was only mid-edit on.
+      .filter(([, raw]) => raw.trim() !== "")
       .map(([elastic, raw]) => ({ elastic, rate: Number(raw) }))
-      .filter((r) => Number.isFinite(r.rate) && r.rate >= 0);
+      .filter((r) => Number.isFinite(r.rate) && r.rate >= 0 && r.rate <= MAX_RATE);
     if (rates.length === 0) return;
     saveRates.mutate(rates, { onSuccess: () => setDraft({}) });
   };
+
+  // Flag the two inputs the server will refuse, before the round trip.
+  const badRates = Object.entries(draft).filter(([, raw]) => {
+    if (raw.trim() === "") return false;
+    const n = Number(raw);
+    return !Number.isFinite(n) || n < 0 || n > MAX_RATE;
+  });
 
   // What the lines add up to as typed, so the order value moves with the
   // form rather than only after a save.
@@ -57,7 +68,7 @@ function RevenueCard({ pnl }: { pnl: OrderPnl }) {
         <Button
           size="sm"
           loading={saveRates.isPending}
-          disabled={Object.keys(draft).length === 0}
+          disabled={Object.keys(draft).length === 0 || badRates.length > 0}
           onClick={save}
         >
           <Save className="h-4 w-4" /> Save rates
@@ -93,6 +104,12 @@ function RevenueCard({ pnl }: { pnl: OrderPnl }) {
           <p className="text-sm text-ink-400">This order has no lines.</p>
         )}
       </div>
+
+      {badRates.length > 0 && (
+        <p className="mt-3 text-sm text-status-danger">
+          A rate must be between 0 and {MAX_RATE.toLocaleString("en-IN")} per meter.
+        </p>
+      )}
 
       <dl className="mt-4 space-y-1.5 border-t border-ink-100 pt-3 text-sm">
         <div className="flex justify-between">
