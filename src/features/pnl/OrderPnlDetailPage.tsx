@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Save, Truck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, FileText, Save, Truck } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -8,6 +8,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { pnlService } from "./api";
 import { useOrderPnl, usePnlMutations } from "./hooks";
 import { marginLabel, marginTone, meters, rupee, rupeePrecise } from "./format";
 import type { OrderPnl, PnlJobRow } from "./types";
@@ -299,9 +300,16 @@ export function OrderPnlDetailPage() {
         title={`Order #${pnl.order.orderNo ?? "—"} — P&L`}
         subtitle={[pnl.order.customerName, pnl.order.po].filter(Boolean).join(" · ")}
         actions={
-          <Link to={`/orders/${pnl.order.id}`}>
-            <Button variant="secondary" size="sm">Open order</Button>
-          </Link>
+          <>
+            <a href={pnlService.pdfUrl(pnl.order.id)} target="_blank" rel="noreferrer">
+              <Button variant="secondary" size="sm">
+                <FileText className="h-4 w-4" /> P&L statement
+              </Button>
+            </a>
+            <Link to={`/orders/${pnl.order.id}`}>
+              <Button variant="secondary" size="sm">Open order</Button>
+            </Link>
+          </>
         }
       />
 

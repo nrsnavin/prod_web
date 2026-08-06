@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { config } from "@/app/config";
 import {
   CostSettings,
   JobCostOverrides,
@@ -42,4 +43,9 @@ export const pnlService = {
 
   saveOverrides: (jobId: string, body: JobCostOverrides) =>
     httpClient.put(`/pnl/job/${jobId}/cost-overrides`, body),
+
+  // Opened in a new tab rather than fetched: the statement is a document
+  // to file and hand round, and the browser's own PDF viewer gives print
+  // and save for free. The httpOnly session cookie rides along.
+  pdfUrl: (orderId: string) => `${config.apiBaseUrl}/pnl/order/${orderId}.pdf`,
 };

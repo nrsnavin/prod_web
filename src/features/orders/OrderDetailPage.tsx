@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useOrder, useOrderMutations } from "./hooks";
 import { orderService } from "./api";
+import { pnlService } from "@/features/pnl/api";
 import { OrderMaterialPo } from "./OrderMaterialPo";
 import { OrderYarnLots } from "./OrderYarnLots";
 import { OrderElasticProgress, RawMaterialRequirement, StockShortfall } from "./types";
@@ -305,11 +306,22 @@ export function OrderDetailPage() {
                 403 the page anyway, and offering a door that opens onto
                 a 403 is worse than not offering it. */}
             {canAccessPath("/order-pnl", user) && (
-              <Link to={`/order-pnl/${order._id}`}>
-                <Button variant="secondary">
-                  <IndianRupee className="h-4 w-4" /> P&L
-                </Button>
-              </Link>
+              <>
+                <a
+                  href={pnlService.pdfUrl(order._id)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button variant="secondary">
+                    <FileText className="h-4 w-4" /> P&L statement
+                  </Button>
+                </a>
+                <Link to={`/order-pnl/${order._id}`}>
+                  <Button variant="secondary">
+                    <IndianRupee className="h-4 w-4" /> P&L
+                  </Button>
+                </Link>
+              </>
             )}
             {(order.status === "Open" || order.status === "Approved") && (
               <Button variant="secondary" onClick={() => setPlanOpen(true)}>

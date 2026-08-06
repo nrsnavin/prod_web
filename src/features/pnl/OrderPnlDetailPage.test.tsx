@@ -274,3 +274,16 @@ describe("yarn issued", () => {
     expect(screen.getByText("no price")).toBeInTheDocument();
   });
 });
+
+// The statement is a document to file and argue over, so it opens in a
+// new tab rather than being fetched — the browser's own viewer gives
+// print and save for free.
+describe("the printed statement", () => {
+  it("links to the PDF for this order, in a new tab", () => {
+    renderPage(pnl());
+    const link = screen.getByRole("link", { name: /P&L statement/i });
+    expect(link).toHaveAttribute("href", expect.stringContaining("/pnl/order/o1.pdf"));
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noreferrer"));
+  });
+});
