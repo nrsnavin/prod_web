@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { JobCreateForm } from "./JobCreateForm";
-import type { OrderDetail } from "@/features/orders/types";
+import type { OrderDetail, OrderElasticProgress } from "@/features/orders/types";
 
 // The form's 20% rule has to agree with services/excessPlanning.js on
 // the server. If it is stricter the planner cannot do something the
@@ -15,14 +15,24 @@ vi.mock("./hooks", () => ({
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 
+const line = (over: Partial<OrderElasticProgress> = {}): OrderElasticProgress => ({
+  id: "e1",
+  name: "Woven Elastic 25mm",
+  ordered: 1000,
+  produced: 0,
+  packed: 0,
+  notAssigned: 1000,
+  pendingDelivery: 1000,
+  // Deprecated alias for notAssigned, still on the type.
+  pending: 1000,
+  ...over,
+});
+
 const order = (over: Partial<OrderDetail> = {}): OrderDetail =>
   ({
     _id: "o1",
     orderNo: 91,
-    elastics: [
-      { id: "e1", name: "Woven Elastic 25mm", ordered: 1000, produced: 0, packed: 0,
-        notAssigned: 1000, pendingDelivery: 1000, packedPct: 0 },
-    ],
+    elastics: [line()],
     rawMaterialRequired: [],
     excessPlanning: [],
     ...over,
@@ -102,11 +112,8 @@ describe("a line other jobs have already planned", () => {
   it("counts what earlier jobs already planned", async () => {
     const user = userEvent.setup();
     renderForm(order({
-      elastics: [
-        { id: "e1", name: "Woven Elastic 25mm", ordered: 1000, produced: 0, packed: 0,
-          notAssigned: 0, pendingDelivery: 1000, packedPct: 0 },
-      ],
-    } as Partial<OrderDetail>));
+      elastics: [line({ notAssigned: 0, pending: 0 })],
+    }));
 
     await setQty(user, "150");   // 1000 already planned + 150 = 15% over
     expect(screen.getByText(/150 m over \(15%\)/)).toBeInTheDocument();
@@ -120,11 +127,8 @@ describe("a line other jobs have already planned", () => {
   // planning excess on it impossible from here.
   it("still offers a fully-planned line", () => {
     renderForm(order({
-      elastics: [
-        { id: "e1", name: "Woven Elastic 25mm", ordered: 1000, produced: 0, packed: 0,
-          notAssigned: 0, pendingDelivery: 0, packedPct: 100 },
-      ],
-    } as Partial<OrderDetail>));
+      elastics: [line({ notAssigned: 0, pending: 0, pendingDelivery: 0, packed: 1000 })],
+    }));
     expect(screen.getByText("Woven Elastic 25mm")).toBeInTheDocument();
     expect(screen.getByLabelText("Qty (m)")).toBeInTheDocument();
   });
