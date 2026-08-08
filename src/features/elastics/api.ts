@@ -1,6 +1,7 @@
 import { httpClient } from "@/core/http/httpClient";
 import {
   Elastic,
+  ElasticCreateBody,
   ElasticFormValues,
   ElasticJobRow,
   ElasticOrderRow,
@@ -26,7 +27,7 @@ export const elasticService = {
     return res.elastic;
   },
 
-  async create(body: ElasticFormValues): Promise<Elastic> {
+  async create(body: ElasticCreateBody): Promise<Elastic> {
     const res = await httpClient.post<{ success: boolean; elastic: Elastic }>(
       "/elastic/create-elastic",
       body

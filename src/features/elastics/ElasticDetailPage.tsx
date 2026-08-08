@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Pencil, Calculator, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Copy, Calculator, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useElastic, useElasticMutations } from "./hooks";
 import { MaterialWeight } from "./types";
+import { cloneInitial, cloneBody } from "./elasticClone";
 import { ElasticForm } from "./ElasticForm";
 import { ElasticStockCard } from "./ElasticStockCard";
 import { ElasticWarpingTemplate } from "./ElasticWarpingTemplate";
@@ -42,8 +43,9 @@ export function ElasticDetailPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { data: elastic, isLoading, isError, error } = useElastic(id);
-  const { update, recalculate, setArchived, remove } = useElasticMutations();
+  const { create, update, recalculate, setArchived, remove } = useElasticMutations();
   const [editOpen, setEditOpen] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -89,6 +91,9 @@ export function ElasticDetailPage() {
             </Button>
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" /> Edit
+            </Button>
+            <Button variant="secondary" onClick={() => setCloneOpen(true)}>
+              <Copy className="h-4 w-4" /> Clone
             </Button>
             <Button variant="secondary" onClick={() => setArchiveOpen(true)}>
               {elastic.archived
@@ -235,6 +240,35 @@ export function ElasticDetailPage() {
                   toast(e instanceof ApiError ? e.message : "Update failed", "error"),
               }
             )
+          }
+        />
+      </FormScreen>
+
+      {/* A clone opens the CREATE form filled from this product, with the
+          name left empty — the form requires one, so a blank field is
+          what stops a copy being saved under a name nobody chose. */}
+      <FormScreen
+        open={cloneOpen}
+        onClose={() => setCloneOpen(false)}
+        title={`Clone of ${elastic.name}`}
+        width="max-w-2xl"
+      >
+        <ElasticForm
+          initial={cloneInitial(elastic)}
+          submitting={create.isPending}
+          onCancel={() => setCloneOpen(false)}
+          onSubmit={(values) =>
+            create.mutate(cloneBody(values, elastic), {
+              onSuccess: (created) => {
+                setCloneOpen(false);
+                toast(`${created.name} created from ${elastic.name}`, "success");
+                // Straight to the copy: the next thing anyone does is
+                // check what they changed, on the thing they changed.
+                navigate(`/elastics/${created._id}`);
+              },
+              onError: (e) =>
+                toast(e instanceof ApiError ? e.message : "Could not clone the elastic", "error"),
+            })
           }
         />
       </FormScreen>

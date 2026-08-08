@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { elasticService } from "./api";
-import { ElasticFormValues } from "./types";
+import { ElasticCreateBody, ElasticFormValues } from "./types";
 
 const KEY = "elastics";
 
@@ -67,7 +67,7 @@ export function useElasticMutations() {
   const invalidate = () => qc.invalidateQueries({ queryKey: [KEY] });
 
   const create = useMutation({
-    mutationFn: (body: ElasticFormValues) => elasticService.create(body),
+    mutationFn: (body: ElasticCreateBody) => elasticService.create(body),
     onSuccess: invalidate,
   });
   const update = useMutation({
