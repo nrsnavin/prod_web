@@ -15,8 +15,21 @@ export interface StockMovement {
    * this ledger used to carry no reference at all.
    */
   purchaseOrder?: string | { _id: string; poNo?: number } | null;
+  /** What stock ACTUALLY moved by — never what was asked for. */
   quantity: number;
   balance?: number;
+  /**
+   * What was asked for, present only when it differs from `quantity`.
+   * Stock floors at zero, so a write-off of 50 against 30 on hand moves
+   * 30; the row used to record the 50 and the ledger stopped adding up.
+   */
+  requested?: number;
+  /** What one unit was worth when it moved, snapshotted on the row. */
+  unitCost?: number;
+  /** |quantity| × unitCost, from the server. null when no cost was recorded. */
+  value?: number | null;
+  /** requested − quantity, when the movement was clamped. null otherwise. */
+  shortfall?: number | null;
   /** What the person typed. Only manual adjustments have one. */
   reason?: string;
 
@@ -42,7 +55,19 @@ export interface RawMaterial {
   name: string;
   category: string;
   supplier?: { _id: string; name: string } | string | null;
+  /** The LATEST purchase price — what a new PO defaults to. */
   price: number;
+  /**
+   * The weighted average of what the stock on hand actually cost, and
+   * what issues are costed at. 0 means the material has not been
+   * received since averaging existed; readers fall back to `price`
+   * there, which is what everything used to be costed at anyway.
+   */
+  avgCost?: number;
+  /** avgCost with the price fallback already applied, from the server. */
+  unitCost?: number;
+  /** stock × unitCost, from the server, so every client shows one figure. */
+  stockValue?: number;
   stock: number;
   minStock: number;
   totalConsumption?: number;

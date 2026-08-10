@@ -38,6 +38,8 @@ const PoDetailPage = lazyPage(() => import("@/features/suppliers/PoDetailPage"),
 const MaterialListPage = lazyPage(() => import("@/features/materials/MaterialListPage"), "MaterialListPage");
 const MaterialDetailPage = lazyPage(() => import("@/features/materials/MaterialDetailPage"), "MaterialDetailPage");
 const MaterialForecastPage = lazyPage(() => import("@/features/materials/MaterialForecastPage"), "MaterialForecastPage");
+const StockCountListPage = lazyPage(() => import("@/features/stockCounts/StockCountListPage"), "StockCountListPage");
+const StockCountDetailPage = lazyPage(() => import("@/features/stockCounts/StockCountDetailPage"), "StockCountDetailPage");
 const ElasticListPage = lazyPage(() => import("@/features/elastics/ElasticListPage"), "ElasticListPage");
 const ElasticDetailPage = lazyPage(() => import("@/features/elastics/ElasticDetailPage"), "ElasticDetailPage");
 const ElasticGroupsPage = lazyPage(() => import("@/features/elasticGroups/ElasticGroupsPage"), "ElasticGroupsPage");
@@ -105,6 +107,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/suppliers": withSuspense(<SupplierListPage />),
   "/purchase-orders": withSuspense(<PoListPage />),
   "/materials": withSuspense(<MaterialListPage />),
+  "/stock-counts": withSuspense(<StockCountListPage />),
   "/elastics": withSuspense(<ElasticListPage />),
   "/elastic-groups": withSuspense(<ElasticGroupsPage />),
   "/machines": withSuspense(<MachineListPage />),
@@ -151,6 +154,7 @@ const detailRoutes = [
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
   { path: "/materials/forecast", element: withSuspense(<MaterialForecastPage />) },
   { path: "/materials/:id", element: withSuspense(<MaterialDetailPage />) },
+  { path: "/stock-counts/:id", element: withSuspense(<StockCountDetailPage />) },
   { path: "/elastics/:id", element: withSuspense(<ElasticDetailPage />) },
   { path: "/elastic-groups/:id", element: withSuspense(<ElasticGroupDetailPage />) },
   { path: "/machines/:id", element: withSuspense(<MachineDetailPage />) },

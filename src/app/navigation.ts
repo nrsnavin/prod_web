@@ -18,6 +18,7 @@ import {
   Building2,
   FileText,
   Boxes,
+  ClipboardCheck,
   Cable,
   Cog,
   UserRound,
@@ -115,6 +116,10 @@ export const navSections: NavSection[] = [
       { label: "Suppliers", path: "/suppliers", icon: Building2, departments: ["admin", "finance"] },
       { label: "Purchase Orders", path: "/purchase-orders", icon: FileText, departments: ["admin", "finance"] },
       { label: "Raw Materials", path: "/materials", icon: Boxes, departments: ["admin", "finance"] },
+      // A count is a statement about raw material stock, so it sits
+      // beside it rather than under Reports — the people who run one
+      // are already on this screen.
+      { label: "Stock Counts", path: "/stock-counts", icon: ClipboardCheck, departments: ["admin", "finance"] },
       { label: "Elastic Products", path: "/elastics", icon: Cable, departments: ["admin", "finance"] },
       { label: "Elastic Groups", path: "/elastic-groups", icon: Layers, departments: ["admin"] },
       { label: "Machines", path: "/machines", icon: Cog, departments: ["admin", "production"] },

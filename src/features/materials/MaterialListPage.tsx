@@ -51,7 +51,35 @@ const columns: Column<RawMaterial>[] = [
     ),
   },
   { key: "min", header: "Min stock", align: "right", sort: (m) => m.minStock, render: (m) => m.minStock.toLocaleString("en-IN") },
-  { key: "price", header: "Price (₹)", align: "right", sort: (m) => m.price, render: (m) => m.price.toLocaleString("en-IN") },
+  {
+    key: "price",
+    header: "Price (₹)",
+    align: "right",
+    sort: (m) => m.price,
+    render: (m) => m.price.toLocaleString("en-IN"),
+  },
+  {
+    // What the stock on hand cost, as against what the next kilo will.
+    // They are different numbers on a moving market and the second one
+    // is not what consumption should be valued at.
+    key: "avgCost",
+    header: "Avg cost (₹)",
+    align: "right",
+    sort: (m) => m.avgCost || m.price,
+    render: (m) => (
+      <span className={m.avgCost ? undefined : "text-ink-400"}>
+        {(m.avgCost || m.price).toLocaleString("en-IN")}
+      </span>
+    ),
+  },
+  {
+    key: "value",
+    header: "Value (₹)",
+    align: "right",
+    sort: (m) => m.stock * (m.avgCost || m.price),
+    render: (m) =>
+      Math.round(m.stock * (m.avgCost || m.price)).toLocaleString("en-IN"),
+  },
   {
     key: "consumption",
     header: "Consumed",

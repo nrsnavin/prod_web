@@ -105,6 +105,18 @@ export const movementColumns: Column<StockMovement>[] = [
       >
         {m.quantity > 0 ? "+" : m.quantity < 0 ? "−" : ""}
         {Math.abs(m.quantity).toLocaleString("en-IN")}
+        {/*
+          Stock floors at zero, so a write-off can move less than was
+          asked for. Saying so here is the difference between a row that
+          explains a short write-off and one that looks like it lost a
+          number — the quantity above is always what actually moved.
+        */}
+        {m.requested != null && m.requested !== m.quantity && (
+          <span className="ml-1 block text-xs font-normal text-ink-400">
+            asked {m.requested > 0 ? "+" : "−"}
+            {Math.abs(m.requested).toLocaleString("en-IN")}
+          </span>
+        )}
       </span>
     ),
   },
@@ -115,6 +127,21 @@ export const movementColumns: Column<StockMovement>[] = [
     render: (m) => (
       <span className="tabular-nums">
         {m.balance != null ? m.balance.toLocaleString("en-IN") : "—"}
+      </span>
+    ),
+  },
+  {
+    key: "value",
+    header: "Value (₹)",
+    align: "right",
+    // Priced from the cost recorded on the row, never from the
+    // material's cost today: the average moves with every receipt, so
+    // pricing an old movement at it would value the yarn at a cost it
+    // never had. Rows written before costs were stamped show a dash
+    // rather than a guess.
+    render: (m) => (
+      <span className="tabular-nums text-ink-600">
+        {m.value == null ? "—" : Math.round(m.value).toLocaleString("en-IN")}
       </span>
     ),
   },
@@ -298,7 +325,7 @@ export function MaterialDetailPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-5">
           <p className="text-sm text-ink-400">Current stock</p>
           <p className={`mt-1 text-3xl font-bold tabular-nums ${low ? "text-status-danger" : ""}`}>
@@ -310,9 +337,33 @@ export function MaterialDetailPage() {
           <p className="text-sm text-ink-400">Minimum stock</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">{material.minStock.toLocaleString("en-IN")}</p>
         </Card>
+        {/*
+          Two different numbers that used to be one. `price` is the
+          latest purchase price — what a new PO defaults to. `unitCost`
+          is the weighted average of what the stock on hand actually
+          cost, and it is what issues are costed at. On a moving yarn
+          market they diverge, and showing only the first is what made
+          consumption read high every time a supplier raised a quote.
+        */}
         <Card className="p-5">
-          <p className="text-sm text-ink-400">Price</p>
-          <p className="mt-1 text-3xl font-bold tabular-nums">₹{material.price.toLocaleString("en-IN")}</p>
+          <p className="text-sm text-ink-400">Average cost</p>
+          <p className="mt-1 text-3xl font-bold tabular-nums">
+            ₹{(material.unitCost ?? material.price).toLocaleString("en-IN")}
+          </p>
+          <p className="mt-1 text-xs text-ink-400">
+            {material.avgCost
+              ? `Latest purchase ₹${material.price.toLocaleString("en-IN")}`
+              : "No receipt since averaging — latest purchase price"}
+          </p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-sm text-ink-400">Stock value</p>
+          <p className="mt-1 text-3xl font-bold tabular-nums">
+            ₹
+            {(
+              material.stockValue ?? material.stock * (material.unitCost ?? material.price)
+            ).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+          </p>
         </Card>
       </div>
 
