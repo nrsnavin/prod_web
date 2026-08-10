@@ -1,6 +1,7 @@
 import { httpClient } from "@/core/http/httpClient";
 import {
   BulkPriceResult,
+  RemoveResult,
   LotTrace,
   MaterialFormValues,
   RawMaterial,
@@ -18,11 +19,18 @@ export const materialService = {
     });
   },
 
-  async list(params: { search?: string; category?: string; lowStock?: boolean }): Promise<RawMaterial[]> {
+  async list(params: {
+    search?: string;
+    category?: string;
+    lowStock?: boolean;
+    /** Archived materials are out of the pickers unless asked for. */
+    includeArchived?: boolean;
+  }): Promise<RawMaterial[]> {
     const query: Record<string, unknown> = {};
     if (params.search) query.search = params.search;
     if (params.category && params.category !== "all") query.category = params.category;
     if (params.lowStock) query.lowStock = "true";
+    if (params.includeArchived) query.includeArchived = "true";
     const res = await httpClient.get<{ success: boolean; materials: RawMaterial[] }>(
       "/materials/get-raw-materials",
       query
@@ -54,8 +62,23 @@ export const materialService = {
     return res.material;
   },
 
-  async remove(id: string): Promise<void> {
-    await httpClient.delete("/materials/delete-raw-material", { id });
+  /**
+   * Ask to remove a material.
+   *
+   * The server decides which it can be: a material nothing has used is
+   * deleted, and one named by an order, a PO, a goods receipt or an
+   * elastic's recipe is ARCHIVED instead — deleting it would leave all
+   * of those pointing at nothing. The reply says which happened and
+   * where the material is used, so the screen can tell the truth
+   * rather than reporting a deletion that did not occur.
+   */
+  async remove(id: string): Promise<RemoveResult> {
+    return httpClient.delete<RemoveResult>("/materials/delete-raw-material", { id });
+  },
+
+  /** Archive (or restore) deliberately, rather than via a delete. */
+  async setArchived(id: string, archived: boolean): Promise<{ message?: string }> {
+    return httpClient.patch<{ message?: string }>(`/materials/${id}/archive`, { archived });
   },
 
   async adjustStock(

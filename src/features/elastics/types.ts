@@ -51,6 +51,22 @@ export interface ElasticTestingParameters {
   strech?: string;
 }
 
+/**
+ * What the server did when asked to remove an elastic.
+ *
+ * One named by an order, a job, a delivery challan or a packing entry
+ * is archived rather than deleted, because deleting it would orphan
+ * those documents. The screen has to read this rather than assume, or
+ * it reports a deletion that never happened.
+ */
+export interface ElasticRemoveResult {
+  success: boolean;
+  archived: boolean;
+  deleted: boolean;
+  message: string;
+  usage?: Array<{ label: string; count: number }>;
+}
+
 export interface Elastic {
   _id: string;
   name: string;

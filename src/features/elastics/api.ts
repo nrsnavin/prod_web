@@ -1,5 +1,6 @@
 import { httpClient } from "@/core/http/httpClient";
 import {
+  ElasticRemoveResult,
   Elastic,
   ElasticCreateBody,
   ElasticFormValues,
@@ -70,10 +71,22 @@ export const elasticService = {
     );
   },
 
-  /** Permanent delete. The backend refuses while stock, reservations or
-   *  stock movements exist (no force from the UI — archive instead). */
-  async remove(id: string): Promise<void> {
-    await httpClient.delete(`/elastic/delete-elastic?id=${encodeURIComponent(id)}`);
+  /**
+   * Ask to remove an elastic.
+   *
+   * The server decides which it can be. An elastic named by an order, a
+   * job, a delivery challan or a packing entry is ARCHIVED — deleting
+   * it would leave all of those pointing at nothing, and no flag on the
+   * request makes that safe. One nothing references is deleted, subject
+   * to its own guards (stock, reservations, movements).
+   *
+   * The reply says which happened, so the screen never reports a
+   * deletion that did not occur.
+   */
+  async remove(id: string): Promise<ElasticRemoveResult> {
+    return httpClient.delete<ElasticRemoveResult>(
+      `/elastic/delete-elastic?id=${encodeURIComponent(id)}`
+    );
   },
 
   async materialsByCategory(): Promise<MaterialsByCategory> {

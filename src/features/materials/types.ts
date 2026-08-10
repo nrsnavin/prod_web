@@ -50,6 +50,24 @@ export interface StockMovement {
   referenceDerived?: boolean;
 }
 
+/**
+ * What the server did when asked to remove a master record.
+ *
+ * A material nothing has used is deleted. One named by an order, a PO,
+ * a goods receipt or an elastic's recipe is archived instead — deleting
+ * it would leave every one of those pointing at nothing. The caller has
+ * to be told which, or the screen reports a deletion that never
+ * happened and the row reappears on the next refresh.
+ */
+export interface RemoveResult {
+  success: boolean;
+  archived: boolean;
+  deleted: boolean;
+  message: string;
+  /** Where it is used, when that is why it was archived. */
+  usage?: Array<{ label: string; count: number }>;
+}
+
 export interface RawMaterial {
   _id: string;
   name: string;
@@ -71,6 +89,13 @@ export interface RawMaterial {
   stock: number;
   minStock: number;
   totalConsumption?: number;
+  /**
+   * Soft-deleted: out of the pickers, but every reference to it still
+   * resolves. Legacy rows have no value at all, so treat undefined as
+   * active — never compare against `false`.
+   */
+  archived?: boolean;
+  archivedAt?: string;
   stockMovements?: StockMovement[];
   inwards?: Array<{
     _id: string;

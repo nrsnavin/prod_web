@@ -135,17 +135,21 @@ export function ElasticDetailPage() {
 
       <ConfirmDialog
         open={deleteOpen}
-        title={`Delete ${elastic.name}?`}
-        message="Permanent. Only possible while the elastic has no stock, no reservations and no stock movements — otherwise use Mark inactive, which keeps all history."
-        confirmLabel="Delete permanently"
+        title={`Remove ${elastic.name}?`}
+        message="Deleted only if nothing has ever used it. Once an order, job, delivery challan or packing entry names it, it is archived instead — hidden from the pickers, with all history intact."
+        confirmLabel="Remove"
         danger
         loading={remove.isPending}
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() =>
           remove.mutate(elastic._id, {
-            onSuccess: () => {
-              toast("Elastic deleted", "success");
-              navigate("/elastics");
+            // The server's own words: it knows whether it deleted or
+            // archived, and where the elastic is used. Reporting
+            // "deleted" for something still in the catalogue would send
+            // somebody looking for a row that is merely hidden.
+            onSuccess: (result) => {
+              toast(result.message, "success");
+              if (result.deleted) navigate("/elastics");
             },
             onError: (e) =>
               toast(e instanceof ApiError ? e.message : "Delete failed", "error"),

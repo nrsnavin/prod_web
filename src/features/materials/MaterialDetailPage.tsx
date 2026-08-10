@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Pencil, Trash2, Scale } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Scale, Archive, ArchiveRestore } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -279,7 +279,7 @@ export function MaterialDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: material, isLoading, isError, error } = useMaterial(id);
-  const { update, remove, adjustStock } = useMaterialMutations();
+  const { update, remove, setArchived, adjustStock } = useMaterialMutations();
   const [editOpen, setEditOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -309,7 +309,11 @@ export function MaterialDetailPage() {
       </Link>
       <PageHeader
         title={material.name}
-        subtitle={material.category}
+        subtitle={
+          material.archived
+            ? `${material.category} · archived — hidden from the pickers, history intact`
+            : material.category
+        }
         actions={
           <>
             <Button variant="secondary" onClick={() => setAdjustOpen(true)}>
@@ -318,7 +322,40 @@ export function MaterialDetailPage() {
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" /> Edit
             </Button>
-            <Button variant="danger" onClick={() => setDeleteOpen(true)}>
+            {/*
+              The deliberate version of what Remove falls back to. Worth
+              its own button: archiving a material you have stopped
+              buying is a normal thing to want, and reaching it by
+              pressing Delete and reading the small print is not a way
+              to offer it.
+            */}
+            <Button
+              variant="secondary"
+              loading={setArchived.isPending}
+              onClick={() =>
+                setArchived.mutate(
+                  { id: material._id, archived: !material.archived },
+                  {
+                    onSuccess: (r) => toast(r.message ?? "Updated", "success"),
+                    onError: (e) =>
+                      toast(e instanceof ApiError ? e.message : "Failed", "error"),
+                  }
+                )
+              }
+            >
+              {material.archived ? (
+                <><ArchiveRestore className="h-4 w-4" /> Restore</>
+              ) : (
+                <><Archive className="h-4 w-4" /> Archive</>
+              )}
+            </Button>
+            {/* Icon-only, so it needs a name of its own — otherwise it
+                is an unlabelled button to a screen reader. */}
+            <Button
+              variant="danger"
+              aria-label="Remove material"
+              onClick={() => setDeleteOpen(true)}
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </>
@@ -446,17 +483,21 @@ export function MaterialDetailPage() {
 
       <ConfirmDialog
         open={deleteOpen}
-        title="Delete material?"
-        message={`${material.name} will be permanently deleted. This cannot be undone.`}
-        confirmLabel="Delete"
+        title="Remove material?"
+        message={`${material.name} is deleted only if nothing has ever used it. Once an order, purchase order, goods receipt or elastic recipe names it, it is archived instead — out of the pickers, with all history intact.`}
+        confirmLabel="Remove"
         danger
         loading={remove.isPending}
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() =>
           remove.mutate(material._id, {
-            onSuccess: () => {
-              toast("Material deleted", "success");
-              navigate("/materials");
+            // Say what actually happened, in the server's words —
+            // reporting a deletion for a material that is merely
+            // archived sends somebody hunting for a row that is still
+            // there.
+            onSuccess: (result) => {
+              toast(result.message, "success");
+              if (result.deleted) navigate("/materials");
             },
             onError: (e) =>
               toast(e instanceof ApiError ? e.message : "Delete failed", "error"),

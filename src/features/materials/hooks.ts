@@ -5,7 +5,12 @@ import { MaterialFormValues } from "./types";
 const KEY = "materials";
 const LOT_KEY = "yarn-lots";
 
-export function useMaterials(params: { search: string; category: string; lowStock: boolean }) {
+export function useMaterials(params: {
+  search: string;
+  category: string;
+  lowStock: boolean;
+  includeArchived?: boolean;
+}) {
   return useQuery({
     queryKey: [KEY, params],
     queryFn: () => materialService.list(params),
@@ -120,8 +125,16 @@ export function useMaterialMutations() {
       materialService.update(id, body),
     onSuccess: invalidate,
   });
+  // Resolves with what the server actually did — deleted, or archived
+  // because the material is in use. The caller reads that rather than
+  // assuming, so a screen never reports a deletion that did not happen.
   const remove = useMutation({
     mutationFn: (id: string) => materialService.remove(id),
+    onSuccess: invalidate,
+  });
+  const setArchived = useMutation({
+    mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
+      materialService.setArchived(id, archived),
     onSuccess: invalidate,
   });
   const adjustStock = useMutation({
@@ -147,5 +160,5 @@ export function useMaterialMutations() {
       qc.invalidateQueries({ queryKey: [LOT_KEY] });
     },
   });
-  return { create, update, remove, adjustStock };
+  return { create, update, remove, setArchived, adjustStock };
 }

@@ -26,7 +26,12 @@ const columns: Column<RawMaterial>[] = [
       <div className="flex items-center gap-2">
         {m.stock <= m.minStock && <TriangleAlert className="h-4 w-4 text-status-danger shrink-0" />}
         <div>
-          <p className="font-medium">{m.name}</p>
+          <p className="font-medium">
+            {m.name}
+            {m.archived && (
+              <StatusChip tone="warning" className="ml-2">Archived</StatusChip>
+            )}
+          </p>
           <p className="text-xs text-ink-400">
             {typeof m.supplier === "object" && m.supplier ? m.supplier.name : "—"}
           </p>
@@ -92,16 +97,22 @@ export function MaterialListPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [lowStock, setLowStock] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [stockTakeOpen, setStockTakeOpen] = useState(false);
   const [priceUpdateOpen, setPriceUpdateOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { data, isLoading, isError, error } = useMaterials({ search, category, lowStock });
+  const { data, isLoading, isError, error } = useMaterials({
+    search, category, lowStock, includeArchived: showArchived,
+  });
   const { create } = useMaterialMutations();
 
-  const stockValue = (data ?? []).reduce((s, m) => s + m.stock * (m.price || 0), 0);
+  const stockValue = (data ?? []).reduce(
+    (s, m) => s + m.stock * (m.avgCost || m.price || 0),
+    0
+  );
 
   return (
     <>
@@ -150,6 +161,20 @@ export function MaterialListPage() {
         >
           <TriangleAlert className="h-3.5 w-3.5" /> Low stock only
         </button>
+        {/*
+          Archived materials are out of the pickers — that is the point
+          of archiving one — but they have to stay reachable, or a yarn
+          that was archived by mistake can never be found to restore.
+        */}
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-600">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+            className="h-4 w-4 rounded border-ink-300 accent-brand-500"
+          />
+          Show archived
+        </label>
       </div>
 
       {isError && <ErrorBanner message={(error as Error).message} />}
