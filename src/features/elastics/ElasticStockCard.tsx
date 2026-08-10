@@ -24,8 +24,17 @@ interface StockMovement {
   balance?: number;
   /** Promise delta: how much became (or stopped being) spoken for. */
   reservedApplied?: number;
+  /** Promise delta asked for. Differs from applied when it hit the floor. */
+  reservedRequested?: number;
   /** Promise balance after. null on rows written before it was tracked. */
   reservedBalance?: number | null;
+  /**
+   * What could not be done, per side, from the server. null when the
+   * movement applied exactly what was asked for — which is every
+   * ordinary row, so a figure here is always worth reading.
+   */
+  shortfall?: number | null;
+  reservedShortfall?: number | null;
   /** balance − reservedBalance, from the server. null when unknowable. */
   available?: number | null;
   refType?: string;
@@ -84,10 +93,18 @@ function Movement({
   delta,
   balance,
   neutral,
+  shortfall,
 }: {
   delta: number;
   balance: number | null;
   neutral?: boolean;
+  /**
+   * Set when the movement moved less than was asked for. Both balances
+   * floor at zero, so a release of 400 against 250 held releases 250 —
+   * and a cell showing only the 250 reads as though 400 was never
+   * wanted. Absent on every ordinary row.
+   */
+  shortfall?: number | null;
 }) {
   const tone = neutral
     ? "text-ink-900"
@@ -107,6 +124,15 @@ function Movement({
       <p className="text-xs tabular-nums text-ink-400">
         {balance === null ? "—" : nf(balance)}
       </p>
+      {shortfall != null && shortfall !== 0 && (
+        <p
+          className="text-xs tabular-nums text-status-warning"
+          title="More was asked for than there was to give"
+        >
+          {/* shortfall is requested − applied, so the ask adds back. */}
+          asked {nf(delta + shortfall)}
+        </p>
+      )}
     </div>
   );
 }
@@ -194,7 +220,9 @@ export function ElasticStockCard({ elasticId }: { elasticId: string }) {
       key: "goods",
       header: "Goods · on hand",
       align: "right",
-      render: (m) => <Movement delta={m.applied ?? 0} balance={m.balance ?? 0} />,
+      render: (m) => (
+        <Movement delta={m.applied ?? 0} balance={m.balance ?? 0} shortfall={m.shortfall} />
+      ),
     },
     {
       key: "reserved",
@@ -204,6 +232,7 @@ export function ElasticStockCard({ elasticId }: { elasticId: string }) {
         <Movement
           delta={m.reservedApplied ?? 0}
           balance={m.reservedBalance ?? null}
+          shortfall={m.reservedShortfall}
           // A promise raised is not goods gained; colour it as neither.
           neutral
         />

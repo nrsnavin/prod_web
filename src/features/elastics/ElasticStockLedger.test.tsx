@@ -185,3 +185,64 @@ describe("the figures above the ledger", () => {
     expect(screen.getByText("600")).toBeInTheDocument();
   });
 });
+
+// ── When a movement could not do all it was asked ─────────────────────
+//
+// Both balances floor at zero, so a release of 400 against 250 held
+// releases 250. A cell showing only the 250 reads as though 400 was
+// never wanted — which is exactly the thing somebody opens this ledger
+// to find out.
+
+describe("a clamped movement", () => {
+  it("says what was asked for beside what was applied", async () => {
+    setLedger([
+      row({
+        type: "RESERVATION_RELEASE",
+        applied: 0,
+        balance: 500,
+        reservedApplied: -250,
+        reservedRequested: -400,
+        reservedBalance: 0,
+        reservedShortfall: -150,
+      }),
+    ]);
+    renderCard();
+
+    expect(await screen.findByText(/asked -400/)).toBeInTheDocument();
+  });
+
+  it("says nothing extra when the movement did all it was asked", async () => {
+    setLedger([
+      row({
+        type: "RESERVATION_RELEASE",
+        applied: 0,
+        balance: 500,
+        reservedApplied: -250,
+        reservedRequested: -250,
+        reservedBalance: 0,
+        reservedShortfall: null,
+      }),
+    ]);
+    renderCard();
+
+    await screen.findByText("Reservation released");
+    expect(screen.queryByText(/asked/)).not.toBeInTheDocument();
+  });
+
+  it("reports a clamped goods movement the same way", async () => {
+    setLedger([
+      row({
+        type: "MANUAL_ADJUST",
+        applied: -30,
+        requested: -50,
+        shortfall: -20,
+        balance: 0,
+        reservedApplied: 0,
+        reservedBalance: 0,
+      }),
+    ]);
+    renderCard();
+
+    expect(await screen.findByText(/asked -50/)).toBeInTheDocument();
+  });
+});
