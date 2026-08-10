@@ -55,13 +55,6 @@ const columns: Column<Elastic>[] = [
       );
     },
   },
-  {
-    key: "cost",
-    header: "Cost (₹/m)",
-    align: "right",
-    render: (e) =>
-      e.costing?.totalCost != null ? e.costing.totalCost.toLocaleString("en-IN") : "—",
-  },
 ];
 
 export function ElasticListPage() {
