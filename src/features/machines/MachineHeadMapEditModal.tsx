@@ -5,6 +5,7 @@ import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useJob } from "@/features/jobs/hooks";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useMachineMutations } from "./hooks";
 import { MachineHeadElastic } from "./types";
 
@@ -45,6 +46,12 @@ export function MachineHeadMapEditModal({
     return map;
   });
 
+  const [hookClash, setHookClash] = useState<{
+    machineName: string;
+    machineHooks: number;
+    elastics: Array<{ name: string; noOfHook: number }>;
+  } | null>(null);
+
   const spread = () => {
     const next: Record<number, string> = {};
     for (let h = 1; h <= heads; h++) {
@@ -53,19 +60,38 @@ export function MachineHeadMapEditModal({
     setHeadMap(next);
   };
 
-  const save = () => {
+  const save = (confirmHooks = false) => {
     const elastics = Array.from({ length: heads }, (_, i) => ({
       head: i + 1,
       elastic: headMap[i + 1] || null,
     }));
     updateElasticMap.mutate(
-      { id: machineId, elastics },
+      { id: machineId, elastics, confirmHooks },
       {
         onSuccess: () => {
+          setHookClash(null);
           toast("Head → elastic map updated", "success");
           onClose();
         },
-        onError: (e) => toast(e instanceof ApiError ? e.message : "Update failed", "error"),
+        onError: (e) => {
+          // The machine has fewer hooks than one of these products
+          // needs. A question, not a failure — the floor sometimes runs
+          // a product on a smaller machine deliberately.
+          if (e instanceof ApiError && e.code === "HOOKS_EXCEED_MACHINE") {
+            const d = (e.data?.details ?? {}) as {
+              machineName?: string;
+              machineHooks?: number;
+              elastics?: Array<{ name: string; noOfHook: number }>;
+            };
+            setHookClash({
+              machineName:  d.machineName ?? "This machine",
+              machineHooks: d.machineHooks ?? 0,
+              elastics:     d.elastics ?? [],
+            });
+            return;
+          }
+          toast(e instanceof ApiError ? e.message : "Update failed", "error");
+        },
       }
     );
   };
@@ -112,11 +138,36 @@ export function MachineHeadMapEditModal({
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button loading={updateElasticMap.isPending} disabled={options.length === 0} onClick={save}>
+          {/* Wrapped, not passed by reference: `onClick={save}` would
+              hand the click event in as `confirmHooks`, and an event
+              object is truthy — the check would be skipped on the very
+              first press. */}
+          <Button
+            loading={updateElasticMap.isPending}
+            disabled={options.length === 0}
+            onClick={() => save(false)}
+          >
             Save map
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!hookClash}
+        title="This machine has too few hooks"
+        message={
+          hookClash
+            ? `${hookClash.machineName} has ${hookClash.machineHooks} hooks per head. ` +
+              `${hookClash.elastics.map((e) => `${e.name} needs ${e.noOfHook}`).join("; ")}. ` +
+              `It cannot be woven as specified on this machine. Save the map anyway?`
+            : ""
+        }
+        confirmLabel="Save anyway"
+        danger
+        loading={updateElasticMap.isPending}
+        onCancel={() => setHookClash(null)}
+        onConfirm={() => save(true)}
+      />
     </FormScreen>
   );
 }

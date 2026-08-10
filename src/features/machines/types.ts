@@ -8,7 +8,16 @@ export interface Machine {
   NoOfHooks: number;
   DateOfPurchase?: string;
   status: MachineStatus;
-  orderRunning?: { jobOrderNo?: number | string } | string | null;
+  /**
+   * The job this machine is on, populated by the list and detail
+   * routes. `string` is the unpopulated shape — kept in the union
+   * because a route that forgets to populate returns a bare id, and
+   * rendering that as a job number would be worse than a dash.
+   */
+  orderRunning?:
+    | { _id?: string; jobOrderNo?: number | string; status?: string }
+    | string
+    | null;
 }
 
 export interface ServiceLog {

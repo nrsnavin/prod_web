@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Plus, Wrench, AlertTriangle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -25,11 +25,37 @@ const statusTone: Record<MachineStatus, ChipTone> = {
   maintenance: "warning",
 };
 
-function jobNo(m: Machine): string {
-  if (m.orderRunning && typeof m.orderRunning === "object") {
-    return m.orderRunning.jobOrderNo?.toString() ?? "—";
-  }
-  return "—";
+/**
+ * The job a machine is running, as a link to it.
+ *
+ * Named "J-1042" and linked, the same as the machine detail page — two
+ * screens naming the same job differently is its own small bug.
+ *
+ * A bare string means the route did not populate the reference, so the
+ * number is not available: a dash is the honest answer there, and an
+ * id rendered as a job number would not be.
+ */
+function RunningJob({ machine: m }: { machine: Machine }) {
+  const job = m.orderRunning;
+  const none = <span className="text-ink-400">—</span>;
+
+  if (!job || typeof job !== "object") return none;
+  if (job.jobOrderNo == null) return none;
+
+  const label = `J-${job.jobOrderNo}`;
+  if (!job._id) return <span className="font-medium">{label}</span>;
+
+  return (
+    <Link
+      to={`/jobs/${job._id}`}
+      // The row itself navigates to the machine; without this, opening
+      // the job would bounce straight to the machine page instead.
+      onClick={(e) => e.stopPropagation()}
+      className="font-medium text-brand-600 hover:underline"
+    >
+      {label}
+    </Link>
+  );
 }
 
 const columns: Column<Machine>[] = [
@@ -37,7 +63,7 @@ const columns: Column<Machine>[] = [
   { key: "make", header: "Manufacturer", render: (m) => m.manufacturer },
   { key: "heads", header: "Heads", align: "right", render: (m) => m.NoOfHead },
   { key: "hooks", header: "Hooks", align: "right", render: (m) => m.NoOfHooks },
-  { key: "job", header: "Running job", render: (m) => jobNo(m) },
+  { key: "job", header: "Running job", render: (m) => <RunningJob machine={m} /> },
   {
     key: "status",
     header: "Status",

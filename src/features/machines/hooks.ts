@@ -55,8 +55,12 @@ export function useMachineMutations() {
     onSuccess: invalidate,
   });
   const updateElasticMap = useMutation({
-    mutationFn: ({ id, elastics }: { id: string; elastics: Array<{ head: number; elastic: string | null }> }) =>
-      machineService.updateElasticMap(id, elastics),
+    mutationFn: ({ id, elastics, confirmHooks }: {
+      id: string;
+      elastics: Array<{ head: number; elastic: string | null }>;
+      /** Go ahead despite an elastic needing more hooks than the machine has. */
+      confirmHooks?: boolean;
+    }) => machineService.updateElasticMap(id, elastics, confirmHooks),
     onSuccess: invalidate,
   });
   const uploadServiceBill = useMutation({

@@ -4,6 +4,7 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { Combobox } from "@/components/ui/Combobox";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError, httpClient } from "@/core/http/httpClient";
 import { Machine } from "@/features/machines/types";
@@ -43,11 +44,76 @@ export function MachineAssignModal({
   const machines = useFreeMachines(open);
   const [machineId, setMachineId] = useState("");
   const [headMap, setHeadMap] = useState<Record<number, string>>({});
+  /**
+   * Set when the server refuses because an elastic needs more hooks
+   * than the machine has. Holds what it said, so the dialog can name
+   * the products rather than asking "are you sure?" about nothing.
+   */
+  const [hookClash, setHookClash] = useState<{
+    machineName: string;
+    machineHooks: number;
+    elastics: Array<{ name: string; noOfHook: number }>;
+  } | null>(null);
 
   const selected = useMemo(
     () => (machines.data ?? []).find((m) => m._id === machineId),
     [machines.data, machineId]
   );
+
+  /**
+   * Send the head map. `confirmHooks` is the second attempt, after the
+   * server has said the machine cannot run one of these products as
+   * specified and somebody has looked at the list and said go ahead.
+   */
+  const submit = (confirmHooks: boolean) =>
+    planWeaving.mutate(
+      {
+        jobId: job.id,
+        machineId,
+        headElasticMap: Object.fromEntries(
+          Object.entries(headMap).map(([k, v]) => [String(k), v])
+        ),
+        confirmHooks,
+      },
+      {
+        // The machine is claimed either way. Whether the job actually
+        // moved to weaving is the server's answer, not an assumption —
+        // saying "is now weaving" when it was held in preparatory is
+        // how the stage silently disagrees with the screen.
+        onSuccess: (res) => {
+          setHookClash(null);
+          if (res?.weavingHeld) {
+            toast(
+              `Machine assigned. ${job.jobNo} stays in preparatory — ${res.weavingHeld.blockers.join("; ")}.`,
+              "info"
+            );
+          } else {
+            toast(`Machine assigned — ${job.jobNo} is now weaving`, "success");
+          }
+          onClose();
+        },
+        onError: (e) => {
+          // Not a failure so much as a question. The machine has fewer
+          // hooks than one of these products needs, which the floor is
+          // sometimes right to go ahead with — so ask, naming what does
+          // not fit, rather than reporting an error they cannot act on.
+          if (e instanceof ApiError && e.code === "HOOKS_EXCEED_MACHINE") {
+            const d = (e.data?.details ?? {}) as {
+              machineName?: string;
+              machineHooks?: number;
+              elastics?: Array<{ name: string; noOfHook: number }>;
+            };
+            setHookClash({
+              machineName:  d.machineName ?? selected?.ID ?? "This machine",
+              machineHooks: d.machineHooks ?? 0,
+              elastics:     d.elastics ?? [],
+            });
+            return;
+          }
+          toast(e instanceof ApiError ? e.message : "Assignment failed", "error");
+        },
+      }
+    );
   const headCount = selected?.NoOfHead ?? 0;
 
   const elasticOptions = job.plannedElastics
@@ -142,42 +208,38 @@ export function MachineAssignModal({
           <Button
             disabled={!machineId || !allMapped}
             loading={planWeaving.isPending}
-            onClick={() =>
-              planWeaving.mutate(
-                {
-                  jobId: job.id,
-                  machineId,
-                  headElasticMap: Object.fromEntries(
-                    Object.entries(headMap).map(([k, v]) => [String(k), v])
-                  ),
-                },
-                {
-                  // The machine is claimed either way. Whether the job
-                  // actually moved to weaving is the server's answer,
-                  // not an assumption — saying "is now weaving" when it
-                  // was held in preparatory is how the stage silently
-                  // disagrees with the screen.
-                  onSuccess: (res) => {
-                    if (res?.weavingHeld) {
-                      toast(
-                        `Machine assigned. ${job.jobNo} stays in preparatory — ${res.weavingHeld.blockers.join("; ")}.`,
-                        "info"
-                      );
-                    } else {
-                      toast(`Machine assigned — ${job.jobNo} is now weaving`, "success");
-                    }
-                    onClose();
-                  },
-                  onError: (e) =>
-                    toast(e instanceof ApiError ? e.message : "Assignment failed", "error"),
-                }
-              )
-            }
+            onClick={() => submit(false)}
           >
             {job.machine ? "Move to this machine" : "Assign machine"}
           </Button>
         </div>
       </div>
+
+      {/*
+        Not an error dialog. The machine has fewer hooks per head than
+        one of these products needs, which means it cannot be woven as
+        specified — but the floor sometimes runs a product on a smaller
+        machine deliberately, so this names what does not fit and lets
+        somebody who knows say yes.
+      */}
+      <ConfirmDialog
+        open={!!hookClash}
+        title="This machine has too few hooks"
+        message={
+          hookClash
+            ? `${hookClash.machineName} has ${hookClash.machineHooks} hooks per head. ` +
+              `${hookClash.elastics
+                .map((e) => `${e.name} needs ${e.noOfHook}`)
+                .join("; ")}. ` +
+              `It cannot be woven as specified on this machine. Assign it anyway?`
+            : ""
+        }
+        confirmLabel="Assign anyway"
+        danger
+        loading={planWeaving.isPending}
+        onCancel={() => setHookClash(null)}
+        onConfirm={() => submit(true)}
+      />
     </FormScreen>
   );
 }

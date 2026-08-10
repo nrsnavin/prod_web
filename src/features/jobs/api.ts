@@ -61,8 +61,22 @@ export const jobService = {
     return res.summary;
   },
 
-  planWeaving: (jobId: string, machineId: string, headElasticMap: Record<string, string>) =>
-    httpClient.post<MachineAssignResult>("/job/plan-weaving", { jobId, machineId, headElasticMap }),
+  /**
+   * `confirmHooks` goes ahead with a head map the machine cannot run as
+   * specified — an elastic needing more hooks than the machine has. The
+   * server refuses with HOOKS_EXCEED_MACHINE until it is set, so the
+   * override is always a second, deliberate request.
+   */
+  planWeaving: (
+    jobId: string,
+    machineId: string,
+    headElasticMap: Record<string, string>,
+    confirmHooks = false
+  ) =>
+    httpClient.post<MachineAssignResult>("/job/plan-weaving", {
+      jobId, machineId, headElasticMap,
+      ...(confirmHooks ? { confirmHooks: true } : {}),
+    }),
 
   updateStatus: (jobId: string, nextStatus: JobStatus) =>
     httpClient.post("/job/update-status", { jobId, nextStatus }),

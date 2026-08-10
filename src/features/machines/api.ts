@@ -86,11 +86,21 @@ export const machineService = {
 
   // Replace the machine's head → elastic map. Each entry pairs a head
   // number with an elastic id (or null to leave a head unthreaded).
+  /**
+   * `confirmHooks` goes ahead with a head map the machine cannot run as
+   * specified — an elastic needing more hooks than the machine has. The
+   * server refuses with HOOKS_EXCEED_MACHINE until it is set, the same
+   * as the two job-side assignment routes.
+   */
   async updateElasticMap(
     id: string,
-    elastics: Array<{ head: number; elastic: string | null }>
+    elastics: Array<{ head: number; elastic: string | null }>,
+    confirmHooks = false
   ): Promise<void> {
-    await httpClient.put("/machine/updateOrder", { id, elastics });
+    await httpClient.put("/machine/updateOrder", {
+      id, elastics,
+      ...(confirmHooks ? { confirmHooks: true } : {}),
+    });
   },
 
   async predictiveHealth(): Promise<MachineHealthResponse> {
