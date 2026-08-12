@@ -1,5 +1,12 @@
 import { httpClient } from "@/core/http/httpClient";
-import { DcFormValues, DcOrderInfo, DcStatus, DcType, DeliveryChallan } from "./types";
+import {
+  DcFormValues,
+  DcOrderInfo,
+  DcStatus,
+  DcType,
+  DcUpdateBody,
+  DeliveryChallan,
+} from "./types";
 
 export const dcService = {
   async list(params: {
@@ -41,6 +48,17 @@ export const dcService = {
   async create(body: DcFormValues): Promise<DeliveryChallan> {
     const res = await httpClient.post<{ success: boolean; dc: DeliveryChallan }>(
       "/dc/create",
+      body
+    );
+    return res.dc;
+  },
+
+  // Editing a challan MOVES STOCK: the backend reverses every line and
+  // re-applies the new ones. Sending `items` at all triggers that; omit
+  // the key to change only the despatch detail (vehicle, driver, LR).
+  async update(body: DcUpdateBody): Promise<DeliveryChallan> {
+    const res = await httpClient.put<{ success: boolean; dc: DeliveryChallan }>(
+      "/dc/update",
       body
     );
     return res.dc;

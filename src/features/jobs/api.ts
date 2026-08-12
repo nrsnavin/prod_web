@@ -78,6 +78,21 @@ export const jobService = {
       ...(confirmHooks ? { confirmHooks: true } : {}),
     }),
 
+  /**
+   * Change what the job is planned to make.
+   *
+   * Only while it is still preparatory and the floor has not started —
+   * past that, yarn has been drawn against these figures and the machine
+   * is working to a sheet the paperwork would no longer match. The server
+   * enforces that and cascades the new numbers to the warping order, the
+   * covering plan, the order's pending quantities and its MRP.
+   */
+  updateElastics: (
+    jobId: string,
+    elastics: Array<{ elastic: string; quantity: number }>,
+    auditReason: string
+  ) => httpClient.post("/job/update-elastics", { jobId, elastics, auditReason }),
+
   updateStatus: (jobId: string, nextStatus: JobStatus) =>
     httpClient.post("/job/update-status", { jobId, nextStatus }),
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown } from "lucide-react";
+import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +13,7 @@ import { useDc, useDcMutations } from "./hooks";
 import { dcService } from "./api";
 import { DcStatus } from "./types";
 import { dcStatusTone } from "./DcListPage";
+import { DcEditModal } from "./DcEditModal";
 import { CompanyLetterhead, CompanyDocumentFooter } from "@/components/documents/CompanyLetterhead";
 
 export function DcDetailPage() {
@@ -22,6 +23,7 @@ export function DcDetailPage() {
   const { data: dc, isLoading, isError, error } = useDc(id);
   const { updateStatus } = useDcMutations();
   const [downloading, setDownloading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   // Status transition awaiting confirmation.
   const [pending, setPending] = useState<
     { status: DcStatus; msg: string; title: string; body: string; label: string; danger?: boolean } | null
@@ -94,6 +96,15 @@ export function DcDetailPage() {
               <Button variant="secondary" onClick={downloadPdf} loading={downloading}>
                 <Printer className="h-4 w-4" /> Print
               </Button>
+              {/* Delivered and cancelled challans are not editable — the
+                  customer holds the one, and the other's stock has already
+                  gone back. The server refuses both by name; the button is
+                  hidden so it is not offered and then taken away. */}
+              {(dc.status === "draft" || dc.status === "dispatched") && (
+                <Button variant="secondary" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4" /> Edit
+                </Button>
+              )}
               {dc.status === "draft" && (
                 <Button loading={updateStatus.isPending} onClick={() => setPending({
                   status: "dispatched", msg: "DC dispatched", label: "Dispatch",
@@ -246,6 +257,17 @@ export function DcDetailPage() {
             Back to list
           </button>
         </p>
+      )}
+
+      {/* Keyed on the challan's own figures so reopening after a save
+          starts from what was stored, not the state it was left in. */}
+      {editOpen && (
+        <DcEditModal
+          key={`${dc._id}-${dc.totalQuantity}-${(dc.items ?? []).length}`}
+          dc={dc}
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+        />
       )}
 
       <ConfirmDialog
