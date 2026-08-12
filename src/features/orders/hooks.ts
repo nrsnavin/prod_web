@@ -113,6 +113,14 @@ export function useOrderYarnLots(id: string | undefined) {
   });
 }
 
+export function useOrderDeliveryChallans(id: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "delivery-challans", id],
+    queryFn: () => orderService.deliveryChallans(id!),
+    enabled: !!id,
+  });
+}
+
 export function useOrderPurchaseOrders(id: string | undefined) {
   return useQuery({
     queryKey: [KEY, "purchase-orders", id],

@@ -23,6 +23,7 @@ import { pnlService } from "@/features/pnl/api";
 import { OrderExcessPlanning } from "./OrderExcessPlanning";
 import { OrderMaterialPo } from "./OrderMaterialPo";
 import { OrderYarnLots } from "./OrderYarnLots";
+import { OrderDeliveryChallans } from "./OrderDeliveryChallans";
 import { OrderElasticProgress, RawMaterialRequirement, StockShortfall } from "./types";
 import { jobRefId } from "./orderJobRef";
 import { OrderJobGlance } from "./OrderJobGlance";
@@ -458,6 +459,13 @@ export function OrderDetailPage() {
           </ul>
         )}
       </Card>
+
+      {/* What has actually left the building, and on which note. Sits
+          directly under the jobs and above the material panels: it
+          answers the question the order is most often opened for —
+          "how much have we sent?" — which the page could not answer at
+          all without leaving it for the DC list. */}
+      <OrderDeliveryChallans orderId={order._id} />
 
       {/* Jobs planned past what the order asked for. Sits ABOVE the
           material panel because it is the reason that panel's figures

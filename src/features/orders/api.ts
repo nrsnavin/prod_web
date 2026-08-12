@@ -1,6 +1,7 @@
 import { httpClient } from "@/core/http/httpClient";
 import { config } from "@/app/config";
 import {
+  OrderDeliveryChallans,
   OrderDetail,
   OrderEtaEstimate,
   OrderFilter,
@@ -79,6 +80,16 @@ export const orderService = {
   async yarnLots(orderId: string): Promise<OrderYarnLots> {
     const res = await httpClient.get<{ success: boolean; data: OrderYarnLots }>(
       `/order/${orderId}/yarn-lots`
+    );
+    return res.data;
+  },
+
+  // ── Delivery notes raised for the order ─────────────────────────
+  // Matched on both the reference and the order-number snapshot, so
+  // older notes carrying only one of the two are not silently dropped.
+  async deliveryChallans(orderId: string): Promise<OrderDeliveryChallans> {
+    const res = await httpClient.get<{ success: boolean; data: OrderDeliveryChallans }>(
+      `/order/${orderId}/delivery-challans`
     );
     return res.data;
   },

@@ -352,3 +352,59 @@ export interface OrderYarnLots {
   }>;
   sections: { total: number; withLot: number; open: number };
 }
+
+
+// ── Delivery notes raised for the order ─────────────────────────────
+// The order detail page could say what was ordered, planned, produced
+// and packed, and then stopped. Whether any of it had been DESPATCHED
+// was only answerable by leaving the order and searching the DC list.
+
+export type DcStatus = "draft" | "dispatched" | "delivered" | "cancelled";
+
+export interface OrderDcItem {
+  elasticId: string | null;
+  elasticName: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface OrderDcRow {
+  id: string;
+  dcNumber: string;
+  date: string | null;
+  dispatchDate: string | null;
+  status: DcStatus;
+  type: string;
+  customerName: string;
+  totalQuantity: number;
+  totalAmount: number;
+  vehicleNo: string;
+  transporter: string;
+  lrNumber: string;
+  items: OrderDcItem[];
+}
+
+/** Ordered against despatched, per elastic on the order. */
+export interface OrderDcLine {
+  elasticId: string;
+  elasticName: string;
+  ordered: number;
+  dispatched: number;
+  /** ordered − dispatched. Negative when more went out than was ordered. */
+  pending: number;
+}
+
+export interface OrderDeliveryChallans {
+  orderId: string;
+  orderNo: number | null;
+  dcs: OrderDcRow[];
+  lines: OrderDcLine[];
+  totals: {
+    count: number;
+    /** How many of `count` are cancelled — listed, but nothing left on them. */
+    cancelled: number;
+    quantity: number;
+    ordered: number;
+    dispatched: number;
+  };
+}
