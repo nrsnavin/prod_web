@@ -43,6 +43,17 @@ export interface OrderElasticProgress {
   produced: number;
   packed: number;
   /**
+   * Goods that have actually left the building on a delivery note.
+   *
+   * A step past `packed`, and constantly read as the same thing: an
+   * order can be fully packed with nothing despatched. Summed from the
+   * notes rather than stored, so it cannot drift from them; cancelled
+   * notes count for nothing.
+   */
+  delivered: number;
+  /** ordered − delivered. Negative on an over-despatch, deliberately. */
+  undelivered: number;
+  /**
    * Ordered less what jobs have been raised for — a PLANNING figure,
    * and the cap when allocating to a job.
    */

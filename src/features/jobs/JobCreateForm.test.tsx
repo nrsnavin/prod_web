@@ -20,6 +20,8 @@ const line = (over: Partial<OrderElasticProgress> = {}): OrderElasticProgress =>
   name: "Woven Elastic 25mm",
   ordered: 1000,
   produced: 0,
+  delivered: 0,
+  undelivered: 1000,
   packed: 0,
   notAssigned: 1000,
   pendingDelivery: 1000,

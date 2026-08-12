@@ -71,6 +71,28 @@ const elasticColumns: Column<OrderElasticProgress>[] = [
     },
   },
   {
+    // Beside packed, because the two are one step apart and are read as
+    // the same thing. Packed is goods in a box in this building;
+    // delivered is goods that left it on a note.
+    key: "delivered",
+    header: "Delivered",
+    align: "right",
+    render: (e) => {
+      const pct = e.ordered > 0 ? Math.min(100, (e.delivered / e.ordered) * 100) : 0;
+      return (
+        <span className="inline-flex items-center gap-2">
+          <span className="h-1.5 w-16 overflow-hidden rounded-full bg-ink-100">
+            <span
+              className="block h-full rounded-full bg-brand-500"
+              style={{ width: `${pct}%` }}
+            />
+          </span>
+          <span className="tabular-nums">{e.delivered.toLocaleString("en-IN")}</span>
+        </span>
+      );
+    },
+  },
+  {
     // Not "pending": this is how much of the line no job has been raised
     // for. Calling it pending hid the question it actually answers, and
     // collided with the one below.
