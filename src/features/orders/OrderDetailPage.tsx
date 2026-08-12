@@ -24,7 +24,7 @@ import { OrderExcessPlanning } from "./OrderExcessPlanning";
 import { OrderMaterialPo } from "./OrderMaterialPo";
 import { OrderYarnLots } from "./OrderYarnLots";
 import { OrderDeliveryChallans } from "./OrderDeliveryChallans";
-import { OrderElasticProgress, RawMaterialRequirement, StockShortfall } from "./types";
+import { OrderElasticProgress, OrderStatus, RawMaterialRequirement, StockShortfall } from "./types";
 import { jobRefId } from "./orderJobRef";
 import { OrderJobGlance } from "./OrderJobGlance";
 import { OrderAnalytics } from "./OrderAnalytics";
@@ -112,7 +112,11 @@ function OrderEditModal({
   onClose,
   update,
 }: {
-  order: { _id: string; po?: string; supplyDate?: string; description?: string; __v?: number };
+  order: {
+    _id: string; po?: string; supplyDate?: string; description?: string; __v?: number;
+    status: OrderStatus;
+    elastics: OrderElasticProgress[];
+  };
   open: boolean;
   onClose: () => void;
   update: ReturnType<typeof useOrderMutations>["update"];
@@ -123,14 +127,62 @@ function OrderEditModal({
   const [description, setDescription] = useState(order.description ?? "");
   const [auditReason, setAuditReason] = useState("");
 
+  // Quantities are editable only before approval. Approval is where the
+  // raw material is DRAWN, so changing what was ordered afterwards would
+  // leave stock deducted for one figure and the order asking for
+  // another — the server refuses it, and the form should not offer what
+  // the server will reject.
+  const canEditLines = order.status === "Open";
+  const [lines, setLines] = useState(
+    order.elastics.map((e) => ({ id: e.id, name: e.name, quantity: String(e.ordered) }))
+  );
+
+  const setQty = (id: string, quantity: string) =>
+    setLines((ls) => ls.map((l) => (l.id === id ? { ...l, quantity } : l)));
+  const dropLine = (id: string) => setLines((ls) => ls.filter((l) => l.id !== id));
+
+  const linesChanged =
+    canEditLines &&
+    (lines.length !== order.elastics.length ||
+      lines.some((l, i) => {
+        const was = order.elastics[i];
+        return !was || was.id !== l.id || Number(l.quantity) !== was.ordered;
+      }));
+
+  const badLine = lines.find((l) => {
+    const n = Number(l.quantity);
+    return !Number.isFinite(n) || n <= 0;
+  });
+
   const save = () => {
     if (auditReason.trim().length < 3) { toast("Give a reason (min 3 chars) for the edit", "error"); return; }
+    if (linesChanged && badLine) {
+      toast(`${badLine.name || "A line"} needs a quantity above zero`, "error");
+      return;
+    }
+    if (linesChanged && lines.length === 0) {
+      toast("An order needs at least one elastic — cancel it instead", "error");
+      return;
+    }
     update.mutate(
       {
         id: order._id,
         // expectedVersion = the __v this modal loaded — the server 409s
         // if someone else saved in between (optimistic lock).
-        body: { po, supplyDate, description, auditReason: auditReason.trim(), expectedVersion: order.__v },
+        body: {
+          po, supplyDate, description,
+          // Only when they actually changed. Sending them unchanged
+          // would still make the server recompute the requirement and
+          // reset the progress arrays for no reason.
+          ...(linesChanged
+            ? {
+                elasticOrdered: lines.map((l) => ({
+                  elastic: l.id, quantity: Number(l.quantity),
+                })),
+              }
+            : {}),
+          auditReason: auditReason.trim(), expectedVersion: order.__v,
+        },
       },
       {
         onSuccess: () => { toast("Order updated", "success"); onClose(); },
@@ -150,13 +202,59 @@ function OrderEditModal({
     <FormScreen open={open} onClose={onClose} title="Edit order" width="max-w-lg">
       <div className="space-y-4">
         <p className="text-xs text-ink-400">
-          Only Open orders can be edited. To change ordered elastics, cancel and recreate the order.
+          {canEditLines
+            ? "Quantities can be changed until the order is approved — approval is where the raw material is drawn. The material required is recalculated on save."
+            : "This order has been approved, so the raw material has already been drawn against these quantities. Only the reference, date and description can be changed now."}
         </p>
         <div className="grid grid-cols-2 gap-3">
           <Input label="Customer PO ref" value={po} onChange={(e) => setPo(e.target.value)} />
           <Input label="Supply date" type="date" value={supplyDate} onChange={(e) => setSupplyDate(e.target.value)} />
         </div>
         <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
+
+        {canEditLines && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-ink-600">
+              Ordered elastics
+            </label>
+            <div className="divide-y divide-ink-100 rounded-lg border border-ink-200">
+              {lines.map((l) => (
+                <div key={l.id} className="flex items-center gap-3 px-3 py-2">
+                  <span className="flex-1 truncate text-sm">{l.name}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={l.quantity}
+                    onChange={(e) => setQty(l.id, e.target.value)}
+                    aria-label={`Quantity for ${l.name}`}
+                    className="h-9 w-28 rounded-lg border border-ink-200 bg-surface px-2 text-right text-sm tabular-nums focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                  />
+                  <span className="w-4 text-xs text-ink-400">m</span>
+                  <button
+                    type="button"
+                    onClick={() => dropLine(l.id)}
+                    aria-label={`Remove ${l.name}`}
+                    className="rounded p-1 text-ink-400 hover:bg-ink-100 hover:text-status-danger"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+              {lines.length === 0 && (
+                <p className="px-3 py-4 text-center text-sm text-ink-400">
+                  Every line removed. An order needs at least one — cancel it instead.
+                </p>
+              )}
+            </div>
+            {linesChanged && (
+              <p className="mt-1.5 text-xs text-status-warning">
+                Saving recalculates the raw material this order requires.
+              </p>
+            )}
+          </div>
+        )}
+
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
           <textarea
@@ -369,7 +467,13 @@ export function OrderDetailPage() {
         }
       />
 
+      {/* Keyed on the version: the modal stays mounted between opens, so
+          without this its fields keep the values they were initialised
+          with on first render. Harmless for the text fields, not for the
+          quantities — reopening after a save would show the old figures
+          and could resubmit them. */}
       <OrderEditModal
+        key={`edit-${order.__v ?? 0}-${order.elastics.length}`}
         order={order}
         open={editOpen}
         onClose={() => setEditOpen(false)}

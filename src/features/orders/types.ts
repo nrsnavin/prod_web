@@ -122,6 +122,13 @@ export interface RawMaterialRequirement {
 
 export interface OrderDetail {
   _id: string;
+  /**
+   * Mongoose's document version. Sent back as `expectedVersion` on an
+   * edit so a second editor gets a 409 rather than silently overwriting
+   * the first, and used to key the edit form so it reloads its fields
+   * after a save instead of keeping the ones it mounted with.
+   */
+  __v?: number;
   orderNo: number;
   po?: string;
   status: OrderStatus;
