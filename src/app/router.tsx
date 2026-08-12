@@ -33,6 +33,9 @@ const CustomerDetailPage = lazyPage(() => import("@/features/customers/CustomerD
 const SupplierListPage = lazyPage(() => import("@/features/suppliers/SupplierListPage"), "SupplierListPage");
 const SupplierDetailPage = lazyPage(() => import("@/features/suppliers/SupplierDetailPage"), "SupplierDetailPage");
 const PoListPage = lazyPage(() => import("@/features/suppliers/PoListPage"), "PoListPage");
+const QuoteListPage = lazyPage(() => import("@/features/quotes/QuoteListPage"), "QuoteListPage");
+const QuoteCreatePage = lazyPage(() => import("@/features/quotes/QuoteCreatePage"), "QuoteCreatePage");
+const QuoteDetailPage = lazyPage(() => import("@/features/quotes/QuoteDetailPage"), "QuoteDetailPage");
 const PoCreatePage = lazyPage(() => import("@/features/suppliers/PoCreatePage"), "PoCreatePage");
 const PoDetailPage = lazyPage(() => import("@/features/suppliers/PoDetailPage"), "PoDetailPage");
 const MaterialListPage = lazyPage(() => import("@/features/materials/MaterialListPage"), "MaterialListPage");
@@ -106,6 +109,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/customers": withSuspense(<CustomerListPage />),
   "/suppliers": withSuspense(<SupplierListPage />),
   "/purchase-orders": withSuspense(<PoListPage />),
+  "/quotes": withSuspense(<QuoteListPage />),
   "/materials": withSuspense(<MaterialListPage />),
   "/stock-counts": withSuspense(<StockCountListPage />),
   "/elastics": withSuspense(<ElasticListPage />),
@@ -150,6 +154,8 @@ const detailRoutes = [
   { path: "/reports/stock-movements", element: withSuspense(<StockMovementsReportPage />) },
   { path: "/customers/:id", element: withSuspense(<CustomerDetailPage />) },
   { path: "/suppliers/:id", element: withSuspense(<SupplierDetailPage />) },
+  { path: "/quotes/new", element: withSuspense(<QuoteCreatePage />) },
+  { path: "/quotes/:id", element: withSuspense(<QuoteDetailPage />) },
   { path: "/purchase-orders/new", element: withSuspense(<PoCreatePage />) },
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
   { path: "/materials/forecast", element: withSuspense(<MaterialForecastPage />) },

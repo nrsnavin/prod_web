@@ -115,6 +115,7 @@ export const navSections: NavSection[] = [
       { label: "Customers", path: "/customers", icon: Users, departments: ["admin", "finance"] },
       { label: "Suppliers", path: "/suppliers", icon: Building2, departments: ["admin", "finance"] },
       { label: "Purchase Orders", path: "/purchase-orders", icon: FileText, departments: ["admin", "finance"] },
+      { label: "Quotations", path: "/quotes", icon: FileText, departments: ["admin", "finance"] },
       { label: "Raw Materials", path: "/materials", icon: Boxes, departments: ["admin", "finance"] },
       // A count is a statement about raw material stock, so it sits
       // beside it rather than under Reports — the people who run one
