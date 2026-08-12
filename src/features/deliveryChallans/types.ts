@@ -54,6 +54,27 @@ export interface DcFormItem {
   rate: number;
 }
 
+/**
+ * An edit to a challan that has already been raised.
+ *
+ * `items` is optional and meaningful by its absence: leaving it out
+ * edits only the despatch detail, while sending it makes the backend
+ * reverse every existing line and re-apply the new ones — which moves
+ * stock. So the edit form only sends it when the lines actually changed.
+ */
+export interface DcUpdateBody {
+  id: string;
+  auditReason: string;
+  items?: DcFormItem[];
+  customerName?: string;
+  dispatchDate?: string;
+  vehicleNo?: string;
+  driverName?: string;
+  transporter?: string;
+  lrNumber?: string;
+  remarks?: string;
+}
+
 export interface DcFormValues {
   type: DcType;
   orderId?: string;

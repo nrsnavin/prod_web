@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dcService } from "./api";
-import { DcFormValues, DcStatus, DcType } from "./types";
+import { DcFormValues, DcStatus, DcType, DcUpdateBody } from "./types";
 
 const KEY = "delivery-challans";
 
@@ -44,6 +44,10 @@ export function useDcMutations() {
     mutationFn: (body: DcFormValues) => dcService.create(body),
     onSuccess: invalidate,
   });
+  const update = useMutation({
+    mutationFn: (body: DcUpdateBody) => dcService.update(body),
+    onSuccess: invalidate,
+  });
   const updateStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: DcStatus }) =>
       dcService.updateStatus(id, status),
@@ -53,5 +57,5 @@ export function useDcMutations() {
     mutationFn: (id: string) => dcService.remove(id),
     onSuccess: invalidate,
   });
-  return { create, updateStatus, remove };
+  return { create, update, updateStatus, remove };
 }

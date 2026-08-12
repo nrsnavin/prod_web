@@ -107,6 +107,18 @@ export function useJobMutations() {
     }) => jobService.planWeaving(jobId, machineId, headElasticMap, confirmHooks),
     onSuccess: invalidate,
   });
+  const updateElastics = useMutation({
+    mutationFn: ({
+      jobId,
+      elastics,
+      auditReason,
+    }: {
+      jobId: string;
+      elastics: Array<{ elastic: string; quantity: number }>;
+      auditReason: string;
+    }) => jobService.updateElastics(jobId, elastics, auditReason),
+    onSuccess: invalidate,
+  });
   const updateStatus = useMutation({
     mutationFn: ({ jobId, nextStatus }: { jobId: string; nextStatus: JobStatus }) =>
       jobService.updateStatus(jobId, nextStatus),
@@ -129,5 +141,5 @@ export function useJobMutations() {
     }) => jobService.setProductionMode(jobId, mode, vendor),
     onSuccess: invalidate,
   });
-  return { create, planWeaving, updateStatus, cancel, setProductionMode };
+  return { create, planWeaving, updateElastics, updateStatus, cancel, setProductionMode };
 }

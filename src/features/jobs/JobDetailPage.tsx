@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Cog, ArrowRight, XCircle, FileText, Check, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Cog, ArrowRight, XCircle, FileText, Check, AlertTriangle, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +17,7 @@ import { useJob, useJobMutations, useJobSummary, useWeavingReadiness } from "./h
 import { JOB_PIPELINE, JobShiftDetail, JobSummaryRow } from "./types";
 import { nextJobStatus } from "./jobStatus";
 import { MachineAssignModal } from "./MachineAssignModal";
+import { JobElasticsEditModal, canEditElastics, editableReason } from "./JobElasticsEditModal";
 import { QcPanel } from "./QcPanel";
 import { OutsourcingPanel } from "./OutsourcingPanel";
 import { JobYarnLots } from "./JobYarnLots";
@@ -107,6 +108,7 @@ export function JobDetailPage() {
   const readiness = useWeavingReadiness(id, job?.status === "preparatory");
   const { updateStatus, cancel } = useJobMutations();
   const [assignOpen, setAssignOpen] = useState(false);
+  const [qtyOpen, setQtyOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   // Set from the server's 409 WEAVING_NOT_READY. Holding the blockers in
@@ -149,6 +151,19 @@ export function JobDetailPage() {
                 <FileText className="h-4 w-4" /> MRP sheet
               </Button>
             </Link>
+            {/* Only while nothing is committed to these figures. The
+                reason is on the button's title rather than hidden, so
+                somebody who expected it can see why it has gone. */}
+            {job.status === "preparatory" && (
+              <Button
+                variant="secondary"
+                disabled={!canEditElastics(job)}
+                title={editableReason(job) ?? "Change the planned quantities"}
+                onClick={() => setQtyOpen(true)}
+              >
+                <Pencil className="h-4 w-4" /> Edit quantities
+              </Button>
+            )}
             {/* Weaving too, not just preparatory: a machine can break
                 down mid-run, and the job then has to be moved to a
                 working one. The old machine is freed server-side. */}
@@ -314,6 +329,17 @@ export function JobDetailPage() {
       )}
 
       <MachineAssignModal job={job} open={assignOpen} onClose={() => setAssignOpen(false)} />
+
+      {/* Keyed on the job's own figures so reopening after a save starts
+          from what was stored, not the state it was left in. */}
+      {qtyOpen && (
+        <JobElasticsEditModal
+          key={job.plannedElastics.map((e) => `${e.elasticId}:${e.quantity}`).join("|")}
+          job={job}
+          open={qtyOpen}
+          onClose={() => setQtyOpen(false)}
+        />
+      )}
 
       <Modal
         open={weavingBlockers !== null}
