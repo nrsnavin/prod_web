@@ -72,7 +72,7 @@ export function QuoteDetailPage() {
       </Link>
       <PageHeader
         title={quote.quoteNo}
-        subtitle={`${quote.customerName} · ${quote.productName}`}
+        subtitle={`${quote.customerName} · ${(quote.lines ?? []).length} product${(quote.lines ?? []).length === 1 ? "" : "s"}`}
         actions={
           <>
             <Button variant="secondary" onClick={downloadPdf} loading={downloading}>
@@ -113,99 +113,126 @@ export function QuoteDetailPage() {
             { label: "Quote date", value: fmtDate(quote.date) },
             { label: "Valid until", value: fmtDate(quote.validTill) },
             { label: "Their reference", value: quote.customerRef || "—" },
-            { label: "Specification", value: quote.productSpec || "—" },
+            { label: "GSTIN", value: quote.customerGstin || "—" },
           ]}
         />
       </Card>
 
-      {/* ── The costing, as it stood when the price went out ── */}
-      <Card className="mb-4">
-        <div className="flex items-baseline justify-between gap-3 px-5 pt-5">
-          <h3 className="font-semibold">Costing, per metre</h3>
-          <p className="text-sm text-ink-400">
-            {rupees(quote.totalWeightGrams, 2)} g of material in a metre
+      {/* ── Each product, with the costing frozen as it stood ── */}
+      {(quote.lines ?? []).map((line, i) => (
+        <Card key={i} className="mb-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-3 px-5 pt-5">
+            <h3 className="font-semibold">
+              {i + 1}. {line.productName}
+              {line.productSpec && (
+                <span className="ml-2 font-normal text-ink-400">{line.productSpec}</span>
+              )}
+            </h3>
+            <p className="text-sm text-ink-400">
+              {rupees(line.totalWeightGrams, 2)} g of material in a metre
+            </p>
+          </div>
+          <p className="px-5 pb-3 pt-1 text-xs text-ink-400">
+            Frozen at the moment this quote was raised — it explains the price
+            offered, not what the same product would cost today.
           </p>
-        </div>
-        <p className="px-5 pb-3 pt-1 text-xs text-ink-400">
-          Frozen at the moment this quote was raised — it explains the price
-          offered, not what the same product would cost today.
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-y border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-400">
-                <th className="px-5 py-2 text-left font-semibold">Material</th>
-                <th className="px-5 py-2 text-right font-semibold">Weight (g)</th>
-                <th className="px-5 py-2 text-right font-semibold">Rate (₹/kg)</th>
-                <th className="px-5 py-2 text-right font-semibold">Cost / m</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-100">
-              {(quote.materials ?? []).map((m, i) => (
-                <tr key={i}>
-                  <td className="px-5 py-2">{m.label}</td>
-                  <td className="px-5 py-2 text-right tabular-nums">{rupees(m.weightGrams, 3)}</td>
-                  <td className="px-5 py-2 text-right tabular-nums">{rupees(m.ratePerKg, 2)}</td>
-                  <td className="px-5 py-2 text-right tabular-nums">₹{rupees(m.cost, 4)}</td>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-y border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-400">
+                  <th className="px-5 py-2 text-left font-semibold">Material</th>
+                  <th className="px-5 py-2 text-right font-semibold">Weight (g)</th>
+                  <th className="px-5 py-2 text-right font-semibold">Rate (₹/kg)</th>
+                  <th className="px-5 py-2 text-right font-semibold">Cost / m</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </thead>
+              <tbody className="divide-y divide-ink-100">
+                {(line.materials ?? []).map((m, j) => (
+                  <tr key={j}>
+                    <td className="px-5 py-2">{m.label}</td>
+                    <td className="px-5 py-2 text-right tabular-nums">{rupees(m.weightGrams, 3)}</td>
+                    <td className="px-5 py-2 text-right tabular-nums">{rupees(m.ratePerKg, 2)}</td>
+                    <td className="px-5 py-2 text-right tabular-nums">₹{rupees(m.cost, 4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="p-5">
-          <h3 className="mb-3 font-semibold">Price build-up</h3>
-          <dl className="space-y-2 text-sm">
-            <Row label="Materials" value={quote.materialCost} dp={4} />
-            <Row label="Conversion" value={quote.conversionCost} dp={4} />
-            <div className="border-t border-ink-100 pt-2">
-              <Row label="Cost per metre" value={quote.totalCost} dp={4} bold />
-            </div>
-            <Row label={`Margin @ ${rupees(quote.marginPercent, 2)}%`} value={quote.marginAmount} />
-            <div className="border-t border-ink-100 pt-2">
-              <Row label="Rate (ex-GST)" value={quote.rateBeforeTax} bold />
-            </div>
-            <Row label={`GST @ ${rupees(quote.gstPercent, 2)}%`} value={quote.gstAmount} />
-            <div className="border-t-2 border-ink-900 pt-2">
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="font-semibold">Rate inc. GST</dt>
-                <dd className="text-xl font-bold tabular-nums">₹{rupees(quote.rateInclTax)}</dd>
-              </div>
-            </div>
-          </dl>
-        </Card>
-
-        <Card className="p-5">
-          <h3 className="mb-3 font-semibold">Quantity quoted</h3>
-          {quote.quantityMetres > 0 ? (
+          <div className="grid gap-4 p-5 sm:grid-cols-2">
             <dl className="space-y-2 text-sm">
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-ink-600">Quantity</dt>
-                <dd className="tabular-nums">{quote.quantityMetres.toLocaleString("en-IN")} m</dd>
+              <Row label="Materials" value={line.materialCost} dp={4} />
+              <Row label="Conversion" value={line.conversionCost} dp={4} />
+              <div className="border-t border-ink-100 pt-2">
+                <Row label="Cost per metre" value={line.totalCost} dp={4} bold />
               </div>
-              <Row label="Value (ex-GST)" value={quote.valueBeforeTax} dp={2} />
-              <Row label={`GST @ ${rupees(quote.gstPercent, 2)}%`} value={quote.valueInclTax - quote.valueBeforeTax} dp={2} />
-              <div className="border-t-2 border-ink-900 pt-2">
-                <div className="flex items-baseline justify-between gap-3">
-                  <dt className="font-semibold">Total value</dt>
-                  <dd className="text-xl font-bold tabular-nums">₹{rupees(quote.valueInclTax)}</dd>
-                </div>
+              <Row label={`Margin @ ${rupees(line.marginPercent, 2)}%`} value={line.marginAmount} />
+              <div className="border-t border-ink-100 pt-2">
+                <Row label="Rate per metre (ex-GST)" value={line.rateBeforeTax} bold />
               </div>
             </dl>
-          ) : (
-            <p className="text-sm text-ink-400">
-              No quantity was given — this quote states a rate only.
-            </p>
-          )}
-          {quote.remarks && (
-            <p className="mt-4 border-t border-ink-100 pt-3 text-sm text-ink-600">
-              <span className="font-medium">Remarks:</span> {quote.remarks}
-            </p>
-          )}
+
+            <dl className="space-y-2 text-sm">
+              {line.quantityMetres > 0 ? (
+                <>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-ink-600">Quantity</dt>
+                    <dd className="tabular-nums">{line.quantityMetres.toLocaleString("en-IN")} m</dd>
+                  </div>
+                  <Row label="Value (ex-GST)" value={line.valueBeforeTax} />
+                  <div className="border-t border-ink-100 pt-2">
+                    <Row label="Rate inc. GST" value={line.rateInclTax} bold />
+                  </div>
+                  <Row label="Value inc. GST" value={line.valueInclTax} />
+                </>
+              ) : (
+                <p className="text-sm text-ink-400">
+                  No quantity given — this product is quoted as a rate only.
+                </p>
+              )}
+            </dl>
+          </div>
         </Card>
-      </div>
+      ))}
+
+      {/* ── What the customer is asked to pay ─────────────── */}
+      <Card className="p-5">
+        <h3 className="mb-3 font-semibold">Quotation total</h3>
+        <dl className="space-y-2 text-sm">
+          {(quote.lines ?? []).map((l, i) => (
+            <div key={i} className="flex items-baseline justify-between gap-3">
+              <dt className="truncate text-ink-600">
+                {l.productName}
+                <span className="ml-1 text-xs text-ink-400">₹{rupees(l.rateBeforeTax)}/m</span>
+              </dt>
+              <dd className="tabular-nums">₹{rupees(l.valueBeforeTax)}</dd>
+            </div>
+          ))}
+          <div className="border-t border-ink-100 pt-2">
+            <Row label="Sub-total (ex-GST)" value={quote.subTotal} bold />
+          </div>
+          <Row label={`GST @ ${rupees(quote.gstPercent, 2)}%`} value={quote.gstAmount} />
+          <div className="border-t-2 border-ink-900 pt-2">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="font-semibold">Grand total</dt>
+              <dd className="text-xl font-bold tabular-nums">₹{rupees(quote.grandTotal)}</dd>
+            </div>
+          </div>
+        </dl>
+        {quote.totalQuantityMetres > 0 && (
+          <p className="mt-3 text-xs text-ink-400">
+            {quote.totalQuantityMetres.toLocaleString("en-IN")} m across{" "}
+            {(quote.lines ?? []).length} product
+            {(quote.lines ?? []).length === 1 ? "" : "s"}
+          </p>
+        )}
+        {quote.remarks && (
+          <p className="mt-4 border-t border-ink-100 pt-3 text-sm text-ink-600">
+            <span className="font-medium">Remarks:</span> {quote.remarks}
+          </p>
+        )}
+      </Card>
     </>
   );
 }

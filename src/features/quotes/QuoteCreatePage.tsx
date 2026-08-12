@@ -1,18 +1,22 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, RotateCcw, UserPlus, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
+import { customerService } from "@/features/customers/api";
 import { useQuoteMutations } from "./hooks";
 import {
   MaterialRow,
+  ProductLine,
   newKey,
+  newProduct,
   num,
-  priceOneMetre,
+  priceQuote,
   rupees,
   startingRows,
 } from "./costing";
@@ -29,74 +33,122 @@ export function QuoteCreatePage() {
   const { toast } = useToast();
   const { create } = useQuoteMutations();
 
-  const [rows, setRows] = useState<MaterialRow[]>(startingRows);
-  const [conversionCost, setConversionCost] = useState("1.25");
-  const [marginPercent, setMarginPercent] = useState("20");
+  const [products, setProducts] = useState<ProductLine[]>(() => [newProduct()]);
   const [gstPercent, setGstPercent] = useState("5");
-  const [quantityMetres, setQuantityMetres] = useState("");
 
+  // Two ways to name a customer, because a quotation is usually the
+  // FIRST thing sent to somebody who is not on the books yet.
+  const [fromMaster, setFromMaster] = useState(true);
+  const [customerId, setCustomerId] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerGstin, setCustomerGstin] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [customerRef, setCustomerRef] = useState("");
-  const [productName, setProductName] = useState("");
-  const [productSpec, setProductSpec] = useState("");
+
   const [date, setDate] = useState(iso(new Date()));
   const [validTill, setValidTill] = useState(iso(addDays(new Date(), 30)));
   const [remarks, setRemarks] = useState("");
 
-  // Priced on every keystroke. The server prices it again on save and
-  // that figure is the one stored — this is here so the sheet answers
-  // while you are still deciding.
-  const costing = useMemo(
-    () => priceOneMetre({ materials: rows, conversionCost, marginPercent, gstPercent, quantityMetres }),
-    [rows, conversionCost, marginPercent, gstPercent, quantityMetres]
+  const loadCustomers = useCallback(
+    (q: string) =>
+      customerService
+        .list({ page: 1, limit: 50, search: q })
+        .then((r) => r.customers.map((c) => ({ value: c._id, label: c.name }))),
+    []
   );
 
-  const setRow = (key: string, patch: Partial<MaterialRow>) =>
-    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
-  const addRow = () =>
-    setRows((rs) => [...rs, { key: newKey(), label: "", weightGrams: "", ratePerKg: "" }]);
-  const removeRow = (key: string) => setRows((rs) => rs.filter((r) => r.key !== key));
-  const resetRows = () => setRows(startingRows());
+  // Priced on every keystroke. The server prices it again on save and
+  // that figure is the one stored — this answers while you decide.
+  const costing = useMemo(
+    () => priceQuote(products, gstPercent),
+    [products, gstPercent]
+  );
 
-  const priced = rows.filter((r) => num(r.weightGrams) > 0 || num(r.ratePerKg) > 0);
+  const setProduct = (key: string, patch: Partial<ProductLine>) =>
+    setProducts((ps) => ps.map((p) => (p.key === key ? { ...p, ...patch } : p)));
+  const addProduct = () => setProducts((ps) => [...ps, newProduct()]);
+  const removeProduct = (key: string) =>
+    setProducts((ps) => (ps.length > 1 ? ps.filter((p) => p.key !== key) : ps));
+
+  const setRow = (pKey: string, rKey: string, patch: Partial<MaterialRow>) =>
+    setProducts((ps) =>
+      ps.map((p) =>
+        p.key === pKey
+          ? { ...p, materials: p.materials.map((m) => (m.key === rKey ? { ...m, ...patch } : m)) }
+          : p
+      )
+    );
+  const addRow = (pKey: string) =>
+    setProducts((ps) =>
+      ps.map((p) =>
+        p.key === pKey
+          ? { ...p, materials: [...p.materials, { key: newKey(), label: "", weightGrams: "", ratePerKg: "" }] }
+          : p
+      )
+    );
+  const removeRow = (pKey: string, rKey: string) =>
+    setProducts((ps) =>
+      ps.map((p) =>
+        p.key === pKey ? { ...p, materials: p.materials.filter((m) => m.key !== rKey) } : p
+      )
+    );
+  const resetRows = (pKey: string) =>
+    setProducts((ps) => ps.map((p) => (p.key === pKey ? { ...p, materials: startingRows() } : p)));
+
+  const filled = (p: ProductLine) =>
+    p.materials.filter((m) => num(m.weightGrams) > 0 || num(m.ratePerKg) > 0);
 
   const save = () => {
-    if (!customerName.trim()) { toast("Who is this quote for?", "error"); return; }
-    if (!productName.trim()) { toast("Name the product being quoted", "error"); return; }
-    if (priced.length === 0) {
-      toast("Fill in at least one material — a weight and a rate", "error");
+    if (fromMaster && !customerId) {
+      toast("Pick a customer, or switch to entering a new one", "error");
       return;
     }
-    const unnamed = priced.find((r) => !r.label.trim());
-    if (unnamed) {
-      toast("Every filled-in line needs a material name", "error");
+    if (!fromMaster && !customerName.trim()) {
+      toast("Who is this quote for?", "error");
       return;
+    }
+
+    for (const [i, p] of products.entries()) {
+      const where = `Product ${i + 1}`;
+      if (!p.productName.trim()) { toast(`${where} needs a name`, "error"); return; }
+      const rows = filled(p);
+      if (rows.length === 0) {
+        toast(`${where}: fill in at least one material — a weight and a rate`, "error");
+        return;
+      }
+      if (rows.some((m) => !m.label.trim())) {
+        toast(`${where}: every filled-in line needs a material name`, "error");
+        return;
+      }
     }
 
     create.mutate(
       {
+        ...(fromMaster && customerId ? { customer: customerId } : {}),
         customerName: customerName.trim(),
         customerAddress: customerAddress.trim(),
         customerGstin: customerGstin.trim(),
+        customerPhone: customerPhone.trim(),
         customerRef: customerRef.trim(),
-        productName: productName.trim(),
-        productSpec: productSpec.trim(),
         date,
         validTill,
         remarks: remarks.trim(),
+        gstPercent: num(gstPercent),
         // Weights and rates only. The totals on screen are the browser's
         // working; the server does its own and that is what is stored.
-        materials: priced.map((r) => ({
-          label: r.label.trim(),
-          weightGrams: num(r.weightGrams),
-          ratePerKg: num(r.ratePerKg),
+        lines: products.map((p) => ({
+          productName: p.productName.trim(),
+          productSpec: p.productSpec.trim(),
+          conversionCost: num(p.conversionCost),
+          marginPercent: num(p.marginPercent),
+          quantityMetres: num(p.quantityMetres),
+          materials: filled(p).map((m) => ({
+            label: m.label.trim(),
+            weightGrams: num(m.weightGrams),
+            ratePerKg: num(m.ratePerKg),
+          })),
         })),
-        conversionCost: num(conversionCost),
-        marginPercent: num(marginPercent),
-        gstPercent: num(gstPercent),
-        quantityMetres: num(quantityMetres),
       },
       {
         onSuccess: (q) => {
@@ -116,7 +168,7 @@ export function QuoteCreatePage() {
       </Link>
       <PageHeader
         title="New quotation"
-        subtitle="Cost one metre, then price it"
+        subtitle="Cost each product a metre at a time, then price them"
         actions={
           <Button loading={create.isPending} onClick={save}>
             Raise quotation
@@ -125,135 +177,213 @@ export function QuoteCreatePage() {
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        {/* ── The costing sheet ─────────────────────────────── */}
         <div className="space-y-4">
+          {/* ── Customer ─────────────────────────────────────── */}
           <Card className="p-5">
             <div className="mb-4 flex items-baseline justify-between gap-3">
-              <div>
-                <h3 className="font-semibold">Materials in one metre</h3>
-                <p className="text-sm text-ink-400">
-                  Weight in grams, rate in rupees per kilogram.
+              <h3 className="font-semibold">Customer</h3>
+              <Button
+                type="button" variant="ghost" size="sm"
+                onClick={() => { setFromMaster((v) => !v); setCustomerId(""); }}
+              >
+                {fromMaster
+                  ? <><UserPlus className="h-4 w-4" /> Enter a new customer</>
+                  : <><Users className="h-4 w-4" /> Pick from customers</>}
+              </Button>
+            </div>
+
+            {fromMaster ? (
+              <>
+                <AsyncCombobox
+                  label="Customer *"
+                  // The visible label is not tied to the button this
+                  // renders, so it needs its own accessible name.
+                  aria-label="Customer"
+                  placeholder="Search customers"
+                  loadOptions={loadCustomers}
+                  value={customerId}
+                  onChange={setCustomerId}
+                />
+                <p className="mt-1.5 text-xs text-ink-400">
+                  Name, GSTIN and phone come from the master. Anything you type
+                  below is used instead, for this quote only.
                 </p>
-              </div>
-              <Button type="button" variant="ghost" size="sm" onClick={resetRows}>
-                <RotateCcw className="h-4 w-4" /> Reset rows
-              </Button>
-            </div>
+              </>
+            ) : (
+              <Input
+                label="Customer *"
+                placeholder="Company name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+              />
+            )}
 
-            <div className="hidden grid-cols-[1fr_110px_120px_120px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
-              <span>Material</span>
-              <span className="text-right">Weight (g)</span>
-              <span className="text-right">Rate (₹/kg)</span>
-              <span className="text-right">Cost / metre</span>
-              <span />
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Input label="Address" placeholder="Where the quotation is going"
+                value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
+              <Input label="Their reference / enquiry no"
+                value={customerRef} onChange={(e) => setCustomerRef(e.target.value)} />
             </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Input label="GSTIN" value={customerGstin} onChange={(e) => setCustomerGstin(e.target.value)} />
+              <Input label="Phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
+            </div>
+          </Card>
 
-            <div className="space-y-2">
-              {rows.map((r) => {
-                const cost = costing.rows.find((c) => c.key === r.key)?.cost ?? 0;
-                return (
-                  <div key={r.key} className="grid grid-cols-[1fr_110px_120px_120px_32px] items-start gap-2">
-                    <Input
-                      aria-label={r.fixed ? `${r.label} name` : "Material name"}
-                      placeholder="Material"
-                      value={r.label}
-                      // The four named rows keep their names; anything
-                      // added is the user's to call what they like.
-                      readOnly={r.fixed}
-                      onChange={(e) => setRow(r.key, { label: e.target.value })}
-                      className={r.fixed ? "bg-ink-50" : undefined}
-                    />
-                    <Input
-                      type="number" step="0.001" min="0"
-                      aria-label={`Weight in grams for ${r.label || "material"}`}
-                      placeholder="0"
-                      value={r.weightGrams}
-                      onChange={(e) => setRow(r.key, { weightGrams: e.target.value })}
-                    />
-                    <Input
-                      type="number" step="0.01" min="0"
-                      aria-label={`Rate per kilogram for ${r.label || "material"}`}
-                      placeholder="0"
-                      value={r.ratePerKg}
-                      onChange={(e) => setRow(r.key, { ratePerKg: e.target.value })}
-                    />
-                    <div className="flex h-10 items-center justify-end text-sm tabular-nums text-ink-900">
-                      ₹{rupees(cost, 4)}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeRow(r.key)}
-                      aria-label={`Remove ${r.label || "row"}`}
-                      className="grid h-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+          {/* ── Products ─────────────────────────────────────── */}
+          {products.map((p, pi) => {
+            const priced = costing.lines.find((l) => l.key === p.key);
+            return (
+              <Card key={p.key} className="p-5">
+                <div className="mb-4 flex items-baseline justify-between gap-3">
+                  <h3 className="font-semibold">
+                    Product {pi + 1}
+                    {p.productName.trim() && (
+                      <span className="ml-2 font-normal text-ink-400">{p.productName}</span>
+                    )}
+                  </h3>
+                  <div className="flex items-center gap-1">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => resetRows(p.key)}>
+                      <RotateCcw className="h-4 w-4" /> Reset rows
+                    </Button>
+                    {products.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeProduct(p.key)}
+                        aria-label={`Remove product ${pi + 1}`}
+                        className="grid h-8 w-8 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
 
-            <div className="mt-3 flex items-center justify-between">
-              <Button type="button" variant="ghost" size="sm" onClick={addRow}>
-                <Plus className="h-4 w-4" /> Add material
-              </Button>
-              <p className="text-sm text-ink-600">
-                {costing.totalWeightGrams > 0 && (
-                  <span className="mr-4 text-ink-400">
-                    {rupees(costing.totalWeightGrams, 2)} g / metre
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    label="Product *" placeholder="e.g. 20mm Woven Elastic"
+                    value={p.productName}
+                    onChange={(e) => setProduct(p.key, { productName: e.target.value })}
+                  />
+                  <Input
+                    label="Specification" placeholder="Width, elongation, recovery…"
+                    value={p.productSpec}
+                    onChange={(e) => setProduct(p.key, { productSpec: e.target.value })}
+                  />
+                </div>
+
+                <p className="mb-1.5 mt-4 text-sm font-medium text-ink-600">
+                  Materials in one metre
+                  <span className="ml-2 font-normal text-ink-400">
+                    weight in grams, rate in rupees per kilogram
                   </span>
+                </p>
+                <div className="hidden grid-cols-[1fr_100px_110px_110px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+                  <span>Material</span>
+                  <span className="text-right">Weight (g)</span>
+                  <span className="text-right">Rate (₹/kg)</span>
+                  <span className="text-right">Cost / metre</span>
+                  <span />
+                </div>
+                <div className="space-y-2">
+                  {p.materials.map((m) => {
+                    const cost = priced?.rows.find((r) => r.key === m.key)?.cost ?? 0;
+                    return (
+                      <div key={m.key} className="grid grid-cols-[1fr_100px_110px_110px_32px] items-start gap-2">
+                        <Input
+                          aria-label={m.fixed
+                            ? `${m.label} name in product ${pi + 1}`
+                            : `Material name in product ${pi + 1}`}
+                          placeholder="Material"
+                          value={m.label}
+                          readOnly={m.fixed}
+                          onChange={(e) => setRow(p.key, m.key, { label: e.target.value })}
+                          className={m.fixed ? "bg-ink-50" : undefined}
+                        />
+                        <Input
+                          type="number" step="0.001" min="0"
+                          aria-label={`Weight in grams for ${m.label || "material"} in product ${pi + 1}`}
+                          placeholder="0" value={m.weightGrams}
+                          onChange={(e) => setRow(p.key, m.key, { weightGrams: e.target.value })}
+                        />
+                        <Input
+                          type="number" step="0.01" min="0"
+                          aria-label={`Rate per kilogram for ${m.label || "material"} in product ${pi + 1}`}
+                          placeholder="0" value={m.ratePerKg}
+                          onChange={(e) => setRow(p.key, m.key, { ratePerKg: e.target.value })}
+                        />
+                        <div className="flex h-10 items-center justify-end text-sm tabular-nums text-ink-900">
+                          ₹{rupees(cost, 4)}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeRow(p.key, m.key)}
+                          aria-label={`Remove ${m.label || "row"} from product ${pi + 1}`}
+                          className="grid h-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button type="button" variant="ghost" size="sm" className="mt-2"
+                  onClick={() => addRow(p.key)}>
+                  <Plus className="h-4 w-4" /> Add material
+                </Button>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <Input
+                    label="Conversion (₹/m)" type="number" step="0.01" min="0"
+                    aria-label={`Conversion cost for product ${pi + 1}`}
+                    value={p.conversionCost}
+                    onChange={(e) => setProduct(p.key, { conversionCost: e.target.value })}
+                  />
+                  <Input
+                    label="Margin %" type="number" step="0.01" min="0"
+                    aria-label={`Margin percent for product ${pi + 1}`}
+                    value={p.marginPercent}
+                    onChange={(e) => setProduct(p.key, { marginPercent: e.target.value })}
+                  />
+                  <Input
+                    label="Quantity (m)" type="number" step="1" min="0" placeholder="optional"
+                    aria-label={`Quantity for product ${pi + 1}`}
+                    value={p.quantityMetres}
+                    onChange={(e) => setProduct(p.key, { quantityMetres: e.target.value })}
+                  />
+                </div>
+
+                {priced && (
+                  <div className="mt-4 flex flex-wrap items-baseline justify-between gap-3 rounded-lg bg-ink-50 px-3 py-2 text-sm">
+                    <span className="text-ink-600">
+                      Cost ₹{rupees(priced.totalCost, 4)}/m
+                      <span className="mx-2 text-ink-300">→</span>
+                      Rate <span className="font-semibold text-ink-900">₹{rupees(priced.rateBeforeTax)}</span>/m ex-GST
+                    </span>
+                    {priced.quantityMetres > 0 && (
+                      <span className="tabular-nums text-ink-600">
+                        {priced.quantityMetres.toLocaleString("en-IN")} m ·{" "}
+                        <span className="font-semibold text-ink-900">₹{rupees(priced.valueBeforeTax)}</span>
+                      </span>
+                    )}
+                  </div>
                 )}
-                Materials{" "}
-                <span className="font-semibold tabular-nums text-ink-900">
-                  ₹{rupees(costing.materialCost, 4)}
-                </span>
-              </p>
-            </div>
-          </Card>
+              </Card>
+            );
+          })}
 
-          <Card className="p-5">
-            <h3 className="mb-4 font-semibold">Conversion, margin and tax</h3>
-            <div className="grid gap-3 sm:grid-cols-4">
-              <Input
-                label="Conversion (₹/m)" type="number" step="0.01" min="0"
-                value={conversionCost} onChange={(e) => setConversionCost(e.target.value)}
-              />
-              <Input
-                label="Margin %" type="number" step="0.01" min="0"
-                value={marginPercent} onChange={(e) => setMarginPercent(e.target.value)}
-              />
-              <Input
-                label="GST %" type="number" step="0.01" min="0"
-                value={gstPercent} onChange={(e) => setGstPercent(e.target.value)}
-              />
-              <Input
-                label="Quantity (m)" type="number" step="1" min="0"
-                placeholder="optional"
-                value={quantityMetres} onChange={(e) => setQuantityMetres(e.target.value)}
-              />
-            </div>
-            <p className="mt-3 text-xs text-ink-400">
-              Margin is a markup on cost — 20% on ₹100 of cost gives ₹120.
-            </p>
-          </Card>
+          <Button type="button" variant="secondary" onClick={addProduct}>
+            <Plus className="h-4 w-4" /> Add another product
+          </Button>
 
+          {/* ── The document ─────────────────────────────────── */}
           <Card className="p-5">
-            <h3 className="mb-4 font-semibold">Customer and product</h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input label="Customer *" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-              <Input label="Their reference / enquiry no" value={customerRef} onChange={(e) => setCustomerRef(e.target.value)} />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <Input label="Customer address" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
-              <Input label="Customer GSTIN" value={customerGstin} onChange={(e) => setCustomerGstin(e.target.value)} />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <Input label="Product *" placeholder="e.g. 20mm Woven Elastic" value={productName} onChange={(e) => setProductName(e.target.value)} />
-              <Input label="Specification" placeholder="Width, elongation, recovery…" value={productSpec} onChange={(e) => setProductSpec(e.target.value)} />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <h3 className="mb-4 font-semibold">Quotation details</h3>
+            <div className="grid gap-3 sm:grid-cols-3">
               <Input label="Quote date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               <Input label="Valid until" type="date" value={validTill} onChange={(e) => setValidTill(e.target.value)} />
+              <Input label="GST %" type="number" step="0.01" min="0"
+                value={gstPercent} onChange={(e) => setGstPercent(e.target.value)} />
             </div>
             <div className="mt-3">
               <label className="mb-1.5 block text-sm font-medium text-ink-600">Remarks</label>
@@ -263,69 +393,63 @@ export function QuoteCreatePage() {
                 className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
               />
             </div>
+            <p className="mt-3 text-xs text-ink-400">
+              Margin is a markup on cost — 20% on ₹100 of cost gives ₹120. Each
+              product carries its own margin; GST applies to the whole document.
+            </p>
           </Card>
         </div>
 
-        {/* ── The running price ─────────────────────────────── */}
+        {/* ── Running totals ───────────────────────────────── */}
         <div className="lg:sticky lg:top-4 lg:self-start">
           <Card className="p-5">
-            <h3 className="mb-4 font-semibold">Price per metre</h3>
+            <h3 className="mb-4 font-semibold">Quotation total</h3>
+
             <dl className="space-y-2 text-sm">
-              {/* The costing is carried to four places; the quoted rate
-                  and everything off it is in paise, because that is what
-                  the customer is committed to. */}
-              <Line label="Materials" value={costing.materialCost} dp={4} />
-              <Line label="Conversion" value={costing.conversionCost} dp={4} />
+              {costing.lines.map((l, i) => (
+                <div key={l.key} className="flex items-baseline justify-between gap-3">
+                  <dt className="truncate text-ink-600">
+                    {l.productName.trim() || `Product ${i + 1}`}
+                    <span className="ml-1 text-xs text-ink-400">
+                      ₹{rupees(l.rateBeforeTax)}/m
+                    </span>
+                  </dt>
+                  <dd className="tabular-nums">₹{rupees(l.valueBeforeTax)}</dd>
+                </div>
+              ))}
+
               <div className="border-t border-ink-100 pt-2">
-                <Line label="Cost per metre" value={costing.totalCost} dp={4} bold />
+                <div className="flex items-baseline justify-between gap-3">
+                  <dt className="font-semibold">Sub-total</dt>
+                  <dd className="font-semibold tabular-nums">₹{rupees(costing.subTotal)}</dd>
+                </div>
               </div>
-              <Line label={`Margin @ ${rupees(costing.marginPercent, 2)}%`} value={costing.marginAmount} />
-              <div className="border-t border-ink-100 pt-2">
-                <Line label="Rate (ex-GST)" value={costing.rateBeforeTax} bold />
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-ink-600">GST @ {rupees(costing.gstPercent, 2)}%</dt>
+                <dd className="tabular-nums">₹{rupees(costing.gstAmount)}</dd>
               </div>
-              <Line label={`GST @ ${rupees(costing.gstPercent, 2)}%`} value={costing.gstAmount} />
               <div className="border-t-2 border-ink-900 pt-2">
                 <div className="flex items-baseline justify-between gap-3">
-                  <dt className="font-semibold">Rate inc. GST</dt>
-                  <dd className="text-xl font-bold tabular-nums">₹{rupees(costing.rateInclTax)}</dd>
+                  <dt className="font-semibold">Grand total</dt>
+                  <dd className="text-xl font-bold tabular-nums">₹{rupees(costing.grandTotal)}</dd>
                 </div>
               </div>
             </dl>
 
-            {costing.quantityMetres > 0 && (
-              <div className="mt-4 rounded-lg bg-ink-50 p-3 text-sm">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-400">
-                  For {costing.quantityMetres.toLocaleString("en-IN")} m
-                </p>
-                <div className="flex items-baseline justify-between">
-                  <span className="text-ink-600">Value (ex-GST)</span>
-                  <span className="tabular-nums">₹{rupees(costing.valueBeforeTax)}</span>
-                </div>
-                <div className="flex items-baseline justify-between font-semibold">
-                  <span>Value inc. GST</span>
-                  <span className="tabular-nums">₹{rupees(costing.valueInclTax)}</span>
-                </div>
-              </div>
+            {costing.totalQuantityMetres > 0 && (
+              <p className="mt-3 text-xs text-ink-400">
+                {costing.totalQuantityMetres.toLocaleString("en-IN")} m across{" "}
+                {costing.lines.length} product{costing.lines.length === 1 ? "" : "s"}
+              </p>
             )}
-
             <p className="mt-4 text-xs text-ink-400">
-              Material costs are carried to four places; the quoted rate is in
-              paise, so the quotation adds up exactly as printed. The server
-              prices it again when you save.
+              A product with no quantity still quotes a rate; it just adds
+              nothing to the total. The server prices it all again on save.
             </p>
           </Card>
         </div>
       </div>
     </>
-  );
-}
-
-function Line({ label, value, bold, dp = 2 }: { label: string; value: number; bold?: boolean; dp?: number }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <dt className={bold ? "font-semibold" : "text-ink-600"}>{label}</dt>
-      <dd className={`tabular-nums ${bold ? "font-semibold" : ""}`}>₹{rupees(value, dp)}</dd>
-    </div>
   );
 }
 

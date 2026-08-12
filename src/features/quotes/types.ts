@@ -13,6 +13,26 @@ export interface QuoteMaterial {
   cost: number;
 }
 
+export interface QuoteLine {
+  elastic?: string;
+  productName: string;
+  productSpec?: string;
+  materials: QuoteMaterial[];
+  conversionCost: number;
+  marginPercent: number;
+  quantityMetres: number;
+
+  totalWeightGrams: number;
+  materialCost: number;
+  totalCost: number;
+  marginAmount: number;
+  rateBeforeTax: number;
+  gstAmount: number;
+  rateInclTax: number;
+  valueBeforeTax: number;
+  valueInclTax: number;
+}
+
 export interface Quote {
   _id: string;
   quoteNo: string;
@@ -26,25 +46,15 @@ export interface Quote {
   customerGstin?: string;
   customerRef?: string;
 
-  productName: string;
-  productSpec?: string;
+  customerPhone?: string;
 
-  materials: QuoteMaterial[];
+  lines: QuoteLine[];
 
-  totalWeightGrams: number;
-  materialCost: number;
-  conversionCost: number;
-  totalCost: number;
-  marginPercent: number;
-  marginAmount: number;
-  rateBeforeTax: number;
   gstPercent: number;
+  subTotal: number;
   gstAmount: number;
-  rateInclTax: number;
-
-  quantityMetres: number;
-  valueBeforeTax: number;
-  valueInclTax: number;
+  grandTotal: number;
+  totalQuantityMetres: number;
 
   remarks?: string;
   status: QuoteStatus;
@@ -53,19 +63,30 @@ export interface Quote {
 
 /** What the create/update endpoints accept. Totals are never sent — the
  *  server prices every quote from these figures itself. */
-export interface QuoteWriteBody {
-  customerName: string;
-  customerAddress?: string;
-  customerGstin?: string;
-  customerRef?: string;
+export interface QuoteWriteLine {
+  elastic?: string;
   productName: string;
   productSpec?: string;
-  date?: string;
-  validTill?: string;
-  remarks?: string;
   materials: Array<{ label: string; weightGrams: number; ratePerKg: number }>;
   conversionCost: number;
   marginPercent: number;
-  gstPercent: number;
   quantityMetres: number;
+}
+
+/** What the create/update endpoints accept. Totals are never sent — the
+ *  server prices every quote from these figures itself. */
+export interface QuoteWriteBody {
+  /** The master record, when one was picked. Optional by design: a quote
+   *  often goes to somebody who is not a customer yet. */
+  customer?: string;
+  customerName: string;
+  customerAddress?: string;
+  customerGstin?: string;
+  customerPhone?: string;
+  customerRef?: string;
+  date?: string;
+  validTill?: string;
+  remarks?: string;
+  lines: QuoteWriteLine[];
+  gstPercent: number;
 }

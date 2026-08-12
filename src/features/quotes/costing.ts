@@ -170,3 +170,87 @@ export function startingRows(): MaterialRow[] {
     fixed: true,
   }));
 }
+
+// ─────────────────────────────────────────────────────────────
+//  A whole quotation — several products on one document.
+//
+//  Mirrors priceQuote() on the server. Each product is priced on its own
+//  materials, conversion cost and margin; GST is a document rate.
+//
+//  The rollup adds the LINE totals, each already rounded to paise, so
+//  the grand total on screen is the column a reader adds by hand.
+// ─────────────────────────────────────────────────────────────
+
+export interface ProductLine {
+  key: string;
+  productName: string;
+  productSpec: string;
+  elastic?: string;
+  materials: MaterialRow[];
+  conversionCost: string;
+  marginPercent: string;
+  quantityMetres: string;
+}
+
+export interface PricedLine extends Costing {
+  key: string;
+  productName: string;
+}
+
+export interface QuoteCosting {
+  lines: PricedLine[];
+  gstPercent: number;
+  subTotal: number;
+  gstAmount: number;
+  grandTotal: number;
+  totalQuantityMetres: number;
+}
+
+export function priceQuote(
+  lines: ProductLine[],
+  gstPercent: string
+): QuoteCosting {
+  const priced: PricedLine[] = lines.map((l) => ({
+    key: l.key,
+    productName: l.productName,
+    ...priceOneMetre({
+      materials: l.materials,
+      conversionCost: l.conversionCost,
+      marginPercent: l.marginPercent,
+      gstPercent,
+      quantityMetres: l.quantityMetres,
+    }),
+  }));
+
+  const sum = (pick: (l: PricedLine) => number) =>
+    roundTo(priced.reduce((s, l) => s + pick(l), 0), 2);
+
+  const subTotal = sum((l) => l.valueBeforeTax);
+  const grandTotal = sum((l) => l.valueInclTax);
+
+  return {
+    lines: priced,
+    gstPercent: num(gstPercent),
+    subTotal,
+    // Derived from the two totals rather than summed separately, so the
+    // three figures on screen always agree with each other.
+    gstAmount: roundTo(grandTotal - subTotal, 2),
+    grandTotal,
+    totalQuantityMetres: roundTo(
+      priced.reduce((s, l) => s + l.quantityMetres, 0), 3
+    ),
+  };
+}
+
+/** A fresh product, with the four named material rows ready. */
+export function newProduct(): ProductLine {
+  return {
+    key: newKey(),
+    productName: "",
+    productSpec: "",
+    materials: startingRows(),
+    conversionCost: "1.25",
+    marginPercent: "20",
+    quantityMetres: "",
+  };
+}

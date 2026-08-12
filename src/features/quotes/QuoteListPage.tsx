@@ -29,16 +29,39 @@ const columns: Column<Quote>[] = [
   { key: "quoteNo", header: "Quote no", render: (q) => <span className="font-medium">{q.quoteNo}</span> },
   { key: "date", header: "Date", render: (q) => fmtDate(q.date) },
   { key: "customerName", header: "Customer", render: (q) => q.customerName },
-  { key: "productName", header: "Product", render: (q) => q.productName },
   {
-    key: "rateInclTax",
-    header: "Rate / m",
-    render: (q) => (
-      <span className="tabular-nums">
-        ₹{rupees(q.rateInclTax)}
-        <span className="ml-1 text-xs text-ink-400">inc GST</span>
-      </span>
-    ),
+    // A quote can cover several widths; the list names the first and
+    // says how many more, rather than truncating three names into a cell.
+    key: "products",
+    header: "Products",
+    render: (q) => {
+      const [first, ...rest] = q.lines ?? [];
+      if (!first) return "—";
+      return (
+        <span>
+          {first.productName}
+          {rest.length > 0 && (
+            <span className="ml-1 text-xs text-ink-400">+{rest.length} more</span>
+          )}
+        </span>
+      );
+    },
+  },
+  {
+    key: "grandTotal",
+    header: "Value",
+    align: "right",
+    render: (q) =>
+      q.grandTotal > 0 ? (
+        <span className="tabular-nums">
+          ₹{rupees(q.grandTotal)}
+          <span className="ml-1 text-xs text-ink-400">inc GST</span>
+        </span>
+      ) : (
+        // Rate-only quotes are normal — "what would 20mm cost?" — and a
+        // zero here would read as a price rather than an absence.
+        <span className="text-ink-400">rate only</span>
+      ),
   },
   {
     // A quote that has run out is not a quote any more, and the list is
