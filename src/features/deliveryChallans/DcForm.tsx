@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useCallback, useEffect, useState } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Combobox } from "@/components/ui/Combobox";
+import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
+import { elasticService } from "@/features/elastics/api";
 import { useOrders } from "@/features/orders/hooks";
 import { DcFormValues } from "./types";
 import { useDcOrderInfo } from "./hooks";
@@ -36,7 +38,26 @@ const schema = z.object({
       })
     )
     .min(1, "Add at least one item"),
-});
+})
+  // An elastic line must IDENTIFY its elastic, not just name it.
+  // Everything downstream keys on the id: without one no stock moves,
+  // no reservation is settled, and the despatch never appears against
+  // the order. The line used to be free text, so a row added by hand
+  // produced a challan that printed and shipped and counted for
+  // nothing. The server refuses it too — this is here so the refusal
+  // lands on the row rather than as a toast about the whole form.
+  .superRefine((v, ctx) => {
+    if (v.type !== "elastic") return;
+    v.items.forEach((item, i) => {
+      if (!item.elastic) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["items", i, "elastic"],
+          message: "Pick the elastic",
+        });
+      }
+    });
+  });
 
 export function DcForm({
   submitting,
@@ -67,7 +88,7 @@ export function DcForm({
       type: "elastic",
       customerName: "",
       dispatchDate: new Date().toISOString().slice(0, 10),
-      items: [{ elasticName: "", quantity: 0, rate: 0 }],
+      items: [{ elastic: "", elasticName: "", quantity: 0, rate: 0 }],
     },
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: "items" });
@@ -77,6 +98,25 @@ export function DcForm({
   const orderOptions = [...approved.orders, ...inProgress.orders].map((o) => ({
     value: o._id,
     label: `#${o.orderNo} — ${o.customer?.name ?? ""} (${o.status})`,
+  }));
+
+  // The combobox hands back an id, not the option, so every option that
+  // passes through is remembered and the line's name can follow its id.
+  const [labelById, setLabelById] = useState<Record<string, string>>({});
+  const loadElastics = useCallback(async (q: string) => {
+    const r = await elasticService.list({ page: 1, search: q, limit: 50 });
+    const options = r.elastics.map((e) => ({ value: e._id, label: e.name }));
+    setLabelById((prev) => ({
+      ...prev,
+      ...Object.fromEntries(options.map((o) => [o.value, o.label])),
+    }));
+    return options;
+  }, []);
+  // Rows prefilled from the linked order show their name before any
+  // search has run.
+  const elasticSeed = (orderInfo.data?.elastics ?? []).map((e) => ({
+    value: e.elasticId,
+    label: e.elasticName,
   }));
 
   // Prefill from the selected order.
@@ -165,11 +205,35 @@ export function DcForm({
         <div className="space-y-2">
           {fields.map((field, i) => (
             <div key={field.id} className="grid grid-cols-[1fr_90px_100px_36px] gap-2 items-start">
-              <Input
-                aria-label={type === "elastic" ? "Elastic name" : "Part description"}
-                placeholder={type === "elastic" ? "Elastic name" : "Part description"}
-                {...register(type === "elastic" ? `items.${i}.elasticName` : `items.${i}.description`)}
-              />
+              {type === "elastic" ? (
+                <Controller
+                  control={control}
+                  name={`items.${i}.elastic`}
+                  render={({ field: f }) => (
+                    <AsyncCombobox
+                      aria-label="Elastic"
+                      placeholder="Select elastic"
+                      loadOptions={loadElastics}
+                      seedOptions={elasticSeed}
+                      error={errors.items?.[i]?.elastic?.message}
+                      value={f.value ?? ""}
+                      onChange={(v) => {
+                        f.onChange(v);
+                        // The stored line also carries the name — it is
+                        // what the printed challan and the PDF show — so
+                        // it has to follow the id, not lag behind it.
+                        setValue(`items.${i}.elasticName`, labelById[v] ?? "");
+                      }}
+                    />
+                  )}
+                />
+              ) : (
+                <Input
+                  aria-label="Part description"
+                  placeholder="Part description"
+                  {...register(`items.${i}.description`)}
+                />
+              )}
               <Input
                 type="number"
                 step="0.01"
@@ -203,7 +267,7 @@ export function DcForm({
           variant="ghost"
           size="sm"
           className="mt-2"
-          onClick={() => append({ elasticName: "", quantity: 0, rate: 0 })}
+          onClick={() => append({ elastic: "", elasticName: "", quantity: 0, rate: 0 })}
         >
           <Plus className="h-4 w-4" /> Add item
         </Button>
