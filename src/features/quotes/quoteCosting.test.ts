@@ -21,7 +21,7 @@ import {
 //    0.8 g warp spandex     @ 900/kg
 //    2.4 g weft yarn        @ 180/kg
 //    + 1.25 conversion, 20% margin, 5% GST
-//    = 2.842 material, 4.092 cost, 4.9104 rate, 5.1559 inc GST
+//    = 2.842 material, 4.092 cost, 4.91 rate, 5.16 inc GST
 //
 //  If the two ever drift, one of these two files fails, and both name
 //  the same numbers.
@@ -52,14 +52,15 @@ describe("the same worked example the server uses", () => {
 
   it("sums the materials", () => expect(q.materialCost).toBe(2.842));
   it("adds conversion", () => expect(q.totalCost).toBe(4.092));
-  it("marks up on cost", () => expect(q.rateBeforeTax).toBe(4.9104));
-  it("takes GST on the marked-up rate", () => expect(q.gstAmount).toBe(0.2455));
-  it("reaches the inclusive rate", () => expect(q.rateInclTax).toBe(5.1559));
+  it("marks up on cost, quoted in paise", () => expect(q.rateBeforeTax).toBe(4.91));
+  it("takes GST on the quoted rate", () => expect(q.gstAmount).toBe(0.25));
+  it("reaches the inclusive rate", () => expect(q.rateInclTax).toBe(5.16));
   it("totals the grams in a metre", () => expect(q.totalWeightGrams).toBe(8.5));
 
-  it("extends the STORED rate, so the sheet reconciles", () => {
-    expect(q.valueBeforeTax).toBe(24552);
-    expect(q.valueInclTax).toBe(25779.5);
+  it("reconciles exactly — rate × quantity IS the value", () => {
+    expect(q.valueBeforeTax).toBe(24550);   // 4.91 × 5000
+    expect(q.valueInclTax).toBe(25800);     // 5.16 × 5000
+    expect(q.rateInclTax).toBe(q.rateBeforeTax + q.gstAmount);
   });
 });
 
@@ -175,7 +176,7 @@ describe("rounding", () => {
     expect(q.materialCost).toBe(0.03);
   });
 
-  it("keeps four places, so a small rate is not flattened", () => {
+  it("keeps four places through the costing, so a small material is not flattened", () => {
     const q = priceOneMetre({
       materials: [row("X", "1.26", "360")],
       conversionCost: "0", marginPercent: "0", gstPercent: "0", quantityMetres: "0",

@@ -271,10 +271,13 @@ export function QuoteCreatePage() {
           <Card className="p-5">
             <h3 className="mb-4 font-semibold">Price per metre</h3>
             <dl className="space-y-2 text-sm">
-              <Line label="Materials" value={costing.materialCost} />
-              <Line label="Conversion" value={costing.conversionCost} />
+              {/* The costing is carried to four places; the quoted rate
+                  and everything off it is in paise, because that is what
+                  the customer is committed to. */}
+              <Line label="Materials" value={costing.materialCost} dp={4} />
+              <Line label="Conversion" value={costing.conversionCost} dp={4} />
               <div className="border-t border-ink-100 pt-2">
-                <Line label="Cost per metre" value={costing.totalCost} bold />
+                <Line label="Cost per metre" value={costing.totalCost} dp={4} bold />
               </div>
               <Line label={`Margin @ ${rupees(costing.marginPercent, 2)}%`} value={costing.marginAmount} />
               <div className="border-t border-ink-100 pt-2">
@@ -284,7 +287,7 @@ export function QuoteCreatePage() {
               <div className="border-t-2 border-ink-900 pt-2">
                 <div className="flex items-baseline justify-between gap-3">
                   <dt className="font-semibold">Rate inc. GST</dt>
-                  <dd className="text-xl font-bold tabular-nums">₹{rupees(costing.rateInclTax, 4)}</dd>
+                  <dd className="text-xl font-bold tabular-nums">₹{rupees(costing.rateInclTax)}</dd>
                 </div>
               </div>
             </dl>
@@ -306,8 +309,9 @@ export function QuoteCreatePage() {
             )}
 
             <p className="mt-4 text-xs text-ink-400">
-              Shown to four decimal places while you work. The quotation prints
-              to two, and the server prices it again when you save.
+              Material costs are carried to four places; the quoted rate is in
+              paise, so the quotation adds up exactly as printed. The server
+              prices it again when you save.
             </p>
           </Card>
         </div>
@@ -316,11 +320,11 @@ export function QuoteCreatePage() {
   );
 }
 
-function Line({ label, value, bold }: { label: string; value: number; bold?: boolean }) {
+function Line({ label, value, bold, dp = 2 }: { label: string; value: number; bold?: boolean; dp?: number }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
       <dt className={bold ? "font-semibold" : "text-ink-600"}>{label}</dt>
-      <dd className={`tabular-nums ${bold ? "font-semibold" : ""}`}>₹{rupees(value, 4)}</dd>
+      <dd className={`tabular-nums ${bold ? "font-semibold" : ""}`}>₹{rupees(value, dp)}</dd>
     </div>
   );
 }

@@ -126,8 +126,8 @@ describe("the price as you type", () => {
     await user.type(weight("Warp yarn"), "4.2");
     await user.type(rate("Warp yarn"), "240");
 
-    // 1.008 material + 1.25 conversion = 2.258, × 1.20 = 2.7096
-    expect(await screen.findByText("₹2.7096")).toBeInTheDocument();
+    // 1.008 material + 1.25 conversion = 2.258, × 1.20 = 2.7096 → ₹2.71
+    expect(await screen.findByText("₹2.71")).toBeInTheDocument();
   });
 
   it("recomputes when the margin changes", async () => {
@@ -140,8 +140,8 @@ describe("the price as you type", () => {
     await user.clear(margin);
     await user.type(margin, "50");
 
-    // 2.258 × 1.50
-    expect(await screen.findByText("₹3.3870")).toBeInTheDocument();
+    // 2.258 × 1.50 = 3.387 → ₹3.39
+    expect(await screen.findByText("₹3.39")).toBeInTheDocument();
   });
 });
 

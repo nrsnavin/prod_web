@@ -158,10 +158,10 @@ export function QuoteDetailPage() {
         <Card className="p-5">
           <h3 className="mb-3 font-semibold">Price build-up</h3>
           <dl className="space-y-2 text-sm">
-            <Row label="Materials" value={quote.materialCost} />
-            <Row label="Conversion" value={quote.conversionCost} />
+            <Row label="Materials" value={quote.materialCost} dp={4} />
+            <Row label="Conversion" value={quote.conversionCost} dp={4} />
             <div className="border-t border-ink-100 pt-2">
-              <Row label="Cost per metre" value={quote.totalCost} bold />
+              <Row label="Cost per metre" value={quote.totalCost} dp={4} bold />
             </div>
             <Row label={`Margin @ ${rupees(quote.marginPercent, 2)}%`} value={quote.marginAmount} />
             <div className="border-t border-ink-100 pt-2">
@@ -171,7 +171,7 @@ export function QuoteDetailPage() {
             <div className="border-t-2 border-ink-900 pt-2">
               <div className="flex items-baseline justify-between gap-3">
                 <dt className="font-semibold">Rate inc. GST</dt>
-                <dd className="text-xl font-bold tabular-nums">₹{rupees(quote.rateInclTax, 4)}</dd>
+                <dd className="text-xl font-bold tabular-nums">₹{rupees(quote.rateInclTax)}</dd>
               </div>
             </div>
           </dl>
@@ -210,7 +210,7 @@ export function QuoteDetailPage() {
   );
 }
 
-function Row({ label, value, bold, dp = 4 }: { label: string; value: number; bold?: boolean; dp?: number }) {
+function Row({ label, value, bold, dp = 2 }: { label: string; value: number; bold?: boolean; dp?: number }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
       <dt className={bold ? "font-semibold" : "text-ink-600"}>{label}</dt>

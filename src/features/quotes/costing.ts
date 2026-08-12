@@ -105,11 +105,20 @@ export function priceOneMetre(input: CostingInput): Costing {
   const marginPercent = round(num(input.marginPercent));
   const gstPercent = round(num(input.gstPercent));
 
-  // Markup on cost — 20% on ₹100 is ₹120, not ₹125.
-  const rateBeforeTax = round(totalCost * (1 + marginPercent / 100));
-  const marginAmount = round(rateBeforeTax - totalCost);
-  const gstAmount = round(rateBeforeTax * (gstPercent / 100));
-  const rateInclTax = round(rateBeforeTax + gstAmount);
+  // Markup on cost — 20% on ₹100 is ₹120, not ₹125 — then rounded to
+  // PAISE, because this is the number the customer is quoted.
+  //
+  // The costing above keeps four places: material costs are fractions of
+  // a rupee and flattening them early loses real money over a long
+  // order. The RATE is different — it is a commitment, printed on a
+  // document somebody will multiply by their quantity. Quote 5.1504 and
+  // print 5.15 and the line disagrees with its own amount by ten rupees
+  // on 25,000 m. So the chain rounds once, here, and GST, the inclusive
+  // rate and the extended values all come off the rounded figure.
+  const rateBeforeTax = roundTo(totalCost * (1 + marginPercent / 100), 2);
+  const marginAmount = roundTo(rateBeforeTax - totalCost, 2);
+  const gstAmount = roundTo(rateBeforeTax * (gstPercent / 100), 2);
+  const rateInclTax = roundTo(rateBeforeTax + gstAmount, 2);
 
   const quantityMetres = num(input.quantityMetres);
 
