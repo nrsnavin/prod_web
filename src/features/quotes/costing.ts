@@ -138,7 +138,12 @@ export function priceOneMetre(input: CostingInput): Costing {
     // Extended from the STORED rate, not the exact chain, so the printed
     // rate × the printed quantity equals the printed value.
     valueBeforeTax: roundTo(rateBeforeTax * quantityMetres, 2),
-    valueInclTax: roundTo(rateInclTax * quantityMetres, 2),
+    // On the value, not the inclusive per-metre rate — same reason the
+    // document total is: extending a rounded per-unit tax overstates it.
+    valueInclTax: roundTo(
+      roundTo(rateBeforeTax * quantityMetres, 2) * (1 + gstPercent / 100),
+      2
+    ),
   };
 }
 
@@ -222,22 +227,31 @@ export function priceQuote(
     }),
   }));
 
-  const sum = (pick: (l: PricedLine) => number) =>
-    roundTo(priced.reduce((s, l) => s + pick(l), 0), 2);
+  const subTotal = roundTo(
+    priced.reduce((s, l) => s + l.valueBeforeTax, 0),
+    2
+  );
 
-  const subTotal = sum((l) => l.valueBeforeTax);
-  const grandTotal = sum((l) => l.valueInclTax);
+  // GST is charged on the TAXABLE VALUE, not per metre.
+  //
+  // Summing the per-metre tax and multiplying it out is wrong on a tax
+  // document: 2.71/m at 5% is 0.1355, which rounds to 0.14, and over
+  // 5,000 m that half-paisa becomes ₹22.50 — charging 5.17% where the
+  // law says 5%. Rounding a tiny per-unit tax and then extending it
+  // amplifies the rounding by the quantity, which is exactly why an
+  // invoice computes tax on the line total.
+  const gstAmount = roundTo(subTotal * (num(gstPercent) / 100), 2);
+  const grandTotal = roundTo(subTotal + gstAmount, 2);
 
   return {
     lines: priced,
     gstPercent: num(gstPercent),
     subTotal,
-    // Derived from the two totals rather than summed separately, so the
-    // three figures on screen always agree with each other.
-    gstAmount: roundTo(grandTotal - subTotal, 2),
+    gstAmount,
     grandTotal,
     totalQuantityMetres: roundTo(
-      priced.reduce((s, l) => s + l.quantityMetres, 0), 3
+      priced.reduce((s, l) => s + l.quantityMetres, 0),
+      3
     ),
   };
 }

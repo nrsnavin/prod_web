@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   MaterialRow,
+  priceQuote,
   newKey,
   num,
   priceOneMetre,
@@ -59,8 +60,14 @@ describe("the same worked example the server uses", () => {
 
   it("reconciles exactly — rate × quantity IS the value", () => {
     expect(q.valueBeforeTax).toBe(24550);   // 4.91 × 5000
-    expect(q.valueInclTax).toBe(25800);     // 5.16 × 5000
     expect(q.rateInclTax).toBe(q.rateBeforeTax + q.gstAmount);
+  });
+
+  it("taxes the VALUE, not the per-metre rate", () => {
+    // 4.91/m at 5% is 0.2455, which rounds to 0.25; extending that over
+    // 5,000 m would charge 1,250 instead of 1,227.50 — 5.09% where the
+    // law says 5%. Tax belongs on the line total.
+    expect(q.valueInclTax).toBe(25777.5);   // 24,550 × 1.05
   });
 });
 
@@ -182,5 +189,70 @@ describe("rounding", () => {
       conversionCost: "0", marginPercent: "0", gstPercent: "0", quantityMetres: "0",
     });
     expect(q.materialCost).toBe(0.4536);
+  });
+});
+
+describe("a whole quotation", () => {
+  const product = (
+    grams: string,
+    ratePerKg: string,
+    quantityMetres: string,
+    marginPercent = "20"
+  ) => ({
+    key: newKey(),
+    productName: "P",
+    productSpec: "",
+    materials: [row("Warp yarn", grams, ratePerKg)],
+    conversionCost: "1.25",
+    marginPercent,
+    quantityMetres,
+  });
+
+  it("prices each product on its own margin", () => {
+    const q = priceQuote(
+      [product("4.2", "240", "5000"), product("8", "240", "3000", "50")],
+      "5"
+    );
+    expect(q.lines[0].rateBeforeTax).toBe(2.71); // 2.258 × 1.20
+    expect(q.lines[1].rateBeforeTax).toBe(4.76); // 3.17  × 1.50
+  });
+
+  it("adds the line values into the sub-total", () => {
+    const q = priceQuote([product("4.2", "240", "5000"), product("8", "240", "3000")], "5");
+    expect(q.subTotal).toBe(13550 + 11400);
+  });
+
+  it("charges exactly the GST rate on the document", () => {
+    // The bug this guards: GST summed per metre and multiplied out
+    // charged 5.17% on a 5% quote, because rounding a half-paisa
+    // per-unit tax is amplified by the quantity.
+    const q = priceQuote([product("4.2", "240", "5000")], "5");
+    expect(q.gstAmount).toBe(677.5);
+    expect((q.gstAmount / q.subTotal) * 100).toBeCloseTo(5, 9);
+  });
+
+  it("keeps the three document figures agreeing", () => {
+    const q = priceQuote([product("4.2", "240", "5000"), product("8", "240", "3000")], "5");
+    expect(q.grandTotal).toBe(q.subTotal + q.gstAmount);
+  });
+
+  it("totals the quantity across products", () => {
+    const q = priceQuote([product("4.2", "240", "5000"), product("8", "240", "3000")], "5");
+    expect(q.totalQuantityMetres).toBe(8000);
+  });
+
+  it("lets a product be quoted as a rate with no quantity", () => {
+    const q = priceQuote([product("4.2", "240", "5000"), product("8", "240", "")], "5");
+    expect(q.lines[1].rateBeforeTax).toBe(3.8);
+    expect(q.lines[1].valueBeforeTax).toBe(0);
+    // It states a price and adds nothing to what is owed.
+    expect(q.subTotal).toBe(13550);
+  });
+
+  it("prices an empty quotation at nothing rather than crashing", () => {
+    const q = priceQuote([], "5");
+    expect(q.subTotal).toBe(0);
+    expect(q.gstAmount).toBe(0);
+    expect(q.grandTotal).toBe(0);
   });
 });
