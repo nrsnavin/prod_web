@@ -27,6 +27,12 @@ const schema = z.object({
   email: z.string().email("Enter a valid email").optional().or(z.literal("")),
   address: z.string().optional(),
   contactPerson: z.string().optional(),
+  // Coerced, because a number input hands back a string. Without these
+  // three in the schema the resolver strips them and the fields render,
+  // accept typing, and submit nothing.
+  leadTimeDays: z.coerce.number().min(0).optional(),
+  minOrderQty: z.coerce.number().min(0).optional(),
+  packSize: z.coerce.number().min(0).optional(),
 });
 
 function SupplierForm({
@@ -53,6 +59,9 @@ function SupplierForm({
       email: initial?.email ?? "",
       address: initial?.address ?? "",
       contactPerson: initial?.contactPerson ?? "",
+      leadTimeDays: initial?.leadTimeDays ?? 0,
+      minOrderQty: initial?.minOrderQty ?? 0,
+      packSize: initial?.packSize ?? 0,
     },
   });
   return (
@@ -67,6 +76,27 @@ function SupplierForm({
         <Input label="GSTIN" {...register("gstin")} />
       </div>
       <Input label="Address" {...register("address")} />
+
+      <fieldset className="rounded-md border border-ink-200 p-3">
+        <legend className="px-1 text-xs font-medium text-ink-500">Replenishment terms</legend>
+        {/*
+          Lead time is what the reorder point is built on. Left at 0 the
+          system falls back to what your own goods receipts have
+          measured for this supplier — so this field is for when you
+          know something the history does not, not a box that must be
+          filled before anything works.
+        */}
+        <p className="mb-3 text-xs text-ink-400">
+          Leave lead time at 0 to use what your goods receipts have measured for this
+          supplier. Set it only when you know something the deliveries do not.
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          <Input label="Lead time (days)" type="number" min={0} {...register("leadTimeDays")} />
+          <Input label="Min order qty" type="number" min={0} {...register("minOrderQty")} />
+          <Input label="Pack size" type="number" min={0} {...register("packSize")} />
+        </div>
+      </fieldset>
+
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button type="submit" loading={submitting}>

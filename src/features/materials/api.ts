@@ -29,10 +29,23 @@ function unpackGroup(body: MaterialFormValues) {
 }
 
 export const materialService = {
-  replenishmentForecast(horizonDays = 14, lookbackDays = 30): Promise<ReplenishmentForecast> {
+  /**
+   * `coverDays` — how long an order should last once it arrives.
+   *
+   * NOT `horizonDays`. The reorder point comes from the supplier's lead
+   * time now, so a look-ahead window decides nothing; sending one would
+   * be a control on screen that changes no number, which is worse than
+   * no control at all.
+   */
+  replenishmentForecast(
+    coverDays = 30,
+    lookbackDays = 60,
+    serviceLevel = 95
+  ): Promise<ReplenishmentForecast> {
     return httpClient.get<ReplenishmentForecast>("/materials/replenishment-forecast", {
-      horizonDays,
+      coverDays,
       lookbackDays,
+      serviceLevel,
     });
   },
 

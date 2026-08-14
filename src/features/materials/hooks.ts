@@ -21,10 +21,19 @@ export function useMaterials(params: {
   });
 }
 
-export function useReplenishmentForecast(horizonDays: number, lookbackDays = 30) {
+/**
+ * @param coverDays how long an order should last once it arrives — the
+ *                  only thing a buyer now chooses, since the reorder
+ *                  point comes from the supplier's measured lead time.
+ */
+export function useReplenishmentForecast(
+  coverDays: number,
+  lookbackDays = 60,
+  serviceLevel = 95
+) {
   return useQuery({
-    queryKey: [KEY, "forecast", horizonDays, lookbackDays],
-    queryFn: () => materialService.replenishmentForecast(horizonDays, lookbackDays),
+    queryKey: [KEY, "forecast", coverDays, lookbackDays, serviceLevel],
+    queryFn: () => materialService.replenishmentForecast(coverDays, lookbackDays, serviceLevel),
     staleTime: 60_000,
   });
 }

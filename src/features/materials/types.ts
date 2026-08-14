@@ -268,28 +268,84 @@ export interface BulkPriceResult {
 }
 
 // Mirrors GET /materials/replenishment-forecast (prod/api/rawMaterial.js)
+/** Where the lead time being used actually came from. */
+export type LeadTimeSource =
+  | "material"            // typed on the material
+  | "supplier"            // typed on the supplier
+  | "observed-material"   // measured from this material's deliveries
+  | "observed-supplier"   // measured from this supplier's deliveries
+  | "none";               // nobody typed one and there is no history
+
+export interface ObservedLeadTime {
+  median: number;
+  sd: number;
+  deliveries: number;
+  confidence: "low" | "medium" | "high";
+  fastest: number | null;
+  slowest: number | null;
+}
+
 export interface ForecastLine {
   _id: string;
   name: string;
   category: string;
   unit: string;
   price: number;
+
+  // ── Position ──
   onHand: number;
+  onOrder: number;
+  committed: number;
+  /** onHand + onOrder − committed. What the decision is actually made on. */
+  netStock: number;
   minStock: number;
+
+  // ── The model's terms, so the figure can be argued with ──
+  dailyDemand: number;
+  demandSd: number;
+  leadTimeDays: number;
+  leadTimeSd: number;
+  demandDuringLead: number;
+  safetyStock: number;
+  /** Which uncertainty is driving the cover — demand, or the supplier. */
+  safetyFromDemand: number;
+  safetyFromLeadTime: number;
+  reorderPoint: number;
+  serviceLevel: number;
+
+  // ── Where the lead time came from ──
+  leadTimeSource: LeadTimeSource;
+  leadTimeObserved: ObservedLeadTime | null;
+  /** A typed lead time the deliveries contradict by 5+ days. */
+  leadTimeDisagrees: boolean;
+
+  // ── What the demand looks like ──
+  demandPattern: "smooth" | "intermittent" | "new";
+  drawsInWindow: number;
+
+  // ── The answer ──
+  daysOfCover: number | null;
+  projectedStockoutDate: string | null;
+  /** The last day an order still arrives in time. The point of all this. */
+  orderByDate: string | null;
+  /** An order placed today can no longer beat the stockout. */
+  alreadyLate: boolean;
+  suggestedQty: number;
+  /** Before the supplier's pack size and minimum were applied. */
+  rawSuggestedQty: number;
+  estimatedCost: number;
+  severity: "critical" | "warn" | "ok";
+  supplier: { _id: string; name: string; leadTimeDays: number };
+
+  // ── Legacy names, kept so nothing that read them breaks ──
   runRatePerDay: number;
   committedDemand: number;
-  projectedConsumption: number;
   projectedStock: number;
   daysToStockout: number | null;
-  projectedStockoutDate: string | null;
-  suggestedQty: number;
-  estimatedCost: number;
-  severity: "critical" | "warn";
-  supplier: { _id: string; name: string };
 }
 
 export interface ForecastSupplierGroup {
-  supplier: { _id: string; name: string };
+  supplier: { _id: string; name: string; leadTimeDays?: number };
   lines: ForecastLine[];
   estimatedCost: number;
 }
@@ -298,10 +354,21 @@ export interface ReplenishmentForecast {
   success: boolean;
   horizonDays: number;
   lookbackDays: number;
-  totals: { flagged: number; critical: number; suppliers: number; estimatedCost: number };
+  coverDays: number;
+  serviceLevel: number;
+  totals: {
+    flagged: number;
+    critical: number;
+    /** Past saving — an order placed today arrives after the stockout. */
+    late: number;
+    suppliers: number;
+    estimatedCost: number;
+  };
   materials: ForecastLine[];
   bySupplier: ForecastSupplierGroup[];
   skippedNoSupplier: number;
+  /** Chiefly: nobody has set a lead time, so nothing can be flagged early. */
+  warnings: string[];
   aiSummary: string | null;
   aiGenerated: boolean;
 }

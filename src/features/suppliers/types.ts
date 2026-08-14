@@ -8,6 +8,12 @@ export interface Supplier {
   contactPerson?: string;
   isActive?: boolean;
   createdAt?: string;
+
+  // ── Replenishment terms ──
+  /** 0 = none recorded; the forecast then uses what deliveries measured. */
+  leadTimeDays?: number;
+  minOrderQty?: number;
+  packSize?: number;
 }
 
 export interface SupplierFormValues {
@@ -17,6 +23,19 @@ export interface SupplierFormValues {
   email?: string;
   address?: string;
   contactPerson?: string;
+
+  // ── Replenishment terms ──
+  /**
+   * How long this supplier takes to deliver, in days. THE number the
+   * reorder point is built on. Leave it blank and the system falls back
+   * to whatever your goods receipts have measured — set it only when you
+   * know something the history does not.
+   */
+  leadTimeDays?: number;
+  /** What they will sell in one go. */
+  minOrderQty?: number;
+  /** Their pack size, so an order of 812 kg becomes 825 rather than a phone call. */
+  packSize?: number;
 }
 
 export type PoStatus = "Open" | "Partial" | "Completed";
