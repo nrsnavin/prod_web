@@ -239,7 +239,7 @@ function GroupForm({
 }
 
 export function MaterialGroupsPage() {
-  const toast = useToast();
+  const { toast } = useToast();
   const [showArchived, setShowArchived] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<MaterialGroup | null>(null);
@@ -323,7 +323,7 @@ export function MaterialGroupsPage() {
               onClick={() =>
                 restore
                   .mutateAsync(g._id)
-                  .then(() => toast.success(`"${g.name}" is back in the pickers`))
+                  .then(() => toast(`"${g.name}" is back in the pickers`, "success"))
                   .catch(fail)
               }
             >
@@ -360,7 +360,7 @@ export function MaterialGroupsPage() {
         }
       />
 
-      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+      {error && <ErrorBanner message={error} />}
 
       <div className="mb-4">
         <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-ink-600">
@@ -407,7 +407,7 @@ export function MaterialGroupsPage() {
             create
               .mutateAsync(v)
               .then(() => {
-                toast.success(`"${v.name}" added`);
+                toast(`"${v.name}" added`, "success");
                 setCreating(false);
               })
               .catch(fail)
@@ -427,12 +427,13 @@ export function MaterialGroupsPage() {
                 .then((r) => {
                   // Say how many materials moved. A rename rewriting
                   // eighty rows without a word is a surprise.
-                  toast.success(
+                  toast(
                     r.materialsRenamed > 0
                       ? `Saved — ${r.materialsRenamed} material${
                           r.materialsRenamed === 1 ? "" : "s"
                         } renamed to "${v.name}"`
-                      : "Saved"
+                      : "Saved",
+                    "success"
                   );
                   setEditing(null);
                 })
@@ -469,7 +470,7 @@ export function MaterialGroupsPage() {
           remove
             .mutateAsync(removing!._id)
             .then((r) => {
-              toast.success(r.message);
+              toast(r.message, "success");
               setRemoving(null);
             })
             .catch(fail)
