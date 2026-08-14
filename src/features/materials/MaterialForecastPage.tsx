@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/components/ui/cn";
 import { useReplenishmentForecast } from "./hooks";
 import { ForecastLine, ForecastSupplierGroup, LeadTimeSource } from "./types";
+import { ReorderExplainer } from "./ReorderExplainer";
 
 // How long an order should last once it arrives. Replaces the old
 // "horizon" tabs: the reorder point is set by the supplier's lead time
@@ -68,7 +69,7 @@ function LeadTimeNote({ l }: { l: ForecastLine }) {
   );
 }
 
-function LineRow({ l }: { l: ForecastLine }) {
+function LineRow({ l, onExplain }: { l: ForecastLine; onExplain: (l: ForecastLine) => void }) {
   return (
     <li className="flex items-start gap-3 py-2.5 text-sm">
       <span
@@ -142,16 +143,22 @@ function LineRow({ l }: { l: ForecastLine }) {
           )}
         </p>
 
-        {/* Every term, so the number can be argued with rather than obeyed. */}
-        <p className="mt-0.5 text-[11px] text-ink-300">
+        {/*
+          Every term, so the number can be argued with rather than
+          obeyed — and a way through to the whole working, because a
+          buyer who cannot see how a figure was reached will order what
+          they were going to order anyway.
+        */}
+        <button
+          type="button"
+          onClick={() => onExplain(l)}
+          className="mt-0.5 text-left text-[11px] text-ink-300 underline decoration-dotted underline-offset-2 hover:text-ink-600"
+        >
           reorder point {inr(l.reorderPoint)} = {inr(l.demandDuringLead)} used while waiting
           + {inr(l.safetyStock)} safety
-          {l.safetyFromLeadTime > l.safetyFromDemand && l.safetyFromLeadTime > 0 && (
-            <span title="Most of the safety stock is here because the delivery date moves around, not because demand does.">
-              {" "}(mostly for delivery timing)
-            </span>
-          )}
-        </p>
+          {l.safetyFromLeadTime > l.safetyFromDemand && l.safetyFromLeadTime > 0 && " (mostly for delivery timing)"}
+          {" · show working"}
+        </button>
       </div>
 
       <div className="shrink-0 text-right">
@@ -169,7 +176,13 @@ function LineRow({ l }: { l: ForecastLine }) {
   );
 }
 
-function SupplierCard({ group }: { group: ForecastSupplierGroup }) {
+function SupplierCard({
+  group,
+  onExplain,
+}: {
+  group: ForecastSupplierGroup;
+  onExplain: (l: ForecastLine) => void;
+}) {
   const navigate = useNavigate();
   const draftPo = () => {
     navigate("/purchase-orders/new", {
@@ -194,7 +207,7 @@ function SupplierCard({ group }: { group: ForecastSupplierGroup }) {
         </Button>
       </div>
       <ul className="mt-1 divide-y divide-ink-100">
-        {group.lines.map((l) => <LineRow key={l._id} l={l} />)}
+        {group.lines.map((l) => <LineRow key={l._id} l={l} onExplain={onExplain} />)}
       </ul>
     </Card>
   );
@@ -205,6 +218,10 @@ export function MaterialForecastPage() {
   // lead time now, so a look-ahead window decides nothing; what a
   // buyer actually chooses is how long an order should last.
   const [coverDays, setCoverDays] = useState(30);
+  // Which line's working is open. The explainer is the answer to "why
+  // that much?", and a buyer who cannot get an answer will order what
+  // they were going to order anyway.
+  const [explaining, setExplaining] = useState<ForecastLine | null>(null);
   const { data, isLoading } = useReplenishmentForecast(coverDays);
 
   return (
@@ -277,7 +294,9 @@ export function MaterialForecastPage() {
           )}
 
           <div className="grid gap-4 lg:grid-cols-2">
-            {data.bySupplier.map((g) => <SupplierCard key={g.supplier._id} group={g} />)}
+            {data.bySupplier.map((g) => (
+              <SupplierCard key={g.supplier._id} group={g} onExplain={setExplaining} />
+            ))}
           </div>
 
           {data.skippedNoSupplier > 0 && (
@@ -296,6 +315,11 @@ export function MaterialForecastPage() {
               in. Nothing is ordered automatically — "Draft PO" pre-fills one for your approval.
             </span>
           </div>
+          <ReorderExplainer
+            line={explaining}
+            open={!!explaining}
+            onClose={() => setExplaining(null)}
+          />
         </>
       ) : (
         <Card>
