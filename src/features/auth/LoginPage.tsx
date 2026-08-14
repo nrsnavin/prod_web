@@ -2,14 +2,44 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocation, useNavigate, Navigate } from "react-router-dom";
-import { ArrowLeft, MailCheck } from "lucide-react";
+import { Link, useLocation, useNavigate, Navigate } from "react-router-dom";
+import { ArrowLeft, KeyRound, MailCheck } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
 import { SESSION_EXPIRED_KEY } from "@/core/auth/authStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/core/http/httpClient";
 import { AuthLayout } from "./AuthLayout";
+
+// ══════════════════════════════════════════════════════════════════
+//  SIGNING IN WHEN THE CODE CANNOT COME
+//
+//  Email OTP is the front door and stays the front door. But it has a
+//  dependency the user cannot see or fix — a working mail server — and
+//  when that dependency is down the door does not open for anybody. The
+//  password route exists on the backend for exactly this (/login-user,
+//  kept mounted as an emergency fallback) and nothing linked to it, so
+//  an SMTP outage locked the whole company out of their own ERP.
+//
+//  It is reachable two ways, both of them recoveries rather than a
+//  second advertised way in:
+//
+//    1. The server says outright that it cannot send. /request-otp
+//       answers 503 MAILER_NOT_CONFIGURED when the box has no SMTP
+//       settings — a definite answer, so we go straight to the password
+//       form rather than making someone read an error and guess.
+//
+//    2. The code simply never turns up. When SMTP is configured but the
+//       send fails, the server deliberately answers 200 and says
+//       nothing: a failure raised only for addresses that HAVE an
+//       account would name them. So there is no signal to react to, and
+//       the affordance has to be one the person reaches for — a quiet
+//       link on the code screen, once the resend cooldown has expired
+//       and waiting has plainly not worked.
+//
+//  The password field is never on the first screen. Putting it there
+//  would undo the reason OTP is the primary sign-in.
+// ══════════════════════════════════════════════════════════════════
 
 // ── Step 1: email ───────────────────────────────────────────────────────
 const emailSchema = z.object({
@@ -26,14 +56,29 @@ const otpSchema = z.object({
 });
 type OtpValues = z.infer<typeof otpSchema>;
 
+// ── Fallback: password ──────────────────────────────────────────────────
+const passwordSchema = z.object({
+  password: z.string().min(1, "Password is required"),
+});
+type PasswordValues = z.infer<typeof passwordSchema>;
+
+/** The server telling us it has no mailer at all. */
+export const MAILER_NOT_CONFIGURED = "MAILER_NOT_CONFIGURED";
+
+type Step = "email" | "code" | "password";
+
 export function LoginPage() {
-  const { isAuthenticated, requestOtp, verifyOtp } = useAuth();
+  const { isAuthenticated, login, requestOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
+  // Why we are on the password screen — the two routes there want
+  // different words. "The server cannot send codes" is a fact worth
+  // stating; "you said the code never came" is not.
+  const [mailerDown, setMailerDown] = useState(false);
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -47,17 +92,33 @@ export function LoginPage() {
     setResendIn(30); // throttle the visible "resend" affordance
   };
 
+  const goToPassword = (forEmail: string, becauseMailerIsDown: boolean) => {
+    setEmail(forEmail);
+    setMailerDown(becauseMailerIsDown);
+    setServerError(null);
+    setStep("password");
+  };
+
+  const finishSignIn = () => {
+    sessionStorage.removeItem(SESSION_EXPIRED_KEY);
+    const from = (location.state as { from?: string } | null)?.from ?? "/";
+    navigate(from, { replace: true });
+  };
+
   return (
     <AuthLayout>
-      {step === "email" ? (
+      {step === "email" && (
         <EmailStep
           sessionExpired={sessionExpired}
           serverError={serverError}
           setServerError={setServerError}
           onSent={goToCode}
+          onMailerUnavailable={(forEmail) => goToPassword(forEmail, true)}
           requestOtp={requestOtp}
         />
-      ) : (
+      )}
+
+      {step === "code" && (
         <CodeStep
           email={email}
           serverError={serverError}
@@ -65,15 +126,31 @@ export function LoginPage() {
           resendIn={resendIn}
           setResendIn={setResendIn}
           requestOtp={requestOtp}
+          onUsePassword={() => goToPassword(email, false)}
           onBack={() => {
             setStep("email");
             setServerError(null);
           }}
           onVerified={async (otp) => {
             await verifyOtp(email, otp);
-            sessionStorage.removeItem(SESSION_EXPIRED_KEY);
-            const from = (location.state as { from?: string } | null)?.from ?? "/";
-            navigate(from, { replace: true });
+            finishSignIn();
+          }}
+        />
+      )}
+
+      {step === "password" && (
+        <PasswordStep
+          email={email}
+          mailerDown={mailerDown}
+          serverError={serverError}
+          setServerError={setServerError}
+          onBack={() => {
+            setStep("email");
+            setServerError(null);
+          }}
+          onSubmit={async (password) => {
+            await login({ email, password });
+            finishSignIn();
           }}
         />
       )}
@@ -87,12 +164,14 @@ function EmailStep({
   serverError,
   setServerError,
   onSent,
+  onMailerUnavailable,
   requestOtp,
 }: {
   sessionExpired: boolean;
   serverError: string | null;
   setServerError: (v: string | null) => void;
   onSent: (email: string) => void;
+  onMailerUnavailable: (email: string) => void;
   requestOtp: (email: string) => Promise<{ message: string }>;
 }) {
   const {
@@ -103,10 +182,20 @@ function EmailStep({
 
   const onSubmit = async (values: EmailValues) => {
     setServerError(null);
+    const address = values.email.trim();
     try {
-      await requestOtp(values.email.trim());
-      onSent(values.email.trim());
+      await requestOtp(address);
+      onSent(address);
     } catch (err) {
+      // A server with no mailer is a dead end for this route, not an
+      // error to retry. Showing "no email configured" and leaving
+      // someone on a form whose only button re-runs the thing that just
+      // failed is a wall, not a message — so hand them the other door
+      // instead of describing the locked one.
+      if (err instanceof ApiError && err.code === MAILER_NOT_CONFIGURED) {
+        onMailerUnavailable(address);
+        return;
+      }
       setServerError(err instanceof ApiError ? err.message : "Couldn't send the code — try again.");
     }
   };
@@ -156,6 +245,7 @@ function CodeStep({
   resendIn,
   setResendIn,
   requestOtp,
+  onUsePassword,
   onBack,
   onVerified,
 }: {
@@ -165,6 +255,7 @@ function CodeStep({
   resendIn: number;
   setResendIn: Dispatch<SetStateAction<number>>;
   requestOtp: (email: string) => Promise<{ message: string }>;
+  onUsePassword: () => void;
   onBack: () => void;
   onVerified: (otp: string) => Promise<void>;
 }) {
@@ -261,6 +352,147 @@ function CodeStep({
         >
           {resendIn > 0 ? `Resend in ${resendIn}s` : resending ? "Sending…" : "Resend code"}
         </button>
+      </div>
+
+      {/*
+        The silent failure. When SMTP is configured but the send fails,
+        the server answers 200 and says nothing — deliberately, because a
+        failure raised only for addresses that have an account would name
+        them. So nothing can tell this screen the code is never coming,
+        and the way out has to be one the person reaches for.
+
+        Held back until the resend cooldown expires: before then the
+        honest answer is "wait a moment", and offering a way around a
+        code that may be seconds away would train people past the
+        primary sign-in for no reason.
+      */}
+      {resendIn === 0 && (
+        <p className="mt-5 border-t border-ink-100 pt-4 text-center text-sm text-ink-400">
+          Still nothing?{" "}
+          <button
+            type="button"
+            onClick={onUsePassword}
+            className="font-medium text-brand-500 hover:text-brand-600"
+          >
+            Sign in with your password
+          </button>
+        </p>
+      )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+function PasswordStep({
+  email,
+  mailerDown,
+  serverError,
+  setServerError,
+  onBack,
+  onSubmit,
+}: {
+  email: string;
+  mailerDown: boolean;
+  serverError: string | null;
+  setServerError: (v: string | null) => void;
+  onBack: () => void;
+  onSubmit: (password: string) => Promise<void>;
+}) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<PasswordValues>({ resolver: zodResolver(passwordSchema) });
+
+  const submit = async (values: PasswordValues) => {
+    setServerError(null);
+    try {
+      await onSubmit(values.password);
+    } catch (err) {
+      setServerError(
+        err instanceof ApiError ? err.message : "Couldn't sign you in — try again."
+      );
+    }
+  };
+
+  return (
+    <>
+      <span className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-brand-50">
+        <KeyRound className="h-6 w-6 text-brand-500" />
+      </span>
+      <h2 className="text-xl font-bold">Sign in with your password</h2>
+
+      {mailerDown ? (
+        // Worth stating plainly: it is not their email that is broken,
+        // and it is not something they can fix by trying again. It also
+        // tells whoever runs the server what to go and look at.
+        <p className="mt-1 text-sm text-ink-400">
+          This server can't send sign-in codes at the moment — its email isn't set up. Use
+          your password instead, and let your administrator know.
+        </p>
+      ) : (
+        <p className="mt-1 text-sm text-ink-400">
+          Signing in as <span className="font-medium text-ink-600">{email}</span>.
+        </p>
+      )}
+
+      <form className="mt-6 space-y-4" onSubmit={handleSubmit(submit)} noValidate>
+        {/* Present and readable, so a password manager can match the
+            credential to the account — and so the person can see which
+            account they are signing in to. Not editable here: it was
+            given on the previous screen, and two places to change it is
+            one too many. */}
+        <Input label="Email" type="email" value={email} readOnly disabled />
+
+        <Input
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          autoFocus
+          error={errors.password?.message}
+          {...register("password")}
+        />
+
+        {serverError && (
+          <p className="text-sm text-status-danger bg-status-dangerBg rounded-lg px-3 py-2">
+            {serverError}
+          </p>
+        )}
+
+        <Button type="submit" size="lg" loading={isSubmitting} className="w-full">
+          Sign in
+        </Button>
+      </form>
+
+      <div className="mt-5 flex items-center justify-between text-sm">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 font-medium text-brand-500 hover:text-brand-600"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to sign-in
+        </button>
+
+        {/*
+          This page existed and nothing in the app linked to it — the
+          same way /login-user existed and nothing linked to THAT. Here
+          is where it belongs: the one screen where somebody is being
+          asked for a password they may not remember.
+
+          Withheld when the server has told us it cannot send email,
+          because a reset link arrives the same way a sign-in code does.
+          Offering it there would be a second dead end dressed as a way
+          out, and the person would spend another few minutes on it
+          before reaching the same place.
+        */}
+        {!mailerDown && (
+          <Link
+            to="/forgot-password"
+            className="font-medium text-brand-500 hover:text-brand-600"
+          >
+            Forgot password?
+          </Link>
+        )}
       </div>
     </>
   );
