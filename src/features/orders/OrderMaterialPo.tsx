@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { ShoppingCart, PackageCheck, Boxes, Lock } from "lucide-react";
+import { ShoppingCart, Boxes, Lock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -8,9 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { useToast } from "@/components/ui/Toast";
-import { ApiError } from "@/core/http/httpClient";
-import { useOrderMrp, useOrderPurchaseOrders, useOrderRaisePo } from "./hooks";
+import { useOrderMrp, useOrderPurchaseOrders } from "./hooks";
 import { OrderMrpMaterial } from "./types";
 
 /**
@@ -55,10 +54,9 @@ const nameOf = (m: OrderMrpMaterial) => m.name ?? "—";
 const kg = (n: number) => n.toLocaleString("en-IN");
 
 export function OrderMaterialPo({ orderId }: { orderId: string }) {
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const { data: mrp, isLoading } = useOrderMrp(orderId);
   const { data: raised } = useOrderPurchaseOrders(orderId);
-  const raisePo = useOrderRaisePo(orderId);
 
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<Record<string, boolean>>({});
@@ -104,10 +102,10 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
     : [];
 
   const bySupplier = useMemo(() => {
-    const map = new Map<string, { name: string; lines: OrderMrpMaterial[]; value: number }>();
+    const map = new Map<string, { id: string; name: string; lines: OrderMrpMaterial[]; value: number }>();
     for (const m of selected) {
       const key = String(m.supplierId);
-      if (!map.has(key)) map.set(key, { name: m.supplierName || "Supplier", lines: [], value: 0 });
+      if (!map.has(key)) map.set(key, { id: key, name: m.supplierName || "Supplier", lines: [], value: 0 });
       const g = map.get(key)!;
       g.lines.push(m);
       g.value += toBuyOf(m) * (m.unitPrice ?? 0);
@@ -353,7 +351,7 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
             </p>
             <ul className="mt-1 space-y-0.5 text-xs text-ink-600">
               {bySupplier.map((g) => (
-                <li key={g.name}>
+                <li key={g.id}>
                   {g.name} — {g.lines.length} line{g.lines.length === 1 ? "" : "s"}, ≈ ₹
                   {Math.round(g.value).toLocaleString("en-IN")}
                 </li>
@@ -378,48 +376,53 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setOpen(false)} disabled={raisePo.isPending}>
+          <Button variant="secondary" onClick={() => setOpen(false)} >
             Cancel
           </Button>
-          <Button
-            disabled={selected.length === 0}
-            loading={raisePo.isPending}
-            onClick={() =>
-              raisePo.mutate(
-                {
-                  materials: selected.map(idOf),
-                  expectedDate: expectedDate || undefined,
-                  notes: notes.trim() || undefined,
-                },
-                {
-                  onSuccess: (res) => {
-                    setOpen(false);
-                    toast(
-                      `${res.purchaseOrders.length} purchase order${
-                        res.purchaseOrders.length === 1 ? "" : "s"
-                      } raised`,
-                      "success"
-                    );
-                    // What could not be ordered is the part still needing
-                    // attention, so it gets said rather than swallowed.
-                    if (res.skipped.length > 0) {
-                      toast(
-                        `Not ordered: ${res.skipped
-                          .map((s) => `${s.name} (${s.reason})`)
-                          .join(", ")}`,
-                        "error"
-                      );
-                    }
+          {/*
+            Takes the buyer to the purchase-order form with the lines
+            already in it, rather than creating POs behind their back.
+            A purchase order is an outward commitment — the person
+            sending it should see it before it exists, and be able to
+            change a price or a quantity on the way.
+
+            One supplier per purchase order, so a selection spanning
+            several offers one button each rather than silently raising
+            several documents from one click.
+          */}
+          {bySupplier.map((g) => (
+            <Button
+              key={g.id}
+              disabled={selected.length === 0}
+              onClick={() => {
+                setOpen(false);
+                navigate("/purchase-orders/new", {
+                  state: {
+                    prefill: {
+                      supplier: g.id,
+                      supplierName: g.name,
+                      expectedDate: expectedDate || undefined,
+                      notes: notes.trim() || undefined,
+                      // Keeps the purchase answerable — "why did we buy
+                      // this?" has an answer months later. Dropping it
+                      // on the way through the form is exactly what a
+                      // generic create would have done.
+                      forOrder: orderId,
+                      forLabel: `Order ${mrp?.orderNo ? `#${mrp.orderNo}` : ""}`.trim(),
+                      items: g.lines.map((m) => ({
+                        rawMaterial: idOf(m),
+                        quantity: toBuyOf(m),
+                        price: m.unitPrice ?? 0,
+                      })),
+                    },
                   },
-                  onError: (e) =>
-                    toast(e instanceof ApiError ? e.message : "Could not raise the PO", "error"),
-                }
-              )
-            }
-          >
-            <PackageCheck className="h-4 w-4" /> Raise{" "}
-            {bySupplier.length > 1 ? `${bySupplier.length} POs` : "PO"}
-          </Button>
+                });
+              }}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {bySupplier.length === 1 ? "Draft purchase order" : `Draft for ${g.name}`}
+            </Button>
+          ))}
         </div>
       </Modal>
     </>

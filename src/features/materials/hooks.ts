@@ -29,11 +29,13 @@ export function useMaterials(params: {
 export function useReplenishmentForecast(
   coverDays: number,
   lookbackDays = 60,
-  serviceLevel = 95
+  serviceLevel = 95,
+  includeHealthy = false
 ) {
   return useQuery({
-    queryKey: [KEY, "forecast", coverDays, lookbackDays, serviceLevel],
-    queryFn: () => materialService.replenishmentForecast(coverDays, lookbackDays, serviceLevel),
+    queryKey: [KEY, "forecast", coverDays, lookbackDays, serviceLevel, includeHealthy],
+    queryFn: () =>
+      materialService.replenishmentForecast(coverDays, lookbackDays, serviceLevel, includeHealthy),
     staleTime: 60_000,
   });
 }

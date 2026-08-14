@@ -335,7 +335,10 @@ export interface ForecastLine {
   rawSuggestedQty: number;
   estimatedCost: number;
   severity: "critical" | "warn" | "ok";
-  supplier: { _id: string; name: string; leadTimeDays: number };
+  /** Whether this is a line to act on, rather than one riding along for inspection. */
+  needsOrder: boolean;
+  /** Null for a material with no default supplier — it cannot go on a PO. */
+  supplier: { _id: string; name: string; leadTimeDays: number } | null;
 
   // ── Legacy names, kept so nothing that read them breaks ──
   runRatePerDay: number;
@@ -363,6 +366,8 @@ export interface ReplenishmentForecast {
     late: number;
     suppliers: number;
     estimatedCost: number;
+    /** How many materials were assessed. Only when healthy ones were asked for. */
+    reviewed?: number;
   };
   materials: ForecastLine[];
   bySupplier: ForecastSupplierGroup[];

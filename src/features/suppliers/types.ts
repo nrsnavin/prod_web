@@ -115,6 +115,9 @@ export interface PoFormItem {
 }
 
 export interface PoFormValues {
+  /** What this PO was raised for — kept so the purchase stays answerable. */
+  forOrder?: string;
+  forJob?: string;
   supplier: string;
   items: PoFormItem[];
   expectedDate?: string;

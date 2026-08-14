@@ -56,8 +56,29 @@ export function PoCreatePage() {
   );
   const materials = useMaterials({ search: "", category: "all", lowStock: false });
 
-  // Optional prefill from the replenishment forecast ("Draft PO").
-  const prefill = (useLocation().state as { prefill?: { supplier: string; supplierName?: string; items: Array<{ rawMaterial: string; quantity: number; price: number }> } } | null)?.prefill;
+  // Optional prefill from the replenishment forecast, an order's
+  // material panel, or a job's shortfall panel. None of those raise a
+  // purchase order themselves any more: a PO is an outward commitment,
+  // so the buyer lands HERE with the lines already in, sees the
+  // document before it exists, and can change a price or a quantity on
+  // the way.
+  //
+  // `forOrder` / `forJob` travel with it. Dropping them would be the
+  // one real cost of routing through a generic form — PurchaseOrder's
+  // schema says why: "it makes the purchase answerable — 'why did we
+  // buy this?' has an answer months later".
+  const prefill = (useLocation().state as {
+    prefill?: {
+      supplier: string;
+      supplierName?: string;
+      items: Array<{ rawMaterial: string; quantity: number; price: number }>;
+      expectedDate?: string;
+      notes?: string;
+      forOrder?: string;
+      forJob?: string;
+      forLabel?: string;
+    };
+  } | null)?.prefill;
 
   const {
     register,
@@ -69,8 +90,8 @@ export function PoCreatePage() {
     resolver: zodResolver(schema),
     defaultValues: {
       supplier: prefill?.supplier ?? "",
-      expectedDate: "",
-      notes: "",
+      expectedDate: prefill?.expectedDate ?? "",
+      notes: prefill?.notes ?? "",
       items:
         prefill?.items && prefill.items.length > 0
           ? prefill.items
@@ -106,6 +127,10 @@ export function PoCreatePage() {
         ...values,
         expectedDate: values.expectedDate || undefined,
         notes: values.notes?.trim() || undefined,
+        // What this PO was raised for, carried through from whichever
+        // panel sent the buyer here.
+        ...(prefill?.forOrder ? { forOrder: prefill.forOrder } : {}),
+        ...(prefill?.forJob   ? { forJob:   prefill.forJob   } : {}),
       },
       {
         onSuccess: (po) => {
@@ -118,6 +143,17 @@ export function PoCreatePage() {
 
   return (
     <form onSubmit={handleSubmit(submit)} noValidate>
+      {/*
+        Said on the form, not just carried in the payload. A buyer who
+        arrived from an order should see which order this covers before
+        they send it.
+      */}
+      {prefill?.forLabel && (
+        <div className="mb-4 rounded-md border-l-4 border-brand-500 bg-ink-100 px-3 py-2 text-sm">
+          Covering <strong>{prefill.forLabel}</strong>. Lines are filled in from its
+          shortfall — change anything you need to, then create the purchase order.
+        </div>
+      )}
       <Link to="/purchase-orders" className="inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900 mb-2">
         <ArrowLeft className="h-4 w-4" /> Purchase orders
       </Link>

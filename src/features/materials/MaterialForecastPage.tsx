@@ -75,11 +75,13 @@ function LineRow({ l, onExplain }: { l: ForecastLine; onExplain: (l: ForecastLin
       <span
         className={cn(
           "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-          l.alreadyLate
-            ? "bg-status-danger ring-2 ring-status-danger/30"
-            : l.severity === "critical"
-              ? "bg-status-danger"
-              : "bg-status-warning"
+          !l.needsOrder
+            ? "bg-status-success"
+            : l.alreadyLate
+              ? "bg-status-danger ring-2 ring-status-danger/30"
+              : l.severity === "critical"
+                ? "bg-status-danger"
+                : "bg-status-warning"
         )}
       />
       <div className="min-w-0 flex-1">
@@ -162,15 +164,30 @@ function LineRow({ l, onExplain }: { l: ForecastLine; onExplain: (l: ForecastLin
       </div>
 
       <div className="shrink-0 text-right">
-        <p className="text-xs text-ink-400">
-          order <span className="font-semibold text-ink-900">{inr(l.suggestedQty)} {l.unit}</span>
-        </p>
-        {l.suggestedQty !== l.rawSuggestedQty && (
-          <p className="text-[11px] text-ink-300" title="Rounded up to the supplier's pack size or minimum order.">
-            {inr(l.rawSuggestedQty)} → pack
+        {/*
+          A comfortable material has nothing to order, and "order 0"
+          reads as an instruction. It gets its cover instead, which is
+          the fact that makes it comfortable.
+        */}
+        {l.needsOrder ? (
+          <>
+            <p className="text-xs text-ink-400">
+              order <span className="font-semibold text-ink-900">{inr(l.suggestedQty)} {l.unit}</span>
+            </p>
+            {l.suggestedQty !== l.rawSuggestedQty && (
+              <p className="text-[11px] text-ink-300" title="Rounded up to the supplier's pack size or minimum order.">
+                {inr(l.rawSuggestedQty)} → pack
+              </p>
+            )}
+            <p className="text-xs tabular-nums text-ink-600">₹{inr(l.estimatedCost)}</p>
+          </>
+        ) : (
+          <p className="text-xs text-ink-400">
+            {l.daysOfCover != null
+              ? <><span className="font-semibold text-status-success">{Math.round(l.daysOfCover)}</span> days cover</>
+              : "no demand recorded"}
           </p>
         )}
-        <p className="text-xs tabular-nums text-ink-600">₹{inr(l.estimatedCost)}</p>
       </div>
     </li>
   );
@@ -222,7 +239,16 @@ export function MaterialForecastPage() {
   // that much?", and a buyer who cannot get an answer will order what
   // they were going to order anyway.
   const [explaining, setExplaining] = useState<ForecastLine | null>(null);
-  const { data, isLoading } = useReplenishmentForecast(coverDays);
+  // "Show me where everything stands" rather than "what do I buy".
+  // Without it the model is invisible whenever nothing is short — and
+  // with no lead times set, which is where every mill starts, nothing
+  // is. An empty page reads as "the system has nothing to say".
+  const [showAll, setShowAll] = useState(false);
+  const { data, isLoading } = useReplenishmentForecast(coverDays, 60, 95, showAll);
+
+  // Everything assessed, minus what is on the buying list. `materials`
+  // carries both when showAll is on; bySupplier carries only the former.
+  const healthy = (data?.materials ?? []).filter((l) => !l.needsOrder);
 
   return (
     <>
@@ -250,6 +276,14 @@ export function MaterialForecastPage() {
             </button>
           ))}
         </div>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-600">
+          <input
+            type="checkbox"
+            checked={showAll}
+            onChange={(e) => setShowAll(e.target.checked)}
+          />
+          Show every material, not just what needs buying
+        </label>
       </div>
 
       {/*
@@ -315,6 +349,25 @@ export function MaterialForecastPage() {
               in. Nothing is ordered automatically — "Draft PO" pre-fills one for your approval.
             </span>
           </div>
+          {/*
+            The materials that are FINE. They are not on the buying list
+            and never reach a draft PO — they are here so the model can
+            be inspected on a material that is comfortable, which is the
+            only way to check it is behaving when nothing is short.
+          */}
+          {showAll && healthy.length > 0 && (
+            <Card className="mt-4 p-5">
+              <h3 className="font-semibold">Comfortable — nothing to order</h3>
+              <p className="text-xs text-ink-400">
+                {healthy.length} material{healthy.length === 1 ? "" : "s"} above their
+                reorder point. Open the working on any of them to see why.
+              </p>
+              <ul className="mt-1 divide-y divide-ink-100">
+                {healthy.map((l) => <LineRow key={l._id} l={l} onExplain={setExplaining} />)}
+              </ul>
+            </Card>
+          )}
+
           <ReorderExplainer
             line={explaining}
             open={!!explaining}
@@ -322,13 +375,43 @@ export function MaterialForecastPage() {
           />
         </>
       ) : (
-        <Card>
-          <EmptyState
-            icon={<TrendingDown className="h-6 w-6" />}
-            title="No replenishment needed"
-            description="Every material is above its reorder point, with enough cover to outlast its supplier's delivery time."
+        <>
+          <Card>
+            <EmptyState
+              icon={<TrendingDown className="h-6 w-6" />}
+              title="No replenishment needed"
+              description="Every material is above its reorder point, with enough cover to outlast its supplier's delivery time."
+              action={
+                !showAll ? (
+                  <Button variant="secondary" onClick={() => setShowAll(true)}>
+                    Show me where everything stands
+                  </Button>
+                ) : undefined
+              }
+            />
+          </Card>
+
+          {/*
+            Reachable from the empty state too. "Nothing to order" and
+            "the model cannot see anything" look identical otherwise,
+            and this is exactly the case a mill lands in before it has
+            any lead times.
+          */}
+          {showAll && healthy.length > 0 && (
+            <Card className="mt-4 p-5">
+              <h3 className="font-semibold">Where every material stands</h3>
+              <ul className="mt-1 divide-y divide-ink-100">
+                {healthy.map((l) => <LineRow key={l._id} l={l} onExplain={setExplaining} />)}
+              </ul>
+            </Card>
+          )}
+
+          <ReorderExplainer
+            line={explaining}
+            open={!!explaining}
+            onClose={() => setExplaining(null)}
           />
-        </Card>
+        </>
       )}
     </>
   );

@@ -97,7 +97,19 @@ export function ReorderExplainer({
   const max = Math.max(target, l.netStock, l.reorderPoint, 1);
 
   return (
-    <SidePanel open={open} onClose={onClose} width="max-w-lg" title={`Why buy ${inr(l.suggestedQty)} ${l.unit}?`}>
+    <SidePanel
+      open={open}
+      onClose={onClose}
+      width="max-w-lg"
+      // A comfortable material is being inspected, not bought. Titling
+      // it "Why buy 0?" would be nonsense on the one screen whose whole
+      // job is to make the arithmetic legible.
+      title={
+        l.needsOrder
+          ? `Why buy ${inr(l.suggestedQty)} ${l.unit}?`
+          : `Why ${l.name} needs nothing`
+      }
+    >
       <div className="space-y-6">
         {/* ── The comparison the decision is made on ───────────── */}
         <section className="space-y-3">
@@ -248,7 +260,7 @@ export function ReorderExplainer({
         )}
 
         {/* ── What was actually bought ─────────────────────────── */}
-        {l.suggestedQty !== l.rawSuggestedQty && (
+        {l.needsOrder && l.suggestedQty !== l.rawSuggestedQty && (
           <p className="text-xs text-ink-400">
             The gap comes to {inr(l.rawSuggestedQty)} {l.unit}; rounded up to{" "}
             {inr(l.suggestedQty)} to match what this supplier sells — their pack size or

@@ -40,12 +40,20 @@ export const materialService = {
   replenishmentForecast(
     coverDays = 30,
     lookbackDays = 60,
-    serviceLevel = 95
+    serviceLevel = 95,
+    /**
+     * Return materials that DON'T need ordering too, so their working
+     * can be inspected. Off for the buying list; on for "show me where
+     * everything stands", which is the only way to see the model at all
+     * when nothing happens to be short.
+     */
+    includeHealthy = false
   ): Promise<ReplenishmentForecast> {
     return httpClient.get<ReplenishmentForecast>("/materials/replenishment-forecast", {
       coverDays,
       lookbackDays,
       serviceLevel,
+      ...(includeHealthy ? { includeHealthy: "1" } : {}),
     });
   },
 
