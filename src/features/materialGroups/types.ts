@@ -44,8 +44,15 @@ export interface MaterialGroup {
   notes: string;
   archived?: boolean;
   archivedAt?: string;
-  /** Only present when the list was asked for `withCounts`. */
+  /** Live members. Only present when the list was asked for `withCounts`. */
   materialCount?: number;
+  /**
+   * Live PLUS archived members. This — not `materialCount` — is what
+   * decides archive-vs-delete, because an archived material still names
+   * its group. Reading the live count alone made the confirm dialog
+   * promise "removed outright" for a group the server then archived.
+   */
+  totalMaterialCount?: number;
 }
 
 export interface MaterialGroupFormValues {

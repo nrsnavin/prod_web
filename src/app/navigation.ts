@@ -60,7 +60,27 @@ export interface NavItem {
   icon: LucideIcon;
   /** Departments allowed to see this item; undefined = all authenticated users. `admin` always sees everything. */
   departments?: Department[];
+  /**
+   * The feature this item is governed by, when that is NOT its own path.
+   *
+   * A nav item's path is normally also its feature key, so adding an item
+   * mints a new permission — and `canAccess` checks a user's explicit
+   * `features` list BEFORE the admin shortcut, so a brand-new key is
+   * invisible to every existing account until a migration grants it.
+   * That is exactly how /quotes shipped and had to be rescued by
+   * migrations/20260812000001.
+   *
+   * Some items are not separate permissions at all: Material Groups is
+   * part of Raw Materials, governed by the same key, and the server gates
+   * it on `/materials` too. Borrowing the key here means the item is live
+   * for everyone who can already see its parent, with no migration and no
+   * extra tickbox on the Users screen.
+   */
+  featureKey?: string;
 }
+
+/** The permission an item answers to — its own path unless it borrows one. */
+export const featureKeyOf = (item: NavItem) => item.featureKey ?? item.path;
 
 export interface NavSection {
   label: string;
@@ -117,6 +137,17 @@ export const navSections: NavSection[] = [
       { label: "Purchase Orders", path: "/purchase-orders", icon: FileText, departments: ["admin", "finance"] },
       { label: "Quotations", path: "/quotes", icon: FileText, departments: ["admin", "finance"] },
       { label: "Raw Materials", path: "/materials", icon: Boxes, departments: ["admin", "finance"] },
+      // Not a permission of its own — `featureKey` borrows Raw
+      // Materials', which is also what the server gates it on. Anyone
+      // who can see materials can see how they are grouped, with no
+      // migration and no extra tickbox on the Users screen.
+      {
+        label: "Material Groups",
+        path: "/materials/groups",
+        icon: Layers,
+        departments: ["admin", "finance"],
+        featureKey: "/materials",
+      },
       // A count is a statement about raw material stock, so it sits
       // beside it rather than under Reports — the people who run one
       // are already on this screen.
@@ -195,7 +226,7 @@ export function canAccess(item: NavItem, ctx: AccessCtx): boolean {
 
   // Custom per-user features win when present.
   const features = ctxFeatures(ctx);
-  if (features) return features.includes(item.path);
+  if (features) return features.includes(featureKeyOf(item));
 
   // Legacy fallback: department-based.
   const department = typeof ctx === "string" ? normDept(ctx) : effectiveDepartment(ctx);
@@ -278,16 +309,24 @@ export interface FeatureGroup {
   section: string;
   features: FeatureOption[];
 }
+// Items that BORROW another item's key are not separate permissions, so
+// they must not appear as their own tickbox — ticking "Material Groups"
+// independently of "Raw Materials" would be a switch that does nothing.
+const ownsItsFeature = (i: NavItem) => !i.featureKey;
+
 export const FEATURE_GROUPS: FeatureGroup[] = navSections.map((s) => ({
   section: s.label,
-  features: s.items.map((i) => ({ key: i.path, label: i.label, always: !i.departments })),
+  features: s.items
+    .filter(ownsItsFeature)
+    .map((i) => ({ key: i.path, label: i.label, always: !i.departments })),
 }));
-export const ALL_FEATURE_KEYS: string[] = allNavItems.map((i) => i.path);
+export const ALL_FEATURE_KEYS: string[] = allNavItems.filter(ownsItsFeature).map((i) => i.path);
 
 // Default feature set for a department — mirrors utils/features.js on the
 // backend. Used to seed the checklist when an admin picks a department.
 export function featuresForDepartment(department: string | undefined | null): string[] {
   return allNavItems
+    .filter(ownsItsFeature)
     .filter((i) => canAccess(i, department ?? undefined))
     .map((i) => i.path);
 }

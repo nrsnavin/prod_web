@@ -58,12 +58,29 @@ describe("who can see Quotations", () => {
     expect(featuresForDepartment("packing")).not.toContain("/quotes");
   });
 
-  it("every nav path is a known feature key", () => {
+  it("every nav path is a known feature key, or borrows one", () => {
     // The trap this whole file exists for: a page reachable in the
     // router but absent from the feature catalog is a page nobody can
     // be granted.
+    //
+    // An item may instead BORROW another item's key — Material Groups
+    // is part of Raw Materials, not a permission of its own. Those must
+    // name a key that really exists, or they are the same trap wearing
+    // a different hat: governed by a permission nobody can hold.
     for (const item of allNavItems) {
-      expect(ALL_FEATURE_KEYS).toContain(item.path);
+      if (item.featureKey) {
+        expect(ALL_FEATURE_KEYS).toContain(item.featureKey);
+      } else {
+        expect(ALL_FEATURE_KEYS).toContain(item.path);
+      }
     }
+  });
+
+  it("does not offer a borrowed key as its own tickbox", () => {
+    // Ticking "Material Groups" independently of "Raw Materials" would
+    // be a switch that does nothing, because canAccess never reads it.
+    expect(ALL_FEATURE_KEYS).not.toContain("/materials/groups");
+    const everyOffered = FEATURE_GROUPS.flatMap((g) => g.features.map((f) => f.key));
+    expect(everyOffered).not.toContain("/materials/groups");
   });
 });

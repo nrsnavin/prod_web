@@ -64,6 +64,31 @@ const kindTone: Record<MaterialGroupKind, "info" | "success" | "neutral"> = {
   other: "neutral",
 };
 
+/**
+ * What the confirm dialog promises will happen.
+ *
+ * Keyed off the SAME number the server decides on. An archived-only
+ * group reads 0 live members, and saying "nothing is using this group"
+ * about one the server is about to archive is the dialog telling the
+ * truth about a different query.
+ */
+function describeRemoval(g: MaterialGroup | null): string {
+  if (!g) return "";
+  const total = g.totalMaterialCount ?? 0;
+  const live = g.materialCount ?? 0;
+  const noun = (n: number) => `${n} material${n === 1 ? "" : "s"}`;
+
+  if (total === 0) return "Nothing is using this group, so it will be removed outright.";
+  if (live === 0) {
+    return `Its ${noun(total)} ${total === 1 ? "is" : "are"} archived and still filed under it, so the group will be archived rather than deleted — deleting it would leave them pointing at nothing.`;
+  }
+  const shelved = total - live;
+  return (
+    `It holds ${noun(live)}${shelved > 0 ? ` (plus ${shelved} archived)` : ""}, ` +
+    `so it will be archived rather than deleted — out of the pickers, with every material still reading correctly.`
+  );
+}
+
 function GroupForm({
   initial,
   onSubmit,
@@ -335,7 +360,8 @@ export function MaterialGroupsPage() {
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setRemoving(g)}>
-                {g.materialCount && g.materialCount > 0 ? (
+                {/* Same number the server decides on — see totalMaterialCount. */}
+                {g.totalMaterialCount && g.totalMaterialCount > 0 ? (
                   <Archive className="h-4 w-4" />
                 ) : (
                   <Trash2 className="h-4 w-4" />
@@ -447,24 +473,20 @@ export function MaterialGroupsPage() {
         open={!!removing}
         onCancel={() => setRemoving(null)}
         title={
-          removing?.materialCount && removing.materialCount > 0
+          removing?.totalMaterialCount && removing.totalMaterialCount > 0
             ? `Archive "${removing?.name}"?`
             : `Delete "${removing?.name}"?`
         }
         // The rule the three masters already follow: a group in use is
         // archived so every material still reads correctly; one nothing
         // has ever used is a typo and is simply removed.
-        message={
-          removing?.materialCount && removing.materialCount > 0
-            ? `It holds ${removing.materialCount} material${
-                removing.materialCount === 1 ? "" : "s"
-              }, so it will be archived rather than deleted — out of the pickers, with every material still reading correctly.`
-            : "Nothing is using this group, so it will be removed outright."
-        }
+        message={describeRemoval(removing)}
         confirmLabel={
-          removing?.materialCount && removing.materialCount > 0 ? "Archive" : "Delete"
+          removing?.totalMaterialCount && removing.totalMaterialCount > 0
+            ? "Archive"
+            : "Delete"
         }
-        danger={!removing?.materialCount}
+        danger={!removing?.totalMaterialCount}
         loading={remove.isPending}
         onConfirm={() =>
           remove
