@@ -43,18 +43,32 @@ const columns: Column<RawMaterial>[] = [
   {
     key: "cat",
     header: "Category",
-    render: (m) => (
-      <StatusChip tone="neutral">
-        {m.category}
-        {/*
-          A material whose category no group carries — anything created
-          before the migration, or by a client that has not been updated.
-          Worth marking: it is invisible to a group filter and to any
-          report that subtotals by group.
-        */}
-        {!m.group && <span className="ml-1 text-ink-400">·&nbsp;ungrouped</span>}
-      </StatusChip>
-    ),
+    render: (m) => {
+      const colour =
+        m.group && typeof m.group === "object" ? m.group.colour : undefined;
+      return (
+        <StatusChip tone="neutral">
+          <span className="inline-flex items-center gap-1.5">
+            {/* The group's own colour, when Settings has one. */}
+            {colour && (
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ background: colour }}
+                aria-hidden="true"
+              />
+            )}
+            {m.category}
+            {/*
+              A material whose category no group carries — anything
+              created before the migration, or by a client that has not
+              been updated. Worth marking: it is invisible to a group
+              filter and to any report that subtotals by group.
+            */}
+            {!m.group && <span className="text-ink-400">· ungrouped</span>}
+          </span>
+        </StatusChip>
+      );
+    },
   },
   {
     key: "stock",

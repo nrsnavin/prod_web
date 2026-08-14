@@ -12,6 +12,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/components/ui/cn";
 import { ApiError } from "@/core/http/httpClient";
 import {
   useMaterialGroups,
@@ -42,6 +43,20 @@ const kindLabel: Record<MaterialGroupKind, string> = {
   material: "Material",
   other: "Other",
 };
+
+// The colours the phone has always drawn its category chips in, so a
+// mill picking one here gets something that already looks native there
+// rather than an arbitrary hex.
+const SWATCHES = [
+  "#3B82F6", // warp
+  "#8B5CF6", // weft
+  "#14B8A6", // covering
+  "#F59E0B", // rubber
+  "#EF4444", // chemicals
+  "#10B981",
+  "#EC4899",
+  "#6B7280",
+];
 
 const kindTone: Record<MaterialGroupKind, "info" | "success" | "neutral"> = {
   position: "info",
@@ -162,6 +177,47 @@ function GroupForm({
           />
         </div>
       </fieldset>
+
+      {/*
+        The chip colour, used by the material list here and by the
+        category chips on the phone. Left blank, both fall back to the
+        colours those screens have always drawn — so a group with no
+        colour chosen looks exactly as it did before, rather than
+        suddenly going grey.
+      */}
+      <div className="space-y-1.5">
+        <span className="block text-sm font-medium text-ink-600">Chip colour</span>
+        <div className="flex flex-wrap items-center gap-2">
+          {SWATCHES.map((hex) => (
+            <button
+              key={hex}
+              type="button"
+              aria-label={`Use ${hex}`}
+              aria-pressed={values.colour.toLowerCase() === hex.toLowerCase()}
+              onClick={() => set("colour", hex)}
+              className={cn(
+                "h-7 w-7 rounded-full border-2 transition-transform",
+                values.colour.toLowerCase() === hex.toLowerCase()
+                  ? "border-ink-900 scale-110"
+                  : "border-ink-200 hover:scale-105"
+              )}
+              style={{ background: hex }}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() => set("colour", "")}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs transition-colors",
+              values.colour
+                ? "border-ink-200 text-ink-500 hover:border-ink-400"
+                : "border-ink-900 font-medium text-ink-900"
+            )}
+          >
+            Default
+          </button>
+        </div>
+      </div>
 
       <Input
         label="Notes"
