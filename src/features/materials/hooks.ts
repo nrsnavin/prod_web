@@ -7,7 +7,10 @@ const LOT_KEY = "yarn-lots";
 
 export function useMaterials(params: {
   search: string;
-  category: string;
+  /** A MaterialGroup id. Preferred — see materialService.list. */
+  group?: string;
+  /** A category NAME. Still accepted for callers that have not moved. */
+  category?: string;
   lowStock: boolean;
   includeArchived?: boolean;
 }) {

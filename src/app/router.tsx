@@ -41,6 +41,7 @@ const PoDetailPage = lazyPage(() => import("@/features/suppliers/PoDetailPage"),
 const MaterialListPage = lazyPage(() => import("@/features/materials/MaterialListPage"), "MaterialListPage");
 const MaterialDetailPage = lazyPage(() => import("@/features/materials/MaterialDetailPage"), "MaterialDetailPage");
 const MaterialForecastPage = lazyPage(() => import("@/features/materials/MaterialForecastPage"), "MaterialForecastPage");
+const MaterialGroupsPage = lazyPage(() => import("@/features/materialGroups/MaterialGroupsPage"), "MaterialGroupsPage");
 const StockCountListPage = lazyPage(() => import("@/features/stockCounts/StockCountListPage"), "StockCountListPage");
 const StockCountDetailPage = lazyPage(() => import("@/features/stockCounts/StockCountDetailPage"), "StockCountDetailPage");
 const ElasticListPage = lazyPage(() => import("@/features/elastics/ElasticListPage"), "ElasticListPage");
@@ -146,7 +147,7 @@ const builtPages: Record<string, JSX.Element> = {
 };
 
 // Detail routes that live under a nav destination.
-const detailRoutes = [
+export const detailRoutes = [
   { path: "/reports/production", element: withSuspense(<ProductionReportPage />) },
   { path: "/reports/dispatch", element: withSuspense(<DispatchReportPage />) },
   { path: "/reports/order-book", element: withSuspense(<OrderBookReportPage />) },
@@ -159,6 +160,8 @@ const detailRoutes = [
   { path: "/purchase-orders/new", element: withSuspense(<PoCreatePage />) },
   { path: "/purchase-orders/:id", element: withSuspense(<PoDetailPage />) },
   { path: "/materials/forecast", element: withSuspense(<MaterialForecastPage />) },
+  // Before the :id route, or "groups" is read as a material id.
+  { path: "/materials/groups", element: withSuspense(<MaterialGroupsPage />) },
   { path: "/materials/:id", element: withSuspense(<MaterialDetailPage />) },
   { path: "/stock-counts/:id", element: withSuspense(<StockCountDetailPage />) },
   { path: "/elastics/:id", element: withSuspense(<ElasticDetailPage />) },

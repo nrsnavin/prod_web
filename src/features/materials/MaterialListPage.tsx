@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, TriangleAlert, ClipboardList, TrendingDown, IndianRupee } from "lucide-react";
+import { Plus, TriangleAlert, ClipboardList, TrendingDown, IndianRupee, Layers } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -14,7 +14,8 @@ import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useMaterials, useMaterialMutations } from "./hooks";
-import { MATERIAL_CATEGORIES, RawMaterial } from "./types";
+import { RawMaterial } from "./types";
+import { useMaterialGroups } from "../materialGroups/hooks";
 import { MaterialForm } from "./MaterialForm";
 import { ReorderSuggestions, StockTakeModal, BulkPriceUpdateModal } from "./StockOps";
 
@@ -42,7 +43,18 @@ const columns: Column<RawMaterial>[] = [
   {
     key: "cat",
     header: "Category",
-    render: (m) => <StatusChip tone="neutral">{m.category}</StatusChip>,
+    render: (m) => (
+      <StatusChip tone="neutral">
+        {m.category}
+        {/*
+          A material whose category no group carries — anything created
+          before the migration, or by a client that has not been updated.
+          Worth marking: it is invisible to a group filter and to any
+          report that subtotals by group.
+        */}
+        {!m.group && <span className="ml-1 text-ink-400">·&nbsp;ungrouped</span>}
+      </StatusChip>
+    ),
   },
   {
     key: "stock",
@@ -95,17 +107,21 @@ const columns: Column<RawMaterial>[] = [
 
 export function MaterialListPage() {
   const [search, setSearch] = useState("");
+  // Holds a MaterialGroup id, or "all". The chips used to hold the four
+  // hardcoded strings, which is why "Chemicals" — a category the phone
+  // has always offered — had no chip at all.
   const [category, setCategory] = useState("all");
   const [lowStock, setLowStock] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const groups = useMaterialGroups();
   const [stockTakeOpen, setStockTakeOpen] = useState(false);
   const [priceUpdateOpen, setPriceUpdateOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const { data, isLoading, isError, error } = useMaterials({
-    search, category, lowStock, includeArchived: showArchived,
+    search, group: category, lowStock, includeArchived: showArchived,
   });
   const { create } = useMaterialMutations();
 
@@ -125,6 +141,14 @@ export function MaterialListPage() {
         }
         actions={
           <>
+            {/*
+              Reachable from the screen it governs. A settings page with
+              no link from anywhere is a page nobody finds — /quotes
+              shipped that way and had to be rescued.
+            */}
+            <Button variant="secondary" onClick={() => navigate("/materials/groups")}>
+              <Layers className="h-4 w-4" /> Groups
+            </Button>
             <Button variant="secondary" onClick={() => navigate("/materials/forecast")}>
               <TrendingDown className="h-4 w-4" /> Reorder forecast
             </Button>
@@ -146,7 +170,10 @@ export function MaterialListPage() {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <SearchInput value={search} onChange={setSearch} placeholder="Search materials…" className="w-full max-w-sm" />
         <FilterChips
-          options={[{ value: "all", label: "All" }, ...MATERIAL_CATEGORIES.map((c) => ({ value: c, label: c }))]}
+          options={[
+            { value: "all", label: "All" },
+            ...(groups.data ?? []).map((g) => ({ value: g._id, label: g.name })),
+          ]}
           value={category}
           onChange={setCategory}
         />

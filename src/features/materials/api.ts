@@ -11,6 +11,23 @@ import {
   YarnLotStatus,
 } from "./types";
 
+/**
+ * Turn the form's group field into what the server takes.
+ *
+ * The picker holds a MaterialGroup id, except for a material whose
+ * category no group carries — those show as `name:<category>` so they
+ * can be saved without being quietly moved somewhere else. The server
+ * accepts either a `group` id or a `category` name and settles the two
+ * against each other; this just picks which one to send.
+ */
+function unpackGroup(body: MaterialFormValues) {
+  const { group, ...rest } = body;
+  if (group?.startsWith("name:")) {
+    return { ...rest, category: group.slice(5), group: undefined };
+  }
+  return { ...rest, group };
+}
+
 export const materialService = {
   replenishmentForecast(horizonDays = 14, lookbackDays = 30): Promise<ReplenishmentForecast> {
     return httpClient.get<ReplenishmentForecast>("/materials/replenishment-forecast", {
@@ -21,6 +38,7 @@ export const materialService = {
 
   async list(params: {
     search?: string;
+    group?: string;
     category?: string;
     lowStock?: boolean;
     /** Archived materials are out of the pickers unless asked for. */
@@ -28,7 +46,11 @@ export const materialService = {
   }): Promise<RawMaterial[]> {
     const query: Record<string, unknown> = {};
     if (params.search) query.search = params.search;
-    if (params.category && params.category !== "all") query.category = params.category;
+    // A chip carries a group id now; older callers still pass a name.
+    // Both are accepted by the server, and the name match is
+    // case-insensitive there so "Rubber" finds rows written "rubber".
+    if (params.group && params.group !== "all") query.group = params.group;
+    else if (params.category && params.category !== "all") query.category = params.category;
     if (params.lowStock) query.lowStock = "true";
     if (params.includeArchived) query.includeArchived = "true";
     const res = await httpClient.get<{ success: boolean; materials: RawMaterial[] }>(
@@ -49,7 +71,7 @@ export const materialService = {
   async create(body: MaterialFormValues): Promise<RawMaterial> {
     const res = await httpClient.post<{ success: boolean; material: RawMaterial }>(
       "/materials/create-raw-material",
-      body
+      unpackGroup(body)
     );
     return res.material;
   },
@@ -57,7 +79,7 @@ export const materialService = {
   async update(id: string, body: MaterialFormValues): Promise<RawMaterial> {
     const res = await httpClient.put<{ success: boolean; material: RawMaterial }>(
       "/materials/edit-raw-material",
-      { _id: id, ...body }
+      { _id: id, ...unpackGroup(body) }
     );
     return res.material;
   },

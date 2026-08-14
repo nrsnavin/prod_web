@@ -1,5 +1,15 @@
-export const MATERIAL_CATEGORIES = ["warp", "weft", "Rubber", "covering"] as const;
-export type MaterialCategory = (typeof MATERIAL_CATEGORIES)[number];
+// ── The category list used to live HERE, hardcoded ────────────────
+//
+//   export const MATERIAL_CATEGORIES = ["warp", "weft", "Rubber", "covering"]
+//
+// It was one of eight copies across three repos that did not agree: the
+// Flutter app also offered "Chemicals", and the server matched four
+// literals by exact string. So a material entered on the phone as
+// "Chemicals" could not be created here and matched no filter chip, and
+// changing the case of "Rubber" anywhere silently emptied the elastic
+// recipe picker with no error at all.
+//
+// The list now comes from the server — see features/materialGroups.
 
 export interface StockMovement {
   date: string;
@@ -71,7 +81,27 @@ export interface RemoveResult {
 export interface RawMaterial {
   _id: string;
   name: string;
+  /**
+   * The group's NAME, denormalised onto the material.
+   *
+   * Still the field every existing reader uses — the MRP sheet, the
+   * forecast, stock-count scope, the mobile chips. The server rewrites
+   * it on every member when a group is renamed, so it cannot drift from
+   * `group` below.
+   */
   category: string;
+  /**
+   * The link. Populated with name/colour/kind by the list endpoint;
+   * null on a material that predates groups or names a category no
+   * group carries.
+   */
+  group?: { _id: string; name: string; colour?: string; kind?: string } | string | null;
+  /**
+   * Unit of measure. Defaults to kg — which is what every price in this
+   * system is denominated in. The server read `m.unit || ""` for years
+   * before the field existed, so this used to always come back empty.
+   */
+  unit?: string;
   supplier?: { _id: string; name: string } | string | null;
   /** The LATEST purchase price — what a new PO defaults to. */
   price: number;
@@ -201,7 +231,16 @@ export interface LotTrace {
 
 export interface MaterialFormValues {
   name: string;
-  category: string;
+  /**
+   * A MaterialGroup id, or the sentinel `name:<category>` for a material
+   * whose category no group carries — every material until the migration
+   * runs, and any written by an older client after it. api.ts unpacks
+   * the sentinel so saving such a material leaves it where it was rather
+   * than silently reassigning it.
+   */
+  group: string;
+  category?: string;
+  unit?: string;
   supplier?: string;
   stock?: number;
   minStock?: number;
