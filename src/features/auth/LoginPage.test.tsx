@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { LoginPage } from "./LoginPage";
@@ -15,19 +15,22 @@ import { ApiError } from "@/core/http/httpClient";
 //  from nowhere. An SMTP outage locked the whole company out of their
 //  own ERP with a screen that said "check your email".
 //
-//  The fallback has to be reachable in BOTH failure modes, and they are
-//  not alike:
+//  The fallback must be reachable WITHOUT the server's cooperation.
 //
-//    • the server SAYS it cannot send (503 MAILER_NOT_CONFIGURED) — a
-//      definite answer, so take them straight there
+//  It was first built to open only in response to something: a 503
+//  saying the mailer is down, or a thirty-second timer running out on
+//  the code screen. Both of those are the system deciding to let you
+//  out, and the case that matters is the one where the system is not
+//  behaving as expected — a server that answers 200 and sends nothing,
+//  an old build, a misread. A door that opens only when the house is
+//  well is not a fire exit.
 //
-//    • the code just never turns up. The server answers 200 and says
-//      nothing, deliberately: a failure raised only for addresses that
-//      have an account would name them. Nothing can tell the screen, so
-//      the way out must be one the person reaches for.
+//  So: a plain link on the first screen, always. The two reactive paths
+//  stay, because they put someone in the right place with less work,
+//  but nothing depends on them any more.
 //
-//  And the thing it must NOT do: put a password box on the first
-//  screen. That would quietly undo the reason OTP is primary.
+//  The password FIELD is still not on the first screen — reaching it is
+//  a deliberate second step, and these tests hold that line.
 // ══════════════════════════════════════════════════════════════════
 
 const login     = vi.fn();
@@ -75,10 +78,19 @@ beforeEach(() => {
 
 // ──────────────────────────────────────────────────────────────────
 describe("the first screen", () => {
-  it("asks only for an email", async () => {
+  it("asks only for an email — the password field is a second step", async () => {
     renderPage();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^password$/i)).not.toBeInTheDocument();
+  });
+
+  it("offers the password route without being asked", async () => {
+    // The point of the whole change: this is reachable with the server
+    // saying nothing at all, and without waiting for a timer.
+    renderPage();
+    expect(
+      screen.getByRole("button", { name: /sign in with a password instead/i })
+    ).toBeInTheDocument();
   });
 
   it("goes to the code screen when a code was sent", async () => {
@@ -89,6 +101,69 @@ describe("the first screen", () => {
     await user.click(screen.getByRole("button", { name: /send code/i }));
 
     expect(await screen.findByLabelText(/6-digit code/i)).toBeInTheDocument();
+  });
+});
+
+describe("taking the password route from the first screen", () => {
+  it("reaches the password field", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "navin@balu.com");
+    await user.click(screen.getByRole("button", { name: /sign in with a password instead/i }));
+
+    expect(await screen.findByLabelText(/^password$/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue("navin@balu.com")).toBeInTheDocument();
+  });
+
+  it("never asks the server for a code on the way", async () => {
+    // It is the route for when asking is pointless or broken.
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "navin@balu.com");
+    await user.click(screen.getByRole("button", { name: /sign in with a password instead/i }));
+    await screen.findByLabelText(/^password$/i);
+
+    expect(requestOtp).not.toHaveBeenCalled();
+  });
+
+  it("still insists on a valid email first", async () => {
+    // Same validation as the primary button, so the password screen
+    // cannot be reached with an empty or malformed address.
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /sign in with a password instead/i }));
+
+    expect(await screen.findByText(/email is required/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^password$/i)).not.toBeInTheDocument();
+  });
+
+  it("signs in", async () => {
+    login.mockResolvedValue({ id: "1", username: "Navin", role: "admin" });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "navin@balu.com");
+    await user.click(screen.getByRole("button", { name: /sign in with a password instead/i }));
+    await user.type(await screen.findByLabelText(/^password$/i), "navin27");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    await waitFor(() =>
+      expect(login).toHaveBeenCalledWith({ email: "navin@balu.com", password: "navin27" })
+    );
+  });
+
+  it("offers the reset link, since mail may be working fine", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "navin@balu.com");
+    await user.click(screen.getByRole("button", { name: /sign in with a password instead/i }));
+
+    const link = await screen.findByRole("link", { name: /forgot password/i });
+    expect(link).toHaveAttribute("href", "/forgot-password");
   });
 });
 
@@ -190,16 +265,8 @@ describe("when the server says it cannot send email", () => {
 });
 
 describe("when the code simply never arrives", () => {
-  // Fake timers: the resend cooldown is a real 30-second interval, and
-  // waiting it out for each case put a minute on the suite for no extra
-  // confidence. The clock is the thing under test here, so driving it
-  // directly is also the more honest test.
   async function atTheCodeScreen() {
-    // `shouldAdvanceTime` keeps the clock ticking in real time, so
-    // testing-library's findBy* still resolves; advanceTimersByTime then
-    // jumps the 30 seconds we do not want to sit through.
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const user = userEvent.setup();
     renderPage();
     await user.type(screen.getByLabelText(/email/i), "navin@balu.com");
     await user.click(screen.getByRole("button", { name: /send code/i }));
@@ -207,28 +274,21 @@ describe("when the code simply never arrives", () => {
     return user;
   }
 
-  /** Run the cooldown out. The countdown sets state on every tick, so
-   *  the jump belongs inside act(). */
-  const waitOut = async () => {
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(31_000);
-    });
-  };
-
-  it("hides the way out while the code may still be seconds away", async () => {
-    // Offering a way around a code that has just been sent would train
-    // people past the primary sign-in for no reason.
+  it("offers the password route straight away", async () => {
+    // This was held back for thirty seconds, so that the honest answer
+    // could be "wait a moment". On a machine that never receives the
+    // code, those thirty seconds are the whole experience — and someone
+    // staring at a screen with no visible way forward is a worse
+    // outcome than an alternative offered slightly early.
     await atTheCodeScreen();
-    expect(screen.queryByRole("button", { name: /sign in with your password/i }))
-      .not.toBeInTheDocument();
-    expect(screen.getByText(/resend in/i)).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", { name: /sign in with your password/i })
+    ).toBeInTheDocument();
   });
 
-  it("offers it once waiting has plainly not worked", async () => {
+  it("reaches the password field from there", async () => {
     const user = await atTheCodeScreen();
-    await waitOut();
-
-    expect(screen.getByRole("button", { name: /resend code/i })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: /sign in with your password/i }));
 
     expect(await screen.findByLabelText(/^password$/i)).toBeInTheDocument();
@@ -240,11 +300,17 @@ describe("when the code simply never arrives", () => {
     // forgot-password is for. The page existed and nothing in the app
     // linked to it.
     const user = await atTheCodeScreen();
-    await waitOut();
     await user.click(screen.getByRole("button", { name: /sign in with your password/i }));
 
     const link = await screen.findByRole("link", { name: /forgot password/i });
     expect(link).toHaveAttribute("href", "/forgot-password");
+  });
+
+  it("still counts the resend cooldown down", async () => {
+    // The cooldown is about not hammering the mail server; it was never
+    // about hiding the fallback, and it stays.
+    await atTheCodeScreen();
+    expect(screen.getByText(/resend in/i)).toBeInTheDocument();
   });
 });
 

@@ -21,24 +21,31 @@ import { AuthLayout } from "./AuthLayout";
 //  kept mounted as an emergency fallback) and nothing linked to it, so
 //  an SMTP outage locked the whole company out of their own ERP.
 //
-//  It is reachable two ways, both of them recoveries rather than a
-//  second advertised way in:
+//  It is reachable three ways:
 //
-//    1. The server says outright that it cannot send. /request-otp
+//    1. A link on the first screen. This was left out at first, on the
+//       reasoning that an advertised password route undoes the reason
+//       OTP is primary. That reasoning was wrong in the way that
+//       matters: the two automatic paths below both depend on the
+//       server behaving in a particular way, and when it did not, the
+//       fallback was unreachable — a way out that only opens when the
+//       system is well enough to open it is not a way out. It is a
+//       text link under the primary button, not a password field: the
+//       default action is still "send me a code".
+//
+//    2. The server says outright that it cannot send. /request-otp
 //       answers 503 MAILER_NOT_CONFIGURED when the box has no SMTP
 //       settings — a definite answer, so we go straight to the password
 //       form rather than making someone read an error and guess.
 //
-//    2. The code simply never turns up. When SMTP is configured but the
-//       send fails, the server deliberately answers 200 and says
-//       nothing: a failure raised only for addresses that HAVE an
-//       account would name them. So there is no signal to react to, and
-//       the affordance has to be one the person reaches for — a quiet
-//       link on the code screen, once the resend cooldown has expired
-//       and waiting has plainly not worked.
+//    3. On the code screen, for the case where SMTP is configured but
+//       the send fails: the server deliberately answers 200 and says
+//       nothing, since a failure raised only for addresses that HAVE an
+//       account would name them. Nothing can tell this screen, so the
+//       link sits there from the moment the screen opens.
 //
-//  The password field is never on the first screen. Putting it there
-//  would undo the reason OTP is the primary sign-in.
+//  The password FIELD is still never on the first screen — reaching it
+//  is a deliberate second step.
 // ══════════════════════════════════════════════════════════════════
 
 // ── Step 1: email ───────────────────────────────────────────────────────
@@ -114,6 +121,7 @@ export function LoginPage() {
           setServerError={setServerError}
           onSent={goToCode}
           onMailerUnavailable={(forEmail) => goToPassword(forEmail, true)}
+          onUsePassword={(forEmail) => goToPassword(forEmail, false)}
           requestOtp={requestOtp}
         />
       )}
@@ -165,6 +173,7 @@ function EmailStep({
   setServerError,
   onSent,
   onMailerUnavailable,
+  onUsePassword,
   requestOtp,
 }: {
   sessionExpired: boolean;
@@ -172,6 +181,7 @@ function EmailStep({
   setServerError: (v: string | null) => void;
   onSent: (email: string) => void;
   onMailerUnavailable: (email: string) => void;
+  onUsePassword: (email: string) => void;
   requestOtp: (email: string) => Promise<{ message: string }>;
 }) {
   const {
@@ -233,6 +243,23 @@ function EmailStep({
           Send code
         </Button>
       </form>
+
+      {/*
+        Routed through the SAME validation as the primary button, so the
+        email is checked once and cannot arrive at the password screen
+        empty or malformed. handleSubmit validates and only then calls
+        through, which is why this is a submit-shaped handler rather
+        than a bare onClick reading the field.
+      */}
+      <p className="mt-5 border-t border-ink-100 pt-4 text-center text-sm text-ink-400">
+        <button
+          type="button"
+          onClick={handleSubmit((values) => onUsePassword(values.email.trim()))}
+          className="font-medium text-brand-500 hover:text-brand-600"
+        >
+          Sign in with a password instead
+        </button>
+      </p>
     </>
   );
 }
@@ -361,23 +388,24 @@ function CodeStep({
         them. So nothing can tell this screen the code is never coming,
         and the way out has to be one the person reaches for.
 
-        Held back until the resend cooldown expires: before then the
-        honest answer is "wait a moment", and offering a way around a
-        code that may be seconds away would train people past the
-        primary sign-in for no reason.
+        This was held back until the resend cooldown expired, on the
+        grounds that before then the honest answer is "wait a moment".
+        The cost of being wrong about that is someone staring at a
+        screen with no way forward, which is worse than the cost of
+        offering an alternative thirty seconds early — and on a machine
+        that never receives the code, those thirty seconds are the whole
+        experience.
       */}
-      {resendIn === 0 && (
-        <p className="mt-5 border-t border-ink-100 pt-4 text-center text-sm text-ink-400">
-          Still nothing?{" "}
-          <button
-            type="button"
-            onClick={onUsePassword}
-            className="font-medium text-brand-500 hover:text-brand-600"
-          >
-            Sign in with your password
-          </button>
-        </p>
-      )}
+      <p className="mt-5 border-t border-ink-100 pt-4 text-center text-sm text-ink-400">
+        Didn't get it?{" "}
+        <button
+          type="button"
+          onClick={onUsePassword}
+          className="font-medium text-brand-500 hover:text-brand-600"
+        >
+          Sign in with your password
+        </button>
+      </p>
     </>
   );
 }
