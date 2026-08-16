@@ -33,11 +33,23 @@ export interface PlanObjective {
   lines: number;
   placed: number;
   unplaceable: number;
+  /** Lines left out because they fall due after the horizon ends.
+   *  `lines` counts only what the horizon admits, so without this a
+   *  narrower horizon looks like work vanishing. */
+  beyondHorizon: number;
   onTime: number;
   late: number;
   totalLateDays: number;
   changeovers: number;
   machinesUsed: number;
+}
+
+/** A loom that is still finishing what is already on it. */
+export interface CommittedMachine {
+  machineId: string;
+  machineID: string;
+  committedWorkingDays: number;
+  freeFrom: string | null;
 }
 
 export interface UnplaceableLine {
@@ -54,7 +66,10 @@ export interface SuggestedPlan {
   success: boolean;
   generatedAt: string;
   horizonDays: number;
+  /** The last due date the horizon admits (YYYY-MM-DD). */
+  horizonEnd: string | null;
   objective: PlanObjective;
+  committed: CommittedMachine[];
   machines: MachinePlan[];
   unplaceable: UnplaceableLine[];
   assumptions: string[];

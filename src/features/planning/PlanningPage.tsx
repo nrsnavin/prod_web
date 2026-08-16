@@ -160,6 +160,24 @@ export function PlanningPage() {
         ))}
       </div>
 
+      {/*
+        The horizon used to be a control wired to nothing — the server
+        read it, echoed it back and planned the same lines whatever it
+        said. Now that it really does select the work, say what it
+        selected: `lines` counts only what the horizon admits, so a
+        narrower one would otherwise look like work disappearing.
+      */}
+      {data?.horizonEnd && (
+        <p className="mb-4 text-sm text-ink-400">
+          Planning order lines due on or before{" "}
+          <span className="font-medium text-ink-600">{data.horizonEnd}</span>
+          {obj && obj.beyondHorizon > 0 && (
+            <> · {obj.beyondHorizon} line{obj.beyondHorizon === 1 ? "" : "s"} due later, not planned</>
+          )}
+          . Overdue and undated lines are always included.
+        </p>
+      )}
+
       {isLoading ? (
         <Skeleton className="h-96 w-full" />
       ) : isError ? (
@@ -183,6 +201,33 @@ export function PlanningPage() {
             />
             <StatTile label="Changeovers" value={obj.changeovers} />
           </div>
+
+          {/*
+            What the looms owe before any of this starts. The plan used
+            to assume an idle plant and schedule on top of running jobs,
+            so every start day was optimistic; now it queues behind them,
+            and the reason a machine's first run does not begin today
+            should be visible rather than inferred from the start days.
+          */}
+          {data.committed?.length > 0 && (
+            <Card className="mb-4 p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400">
+                Still running
+              </h3>
+              <ul className="mt-2 space-y-1 text-sm text-ink-600">
+                {data.committed.map((c) => (
+                  <li key={c.machineId} className="flex justify-between gap-4">
+                    <span className="font-medium text-ink-900">{c.machineID}</span>
+                    <span>
+                      {c.committedWorkingDays} working day
+                      {c.committedWorkingDays === 1 ? "" : "s"} left
+                      {c.freeFrom && <> · free from {c.freeFrom}</>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           {/* Accept bar */}
           <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
