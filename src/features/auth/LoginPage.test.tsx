@@ -249,6 +249,44 @@ describe("when the server says it cannot send email", () => {
     expect(await screen.findByText(/invalid email or password/i)).toBeInTheDocument();
   });
 
+  it("shows an unknown address as an unknown address", async () => {
+    // The server used to answer an identical generic 200 whether or not
+    // the account existed, so a typed-wrong email sent the person to the
+    // code screen to wait for something that was never coming. It now
+    // says so, and the message has to reach the screen rather than be
+    // swallowed as a generic failure.
+    requestOtp.mockRejectedValue(
+      new ApiError(
+        "No account found for navni@balu.com. Check the address, or ask an administrator to create your login.",
+        404, undefined, "USER_NOT_FOUND"
+      )
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "navni@balu.com");
+    await user.click(screen.getByRole("button", { name: /send code/i }));
+
+    expect(await screen.findByText(/no account found for navni@balu.com/i)).toBeInTheDocument();
+    // And it must NOT walk on to a code screen for a code that cannot exist.
+    expect(screen.queryByLabelText(/6-digit code/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a send failure rather than a code screen", async () => {
+    requestOtp.mockRejectedValue(
+      new ApiError("Your code could not be sent — the mail server rejected it.",
+        502, undefined, "MAIL_SEND_FAILED")
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText(/email/i), "navin@balu.com");
+    await user.click(screen.getByRole("button", { name: /send code/i }));
+
+    expect(await screen.findByText(/could not be sent/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/6-digit code/i)).not.toBeInTheDocument();
+  });
+
   it("still refuses an ordinary error — that one is worth retrying", async () => {
     // Only MAILER_NOT_CONFIGURED means "this route is a dead end". A
     // network blip should not push someone onto the password path.
