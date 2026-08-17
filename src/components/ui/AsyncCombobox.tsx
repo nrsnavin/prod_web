@@ -55,13 +55,39 @@ export function AsyncCombobox({
   // even when it isn't in the current result set.
   const labelCache = useRef<Map<string, string>>(new Map());
 
-  // Fold seed options into the cache.
+  // Fold seed options into the cache too, so a label stays known after
+  // the seed itself goes away (the parent's query refetches, the group
+  // list changes). This is a convenience, NOT the source of truth —
+  // see below.
   useEffect(() => {
     for (const o of seedOptions ?? []) labelCache.current.set(o.value, o.label);
   }, [seedOptions]);
 
+  // The label is resolved from `seedOptions` and `options` DIRECTLY,
+  // with the cache only as a fallback.
+  //
+  // It used to read the cache alone, and that could not work for a value
+  // present on the first render: the effect above fills the cache AFTER
+  // that render, and writing to a ref schedules no re-render, so the
+  // memo read an empty map and nothing ever made it look again.
+  //
+  // That is exactly the shape "add from an elastic group" produces on
+  // the order form. react-hook-form's replace()/append() give the rows
+  // new keys, so React MOUNTS fresh comboboxes with the value already
+  // set — and every one of them rendered an empty box. The values were
+  // right and the form would have submitted correctly; the operator
+  // simply saw the shortcut do nothing and typed the lines in by hand.
+  // The edit-prefill path had the same fault.
+  //
+  // Both arrays are real dependencies of this memo, so a label that
+  // arrives in either direction — seed first then value, or value first
+  // then seed — is picked up on the render that follows.
   const selectedLabel = useMemo(() => {
     if (!value) return null;
+    const fromSeed = (seedOptions ?? []).find((o) => o.value === value);
+    if (fromSeed) return fromSeed.label;
+    const fromOptions = options.find((o) => o.value === value);
+    if (fromOptions) return fromOptions.label;
     return labelCache.current.get(value) ?? null;
   }, [value, options, seedOptions]);
 
