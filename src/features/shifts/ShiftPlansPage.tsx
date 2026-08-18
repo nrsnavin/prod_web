@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Sun, Moon, ArrowRight, CalendarDays } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { StaffingForecast } from "@/features/hr/StaffingForecast";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
@@ -105,6 +106,10 @@ export function ShiftPlansPage() {
           </Button>
         }
       />
+
+      {/* The other constraint on a plan. A machine with nobody on it
+          produces the same as a machine with a broken head. */}
+      <StaffingForecast />
 
       <div className="mb-4 flex gap-1 border-b border-ink-100">
         {([

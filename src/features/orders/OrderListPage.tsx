@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, FileUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,7 @@ import { useOrders, useOrderMutations } from "./hooks";
 import { ORDER_FILTERS, OrderFilter, OrderListItem } from "./types";
 import { orderStatusTone, orderStatusLabel, orderFilterLabel } from "./orderStatus";
 import { OrderForm } from "./OrderForm";
+import { PoIntakeModal } from "./PoIntakeModal";
 
 const columns: Column<OrderListItem>[] = [
   { key: "no", header: "Order #", render: (o) => <span className="font-medium">#{o.orderNo}</span> },
@@ -42,6 +43,7 @@ const columns: Column<OrderListItem>[] = [
 export function OrderListPage() {
   const [status, setStatus] = useState<OrderFilter>("All");
   const [createOpen, setCreateOpen] = useState(false);
+  const [intakeOpen, setIntakeOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -67,9 +69,16 @@ export function OrderListPage() {
               : `${total} ${scope}orders`
         }
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> New order
-          </Button>
+          <>
+            {/* Secondary on purpose: typing the order is still the
+                normal path, and reading a document is the shortcut. */}
+            <Button variant="secondary" onClick={() => setIntakeOpen(true)}>
+              <FileUp className="h-4 w-4" /> Read a customer PO
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> New order
+            </Button>
+          </>
         }
       />
 
@@ -104,6 +113,8 @@ export function OrderListPage() {
           </div>
         )}
       </Card>
+
+      {intakeOpen && <PoIntakeModal onClose={() => setIntakeOpen(false)} />}
 
       <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New order" width="max-w-2xl">
         <OrderForm

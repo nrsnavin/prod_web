@@ -426,3 +426,57 @@ export interface OrderDeliveryChallans {
     dispatched: number;
   };
 }
+
+// ══════════════════════════════════════════════════════════════════
+//  INBOUND PO INTAKE — mirrors services/inboundPoIntake.js
+//
+//  A draft read from a customer's document. Nothing is created by the
+//  endpoint that returns this; the order form is still what writes.
+// ══════════════════════════════════════════════════════════════════
+
+export interface PoMatchCandidate { id: string; name: string; score: number }
+
+export interface PoIntakeLine {
+  /** Verbatim from the document — the thing to check against. */
+  description: string;
+  quantity: number | null;
+  unit: string | null;
+  rate: number | null;
+  confidence: number;
+  match: {
+    elasticId: string | null;
+    elasticName: string | null;
+    candidates: PoMatchCandidate[];
+    /** Preselected only when strong AND clearly ahead of the runner-up. */
+    confident: boolean;
+    /** Withheld because the width disagrees — shown, never silent. */
+    blockedByWidth: Array<{ name: string; reason: string }>;
+  };
+}
+
+export interface PoIntakeResult {
+  success: boolean;
+  available?: boolean;
+  ok?: boolean;
+  message?: string;
+  aiSuggestionId?: string | null;
+  model?: string;
+  draft?: {
+    customerName: string | null;
+    poNumber: string | null;
+    poDate: string | null;
+    deliveryDate: string | null;
+    currency: string | null;
+    notes: string;
+    confidence: number;
+    lines: PoIntakeLine[];
+    customer: {
+      customerId: string | null;
+      customerName: string | null;
+      candidates: PoMatchCandidate[];
+      confident: boolean;
+    };
+  };
+  summary: { lines: number; matched: number; needsAttention: number; customerMatched: boolean };
+  disclaimer: string;
+}
