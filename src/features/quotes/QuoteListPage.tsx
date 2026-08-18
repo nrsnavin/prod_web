@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { WinLossPanel } from "./WinLossPanel";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -104,6 +105,13 @@ export function QuoteListPage() {
           </Link>
         }
       />
+
+      {/* What the quotes below already know about the pricing. Read-only,
+          and above the list on purpose: it is context for the next quote,
+          not a property of any row in this one. */}
+      <div className="mb-4">
+        <WinLossPanel />
+      </div>
 
       <Card className="mb-4 flex flex-wrap items-center gap-3 p-4">
         <SearchInput

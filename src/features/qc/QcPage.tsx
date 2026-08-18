@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useQcJobs, useQcRecent, useQcMutations, useTrainingReadiness } from "./hooks";
 import { qcService } from "./api";
+import { RootCausePanel } from "./RootCausePanel";
 import { QcElasticRef, QcJob, QcResultRow } from "./types";
 
 function elasticOf(l: QcJob["elastics"][number]): QcElasticRef | null {
@@ -376,6 +377,8 @@ export function QcPage() {
           </Button>
         }
       />
+
+      <RootCausePanel />
 
       <DefectModelCard />
 

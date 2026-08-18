@@ -1,5 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
-import { Quote, QuoteStatus, QuoteWriteBody } from "./types";
+import { Quote, QuoteStatus, QuoteWriteBody, QuoteWinLoss, QuoteWinLossForQuote } from "./types";
 
 export const quoteService = {
   async list(params: { page?: number; limit?: number; status?: QuoteStatus | "all"; search?: string }) {
@@ -29,6 +29,21 @@ export const quoteService = {
       ...body,
     });
     return res.quote;
+  },
+
+
+  // ── Win/loss, read-only ──────────────────────────────────────────
+  //
+  // Mirrors GET /quote/win-loss. Nothing here writes, and nothing on
+  // the pricing form reads it to fill a figure in: it reports what
+  // happened to prices already named, and the person still names the
+  // next one.
+  winLoss(params: { days?: number; customerId?: string; productName?: string } = {}) {
+    return httpClient.get<QuoteWinLoss>("/quote/win-loss", params as Record<string, unknown>);
+  },
+
+  winLossForQuote(id: string) {
+    return httpClient.get<QuoteWinLossForQuote>("/quote/win-loss/for-quote", { id });
   },
 
   setStatus: (id: string, status: QuoteStatus) =>

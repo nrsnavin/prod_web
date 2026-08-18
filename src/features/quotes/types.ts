@@ -90,3 +90,59 @@ export interface QuoteWriteBody {
   lines: QuoteWriteLine[];
   gstPercent: number;
 }
+
+// ══════════════════════════════════════════════════════════════════
+//  WIN / LOSS — mirrors services/quoteWinLoss.js
+//
+//  Read-only history. Every rate on it counts only quotes the customer
+//  actually ANSWERED, and the estimator that produced it is always
+//  named — a percentage with no sample size beside it is how somebody
+//  talks themselves into a bad price.
+// ══════════════════════════════════════════════════════════════════
+
+export interface WinLossBand {
+  band: string;
+  minMarginPct: number | null;
+  maxMarginPct: number | null;
+  quotes: number;
+  wins: number;
+  /** Null when the band is empty — not zero, which would read as "never won". */
+  winRatePct: number | null;
+  /** Too few quotes to mean anything on its own. */
+  thin: boolean;
+}
+
+export interface WinLossPoint {
+  marginPct: number;
+  winProbabilityPct: number;
+  /** Win probability x margin. The cheapest price wins most and earns least. */
+  expectedMarginPoints: number;
+}
+
+export interface QuoteWinLoss {
+  success: boolean;
+  quotes: number;
+  wins: number;
+  losses: number;
+  /** Declined and expired apart: a decline is a no, an expiry may be a quote nobody chased. */
+  lossBreakdown: { declined: number; expired: number };
+  baselineWinRatePct: number | null;
+  windowFrom: string | null;
+  filters: { customerId: string | null; productName: string | null };
+  /** Which estimator answered. "empirical" means observed history, not a prediction. */
+  estimator: "none" | "empirical" | "logistic";
+  bands: WinLossBand[];
+  curve: WinLossPoint[];
+  bestExpectedMarginPct?: number;
+  note?: string;
+}
+
+export interface QuoteWinLossForQuote {
+  success: boolean;
+  quoteNo: string;
+  customerName: string;
+  marginPct: number | null;
+  atThisPrice: WinLossPoint | null;
+  overall: QuoteWinLoss;
+  customer: QuoteWinLoss | null;
+}
