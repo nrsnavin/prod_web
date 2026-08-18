@@ -1,4 +1,5 @@
 import {
+  BrainCircuit,
   LayoutDashboard,
   TrendingUp,
   FileBarChart,
@@ -183,6 +184,10 @@ export const navSections: NavSection[] = [
     items: [
       { label: "Users", path: "/users", icon: UserRound, departments: ["admin"] },
       { label: "Data Import/Export", path: "/data-io", icon: Database, departments: ["admin"] },
+      // Admin-only to match the backend gate on GET /health/ai — the
+      // report names the models, the prompt versions and the token
+      // spend, which is operator detail rather than floor information.
+      { label: "AI Health", path: "/ai-health", icon: BrainCircuit, departments: ["admin"] },
       // Settings is all-access: everyone can rearrange their own sidebar;
       // the document/branding tab inside is admin-gated by the backend.
       { label: "Settings", path: "/settings", icon: SlidersHorizontal },

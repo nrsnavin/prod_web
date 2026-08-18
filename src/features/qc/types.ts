@@ -38,6 +38,13 @@ export interface QcVisionResponse {
   draft?: QcVisionDraft;
   image?: string;
   spec?: { name: string; parameters: Array<{ parameter: string; expected: string }> };
+  /**
+   * Id of the AI-ledger row for this draft. Sent back on save so the
+   * server can compare what vision proposed with what the inspector
+   * settled on. Null when the ledger write failed — the check still
+   * saves, we just learn nothing from this one.
+   */
+  aiSuggestionId?: string | null;
 }
 
 export interface QcCreateBody {
@@ -50,6 +57,7 @@ export interface QcCreateBody {
   notes?: string;
   image?: string;
   aiAssisted?: boolean;
+  aiSuggestionId?: string | null;
 }
 
 export interface QcRecentRecord {

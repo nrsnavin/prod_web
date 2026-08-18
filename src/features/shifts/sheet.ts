@@ -35,6 +35,14 @@ export interface IngestResult {
   model: string;
   pages: number;
   batches: number;
+  /**
+   * Id of the AI-ledger row for this reading. Carried back on apply so
+   * the server can record what the operator actually saved against what
+   * the OCR proposed — the only measurement of this feature's accuracy
+   * that exists. Null when the ledger write failed; the sheet still
+   * works, we simply learn nothing from this one.
+   */
+  aiSuggestionId: string | null;
   summary: { planRows: number; matched: number; unmatched: number; missing: number; lowConfidence: number };
   matched: IngestMatchedRow[];
   unmatched: IngestUnmatchedRow[];
@@ -69,7 +77,10 @@ export const sheetService = {
   },
 
   // Stage reviewed values into pending-verification via the existing route.
-  async applyBulk(entries: BulkEntry[]): Promise<{ success: boolean; saved: number; skipped: number }> {
-    return httpClient.post("/shift/bulk-enter-production", { entries });
+  async applyBulk(
+    entries: BulkEntry[],
+    aiSuggestionId?: string | null,
+  ): Promise<{ success: boolean; saved: number; skipped: number }> {
+    return httpClient.post("/shift/bulk-enter-production", { entries, aiSuggestionId });
   },
 };
