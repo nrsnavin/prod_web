@@ -157,7 +157,22 @@ export const navSections: NavSection[] = [
       // A count is a statement about raw material stock, so it sits
       // beside it rather than under Reports — the people who run one
       // are already on this screen.
-      { label: "Stock Counts", path: "/stock-counts", icon: ClipboardCheck, departments: ["admin", "finance"] },
+      //
+      // Like Material Groups, it borrows /materials rather than minting
+      // a key: the server gates /api/v2/stock-counts on
+      // requireFeature('/materials') and has never registered
+      // '/stock-counts' in utils/features.js. Declaring it as its own
+      // key made it unreachable in a way that reported success —
+      // sanitizeFeatures() drops unknown keys, so ticking the box on the
+      // Users screen saved nothing and the item stayed hidden with no
+      // error to explain it.
+      {
+        label: "Stock Counts",
+        path: "/stock-counts",
+        icon: ClipboardCheck,
+        departments: ["admin", "finance"],
+        featureKey: "/materials",
+      },
       { label: "Elastic Products", path: "/elastics", icon: Cable, departments: ["admin", "finance"] },
       { label: "Elastic Groups", path: "/elastic-groups", icon: Layers, departments: ["admin"] },
       { label: "Machines", path: "/machines", icon: Cog, departments: ["admin", "production"] },

@@ -6,6 +6,7 @@ import {
   featuresForDepartment,
   FEATURE_GROUPS,
   ALL_FEATURE_KEYS,
+  featureKeyOf,
 } from "./navigation";
 
 const item = (path: string) => allNavItems.find((i) => i.path === path)!;
@@ -152,5 +153,56 @@ describe("Complaints is reachable by the departments that can act on it", () => 
     // different audiences, and an identical sidebar icon is how somebody
     // files one as the other.
     expect(item("/complaints").icon).not.toBe(item("/feedback").icon);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  KEYS THE SERVER HAS NEVER HEARD OF
+//
+//  The mirror image of the permission trap, and it went the other way
+//  for Stock Counts.
+//
+//  A nav item's path is normally its feature key. But the server gates
+//  /api/v2/stock-counts on requireFeature('/materials') — it borrows the
+//  materials key deliberately, and never registers '/stock-counts' in
+//  utils/features.js at all. The web minted it as a key of its own
+//  anyway.
+//
+//  The consequence is worse than an invisible page, because it is
+//  silent in both directions: sanitizeFeatures() drops every key not in
+//  the backend catalog, so an admin ticking "Stock Counts" on the Users
+//  screen gets a successful save that stored nothing, and the item stays
+//  hidden for ever. No error, no warning, and the tickbox goes back to
+//  unticked the next time the screen loads.
+//
+//  Material Groups already had this right and its comment says exactly
+//  why. These tests hold both to it.
+// ══════════════════════════════════════════════════════════════════
+describe("nav items whose server route borrows another feature's key", () => {
+  it("Stock Counts borrows /materials, which is what the server gates it on", () => {
+    expect(featureKeyOf(item("/stock-counts"))).toBe("/materials");
+  });
+
+  it("Material Groups borrows /materials too", () => {
+    expect(featureKeyOf(item("/materials/groups"))).toBe("/materials");
+  });
+
+  it("neither mints a key of its own, so neither can be silently dropped on save", () => {
+    // sanitizeFeatures() on the backend keeps only keys it knows. A key
+    // in this list that the server has never registered cannot be
+    // stored, so the tickbox for it is a no-op.
+    expect(ALL_FEATURE_KEYS).not.toContain("/stock-counts");
+    expect(ALL_FEATURE_KEYS).not.toContain("/materials/groups");
+  });
+
+  it("someone holding /materials can open Stock Counts", () => {
+    const user = { role: "accounts", department: "finance", features: ["/", "/materials"] };
+    expect(canAccessPath("/stock-counts", user)).toBe(true);
+    expect(canAccess(item("/stock-counts"), user)).toBe(true);
+  });
+
+  it("someone without /materials cannot", () => {
+    const user = { role: "accounts", department: "finance", features: ["/", "/orders"] };
+    expect(canAccessPath("/stock-counts", user)).toBe(false);
   });
 });
