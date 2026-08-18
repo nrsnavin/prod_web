@@ -85,6 +85,7 @@ const AdvisorPage = lazyPage(() => import("@/features/comms/AdvisorPage"), "Advi
 const AssistantPage = lazyPage(() => import("@/features/assistant/AssistantPage"), "AssistantPage");
 const DataIoPage = lazyPage(() => import("@/features/comms/DataIoPage"), "DataIoPage");
 const SettingsPage = lazyPage(() => import("@/features/settings/SettingsPage"), "SettingsPage");
+const AiHealthPage = lazyPage(() => import("@/features/aiHealth/AiHealthPage"), "AiHealthPage");
 const ProfilePage = lazyPage(() => import("@/features/profile/ProfilePage"), "ProfilePage");
 
 function PageFallback() {
@@ -143,6 +144,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/assistant": withSuspense(<AssistantPage />),
   "/data-io": withSuspense(<DataIoPage />),
   "/users": withSuspense(<UsersPage />),
+  "/ai-health": withSuspense(<AiHealthPage />),
   "/settings": withSuspense(<SettingsPage />),
 };
 
