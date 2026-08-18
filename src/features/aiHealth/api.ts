@@ -78,4 +78,18 @@ export const SURFACE_LABELS: Record<string, { label: string; blurb: string }> = 
     label: "Ask Jarvis",
     blurb: "Answers questions over read-only queries. One row per question, not per model call.",
   },
+  "defect-root-cause": {
+    label: "Defect root cause",
+    blurb: "Writes the sentence over a completed attribution. Every figure it is given was computed first.",
+  },
+  "inbound-po-ocr": {
+    label: "Customer PO intake",
+    blurb: "Reads a customer's purchase order. The only surface reading a document nobody here designed.",
+  },
+  "complaint-themes": {
+    label: "Complaint themes",
+    blurb:
+      "Groups complaint prose into recurring themes. Never settled by a human, so it shows no accept rate — " +
+      "it is here for cost, latency and failures.",
+  },
 };

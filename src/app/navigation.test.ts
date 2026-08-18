@@ -111,3 +111,46 @@ describe("AI Health is reachable by admins", () => {
     expect(canAccessPath("/ai-health", user)).toBe(true);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════
+//  COMPLAINTS IS REACHABLE BY THE PEOPLE WHO CAN ACT ON IT
+//
+//  Fourth time through the permission trap, and the first one that is
+//  not admin-only — which is the point of this block. The blast-radius
+//  report has two halves: the customers to telephone, and the jobs
+//  still on the floor carrying the same lot. Only production can act on
+//  the second, so shipping this admin-only would have delivered the
+//  bad news to people who cannot do anything about it.
+//
+//  The backfill for accounts that already exist is
+//  migrations/20260818000003, tested in the backend repo.
+// ══════════════════════════════════════════════════════════════════
+describe("Complaints is reachable by the departments that can act on it", () => {
+  it("is in the admin, production and packing defaults", () => {
+    for (const dept of ["admin", "production", "packing"]) {
+      expect(featuresForDepartment(dept)).toContain("/complaints");
+    }
+  });
+
+  it("appears on the Users screen, so an existing account can be granted it by hand", () => {
+    expect(ALL_FEATURE_KEYS).toContain("/complaints");
+  });
+
+  it("a production account holding the key can open the page", () => {
+    const user = { role: "production", department: "production", features: ["/", "/complaints"] };
+    expect(canAccess(item("/complaints"), user)).toBe(true);
+    expect(canAccessPath("/complaints", user)).toBe(true);
+  });
+
+  it("an account without the key cannot", () => {
+    const user = { role: "production", department: "production", features: ["/", "/warping"] };
+    expect(canAccessPath("/complaints", user)).toBe(false);
+  });
+
+  it("does not reuse the Feedback icon — the two are easy to confuse", () => {
+    // Worker feedback and customer complaints are different screens with
+    // different audiences, and an identical sidebar icon is how somebody
+    // files one as the other.
+    expect(item("/complaints").icon).not.toBe(item("/feedback").icon);
+  });
+});

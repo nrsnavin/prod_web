@@ -29,6 +29,7 @@ import {
   CalendarOff,
   Megaphone,
   MessageSquareWarning,
+  PackageX,
   Wrench,
   BellRing,
   Sparkles,
@@ -124,6 +125,10 @@ export const navSections: NavSection[] = [
       { label: "Covering", path: "/covering", icon: Disc3, departments: ["admin", "production"] },
       { label: "Packing", path: "/packing", icon: Package, departments: ["admin", "packing"] },
       { label: "Quality Control", path: "/qc", icon: ScanLine, departments: ["admin", "packing"] },
+      // Production is in the list because the containment half of the
+      // blast-radius report — jobs still on the floor carrying the same
+      // lot — is only actionable by the people who can stop them.
+      { label: "Complaints", path: "/complaints", icon: PackageX, departments: ["admin", "packing", "production"] },
       { label: "Shift Plans", path: "/shift-plans", icon: CalendarClock, departments: ["admin", "production"] },
       { label: "Shift Verification", path: "/shift-verification", icon: ShieldCheck, departments: ["admin", "production"] },
       { label: "Production View", path: "/production", icon: Factory, departments: ["admin", "production"] },

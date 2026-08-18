@@ -14,13 +14,19 @@ import {
 } from "./types";
 
 export const jobService = {
-  async list(params: { page: number; limit?: number; status: JobStatus | "all"; search?: string }) {
+  async list(params: {
+    page: number; limit?: number; status: JobStatus | "all";
+    search?: string; customer?: string;
+  }) {
     const query: Record<string, unknown> = {
       page: params.page,
       limit: params.limit ?? 20,
     };
     if (params.status !== "all") query.status = params.status;
     if (params.search) query.search = params.search;
+    // Server-side, because `search` matches only a job number and the
+    // page cap would otherwise hide a customer's older jobs entirely.
+    if (params.customer) query.customer = params.customer;
     const res = await httpClient.get<{
       success: boolean;
       jobs: JobListItem[];

@@ -67,6 +67,7 @@ const PackingPage = lazyPage(() => import("@/features/packing/PackingPage"), "Pa
 const PlanningPage = lazyPage(() => import("@/features/planning/PlanningPage"), "PlanningPage");
 const AuditPage = lazyPage(() => import("@/features/audit/AuditPage"), "AuditPage");
 const QcPage = lazyPage(() => import("@/features/qc/QcPage"), "QcPage");
+const ComplaintsPage = lazyPage(() => import("@/features/complaints/ComplaintsPage"), "ComplaintsPage");
 const ShiftPlansPage = lazyPage(() => import("@/features/shifts/ShiftPlansPage"), "ShiftPlansPage");
 const ShiftPlanDetailPage = lazyPage(() => import("@/features/shifts/ShiftPlanDetailPage"), "ShiftPlanDetailPage");
 const ShiftVerificationPage = lazyPage(() => import("@/features/shifts/ShiftVerificationPage"), "ShiftVerificationPage");
@@ -126,6 +127,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/covering": withSuspense(<CoveringListPage />),
   "/packing": withSuspense(<PackingPage />),
   "/qc": withSuspense(<QcPage />),
+  "/complaints": withSuspense(<ComplaintsPage />),
   "/planner": withSuspense(<PlanningPage />),
   "/audit": withSuspense(<AuditPage />),
   "/shift-plans": withSuspense(<ShiftPlansPage />),
