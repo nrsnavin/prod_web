@@ -3,6 +3,9 @@
 export type RateSource = "posterior" | "plant" | "coldstart";
 
 export interface PlanRow {
+  /** The optimiser's key for this line. Needed to move a row to another
+   *  machine and to match an edited plan back against the proposal. */
+  lineId: string;
   orderId: string;
   orderNo: number;
   customer: string;
@@ -75,6 +78,63 @@ export interface SuggestedPlan {
   assumptions: string[];
   aiRationale: string | null;
   aiGenerated: boolean;
+  aiSuggestionId?: string | null;
+  /** The objective this plan was scored under, and whether it is the
+   *  learned one yet. */
+  weights: PlannerWeights;
+  /** The three terms the objective is built from, for this plan. */
+  objectiveTerms: ObjectiveTerms;
+}
+
+export interface ObjectiveTerms {
+  late: number;
+  changeover: number;
+  balance: number;
+}
+
+export interface PlannerWeights extends ObjectiveTerms {
+  /** False while the planner is still on the defaults. "Learned" and
+   *  "has not seen enough corrections yet" are different claims. */
+  learned: boolean;
+  observations: number;
+  needed: number;
+}
+
+export interface WeightUpdate {
+  at: string;
+  actor: string;
+  lines: number;
+  proposed: ObjectiveTerms;
+  accepted: ObjectiveTerms;
+  weights: ObjectiveTerms;
+  note: string;
+}
+
+export interface WeightsReport {
+  /** What the optimiser is actually running on. */
+  active: ObjectiveTerms;
+  learned: boolean;
+  /** What has been learned so far — differs from `active` during warm-up. */
+  stored: ObjectiveTerms;
+  defaults: ObjectiveTerms;
+  bounds: { changeover: { min: number; max: number }; balance: { min: number; max: number } };
+  observations: number;
+  needed: number;
+  learningRate: number;
+  lastResetAt: string | null;
+  lastResetBy: string;
+  history: WeightUpdate[];
+}
+
+/** What POST /planner/accept took from the acceptance. */
+export interface LearningResult {
+  updated: boolean;
+  reason?: string;
+  note?: string;
+  observations?: number;
+  inUse?: boolean;
+  before?: ObjectiveTerms;
+  after?: ObjectiveTerms;
 }
 
 export interface AcceptedPlan {
@@ -84,8 +144,13 @@ export interface AcceptedPlan {
   acceptedAt: string;
   acceptedBy: string;
   objective: PlanObjective;
+  edited: boolean;
+  proposedTerms?: ObjectiveTerms;
+  objectiveTerms?: ObjectiveTerms;
   assignments: Array<{
     machineID: string;
+    startWorkingDay: number;
+    heads: number;
     elasticName: string;
     orderNo: number;
     customer: string;
