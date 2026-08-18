@@ -29,6 +29,7 @@ import {
   CalendarOff,
   Megaphone,
   MessageSquareWarning,
+  PackageX,
   Wrench,
   BellRing,
   Sparkles,
@@ -124,6 +125,10 @@ export const navSections: NavSection[] = [
       { label: "Covering", path: "/covering", icon: Disc3, departments: ["admin", "production"] },
       { label: "Packing", path: "/packing", icon: Package, departments: ["admin", "packing"] },
       { label: "Quality Control", path: "/qc", icon: ScanLine, departments: ["admin", "packing"] },
+      // Production is in the list because the containment half of the
+      // blast-radius report — jobs still on the floor carrying the same
+      // lot — is only actionable by the people who can stop them.
+      { label: "Complaints", path: "/complaints", icon: PackageX, departments: ["admin", "packing", "production"] },
       { label: "Shift Plans", path: "/shift-plans", icon: CalendarClock, departments: ["admin", "production"] },
       { label: "Shift Verification", path: "/shift-verification", icon: ShieldCheck, departments: ["admin", "production"] },
       { label: "Production View", path: "/production", icon: Factory, departments: ["admin", "production"] },
@@ -152,7 +157,22 @@ export const navSections: NavSection[] = [
       // A count is a statement about raw material stock, so it sits
       // beside it rather than under Reports — the people who run one
       // are already on this screen.
-      { label: "Stock Counts", path: "/stock-counts", icon: ClipboardCheck, departments: ["admin", "finance"] },
+      //
+      // Like Material Groups, it borrows /materials rather than minting
+      // a key: the server gates /api/v2/stock-counts on
+      // requireFeature('/materials') and has never registered
+      // '/stock-counts' in utils/features.js. Declaring it as its own
+      // key made it unreachable in a way that reported success —
+      // sanitizeFeatures() drops unknown keys, so ticking the box on the
+      // Users screen saved nothing and the item stayed hidden with no
+      // error to explain it.
+      {
+        label: "Stock Counts",
+        path: "/stock-counts",
+        icon: ClipboardCheck,
+        departments: ["admin", "finance"],
+        featureKey: "/materials",
+      },
       { label: "Elastic Products", path: "/elastics", icon: Cable, departments: ["admin", "finance"] },
       { label: "Elastic Groups", path: "/elastic-groups", icon: Layers, departments: ["admin"] },
       { label: "Machines", path: "/machines", icon: Cog, departments: ["admin", "production"] },
