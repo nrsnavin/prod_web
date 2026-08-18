@@ -15,6 +15,11 @@ vi.mock("./hooks", () => ({
   useShiftMutations: () => ({ createPlan: { mutate: vi.fn(), isPending: false } }),
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
+// The staffing forecast panel fetches on its own and is tested in
+// StaffingForecast.test.tsx. Stubbed here so these tests stay about the
+// tabs and the date picker, and so the page can keep being rendered
+// without a QueryClient — same convention as ServiceLogMaintenance.
+vi.mock("@/features/hr/StaffingForecast", () => ({ StaffingForecast: () => null }));
 
 // Shaped like the real /shift/today response: the server returns the
 // lean ShiftPlan document, so `_id` is present alongside the explicit

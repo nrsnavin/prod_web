@@ -1,6 +1,7 @@
 import { httpClient } from "@/core/http/httpClient";
 import { config } from "@/app/config";
 import {
+  PoIntakeResult,
   OrderDeliveryChallans,
   OrderDetail,
   OrderEtaEstimate,
@@ -14,6 +15,14 @@ import {
 } from "./types";
 
 export const orderService = {
+  // Read-only staging. The server creates nothing; this returns a draft
+  // with match candidates for a person to check and carry into the form.
+  intakePo(file: File): Promise<PoIntakeResult> {
+    const form = new FormData();
+    form.append("file", file);
+    return httpClient.post<PoIntakeResult>("/order/intake-po", form);
+  },
+
   // Paged. The endpoint used to return every order ever placed; it now caps
   // each response, so the caller has to walk the pages to be complete.
   async list(

@@ -29,7 +29,39 @@ export interface AttendanceDay {
   breakdown: Record<string, number>;
 }
 
+// ── Staffing forecast — mirrors GET /attendance/forecast ─────────
+//
+//  Expected heads per (weekday, shift) from the register's own base
+//  rates. Carries NO NAMES by construction — see
+//  services/attendanceForecast.js for why that is a design rule.
+export interface ForecastSlot {
+  dayOfWeek: number;
+  day: string;
+  shift: "DAY" | "NIGHT";
+  peopleRostered: number;
+  expectedHeads: number;
+  expectedAttendancePct: number | null;
+  /** Rounded DOWN — a plan needs the people it can count on. */
+  planningHeads: number;
+  confidentPeople: number;
+  thin: boolean;
+}
+
+export interface StaffingForecast {
+  success: boolean;
+  windowDays: number;
+  roster: number;
+  plantAttendancePct: number | null;
+  slots: ForecastSlot[];
+  weakestSlot?: { day: string; shift: string; expectedAttendancePct: number } | null;
+  method: string;
+  note: string | null;
+}
+
 export const attendanceService = {
+  staffingForecast: (days?: number) =>
+    httpClient.get<StaffingForecast>("/attendance/forecast", days ? { days } : {}),
+
   async byDate(date: string, shift: string): Promise<AttendanceDay> {
     const res = await httpClient.get<{ success: boolean; data: AttendanceDay }>(
       "/attendance/date",
