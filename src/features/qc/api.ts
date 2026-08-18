@@ -1,5 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
-import { QcCreateBody, QcJob, QcRecentRecord, QcVisionResponse } from "./types";
+import { QcCreateBody, QcJob, QcRecentRecord, QcVisionResponse, RootCause } from "./types";
 
 export const qcService = {
   async jobsForQc(): Promise<QcJob[]> {
@@ -21,6 +21,12 @@ export const qcService = {
 
   create(body: QcCreateBody): Promise<{ success: boolean; jobOrderNo: number }> {
     return httpClient.post("/qc/create", body);
+  },
+
+  // Read-only. Narrative is opt-in so the page does not spend a model
+  // call on every refresh of a report whose numbers are the product.
+  rootCause(days = 90, narrative = true): Promise<RootCause> {
+    return httpClient.get<RootCause>("/qc/root-cause", { days, ...(narrative ? { narrative: 1 } : {}) });
   },
 
   trainingReadiness(): Promise<TrainingReadiness> {

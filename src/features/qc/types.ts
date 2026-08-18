@@ -72,3 +72,60 @@ export interface QcRecentRecord {
   checkedBy?: { name?: string } | null;
   job?: { jobOrderNo?: number; customer?: { name?: string } | null } | null;
 }
+
+// ══════════════════════════════════════════════════════════════════
+//  DEFECT ROOT CAUSE — mirrors services/defectRootCause.js
+//
+//  A group-by and a chi-square over the lot trail. Every figure is
+//  reproducible by hand from four collections; Claude writes only the
+//  narrative and computes nothing.
+// ══════════════════════════════════════════════════════════════════
+
+export interface RootCauseRow {
+  factor: "lot" | "machine" | "operator" | "shift";
+  noun: string;
+  key: string;
+  label: string;
+  checks: number;
+  fails: number;
+  failRatePct: number;
+  restFailRatePct: number;
+  /** Ratio to everyone else. Null when nothing else ever failed. */
+  lift: number | null;
+  chi2: number;
+  p: number;
+}
+
+export interface RootCauseFinding extends RootCauseRow {
+  significant: boolean;
+  headline: string;
+}
+
+export interface RootCauseConfounder {
+  a: { factor: string; label: string };
+  b: { factor: string; label: string };
+  sharedChecks: number;
+  overlapPct: number;
+  note: string;
+}
+
+export interface RootCause {
+  success: boolean;
+  windowDays: number;
+  since: string;
+  totals: {
+    checks: number;
+    fails: number;
+    failRatePct: number | null;
+    rejectedMeters: number;
+  };
+  factors: Partial<Record<"lot" | "machine" | "operator" | "shift", RootCauseRow[]>>;
+  /** Only what survived the multiple-comparison correction. */
+  findings: RootCauseFinding[];
+  /** Pairs the data cannot separate. Both are shown; neither is blamed. */
+  confounders: RootCauseConfounder[];
+  method?: { minSamples: number; test: string; correction: string };
+  note?: string | null;
+  narrative?: string | null;
+  aiGenerated?: boolean;
+}
