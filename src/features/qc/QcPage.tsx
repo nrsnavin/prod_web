@@ -49,6 +49,11 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
   const [imageUrl, setImageUrl] = useState<string>("");
   const [confidence, setConfidence] = useState<number | null>(null);
   const [aiAssisted, setAiAssisted] = useState(false);
+  // Ledger row for the vision draft currently on screen. Sent back on
+  // save so the server records what the inspector changed — every
+  // correction here is a labelled example the model can be measured
+  // against, and before this it was discarded the moment it was typed.
+  const [aiSuggestionId, setAiSuggestionId] = useState<string | null>(null);
   const [results, setResults] = useState<QcResultRow[]>([]);
   const [defectCode, setDefectCode] = useState("");
   const [rejectedMeters, setRejectedMeters] = useState("0");
@@ -66,6 +71,7 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
     const el = (job?.elastics ?? []).map(elasticOf).find((e) => e?._id === id) ?? null;
     setResults(specRows(el));
     setConfidence(null); setAiAssisted(false); setDefectCode(""); setNotes("");
+    setAiSuggestionId(null);   // a new elastic is a new draft
   };
 
   const onFile = (f: File | null) => {
@@ -92,6 +98,7 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
           setNotes(d.notes);
           setConfidence(d.confidence);
           setAiAssisted(true);
+          setAiSuggestionId(res.aiSuggestionId ?? null);
           if (res.image) setImageUrl(res.image);
           toast("AI draft ready — review and adjust", "success");
         },
@@ -113,7 +120,7 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
         jobId, elasticId, results,
         defectCode: overall === "fail" ? defectCode : "",
         rejectedMeters: Number(rejectedMeters) || 0,
-        notes, image: imageUrl, aiAssisted,
+        notes, image: imageUrl, aiAssisted, aiSuggestionId,
       },
       {
         onSuccess: () => { toast("QC check saved", "success"); onClose(); },

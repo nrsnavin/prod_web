@@ -82,7 +82,10 @@ export function SheetUploadModal({
     }
     setApplying(true);
     try {
-      const res = await sheetService.applyBulk(entries);
+      // The reading and the correction belong together — without the id
+      // the server sees a batch of figures with no idea what the OCR had
+      // proposed, and the accuracy of this feature stays unmeasurable.
+      const res = await sheetService.applyBulk(entries, result?.aiSuggestionId);
       toast(`${res.saved} shift${res.saved === 1 ? "" : "s"} sent for verification`, "success");
       onApplied();
       close();
