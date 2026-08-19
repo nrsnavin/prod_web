@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/core/http/httpClient";
 import { machineService } from "./api";
 import {
   Machine,
@@ -67,9 +68,41 @@ export function useProductionSeries(machineId: string | undefined, days = 365) {
   });
 }
 
+// ══════════════════════════════════════════════════════════════════
+//  A 404 ON A WRITE MEANS THE PAGE IS SHOWING SOMETHING THAT IS GONE
+//
+//  This app does not refetch on window focus (App.tsx), which is the
+//  right call for a screen somebody leaves open on a shop floor all
+//  day — but it means a tab can go on rendering a machine long after
+//  the record has left the database, and every button on it still
+//  works as far as the browser is concerned.
+//
+//  That is not hypothetical. Attaching a bill returned "no machine has
+//  id …" from a page that was, at that moment, displaying the machine,
+//  its service history and an Attach bill button. The page had loaded
+//  correctly; the record was removed underneath it afterwards.
+//
+//  So a 404 from a WRITE is treated as news about the world rather
+//  than as a rejected request: drop the cache and re-read. The detail
+//  query then fails too, and the page shows "Machine not found"
+//  instead of a machine that is not there. The user learns what
+//  actually happened rather than being told to try again.
+//
+//  Only 404. A 400 or a 409 means the record is fine and the request
+//  was wrong, and refetching on those buys nothing.
+// ══════════════════════════════════════════════════════════════════
+export function isGone(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 404;
+}
+
 export function useMachineMutations() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: [KEY] });
+
+  /** Re-read when the server says the record no longer exists. */
+  const refetchIfGone = (error: unknown) => {
+    if (isGone(error)) invalidate();
+  };
 
   const create = useMutation({
     mutationFn: (body: MachineFormValues) => machineService.create(body),
@@ -116,6 +149,7 @@ export function useMachineMutations() {
     mutationFn: ({ machineId, body }: { machineId: string; body: ServiceLogFormValues }) =>
       machineService.addServiceLog(machineId, body),
     onSuccess: invalidate,
+    onError: refetchIfGone,
   });
   const updateElasticMap = useMutation({
     mutationFn: ({ id, elastics, confirmHooks }: {
@@ -125,11 +159,13 @@ export function useMachineMutations() {
       confirmHooks?: boolean;
     }) => machineService.updateElasticMap(id, elastics, confirmHooks),
     onSuccess: invalidate,
+    onError: refetchIfGone,
   });
   const updateHeads = useMutation({
     mutationFn: ({ id, noOfHead }: { id: string; noOfHead: number }) =>
       machineService.updateHeads(id, noOfHead),
     onSuccess: invalidate,
+    onError: refetchIfGone,
   });
   const updateDetails = useMutation({
     mutationFn: ({ id, patch, confirmHooks }: {
@@ -139,6 +175,7 @@ export function useMachineMutations() {
       confirmHooks?: boolean;
     }) => machineService.updateDetails(id, patch, confirmHooks),
     onSuccess: invalidate,
+    onError: refetchIfGone,
   });
   const dismissFinding = useMutation({
     mutationFn: ({ kind, subject, reason }: {
@@ -149,10 +186,12 @@ export function useMachineMutations() {
   const uploadServiceBill = useMutation({
     mutationFn: (payload: ServiceBillUpload) => machineService.uploadServiceBill(payload),
     onSuccess: invalidate,
+    onError: refetchIfGone,
   });
   const deleteServiceBill = useMutation({
     mutationFn: (id: string) => machineService.deleteServiceBill(id),
     onSuccess: invalidate,
+    onError: refetchIfGone,
   });
   return {
     create,
