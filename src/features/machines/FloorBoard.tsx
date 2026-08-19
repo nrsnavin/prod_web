@@ -3,6 +3,7 @@ import { Activity, Wrench, CircleDot } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/components/ui/cn";
+import { sortByNatural } from "@/components/ui/naturalOrder";
 import { Machine, MachineStatus } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
@@ -119,9 +120,17 @@ export function FloorBoard({
     );
   }
 
-  const running = machines.filter((m) => m.status === "running");
-  const maintenance = machines.filter((m) => m.status === "maintenance");
-  const idle = machines.filter((m) => m.status === "free");
+  // Every group in machine order. Without this the tiles come out in
+  // whatever order the server returned them, which is the same problem
+  // the table had — and worse here, because a grid gives no other clue
+  // where to look for LOOM-7. Same comparator as the table, so the two
+  // views never disagree about where LOOM-10 goes.
+  const inOrder = (status: MachineStatus) =>
+    sortByNatural(machines.filter((m) => m.status === status), (m) => m.ID);
+
+  const running = inOrder("running");
+  const maintenance = inOrder("maintenance");
+  const idle = inOrder("free");
 
   const total = machines.length || 1;
   const runningPct = Math.round((running.length / total) * 100);

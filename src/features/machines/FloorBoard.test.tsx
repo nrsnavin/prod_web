@@ -33,6 +33,10 @@ const machine = (over: Partial<Machine> = {}): Machine => ({
   ...over,
 });
 
+/** The machine ID off each tile, in the order they are drawn. */
+const tileIds = () =>
+  screen.getAllByRole("link").map((a) => a.querySelector("span")?.textContent);
+
 const board = (machines: Machine[]) =>
   render(<MemoryRouter><FloorBoard machines={machines} /></MemoryRouter>);
 
@@ -106,6 +110,44 @@ describe("the floor board", () => {
     expect(screen.getByRole("img", {
       name: /1 running, 1 in maintenance, 1 idle/i,
     })).toBeInTheDocument();
+  });
+
+  it("puts the tiles in machine order, not server order", () => {
+    // A grid gives no other clue where to look for LOOM-7. Unsorted
+    // tiles are worse than an unsorted table, not better.
+    board([
+      machine({ ID: "LOOM-10", status: "running" }),
+      machine({ ID: "LOOM-2", status: "running" }),
+      machine({ ID: "LOOM-1", status: "running" }),
+    ]);
+
+    // The tile's text runs "LOOM-1Running8 heads", so compare the
+    // leading ID rather than trying to anchor inside it.
+    expect(tileIds()).toEqual(["LOOM-1", "LOOM-2", "LOOM-10"]);
+  });
+
+  it("orders a bare numeric ID as a number", () => {
+    board([
+      machine({ ID: "10", status: "free" }),
+      machine({ ID: "2", status: "free" }),
+      machine({ ID: "1", status: "free" }),
+    ]);
+
+    expect(tileIds()).toEqual(["1", "2", "10"]);
+  });
+
+  it("orders each group on its own", () => {
+    // Sorting the whole floor once and then splitting would work too,
+    // but only by accident — this pins that every group is ordered.
+    board([
+      machine({ ID: "LOOM-10", status: "maintenance" }),
+      machine({ ID: "LOOM-2", status: "maintenance" }),
+      machine({ ID: "LOOM-20", status: "running" }),
+      machine({ ID: "LOOM-3", status: "running" }),
+    ]);
+
+    // Running group first, in order; then maintenance, in order.
+    expect(tileIds()).toEqual(["LOOM-3", "LOOM-20", "LOOM-2", "LOOM-10"]);
   });
 
   it("does not divide by zero on an empty floor", () => {

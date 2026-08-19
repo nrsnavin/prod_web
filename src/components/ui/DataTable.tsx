@@ -4,6 +4,7 @@ import { Skeleton } from "./Skeleton";
 import { EmptyState } from "./EmptyState";
 import { ErrorState } from "./ErrorState";
 import { cn } from "./cn";
+import { naturalCompare } from "./naturalOrder";
 
 // Generic, config-driven table (OCP: list pages declare columns, never
 // re-implement table markup; LSP: works for any row type with an id).
@@ -75,26 +76,9 @@ export function DataTable<T>({
     return [...rows].sort((a, b) => {
       const va = acc(a);
       const vb = acc(b);
-      const cmp =
-        typeof va === "number" && typeof vb === "number"
-          ? va - vb
-          // ── Natural order, not dictionary order ──
-          //
-          // Almost every identifier in this system is a word followed by
-          // a number: LOOM-2, J-14, DC-0009, WB-0042, lot D-7. A plain
-          // localeCompare orders those as text, so LOOM-10 sorts before
-          // LOOM-2 and a list of machines reads 1, 10, 11, 2, 3 — which
-          // is not an ordering anybody on a shop floor recognises.
-          //
-          // `numeric` makes the collator compare digit runs as numbers
-          // while still comparing the letters around them, so the prefix
-          // still separates COMEZ-2 from LOOM-2. `sensitivity: "base"`
-          // keeps a stray lower-case entry beside its siblings rather
-          // than in a block of its own.
-          : String(va ?? "").localeCompare(String(vb ?? ""), undefined, {
-              numeric: true,
-              sensitivity: "base",
-            });
+      // One comparator, shared with the floor board — see
+      // naturalOrder.ts for why the two views must not each own a copy.
+      const cmp = naturalCompare(va, vb);
       return cmp * sortDir;
     });
   }, [rows, columns, sortKey, sortDir]);

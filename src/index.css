@@ -180,6 +180,87 @@
 
 /* Print: only the .print-area content is put on paper (DC, MRP sheet,
    PO document, packing slip, etc.). */
+/* ══════════════════════════════════════════════════════════════════
+   TOUCH TARGETS
+   ══════════════════════════════════════════════════════════════════
+   Every control in this app is sized for a mouse: the small button is
+   32px tall and the standard one 40px, against the 44px that both
+   Apple and WCAG give as the minimum a finger can hit reliably.
+
+   On a desk that is invisible. On a phone at the far end of a shed,
+   held in one hand, sometimes by somebody wearing gloves, it is the
+   difference between one tap and three.
+
+   `pointer: coarse` is the right gate rather than a width breakpoint:
+   it asks whether the PRIMARY input is a finger, which is the actual
+   question. A narrow desktop window stays dense; a large tablet gets
+   the bigger targets it needs.
+
+   Only min-height and min-width are set, so nothing is re-centred or
+   re-styled — the control keeps its look and grows its hit area.
+   ══════════════════════════════════════════════════════════════════ */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a[href],
+  summary,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  /* A checkbox or radio is drawn at its own small size; growing the box
+     itself would make a 44px tick. The hit area is grown by the label
+     wrapping it, which is how every one of them is built here. */
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 0;
+  }
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    min-height: 44px;
+  }
+
+  /* Icon-only controls are square, and the height alone would leave a
+     44×24 target that is still easy to miss sideways. */
+  button:not(:has(> :not(svg))),
+  [role="button"]:not(:has(> :not(svg))) {
+    min-width: 44px;
+  }
+
+  /* An inline link inside a paragraph must NOT become a 44px block —
+     it would space the prose out and it is not a tap target of the
+     same kind. Only standalone links grow. */
+  p a[href],
+  li a[href]:not([class*="rounded"]):not([class*="flex"]) {
+    min-height: 0;
+  }
+
+  /* iOS zooms the page in when a focused field's text is under 16px,
+     and does not zoom back out — the user is left pinching. Setting the
+     FIELD avoids the zoom rather than fighting it with a viewport
+     lock, which would also stop somebody zooming deliberately.
+
+     `:not([type="hidden"])` is not decoration: a bare `input` selector
+     is specificity 0,0,1 and loses to Tailwind's `.text-sm` at 0,1,0,
+     so the rule shipped and did nothing. The :not() takes its
+     argument's specificity and brings this to 0,1,1. */
+  input:not([type="hidden"]),
+  select:not([hidden]),
+  textarea:not([hidden]) {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* Nothing should ever scroll the PAGE sideways. Wide content scrolls
+   inside its own container — see components/ui/TableScroll. This is
+   the backstop for anything that slips through. */
+html,
+body {
+  overflow-x: hidden;
+}
+
 @media print {
   /* Paper is always white. Reverting the dark palette to its light values
      for print means every document keeps its designed contrast instead of
