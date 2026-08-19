@@ -48,9 +48,19 @@ export function resolveApiBaseUrl(env: {
   return { apiBaseUrl: "/api/v2", apiSource: "dev-proxy" };
 }
 
-const resolved = resolveApiBaseUrl(
-  import.meta.env as { VITE_API_BASE_URL?: string; PROD?: boolean }
-);
+// ── Read as DIRECT member accesses, deliberately ──────────────────
+//  Vite guarantees it will statically replace `import.meta.env.FOO`.
+//  It makes no such promise about the whole `import.meta.env` object,
+//  and the first version of this passed the object straight in. That
+//  compiled to `rs={}` — no PROD key at all — and produced the right
+//  URL only because the minifier folded the branch away. It was
+//  correct by luck, and the thing riding on it is where every request
+//  in production goes. One line of divergence in a future toolchain
+//  and a live build silently starts calling its own origin.
+const resolved = resolveApiBaseUrl({
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL as string | undefined,
+  PROD: import.meta.env.PROD,
+});
 
 export const config = {
   apiBaseUrl: resolved.apiBaseUrl,
