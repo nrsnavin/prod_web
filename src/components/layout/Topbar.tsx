@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/auth/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ThemeToggle } from "./ThemeToggle";
+import { SandboxBadge } from "./SandboxBadge";
 
 export interface TopbarProps {
   onMenuClick: () => void;
@@ -49,6 +50,9 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
       </button>
 
       <div className="ml-auto flex items-center gap-3">
+        {/* Renders nothing unless this session is actually routed to a
+            sandbox database, so the live app is unchanged. */}
+        <SandboxBadge />
         <ThemeToggle />
         <button
           onClick={() => navigate("/profile")}
