@@ -35,12 +35,26 @@ const statusTone: Record<MachineStatus, ChipTone> = {
  * number is not available: a dash is the honest answer there, and an
  * id rendered as a job number would not be.
  */
+/**
+ * The job number this loom is running, or null.
+ *
+ * Shared by the cell and the sort accessor deliberately. Read twice with
+ * two guards, a row could show a dash while sorting as though it had a
+ * job — a list that disagrees with itself about what is in it.
+ */
+function runningJobNo(m: Machine): string | null {
+  const job = m.orderRunning;
+  if (!job || typeof job !== "object") return null;
+  if (job.jobOrderNo == null) return null;
+  return String(job.jobOrderNo);
+}
+
 function RunningJob({ machine: m }: { machine: Machine }) {
   const job = m.orderRunning;
   const none = <span className="text-ink-400">—</span>;
 
-  if (!job || typeof job !== "object") return none;
-  if (job.jobOrderNo == null) return none;
+  if (runningJobNo(m) === null) return none;
+  if (typeof job !== "object" || !job) return none;
 
   const label = `J-${job.jobOrderNo}`;
   if (!job._id) return <span className="font-medium">{label}</span>;
@@ -58,16 +72,53 @@ function RunningJob({ machine: m }: { machine: Machine }) {
   );
 }
 
+// Every column sorts. A machine list is read to answer "which loom",
+// "which is free", "which is big enough" — and each of those is a
+// different ordering of the same twenty rows.
+//
+// Machine ID sorts naturally rather than as text, so LOOM-2 comes before
+// LOOM-10 instead of after it. The rule lives in DataTable's comparator
+// and applies to every identifier in the app.
 const columns: Column<Machine>[] = [
-  { key: "id", header: "Machine", render: (m) => <span className="font-medium">{m.ID}</span> },
-  { key: "make", header: "Manufacturer", render: (m) => m.manufacturer },
-  { key: "heads", header: "Heads", align: "right", render: (m) => m.NoOfHead },
-  { key: "hooks", header: "Hooks", align: "right", render: (m) => m.NoOfHooks },
-  { key: "job", header: "Running job", render: (m) => <RunningJob machine={m} /> },
+  {
+    key: "id",
+    header: "Machine",
+    render: (m) => <span className="font-medium">{m.ID}</span>,
+    sort: (m) => m.ID ?? "",
+  },
+  {
+    key: "make",
+    header: "Manufacturer",
+    render: (m) => m.manufacturer,
+    sort: (m) => m.manufacturer ?? "",
+  },
+  {
+    key: "heads",
+    header: "Heads",
+    align: "right",
+    render: (m) => m.NoOfHead,
+    sort: (m) => m.NoOfHead ?? 0,
+  },
+  {
+    key: "hooks",
+    header: "Hooks",
+    align: "right",
+    render: (m) => m.NoOfHooks,
+    sort: (m) => m.NoOfHooks ?? 0,
+  },
+  {
+    key: "job",
+    header: "Running job",
+    render: (m) => <RunningJob machine={m} />,
+    // Idle looms have no job number, so they gather at one end rather
+    // than scattering through the list.
+    sort: (m) => runningJobNo(m) ?? "",
+  },
   {
     key: "status",
     header: "Status",
     render: (m) => <StatusChip tone={statusTone[m.status]}>{m.status}</StatusChip>,
+    sort: (m) => m.status ?? "",
   },
 ];
 
@@ -191,6 +242,10 @@ export function MachineListPage() {
       <Card>
         <DataTable
           columns={columns}
+          // Opens in machine order rather than whatever order the server
+          // happened to return — the first question anybody asks of this
+          // screen is "where is LOOM-7".
+          defaultSortKey="id"
           rows={data ?? []}
           rowKey={(m) => m._id}
           onRowClick={(m) => navigate(`/machines/${m._id}`)}

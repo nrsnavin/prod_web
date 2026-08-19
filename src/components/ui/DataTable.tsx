@@ -26,6 +26,10 @@ export interface DataTableProps<T> {
   loading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
+  /** Column key to sort by on first render. Must name a sortable column. */
+  defaultSortKey?: string;
+  /** 1 ascending, -1 descending. Ignored without `defaultSortKey`. */
+  defaultSortDir?: 1 | -1;
 }
 
 const alignClass = {
@@ -42,11 +46,13 @@ export function DataTable<T>({
   loading,
   emptyTitle = "Nothing here yet",
   emptyDescription,
+  defaultSortKey,
+  defaultSortDir,
 }: DataTableProps<T>) {
   // Never crash on a missing/undefined rows prop — render empty instead.
   const rows = rowsProp ?? [];
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<1 | -1>(1);
+  const [sortKey, setSortKey] = useState<string | null>(defaultSortKey ?? null);
+  const [sortDir, setSortDir] = useState<1 | -1>(defaultSortDir ?? 1);
 
   const sorted = useMemo(() => {
     const col = columns.find((c) => c.key === sortKey && c.sort);
@@ -58,7 +64,23 @@ export function DataTable<T>({
       const cmp =
         typeof va === "number" && typeof vb === "number"
           ? va - vb
-          : String(va).localeCompare(String(vb));
+          // ── Natural order, not dictionary order ──
+          //
+          // Almost every identifier in this system is a word followed by
+          // a number: LOOM-2, J-14, DC-0009, WB-0042, lot D-7. A plain
+          // localeCompare orders those as text, so LOOM-10 sorts before
+          // LOOM-2 and a list of machines reads 1, 10, 11, 2, 3 — which
+          // is not an ordering anybody on a shop floor recognises.
+          //
+          // `numeric` makes the collator compare digit runs as numbers
+          // while still comparing the letters around them, so the prefix
+          // still separates COMEZ-2 from LOOM-2. `sensitivity: "base"`
+          // keeps a stray lower-case entry beside its siblings rather
+          // than in a block of its own.
+          : String(va ?? "").localeCompare(String(vb ?? ""), undefined, {
+              numeric: true,
+              sensitivity: "base",
+            });
       return cmp * sortDir;
     });
   }, [rows, columns, sortKey, sortDir]);
@@ -90,6 +112,16 @@ export function DataTable<T>({
             {columns.map((c) => (
               <th
                 key={c.key}
+                // Announced, not merely drawn: without this a screen
+                // reader hears a button and no indication of which
+                // column the table is currently ordered by.
+                aria-sort={
+                  c.sort
+                    ? sortKey === c.key
+                      ? sortDir === 1 ? "ascending" : "descending"
+                      : "none"
+                    : undefined
+                }
                 className={cn(
                   "px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-400 whitespace-nowrap",
                   alignClass[c.align ?? "left"]
