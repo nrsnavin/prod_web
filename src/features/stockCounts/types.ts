@@ -43,6 +43,12 @@ export interface StockCountLine {
   stockAtPost: number | null;
   /** What was actually applied — less than the variance when stock hit zero. */
   appliedDelta: number | null;
+  /**
+   * How much of this line's discrepancy another count had already
+   * corrected. Non-zero means part or all of the variance was not
+   * applied because somebody else's sheet had already fixed it.
+   */
+  correctedElsewhere?: number;
   /** Whether the material moved while the count was open. null before posting. */
   movedSinceFreeze: boolean | null;
 }

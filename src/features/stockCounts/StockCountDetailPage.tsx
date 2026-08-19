@@ -258,6 +258,13 @@ export function StockCountDetailPage() {
                       <p className="text-xs text-ink-400">
                         {l.category || "—"} · ₹{qty(l.unitCost)}/unit
                         {l.movedSinceFreeze ? " · moved while counting" : ""}
+                        {/* Without this the row reads "variance −10,
+                            applied 0" and leaves the reader to guess
+                            whether it was neutralised, floored at zero
+                            stock, or simply not applied. */}
+                        {l.correctedElsewhere
+                          ? ` · ${qty(Math.abs(l.correctedElsewhere))} already corrected by another count`
+                          : ""}
                       </p>
                     </td>
                     <td className="py-2 text-right tabular-nums text-ink-600">{qty(l.systemQty)}</td>
