@@ -21,6 +21,7 @@ import { useMachine, useMachineMutations, useServiceBills } from "./hooks";
 import { MachineHealthCard } from "./MachineHealth";
 import { MachineHeadMapEditModal } from "./MachineHeadMapEditModal";
 import { MachineHeadCountModal } from "./MachineHeadCountModal";
+import { MachineEditModal } from "./MachineEditModal";
 import { ServiceBills } from "./ServiceBills";
 import { MachineHeadElastic, MachineShiftRow, MachineStatus, ServiceLogFormValues } from "./types";
 import { useTrackRecent } from "@/core/ui/uiStore";
@@ -209,6 +210,7 @@ export function MachineDetailPage() {
   const [logOpen, setLogOpen] = useState(false);
   const [mapEditOpen, setMapEditOpen] = useState(false);
   const [headsOpen, setHeadsOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   useTrackRecent("Machine", `/machines/${id}`, machine ? `Machine ${machine.id}` : undefined);
 
   if (isLoading) {
@@ -246,6 +248,13 @@ export function MachineDetailPage() {
         subtitle={machine.manufacturer}
         actions={
           <>
+            {/* Always offered: manufacturer and purchase date are labels
+                and are editable at any status. The two fields that are
+                not — ID and hooks — lock themselves inside the dialog
+                and say which status is blocking them. */}
+            <Button variant="secondary" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4" /> Edit details
+            </Button>
             {machine.status !== "maintenance" && machine.status !== "running" && (
               <Button variant="secondary" loading={setStatus.isPending} onClick={() => toggleStatus("maintenance")}>
                 <Wrench className="h-4 w-4" /> Send to maintenance
@@ -337,6 +346,14 @@ export function MachineDetailPage() {
           emptyTitle="No elastics threaded on this machine"
         />
       </Card>
+
+      {editOpen && id && (
+        <MachineEditModal
+          machineId={id}
+          machine={machine}
+          onClose={() => setEditOpen(false)}
+        />
+      )}
 
       {headsOpen && id && (
         <MachineHeadCountModal

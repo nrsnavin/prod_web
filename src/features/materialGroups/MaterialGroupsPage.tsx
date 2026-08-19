@@ -416,6 +416,8 @@ export function MaterialGroupsPage() {
             columns={columns}
             rows={rows}
             loading={groups.isLoading}
+            error={groups.isError ? groups.error : undefined}
+            errorWhat="material groups"
             rowKey={(g) => g._id}
           />
         )}

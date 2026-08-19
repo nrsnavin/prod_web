@@ -160,7 +160,7 @@ export function ElasticStockCard({ elasticId }: { elasticId: string }) {
   const [reason, setReason] = useState("");
   const [forcePrompt, setForcePrompt] = useState<string | null>(null); // server message
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["elastics", "stock", elasticId, page],
     queryFn: () =>
       httpClient.get<StockResponse>(`/elastic/${elasticId}/stock`, { page, limit: 10 }),
@@ -292,6 +292,8 @@ export function ElasticStockCard({ elasticId }: { elasticId: string }) {
               columns={columns}
               rows={data?.movements ?? []}
               rowKey={(m) => m._id}
+              error={isError ? error : undefined}
+              errorWhat="stock movements"
               emptyTitle="No stock movements yet"
             />
             {totalPages > 1 && (

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { auditService, AuditEntry } from "./api";
 
@@ -33,7 +34,7 @@ function fmt(at: string): string {
 }
 
 export function AuditPage() {
-  const { data, isLoading, isFetching, refetch } = useQuery({
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ["audit-recent"],
     queryFn: () => auditService.recent(100),
     staleTime: 30_000,
@@ -55,6 +56,14 @@ export function AuditPage() {
 
       {isLoading ? (
         <Skeleton className="h-96 w-full" />
+      ) : isError ? (
+        <Card>
+          <ErrorState
+            error={error}
+            what="the audit trail"
+            onRetry={() => refetch()}
+          />
+        </Card>
       ) : entries.length === 0 ? (
         <Card>
           <EmptyState

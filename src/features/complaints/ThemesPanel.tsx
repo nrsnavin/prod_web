@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { useQuery } from "@tanstack/react-query";
 import { Tags, Info, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -122,7 +123,7 @@ function Themes({ data }: { data: ThemesReport }) {
 export function ThemesPanel() {
   const [window, setWindow] = useState<Window>("365");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["complaint-themes", window],
     queryFn: () => complaintService.themes(Number(window)).then((r) => r.data),
     staleTime: 10 * 60_000,
@@ -149,6 +150,12 @@ export function ThemesPanel() {
 
       {isLoading ? (
         <Skeleton className="mt-4 h-40 w-full" />
+      ) : isError ? (
+        // Distinct from the below-the-floor state this panel already
+        // has. "Not enough complaints yet to group" and "we could not
+        // ask" are different facts, and only one of them means the
+        // number you are looking at is missing.
+        <ErrorState error={error} what="complaint themes" onRetry={() => refetch()} />
       ) : data ? (
         <>
           <p className="mt-3 text-sm">

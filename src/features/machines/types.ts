@@ -151,6 +151,36 @@ export interface MachineFormValues {
   DateOfPurchase?: string;
 }
 
+/**
+ * The editable details of a machine. Every field optional on purpose:
+ * the route writes only what it is given, so a dialog that changed one
+ * field sends one field.
+ *
+ * `NoOfHead` is deliberately absent — it has its own route and its own
+ * dialog, because it re-prices work in progress and needs its own
+ * conversation.
+ */
+export interface MachineDetailsPatch {
+  ID?: string;
+  manufacturer?: string;
+  NoOfHooks?: number;
+  /** `null` clears it — an unknown purchase date is better than a guess. */
+  DateOfPurchase?: string | null;
+}
+
+/** One field the server actually changed, read back from stored values. */
+export interface MachineDetailChange {
+  field: string;
+  from: string | number | null;
+  to: string | number | null;
+}
+
+export interface MachineDetailsUpdateResult {
+  success: boolean;
+  message: string;
+  changes: MachineDetailChange[];
+}
+
 export interface ServiceLogFormValues {
   type: ServiceLog["type"];
   description: string;

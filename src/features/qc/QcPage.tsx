@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
@@ -399,6 +400,14 @@ export function QcPage() {
 
       {recent.isLoading ? (
         <Skeleton className="h-64 w-full" />
+      ) : recent.isError ? (
+        <Card>
+          <ErrorState
+            error={recent.error}
+            what="the QC record"
+            onRetry={() => recent.refetch()}
+          />
+        </Card>
       ) : (recent.data?.length ?? 0) === 0 ? (
         <Card>
           <EmptyState icon={<ShieldCheck className="h-6 w-6" />} title="No QC checks yet" description="Record your first inspection to build the quality record." />

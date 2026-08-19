@@ -2,6 +2,8 @@ import { httpClient } from "@/core/http/httpClient";
 import {
   Machine,
   MachineDetail,
+  MachineDetailsPatch,
+  MachineDetailsUpdateResult,
   MachineFormValues,
   MachineHealthResponse,
   MachineStatus,
@@ -116,6 +118,30 @@ export const machineService = {
     data: { machineId: string; machineID: string; noOfHead: number };
   }> {
     return httpClient.patch("/machine/update-heads", { machineId, noOfHead });
+  },
+
+  /**
+   * Correct a machine's details after registration.
+   *
+   * Only the fields present in `patch` are written — absent means
+   * "leave it", which is what lets one dialog edit four fields without
+   * having to resend the ones nobody touched.
+   *
+   * `ID` and `NoOfHooks` are refused while the loom is not free, and
+   * lowering the hook count under an already-threaded elastic comes
+   * back as a 409 asking for `confirmHooks`, the same shape as the
+   * head-map editor's.
+   */
+  async updateDetails(
+    machineId: string,
+    patch: MachineDetailsPatch,
+    confirmHooks = false
+  ): Promise<MachineDetailsUpdateResult> {
+    return httpClient.patch("/machine/update-details", {
+      machineId,
+      ...patch,
+      ...(confirmHooks ? { confirmHooks: true } : {}),
+    });
   },
 
   async predictiveHealth(): Promise<MachineHealthResponse> {

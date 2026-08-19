@@ -2,6 +2,7 @@ import { ReactNode, useMemo, useState } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "./Skeleton";
 import { EmptyState } from "./EmptyState";
+import { ErrorState } from "./ErrorState";
 import { cn } from "./cn";
 
 // Generic, config-driven table (OCP: list pages declare columns, never
@@ -26,6 +27,16 @@ export interface DataTableProps<T> {
   loading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
+  /**
+   * The query's failure, if it failed. Without this a 500 renders as
+   * `rows = []` and the table claims there is nothing to show — the
+   * single most damaging thing this component can do. Pass the query's
+   * `error` and the table tells the truth instead.
+   */
+  error?: unknown;
+  /** What could not be loaded, e.g. "machines". Used in the message. */
+  errorWhat?: string;
+  onRetry?: () => void;
   /** Column key to sort by on first render. Must name a sortable column. */
   defaultSortKey?: string;
   /** 1 ascending, -1 descending. Ignored without `defaultSortKey`. */
@@ -46,6 +57,9 @@ export function DataTable<T>({
   loading,
   emptyTitle = "Nothing here yet",
   emptyDescription,
+  error,
+  errorWhat,
+  onRetry,
   defaultSortKey,
   defaultSortDir,
 }: DataTableProps<T>) {
@@ -100,6 +114,12 @@ export function DataTable<T>({
         ))}
       </div>
     );
+  }
+  // Three branches, never two. A failed query is not an empty one, and
+  // the error is checked FIRST — a failure that also happens to have no
+  // rows must not fall through to "nothing here yet".
+  if (error) {
+    return <ErrorState error={error} what={errorWhat ?? "this"} onRetry={onRetry} />;
   }
   if (rows.length === 0) {
     return <EmptyState title={emptyTitle} description={emptyDescription} />;

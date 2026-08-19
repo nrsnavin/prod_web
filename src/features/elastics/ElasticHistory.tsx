@@ -67,7 +67,7 @@ export function ElasticHistory({ elasticId }: { elasticId: string }) {
 function ElasticOrders({ elasticId }: { elasticId: string }) {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
-  const { data, isLoading } = useElasticOrders(elasticId, page, PAGE_SIZE);
+  const { data, isLoading, isError, error } = useElasticOrders(elasticId, page, PAGE_SIZE);
 
   const columns: Column<ElasticOrderRow>[] = [
     {
@@ -130,6 +130,8 @@ function ElasticOrders({ elasticId }: { elasticId: string }) {
           rows={data?.orders ?? []}
           rowKey={(o) => o.id}
           loading={isLoading}
+          error={isError ? error : undefined}
+          errorWhat="orders for this product"
           onRowClick={(o) => navigate(`/orders/${o.id}`)}
           emptyTitle="Never ordered"
           emptyDescription="No order has asked for this elastic yet."

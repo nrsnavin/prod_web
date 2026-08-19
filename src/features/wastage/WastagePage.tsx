@@ -12,6 +12,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { cn } from "@/components/ui/cn";
@@ -346,6 +347,14 @@ export function WastagePage() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
+          ) : jobs.isError ? (
+            <Card>
+              <ErrorState
+                error={jobs.error}
+                what="wastage"
+                onRetry={() => jobs.refetch()}
+              />
+            </Card>
           ) : (jobs.data?.length ?? 0) === 0 ? (
             <Card>
               <EmptyState title="No wastage recorded" description="Jobs with wastage entries appear here." />

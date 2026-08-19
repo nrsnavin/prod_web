@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { machineService } from "./api";
-import { MachineFormValues, MachineStatus, ServiceBillUpload, ServiceLogFormValues } from "./types";
+import {
+  MachineDetailsPatch,
+  MachineFormValues,
+  MachineStatus,
+  ServiceBillUpload,
+  ServiceLogFormValues,
+} from "./types";
 
 const KEY = "machines";
 
@@ -68,6 +74,15 @@ export function useMachineMutations() {
       machineService.updateHeads(id, noOfHead),
     onSuccess: invalidate,
   });
+  const updateDetails = useMutation({
+    mutationFn: ({ id, patch, confirmHooks }: {
+      id: string;
+      patch: MachineDetailsPatch;
+      /** Go ahead despite stranding an elastic already on the loom. */
+      confirmHooks?: boolean;
+    }) => machineService.updateDetails(id, patch, confirmHooks),
+    onSuccess: invalidate,
+  });
   const uploadServiceBill = useMutation({
     mutationFn: (payload: ServiceBillUpload) => machineService.uploadServiceBill(payload),
     onSuccess: invalidate,
@@ -82,6 +97,7 @@ export function useMachineMutations() {
     addServiceLog,
     updateElasticMap,
     updateHeads,
+    updateDetails,
     uploadServiceBill,
     deleteServiceBill,
   };

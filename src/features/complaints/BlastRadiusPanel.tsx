@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { ErrorState } from "@/components/ui/ErrorState";
 import {
   PhoneCall, Truck, ShieldAlert, Info, HelpCircle, Boxes,
 } from "lucide-react";
@@ -197,7 +198,7 @@ function Body({ data }: { data: TraceResult }) {
 }
 
 export function BlastRadiusPanel({ complaintId }: { complaintId: string }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["complaint-trace", complaintId],
     queryFn: () => complaintService.trace(complaintId).then((r) => r.data),
     staleTime: 60_000,
@@ -216,7 +217,22 @@ export function BlastRadiusPanel({ complaintId }: { complaintId: string }) {
         </p>
       </div>
 
-      {isLoading ? <Skeleton className="mt-4 h-48 w-full" /> : data ? <Body data={data} /> : null}
+      {/* `: null` was the whole failure path here — the heading and its
+          explanation still drew, and the body silently disappeared. On
+          this panel that reads as "nobody else has this lot", which is
+          the one conclusion it exists to prevent somebody reaching by
+          accident. */}
+      {isLoading ? (
+        <Skeleton className="mt-4 h-48 w-full" />
+      ) : isError ? (
+        <ErrorState
+          error={error}
+          what="the affected jobs"
+          onRetry={() => refetch()}
+        />
+      ) : data ? (
+        <Body data={data} />
+      ) : null}
     </Card>
   );
 }

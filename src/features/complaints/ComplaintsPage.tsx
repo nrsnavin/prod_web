@@ -7,6 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/components/ui/cn";
 import { complaintService } from "./api";
@@ -116,7 +117,7 @@ export function ComplaintsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [filing, setFiling] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["complaints", status],
     queryFn: () => complaintService.list({ status, limit: 100 }),
   });
@@ -155,8 +156,16 @@ export function ComplaintsPage() {
               ]}
             />
           </div>
+          {/* Three branches, never two. This screen is the one the UX
+              audit photographed: with the API returning 500 it said
+              "No complaints — nothing has been filed under this filter",
+              which is a quality manager being told, in a calm grey box,
+              that no customer has complained. The failure is checked
+              FIRST, because a failed query also has no rows. */}
           {isLoading ? (
             <Skeleton className="m-3 h-64" />
+          ) : isError ? (
+            <ErrorState error={error} what="complaints" onRetry={() => refetch()} />
           ) : rows.length === 0 ? (
             <EmptyState
               title="No complaints"

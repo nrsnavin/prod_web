@@ -57,6 +57,21 @@ export function toApiError(error: unknown): ApiError {
       body && typeof body === "object" ? (body as Record<string, unknown>) : undefined
     );
   }
+  // Already converted — hand it straight back. The interceptor runs
+  // toApiError on every rejection, so a page that calls it again on
+  // what it caught was landing here and having the server's message
+  // replaced with "Unexpected error". Every caller of this function is
+  // downstream of that interceptor, so this was ALWAYS the path, and
+  // any flow that branched on the message silently stopped working:
+  // the stock-count partial-post override read `/have not been
+  // counted/` off a string that by then said "Unexpected error".
+  if (error instanceof ApiError) return error;
+
+  // A real Error that never went through axios at all — keep its
+  // message, which is more than "Unexpected error" tells anybody.
+  if (error instanceof Error && error.message) {
+    return new ApiError(error.message, undefined, error);
+  }
   return new ApiError("Unexpected error", undefined, error);
 }
 

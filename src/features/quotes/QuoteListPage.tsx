@@ -90,7 +90,7 @@ export function QuoteListPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<QuoteStatus | "all">("all");
-  const { data, isLoading } = useQuotes({ page, status, search });
+  const { data, isLoading, isError, error } = useQuotes({ page, status, search });
 
   return (
     <>
@@ -138,6 +138,8 @@ export function QuoteListPage() {
           rows={data?.quotes ?? []}
           rowKey={(q) => q._id}
           loading={isLoading}
+          error={isError ? error : undefined}
+          errorWhat="quotations"
           onRowClick={(q) => navigate(`/quotes/${q._id}`)}
           emptyTitle="No quotations yet"
           emptyDescription="Cost a metre and offer a price."

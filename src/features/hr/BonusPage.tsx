@@ -365,6 +365,8 @@ export function BonusPage() {
           rows={pv?.rows ?? []}
           rowKey={(r) => r.employeeId}
           loading={preview.isLoading}
+          error={preview.isError ? preview.error : undefined}
+          errorWhat="the bonus preview"
           emptyTitle="No employees to preview"
         />
       </Card>
@@ -383,6 +385,8 @@ export function BonusPage() {
           rows={records.data ?? []}
           rowKey={(r) => r._id}
           loading={records.isLoading}
+          error={records.isError ? records.error : undefined}
+          errorWhat="bonus records"
           emptyTitle="No bonus records"
           emptyDescription={`Trigger the ${year} bonus to compute per-employee amounts.`}
         />

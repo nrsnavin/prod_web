@@ -11,6 +11,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/components/ui/cn";
 import { toApiError } from "@/core/http/httpClient";
@@ -45,6 +46,9 @@ export function StockCountDetailPage() {
   const [lens, setLens] = useState<Lens>("all");
   const [search, setSearch] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
+  // The server's objection to a partial post, held so it can be shown
+  // in a real dialog with the lines it is about — see below.
+  const [postObjection, setPostObjection] = useState<string | null>(null);
 
   // Local edits, keyed by line. The sheet is keyed in from paper one row
   // at a time and each row is saved on blur, so this holds only what has
@@ -123,10 +127,12 @@ export function StockCountDetailPage() {
       // than a second button nobody understands, ask here, in the words
       // it used.
       if (!force && /have not been counted/i.test(e.message)) {
-        if (window.confirm(`${e.message}\n\nPost the counted lines anyway?`)) {
-          void doPost(true);
-          return;
-        }
+        // Was a native window.confirm. A stock posting the server has
+        // already objected to, offered as an override, in an unstyled
+        // OS dialog that cannot show the lines in question and cannot
+        // be branded, tested or made accessible — the weight of the
+        // interface and the weight of the moment disagreed completely.
+        setPostObjection(e.message);
         return;
       }
       toast(e.message, "error");
@@ -147,6 +153,10 @@ export function StockCountDetailPage() {
   }
 
   const t = count.totals;
+  // Named here so the override dialog can list them rather than only
+  // count them — "12 lines were not counted" does not tell anybody
+  // whether the ones that matter are among them.
+  const uncountedLines = (count.lines ?? []).filter((l) => l.countedQty == null);
 
   return (
     <>
@@ -329,6 +339,51 @@ export function StockCountDetailPage() {
           left untouched when the sheet is posted — never written off.
         </p>
       )}
+
+      {/* The override the UX audit singled out. It now shows the
+          server's objection in full AND the lines it is about — which
+          is the whole question being asked, and the one thing a native
+          confirm could not put on screen. */}
+      <ConfirmDialog
+        open={!!postObjection}
+        wide
+        title="Some lines were never counted"
+        confirmLabel="Post the counted lines"
+        onCancel={() => setPostObjection(null)}
+        onConfirm={() => {
+          setPostObjection(null);
+          void doPost(true);
+        }}
+        loading={post.isPending}
+        message={
+          <div className="space-y-3">
+            <p>{postObjection}</p>
+            {uncountedLines.length > 0 && (
+              <div>
+                <p className="mb-1.5 font-medium text-ink-900">
+                  These {uncountedLines.length} line
+                  {uncountedLines.length === 1 ? "" : "s"} will be left exactly
+                  as {uncountedLines.length === 1 ? "it is" : "they are"}:
+                </p>
+                <ul className="max-h-48 overflow-y-auto rounded-lg border border-ink-200 divide-y divide-ink-100">
+                  {uncountedLines.map((l) => (
+                    <li key={l._id} className="flex justify-between gap-3 px-3 py-1.5">
+                      <span>{l.name}</span>
+                      <span className="tabular-nums text-ink-400">
+                        system {qty(l.systemQty)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <p className="text-ink-500">
+              Nothing is written off. An uncounted line keeps its current stock
+              figure and can be counted on a later sheet.
+            </p>
+          </div>
+        }
+      />
 
       <ReasonDialog
         open={cancelOpen}
