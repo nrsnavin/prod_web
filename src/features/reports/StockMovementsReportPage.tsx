@@ -1,19 +1,22 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ReferenceLine,
-} from "recharts";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useToast } from "@/components/ui/Toast";
-import { chartTheme } from "@/core/charts/theme";
 import { ApiError } from "@/core/http/httpClient";
 import { reportsService } from "./api";
 import { ReportFilterBar } from "./components/ReportFilterBar";
+import { lazyChart } from "@/components/ui/LazyChart";
 import { ReportTable } from "./components/ReportTable";
 import { StockMovementsReport, ReportFilters } from "./types";
+
+// Recharts is 362 KB. Behind a lazy boundary it arrives with the
+// chart rather than before the page can draw its heading.
+const ReportBarChart = lazyChart<
+  React.ComponentProps<typeof import("./components/ReportBarChart")["ReportBarChart"]>
+>(() => import("./components/ReportBarChart"), "ReportBarChart", "h-60");
 
 const GROUP_BY_OPTIONS = [
   { value: "material", label: "Material" },
@@ -21,19 +24,6 @@ const GROUP_BY_OPTIONS = [
 ];
 
 const nf = (n: number | undefined) => (n ?? 0).toLocaleString("en-IN");
-
-function ChartTooltip({ active, payload, label }: {
-  active?: boolean; payload?: Array<{ value: number }>; label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const v = payload[0].value;
-  return (
-    <div className="rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm shadow-card">
-      <p className="font-medium">{label}</p>
-      <p className="text-ink-600 tabular-nums">Net {v >= 0 ? "+" : ""}{nf(v)} kg</p>
-    </div>
-  );
-}
 
 function Tile({ label, value, tone }: { label: string; value: string; tone?: "up" | "down" }) {
   const color = tone === "up" ? "text-status-success" : tone === "down" ? "text-status-danger" : "";
@@ -112,20 +102,12 @@ export function StockMovementsReportPage() {
         ) : (data?.series.length ?? 0) === 0 ? (
           <p className="py-10 text-center text-sm text-ink-400">No movements in this period.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={data?.series ?? []} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
-              <CartesianGrid stroke={chartTheme.grid} vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 12, fill: chartTheme.axis }} />
-              <YAxis tick={{ fontSize: 12, fill: chartTheme.axis }} />
-              <ReferenceLine y={0} stroke={chartTheme.axis} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: chartTheme.cursor }} />
-              <Bar dataKey="net" radius={[4, 4, 0, 0]}>
-                {(data?.series ?? []).map((p, i) => (
-                  <Cell key={i} fill={p.net >= 0 ? chartTheme.series[1] : chartTheme.status.critical} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <ReportBarChart
+            series={data?.series ?? []}
+            dataKey="net"
+            signed
+            format={(v: number) => `Net ${v >= 0 ? "+" : ""}${nf(v)} kg`}
+          />
         )}
       </Card>
 

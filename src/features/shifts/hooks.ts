@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { productionService, shiftService } from "./api";
-import { ShiftPlanFormValues } from "./types";
+import { PendingShift, ShiftPlanFormValues } from "./types";
+import { withoutShift } from "./pendingList";
 
 const KEY = "shifts";
 
@@ -71,7 +72,36 @@ export function useShiftMutations() {
   });
   const verify = useMutation({
     mutationFn: shiftService.verifyProduction,
-    onSuccess: invalidate,
+
+    // ── The third repeated action ───────────────────────────────────
+    //  A supervisor works down the pending list one row at a time.
+    //  Waiting a round trip for each row before it disappears makes a
+    //  queue of twenty feel like work; the row going the moment it is
+    //  verified makes it feel like ticking things off.
+    //
+    //  Only the pending LIST is guessed. The shift's own figures, the
+    //  dashboard and the production view are refetched, because
+    //  verifying rewrites numbers this client cannot compute.
+    onMutate: async ({ shiftId }) => {
+      const key = [KEY, "pending-verification"];
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<{ count: number; shifts: PendingShift[] }>(key);
+      if (!previous) return { previous };
+
+      qc.setQueryData(key, withoutShift(previous, shiftId));
+      return { previous };
+    },
+
+    // Put the row back. A verification that failed but left the row
+    // gone is the worst outcome: a shift nobody checked, looking
+    // exactly like one somebody did.
+    onError: (_e, _vars, ctx) => {
+      if (ctx?.previous) {
+        qc.setQueryData([KEY, "pending-verification"], ctx.previous);
+      }
+    },
+
+    onSettled: invalidate,
   });
   return { createPlan, deletePlan, verify };
 }

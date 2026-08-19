@@ -1,6 +1,7 @@
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { cn } from "./cn";
+import { DiscardChangesPrompt } from "./DiscardChangesPrompt";
 
 export interface FormScreenProps {
   open: boolean;
@@ -38,17 +39,25 @@ export function FormScreen({
   const bodyRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
   const restoreRef = useRef<HTMLElement | null>(null);
+  const [asking, setAsking] = useState(false);
 
   // A stray Back/Esc must not wipe a half-filled form: once the user has
   // typed anything, dismissal asks first.
+  //
+  // Was window.confirm. See DiscardChangesPrompt for why the question
+  // is a layer inside this screen rather than a second dialog.
   const requestClose = () => {
-    if (confirmDirtyClose && dirtyRef.current && !window.confirm("Discard your changes?")) return;
+    if (confirmDirtyClose && dirtyRef.current) {
+      setAsking(true);
+      return;
+    }
     onClose();
   };
 
   useEffect(() => {
     if (!open) return;
     dirtyRef.current = false;
+    setAsking(false);
     restoreRef.current = document.activeElement as HTMLElement | null;
 
     // Lock background scroll while the screen is up.
@@ -117,6 +126,11 @@ export function FormScreen({
           <div className="rounded-card bg-surface p-5 shadow-card sm:p-6">{children}</div>
         </div>
       </div>
+      <DiscardChangesPrompt
+        open={asking}
+        onKeepEditing={() => setAsking(false)}
+        onDiscard={() => { setAsking(false); onClose(); }}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "./cn";
+import { DiscardChangesPrompt } from "./DiscardChangesPrompt";
 
 export interface ModalProps {
   open: boolean;
@@ -20,17 +21,28 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
   const panelRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
   const restoreRef = useRef<HTMLElement | null>(null);
+  const [asking, setAsking] = useState(false);
 
   // A stray backdrop click or Esc must not wipe a half-filled form:
   // once the user has typed anything, dismissal asks first.
+  //
+  // Was window.confirm — the only dialog in the app that could not be
+  // styled, read in the app's voice, or tested. It is now a layer
+  // inside this dialog rather than a nested Modal, because a Modal
+  // inside a Modal means two focus traps and role="dialog" nested in
+  // role="dialog".
   const requestClose = () => {
-    if (confirmDirtyClose && dirtyRef.current && !window.confirm("Discard your changes?")) return;
+    if (confirmDirtyClose && dirtyRef.current) {
+      setAsking(true);
+      return;
+    }
     onClose();
   };
 
   useEffect(() => {
     if (!open) return;
     dirtyRef.current = false;
+    setAsking(false);
     restoreRef.current = document.activeElement as HTMLElement | null;
 
     // Move focus into the dialog (first field, else close button).
@@ -83,7 +95,12 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
     >
       <div
         ref={panelRef}
-        className={cn("w-full bg-surface rounded-card shadow-card-hover flex flex-col max-h-[85vh]", width)}
+        className={cn(
+          // `relative` so the discard prompt can cover this panel and
+          // nothing else.
+          "relative w-full bg-surface rounded-card shadow-card-hover flex flex-col max-h-[85vh]",
+          width
+        )}
         onInput={() => {
           dirtyRef.current = true;
         }}
@@ -103,6 +120,12 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
         {/* Body scrolls when a dialog is taller than the viewport, so the
             content below the fold (e.g. a Save button) is always reachable. */}
         <div className="p-5 overflow-y-auto">{children}</div>
+
+        <DiscardChangesPrompt
+          open={asking}
+          onKeepEditing={() => setAsking(false)}
+          onDiscard={() => { setAsking(false); onClose(); }}
+        />
       </div>
     </div>
   );

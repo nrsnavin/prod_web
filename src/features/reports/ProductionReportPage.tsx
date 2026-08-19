@@ -1,8 +1,5 @@
 import { ReactNode, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-} from "recharts";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -10,11 +7,17 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { useToast } from "@/components/ui/Toast";
-import { chartTheme } from "@/core/charts/theme";
 import { ApiError } from "@/core/http/httpClient";
 import { reportsService } from "./api";
 import { ReportFilterBar } from "./components/ReportFilterBar";
+import { lazyChart } from "@/components/ui/LazyChart";
 import { ProductionReport, ProductionRow, ReportFilters } from "./types";
+
+// Recharts is 362 KB. Behind a lazy boundary it arrives with the
+// chart rather than before the page can draw its heading.
+const ReportBarChart = lazyChart<
+  React.ComponentProps<typeof import("./components/ReportBarChart")["ReportBarChart"]>
+>(() => import("./components/ReportBarChart"), "ReportBarChart", "h-60");
 
 const GROUP_BY_OPTIONS = [
   { value: "machine", label: "Machine" },
@@ -25,20 +28,6 @@ const GROUP_BY_OPTIONS = [
 ];
 
 const nf = (n: number | undefined) => (n ?? 0).toLocaleString("en-IN");
-
-function ChartTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ value: number }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm shadow-card">
-      <p className="font-medium">{label}</p>
-      <p className="text-ink-600 tabular-nums">{nf(payload[0].value)} m</p>
-    </div>
-  );
-}
 
 function Tile({ label, value, sub }: { label: string; value: string; sub?: ReactNode }) {
   return (
@@ -142,15 +131,12 @@ export function ProductionReportPage() {
         ) : (data?.series.length ?? 0) === 0 ? (
           <p className="py-10 text-center text-sm text-ink-400">No production in this period.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={data?.series ?? []} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
-              <CartesianGrid stroke={chartTheme.grid} vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 12, fill: chartTheme.axis }} />
-              <YAxis tick={{ fontSize: 12, fill: chartTheme.axis }} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: chartTheme.cursor }} />
-              <Bar dataKey="meters" fill={chartTheme.series[0]} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <ReportBarChart
+            series={data?.series ?? []}
+            dataKey="meters"
+            colorIndex={0}
+            format={(v: number) => `${nf(v)} m`}
+          />
         )}
       </Card>
 
