@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Cog, ArrowRight, XCircle, FileText, Check, AlertTriangle, Pencil } from "lucide-react";
+import { ArrowLeft, Cog, ArrowRight, XCircle, FileText, Check, AlertTriangle, Pencil, QrCode } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { JobQrPrint } from "./JobQrPrint";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
@@ -108,6 +109,7 @@ export function JobDetailPage() {
   const readiness = useWeavingReadiness(id, job?.status === "preparatory");
   const { updateStatus, cancel } = useJobMutations();
   const [assignOpen, setAssignOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
   const [qtyOpen, setQtyOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -151,6 +153,12 @@ export function JobDetailPage() {
                 <FileText className="h-4 w-4" /> MRP sheet
               </Button>
             </Link>
+            {/* Available at every status, including cancelled: a job
+                card gets printed to go on the docket, and somebody
+                chasing a job months later wants the same sheet. */}
+            <Button variant="secondary" onClick={() => setQrOpen(true)}>
+              <QrCode className="h-4 w-4" /> QR job card
+            </Button>
             {/* Only while nothing is committed to these figures. The
                 reason is on the button's title rather than hidden, so
                 somebody who expected it can see why it has gone. */}
@@ -332,6 +340,8 @@ export function JobDetailPage() {
 
       {/* Keyed on the job's own figures so reopening after a save starts
           from what was stored, not the state it was left in. */}
+      <JobQrPrint job={job} open={qrOpen} onClose={() => setQrOpen(false)} />
+
       {qtyOpen && (
         <JobElasticsEditModal
           key={job.plannedElastics.map((e) => `${e.elasticId}:${e.quantity}`).join("|")}
