@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Topbar } from "./Topbar";
 
 // ══════════════════════════════════════════════════════════════════
@@ -25,11 +26,19 @@ vi.mock("@/core/auth/useAuth", () => ({
   }),
 }));
 
+vi.mock("./SandboxBadge", () => ({
+  // Its own suite covers it. Here it only has to not explode: this
+  // test is about the profile icon.
+  SandboxBadge: () => null,
+}));
+
 const renderTopbar = () =>
   render(
+    <QueryClientProvider client={new QueryClient()}>
     <MemoryRouter>
       <Topbar onMenuClick={vi.fn()} onSearchClick={vi.fn()} />
     </MemoryRouter>
+    </QueryClientProvider>
   );
 
 beforeEach(() => {
