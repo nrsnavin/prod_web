@@ -1,22 +1,27 @@
+import { createPortal } from "react-dom";
 import { PrintModal } from "@/components/print/PrintModal";
 import { QrImg } from "@/components/print/QrImg";
-import { SheetHeader, SheetSection, SheetTable, Th, Td } from "@/components/print/SheetForm";
 import type { JobDetail } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
-//  A JOB CARD THAT CAN BE SCANNED BACK
+//  A 2" × 2" LABEL: THE CODE, AND THE JOB NUMBER
 //
-//  Printed and taped to the travelling docket, so anybody holding the
-//  paper can get to the job on their phone instead of reading a number
-//  off it and typing it into a search box.
+//  This was a full job card — customer, machine, warping and covering
+//  status, a table of planned against produced against packed. That is
+//  a sheet of A4, and A4 does not go on a beam, a trolley or a bin.
+//  What actually gets stuck to the work is a 2in square label off a
+//  label printer, and on 2in there is room for exactly two things:
+//  the code, and the number a person reads when the code will not scan.
+//
+//  Everything else that was on the card is one scan away, which is the
+//  entire point of the code being there.
 //
 //  ── Why the QR holds a URL and not an id ─────────────────────────
 //  The other QR codes in this system encode tagged strings — `BOX|<id>`
 //  on a packing slip, `COVB|J:12|C:…|B:3` on a covering label. Those
 //  assume a scanner that knows the format, and there isn't one: neither
 //  mobile app has a scanner, in either repo. Every QR printed here so
-//  far has been unreadable by anything, which is presumably why nobody
-//  has ever asked about them.
+//  far has been unreadable by anything.
 //
 //  A URL needs no scanner. Every phone camera made in the last decade
 //  opens one from the lock screen. So this encodes the job's own page
@@ -25,13 +30,47 @@ import type { JobDetail } from "./types";
 //  and it points there. Nothing to configure and nothing to keep in
 //  step with a deployment.
 //
-//  ── The paper still has to work on its own ───────────────────────
-//  A QR is a single point of failure: a smudged label, a phone with a
-//  flat battery, a scanner that will not focus in mill light. So the
-//  job number, customer, machine and the planned quantities are all
-//  printed in full beside it. The QR is a shortcut, never the only copy
-//  of the information.
+//  ── Why this is portalled to <body> ──────────────────────────────
+//  The app's print rules hide everything outside `.print-area` with
+//  `visibility: hidden`, which leaves it OCCUPYING LAYOUT. On A4 that
+//  costs a leading blank page nobody notices. On a 2in page it is a
+//  stack of blank labels feeding out of the printer, one for every 2in
+//  of app screen behind the dialog.
+//
+//  So the label is portalled to <body> as a top-level branch, and the
+//  print stylesheet takes every other top-level branch out of the
+//  layout with `display: none` rather than merely hiding it. That rule
+//  needs a direct child of <body> to bite on; a dialog buried inside
+//  #root cannot give it one.
 // ══════════════════════════════════════════════════════════════════
+
+/**
+ * The page box, for as long as the label is open.
+ *
+ * `@page` is document-level — it cannot be scoped to a selector — so it
+ * is scoped by LIFETIME instead: this rule exists only while the label
+ * sheet is mounted, and the app's A4 default applies again the moment
+ * it closes. It comes after index.css in the cascade, so it wins.
+ */
+export const LABEL_PAGE_CSS = "@page { size: 2in 2in; margin: 0; }";
+
+/**
+ * The QR, in CSS pixels. 2in of paper is 192px at the 96dpi CSS inch;
+ * this leaves the 0.1in padding, the job number beneath, and quiet zone
+ * on either side of the code.
+ */
+export const QR_PX = 134;
+
+/**
+ * The quiet zone, in modules, encoded into the image itself.
+ *
+ * Four is what the QR spec asks for and what readers use to find the
+ * symbol's edges. It is a count of MODULES, not a distance, which is
+ * why it cannot be left to the CSS padding: a module shrinks as the
+ * host name grows, so a padding that clears four modules on
+ * `http://mill.local` clears fewer on a longer domain.
+ */
+export const QR_QUIET_MODULES = 4;
 
 /**
  * The page this job lives on, on the host the sheet is being printed
@@ -50,12 +89,6 @@ export function jobUrl(jobId: string): string {
   return `${origin}/jobs/${jobId}`;
 }
 
-const fmtQty = (n: number) =>
-  Number.isFinite(n) ? Math.round(n).toLocaleString("en-IN") : "—";
-
-const fmtDate = (d?: string | null) =>
-  d ? new Date(d).toLocaleDateString("en-IN") : "—";
-
 export function JobQrPrint({
   job, open, onClose,
 }: { job: JobDetail; open: boolean; onClose: () => void }) {
@@ -69,103 +102,46 @@ export function JobQrPrint({
 
   const url = jobUrl(job.id);
 
-  // Real responses do omit these. Defaulting here rather than trusting
-  // the type keeps a missing array a missing row instead of a blank
-  // page — the job card is printed precisely when somebody needs the
-  // job, so failing closed is the wrong direction.
-  const planned = job.plannedElastics ?? [];
-  const produced = job.producedElastics ?? [];
-  const packed = job.packedElastics ?? [];
+  const sheet = (
+    <div data-print-page="label-2in">
+      <style>{LABEL_PAGE_CSS}</style>
 
-  return (
-    <PrintModal open={open} onClose={onClose} title={`Job card — ${job.jobNo}`}>
-      <div>
-        <SheetHeader
-          title="Job Card"
-          subtitle={job.jobNo}
-          fields={[
-            { label: "Customer", value: job.customerName },
-            { label: "Order", value: job.orderNo ? `#${job.orderNo}` : "—" },
-            { label: "Status", value: job.status },
-            { label: "Date", value: fmtDate(job.date) },
-          ]}
-        />
+      <PrintModal open={open} onClose={onClose} title={`Job label — ${job.jobNo}`}>
+        {/* Shown at its true size on screen, so what is on the preview
+            is what comes off the printer. The dashed edge is a preview
+            aid only — on paper the label is the code and the number and
+            nothing else. */}
+        <div className="flex justify-center">
+          {/* Every metric of this box — 2in square, the padding that is
+              the code's quiet zone, the gap above the number — is in
+              `.print-label-2in` in index.css, NOT in Tailwind arbitrary
+              values here. `p-[0.1in]` and `gap-[0.07in]` were dropped by
+              the extractor at build time without a word, and the label
+              rendered at the right size with the code flush against the
+              paper edge. */}
+          <div className="print-label print-label-2in flex flex-col items-center justify-center border border-dashed border-ink-300 bg-white">
+            {/* The 4-module quiet zone is encoded INTO the image rather
+                than left to the 0.1in padding round it. The padding is
+                a fixed distance; the quiet zone has to be four modules
+                wide, and a module gets smaller as the host name gets
+                longer. Asking the encoder makes it right at any URL
+                length instead of right at the one I measured. */}
+            <QrImg value={url} size={QR_PX} margin={QR_QUIET_MODULES} />
 
-        <SheetSection>Job</SheetSection>
-        <div className="border border-ink-300 p-3">
-          <div className="flex items-start justify-between gap-6">
-            <div className="min-w-0 text-sm">
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                <dt className="text-ink-500">Machine</dt>
-                <dd className="font-medium">
-                  {job.machine
-                    ? `${job.machine.machineName} · ${job.machine.machineNoOfHead} heads`
-                    : "Not assigned"}
-                </dd>
-                <dt className="text-ink-500">Made</dt>
-                <dd className="font-medium">
-                  {job.productionMode === "outsource"
-                    ? `Outsourced${job.outsourceVendor ? ` — ${job.outsourceVendor}` : ""}`
-                    : "In house"}
-                </dd>
-                <dt className="text-ink-500">Warping</dt>
-                <dd className="font-medium">{job.warping?.status ?? "—"}</dd>
-                <dt className="text-ink-500">Covering</dt>
-                <dd className="font-medium">{job.covering?.status ?? "—"}</dd>
-              </dl>
-            </div>
-
-            {/* Bigger than the label QRs: this one is read off a docket
-                pinned to a machine in mill light, not off a box held in
-                the hand. */}
-            <div className="shrink-0 text-center">
-              <QrImg value={url} size={120} />
-              <p className="mt-1 text-[10px] text-ink-500">Scan for this job</p>
-            </div>
+            {/* The one thing on the label that survives a smudged code,
+                a flat battery, or a camera that will not focus in mill
+                light. It is printed big enough to read at arm's length
+                off a machine. */}
+            <span className="text-[13pt] font-bold leading-none tracking-wide text-ink-900">
+              {job.jobNo}
+            </span>
           </div>
         </div>
-
-        <SheetSection>Elastics</SheetSection>
-        <SheetTable
-            head={
-              <tr>
-                <Th>Elastic</Th>
-                <Th align="right">Planned</Th>
-                <Th align="right">Produced</Th>
-                <Th align="right">Packed</Th>
-              </tr>
-            }
-          >
-            <tbody>
-              {planned.length === 0 ? (
-                <tr>
-                  <Td colSpan={4}>No elastics planned on this job.</Td>
-                </tr>
-              ) : (
-                planned.map((p) => {
-                  const made = produced.find((x) => x.elasticName === p.elasticName);
-                  const inBox = packed.find((x) => x.elasticName === p.elasticName);
-                  return (
-                    <tr key={p.elasticName}>
-                      <Td>{p.elasticName}</Td>
-                      <Td align="right">{fmtQty(p.quantity)}</Td>
-                      <Td align="right">{fmtQty(made?.quantity ?? 0)}</Td>
-                      <Td align="right">{fmtQty(inBox?.quantity ?? 0)}</Td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-        </SheetTable>
-
-        {/* The URL in plain text under the code. A QR that will not scan
-            is then still a thing somebody can type, and it makes what
-            the code contains obvious rather than something to be
-            trusted. */}
-        <p className="mt-3 break-all text-center text-[10px] text-ink-400">{url}</p>
-      </div>
-    </PrintModal>
+      </PrintModal>
+    </div>
   );
+
+  return createPortal(sheet, document.body);
 }
 
 export default JobQrPrint;

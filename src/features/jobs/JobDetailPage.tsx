@@ -153,11 +153,11 @@ export function JobDetailPage() {
                 <FileText className="h-4 w-4" /> MRP sheet
               </Button>
             </Link>
-            {/* Available at every status, including cancelled: a job
-                card gets printed to go on the docket, and somebody
-                chasing a job months later wants the same sheet. */}
+            {/* Available at every status, including cancelled: the
+                label goes on the work, and somebody chasing a job
+                months later wants the same one. */}
             <Button variant="secondary" onClick={() => setQrOpen(true)}>
-              <QrCode className="h-4 w-4" /> QR job card
+              <QrCode className="h-4 w-4" /> QR label
             </Button>
             {/* Only while nothing is committed to these figures. The
                 reason is on the button's title rather than hidden, so
