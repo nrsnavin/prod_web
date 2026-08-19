@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Wand2, Sparkles, AlertTriangle, CheckCircle2, ArrowRight, RefreshCw,
   Clock, Repeat, Info,
@@ -13,6 +13,8 @@ import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useSuggestedPlan, useLatestPlan, useAcceptPlan } from "./hooks";
+import { AcceptedPlanPanel } from "./AcceptedPlanPanel";
+import { LearnedWeightsPanel } from "./LearnedWeightsPanel";
 import { MachinePlan, PlanRow, RateSource, SuggestedPlan } from "./types";
 
 const HORIZONS = [7, 14, 30];
@@ -75,7 +77,30 @@ function SequenceRow({ row }: { row: PlanRow }) {
   );
 }
 
-function MachineCard({ mp }: { mp: MachinePlan }) {
+// ══════════════════════════════════════════════════════════════════
+//  WHY THIS SCREEN CAN BE ARGUED WITH
+//
+//  Until now the planner offered a schedule and the only answers were
+//  "accept" and "don't". That made the audit's central example —
+//  "a planner accepts a schedule but moves two lines" — literally
+//  impossible, and with it went the only signal that could ever correct
+//  the objective. A system that cannot be disagreed with in a way it can
+//  read cannot learn anything.
+//
+//  Two moves, because they are the two disagreements that mean
+//  something: this run belongs on a different loom, and this run should
+//  go before that one. Both are re-scored server-side on accept, so the
+//  plan of record carries the finish dates of the schedule actually
+//  chosen rather than the one that was offered.
+// ══════════════════════════════════════════════════════════════════
+function MachineCard({
+  mp, otherMachines, onMove, onReorder,
+}: {
+  mp: MachinePlan;
+  otherMachines: { machineId: string; machineID: string }[];
+  onMove: (lineId: string, toMachineId: string) => void;
+  onReorder: (machineId: string, index: number, dir: -1 | 1) => void;
+}) {
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between">
@@ -91,7 +116,45 @@ function MachineCard({ mp }: { mp: MachinePlan }) {
       </div>
       <ul className="mt-1 divide-y divide-ink-100">
         {mp.rows.map((r, i) => (
-          <SequenceRow key={i} row={r} />
+          <li key={r.lineId || i}>
+            <SequenceRow row={r} />
+            <div className="flex flex-wrap items-center gap-2 pb-2 pl-1 text-xs">
+              <button
+                type="button"
+                aria-label={`Move ${r.elasticName} earlier`}
+                disabled={i === 0}
+                onClick={() => onReorder(mp.machineId, i, -1)}
+                className="rounded px-1.5 py-0.5 text-ink-500 hover:bg-surface-2 disabled:opacity-30"
+              >
+                ↑ earlier
+              </button>
+              <button
+                type="button"
+                aria-label={`Move ${r.elasticName} later`}
+                disabled={i === mp.rows.length - 1}
+                onClick={() => onReorder(mp.machineId, i, 1)}
+                className="rounded px-1.5 py-0.5 text-ink-500 hover:bg-surface-2 disabled:opacity-30"
+              >
+                ↓ later
+              </button>
+              {otherMachines.length > 0 && (
+                <label className="flex items-center gap-1 text-ink-400">
+                  move to
+                  <select
+                    aria-label={`Move ${r.elasticName} to another machine`}
+                    value=""
+                    onChange={(e) => e.target.value && onMove(r.lineId, e.target.value)}
+                    className="rounded border border-ink-200 bg-surface px-1 py-0.5 text-xs"
+                  >
+                    <option value="">…</option>
+                    {otherMachines.map((m) => (
+                      <option key={m.machineId} value={m.machineId}>{m.machineID}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+          </li>
         ))}
       </ul>
     </Card>
@@ -105,10 +168,56 @@ export function PlanningPage() {
   const latest = useLatestPlan();
   const accept = useAcceptPlan();
 
+  // The admin's version of the plan, or null while they have changed
+  // nothing. Kept beside the proposal rather than replacing it: the
+  // server needs BOTH to work out what the edit was, and the screen
+  // needs the original to show that an edit happened at all.
+  const [edited, setEdited] = useState<MachinePlan[] | null>(null);
+  const shown = edited ?? data?.machines ?? [];
+
+  // A fresh proposal invalidates any edit made against the previous one —
+  // the line ids may not even exist any more.
+  useEffect(() => { setEdited(null); }, [data?.generatedAt, horizon]);
+
+  const moveLine = (lineId: string, toMachineId: string) => {
+    const base = edited ?? data?.machines ?? [];
+    const row = base.flatMap((m) => m.rows).find((r) => r.lineId === lineId);
+    if (!row) return;
+    setEdited(
+      base.map((m) => ({
+        ...m,
+        rows:
+          m.machineId === toMachineId
+            ? [...m.rows.filter((r) => r.lineId !== lineId), row]
+            : m.rows.filter((r) => r.lineId !== lineId),
+      }))
+    );
+  };
+
+  const reorder = (machineId: string, index: number, dir: -1 | 1) => {
+    const base = edited ?? data?.machines ?? [];
+    setEdited(
+      base.map((m) => {
+        if (m.machineId !== machineId) return m;
+        const rows = [...m.rows];
+        const j = index + dir;
+        if (j < 0 || j >= rows.length) return m;
+        [rows[index], rows[j]] = [rows[j], rows[index]];
+        return { ...m, rows };
+      })
+    );
+  };
+
   const onAccept = (plan: SuggestedPlan) => {
-    accept.mutate(plan, {
-      onSuccess: () => {
-        toast("Plan accepted as the plan of record", "success");
+    accept.mutate({ plan, edited: edited ?? undefined }, {
+      onSuccess: (res) => {
+        toast(
+          res.learning?.updated
+            ? "Plan accepted — the planner took note of your changes"
+            : "Plan accepted as the plan of record",
+          "success"
+        );
+        setEdited(null);
         latest.refetch();
       },
       onError: (e) =>
@@ -130,19 +239,10 @@ export function PlanningPage() {
         }
       />
 
-      {/* Plan of record banner */}
-      {latest.data?.plan && (
-        <Card className="mb-4 flex items-center gap-2 border-l-4 border-status-success p-3 text-sm">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success" />
-          <span>
-            Plan of record accepted{" "}
-            <span className="font-medium">
-              {new Date(latest.data.plan.acceptedAt).toLocaleString("en-IN")}
-            </span>{" "}
-            by {latest.data.plan.acceptedBy || "admin"} · {latest.data.plan.assignments.length} assignments
-          </span>
-        </Card>
-      )}
+      {/* The plan the floor is actually following, in full. */}
+      {latest.data?.plan && <AcceptedPlanPanel plan={latest.data.plan} />}
+
+      <LearnedWeightsPanel />
 
       {/* Horizon selector */}
       <div className="mb-4 flex items-center gap-1 rounded-lg bg-ink-100 p-1 w-fit">
@@ -242,9 +342,22 @@ export function PlanningPage() {
                 )}
               </span>
             </div>
-            <Button onClick={() => onAccept(data)} loading={accept.isPending} disabled={obj.placed === 0}>
-              <CheckCircle2 className="h-4 w-4" /> Accept plan
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {edited && (
+                <>
+                  <span className="text-xs text-status-warning">
+                    You have changed this plan
+                  </span>
+                  <Button variant="secondary" onClick={() => setEdited(null)}>
+                    Undo my changes
+                  </Button>
+                </>
+              )}
+              <Button onClick={() => onAccept(data)} loading={accept.isPending} disabled={obj.placed === 0}>
+                <CheckCircle2 className="h-4 w-4" />
+                {edited ? "Accept my version" : "Accept plan"}
+              </Button>
+            </div>
           </Card>
 
           {/* AI rationale */}
@@ -267,8 +380,16 @@ export function PlanningPage() {
             </Card>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
-              {data.machines.map((mp) => (
-                <MachineCard key={mp.machineId} mp={mp} />
+              {shown.map((mp) => (
+                <MachineCard
+                  key={mp.machineId}
+                  mp={mp}
+                  otherMachines={shown
+                    .filter((o) => o.machineId !== mp.machineId)
+                    .map((o) => ({ machineId: o.machineId, machineID: o.machineID }))}
+                  onMove={moveLine}
+                  onReorder={reorder}
+                />
               ))}
             </div>
           )}
