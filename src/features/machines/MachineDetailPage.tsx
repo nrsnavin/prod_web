@@ -20,6 +20,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useMachine, useMachineMutations, useServiceBills } from "./hooks";
 import { MachineHealthCard } from "./MachineHealth";
 import { MachineHeadMapEditModal } from "./MachineHeadMapEditModal";
+import { MachineHeadCountModal } from "./MachineHeadCountModal";
 import { ServiceBills } from "./ServiceBills";
 import { MachineHeadElastic, MachineShiftRow, MachineStatus, ServiceLogFormValues } from "./types";
 import { useTrackRecent } from "@/core/ui/uiStore";
@@ -207,6 +208,7 @@ export function MachineDetailPage() {
   const { data: bills, isLoading: billsLoading } = useServiceBills(id);
   const [logOpen, setLogOpen] = useState(false);
   const [mapEditOpen, setMapEditOpen] = useState(false);
+  const [headsOpen, setHeadsOpen] = useState(false);
   useTrackRecent("Machine", `/machines/${id}`, machine ? `Machine ${machine.id}` : undefined);
 
   if (isLoading) {
@@ -266,7 +268,35 @@ export function MachineDetailPage() {
           columns={3}
           items={[
             { label: "Manufacturer", value: machine.manufacturer },
-            { label: "Heads", value: machine.heads },
+            {
+              label: "Heads",
+              // Editable only while the loom is free — the same rule the
+              // server enforces, said before the attempt rather than
+              // after it. Head count feeds the rate estimate and the
+              // head→elastic map, so changing it under a running job
+              // would re-price work already in progress.
+              value: (
+                <span className="flex items-center gap-2">
+                  <span className="tabular-nums">{machine.heads}</span>
+                  {machine.status === "free" ? (
+                    <button
+                      type="button"
+                      onClick={() => setHeadsOpen(true)}
+                      className="rounded px-1.5 py-0.5 text-xs font-medium text-brand-600 hover:bg-ink-100"
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <span
+                      className="text-xs text-ink-400"
+                      title={`The loom is ${machine.status}. Head count can only be changed while it is free.`}
+                    >
+                      locked while {machine.status}
+                    </span>
+                  )}
+                </span>
+              ),
+            },
             { label: "Hooks", value: machine.hooks },
             {
               label: "Running job",
@@ -307,6 +337,15 @@ export function MachineDetailPage() {
           emptyTitle="No elastics threaded on this machine"
         />
       </Card>
+
+      {headsOpen && id && (
+        <MachineHeadCountModal
+          machineId={id}
+          machineID={machine.id}
+          current={machine.heads}
+          onClose={() => setHeadsOpen(false)}
+        />
+      )}
 
       {mapEditOpen && id && (
         <MachineHeadMapEditModal

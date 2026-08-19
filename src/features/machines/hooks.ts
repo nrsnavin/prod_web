@@ -63,6 +63,11 @@ export function useMachineMutations() {
     }) => machineService.updateElasticMap(id, elastics, confirmHooks),
     onSuccess: invalidate,
   });
+  const updateHeads = useMutation({
+    mutationFn: ({ id, noOfHead }: { id: string; noOfHead: number }) =>
+      machineService.updateHeads(id, noOfHead),
+    onSuccess: invalidate,
+  });
   const uploadServiceBill = useMutation({
     mutationFn: (payload: ServiceBillUpload) => machineService.uploadServiceBill(payload),
     onSuccess: invalidate,
@@ -76,6 +81,7 @@ export function useMachineMutations() {
     setStatus,
     addServiceLog,
     updateElasticMap,
+    updateHeads,
     uploadServiceBill,
     deleteServiceBill,
   };
