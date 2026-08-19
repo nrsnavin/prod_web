@@ -103,6 +103,21 @@ export const machineService = {
     });
   },
 
+  /**
+   * Change how many heads a loom has.
+   *
+   * The server allows this only while the machine is FREE, and says so
+   * with the current status in the message when it refuses. That refusal
+   * is worth showing verbatim rather than flattening — "it is running"
+   * is the whole answer, and the caller cannot work it out otherwise.
+   */
+  async updateHeads(machineId: string, noOfHead: number): Promise<{
+    success: boolean; message: string;
+    data: { machineId: string; machineID: string; noOfHead: number };
+  }> {
+    return httpClient.patch("/machine/update-heads", { machineId, noOfHead });
+  },
+
   async predictiveHealth(): Promise<MachineHealthResponse> {
     return httpClient.get<MachineHealthResponse>("/machine/predictive-health");
   },
