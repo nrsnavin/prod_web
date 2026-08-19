@@ -170,9 +170,37 @@
   }
 }
 
+/* ── The 2in × 2in job label ────────────────────────────────────────
+   Every metric of this box lives here rather than in Tailwind arbitrary
+   values on the element, because two of them silently did not survive
+   the build: `h-[2in]` and `w-[2in]` compiled, `p-[0.1in]` and
+   `gap-[0.07in]` did NOT — Tailwind's extractor dropped them and said
+   nothing. The label still rendered, at the right size, with the QR
+   flush against the paper edge and no quiet zone for a reader to lock
+   onto. It looked finished and would not have scanned.
+
+   So the box is one plain rule, in one place, that the build cannot
+   quietly discard, and a test asserts it is here. Declared after
+   `@tailwind utilities` so it wins against any utility of the same
+   specificity.
+
+   The 0.1in padding is the code's quiet zone; the gap is the only space
+   between the code and the job number, and 2in leaves no more to give. */
+.print-label-2in {
+  box-sizing: border-box;
+  width: 2in;
+  height: 2in;
+  padding: 0.1in;
+  gap: 0.07in;
+  overflow: hidden;
+}
+
 /* Page margins for every printed document (MRP sheet, warping/covering
    programme, DC, PO, packing slip, labels). A generous margin keeps text
-   off the paper edge and inside most printers' unprintable border. */
+   off the paper edge and inside most printers' unprintable border.
+
+   The job label overrides this with its own `@page` while it is open —
+   see JobQrPrint. */
 @page {
   size: A4;
   margin: 14mm;
@@ -399,5 +427,36 @@ body {
      hide every other label so only the chosen one lands on paper. */
   [data-print-solo] .print-label:not(.print-solo-target) {
     display: none !important;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     A 2in × 2in LABEL IS THE WHOLE PAGE
+     ══════════════════════════════════════════════════════════════
+     The job label (JobQrPrint) prints on 2in square stock — its own
+     `@page` rule is injected while the sheet is open.
+
+     Everything above hides the rest of the app with `visibility:
+     hidden`, which leaves it OCCUPYING LAYOUT. On A4 that costs a
+     leading blank page nobody notices. On a 2in page it is a stack of
+     blank labels feeding out of the printer, one for every 2in of app
+     screen sitting behind the dialog.
+
+     So for this sheet, and only this sheet, every other top-level
+     branch leaves the layout entirely. The label is portalled to
+     <body> precisely so this rule has a direct child to bite on. */
+  body:has([data-print-page="label-2in"]) > *:not([data-print-page="label-2in"]) {
+    display: none !important;
+  }
+  /* `.print-area` above is `width: 100%` of the dialog panel, which is
+     max-w-2xl — far wider than the page. */
+  [data-print-page="label-2in"] .print-area {
+    width: 2in !important;
+  }
+  /* The box itself is sized once, outside this block, in absolute
+     units — nothing here resizes it. What it does need is protection
+     from the dialog's own decoration, which is on-screen chrome that
+     would otherwise print as a border round the label. */
+  .print-label-2in {
+    border: 0 !important;
   }
 }
