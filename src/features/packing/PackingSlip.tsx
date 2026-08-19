@@ -1,4 +1,5 @@
 import { PrintModal } from "@/components/print/PrintModal";
+import { TableScroll } from "@/components/ui/TableScroll";
 import { QrImg } from "@/components/print/QrImg";
 import { PackingRecord } from "./types";
 
@@ -46,16 +47,18 @@ export function PackingSlip({
             {jobNo != null ? `JOB J-${jobNo}` : ""} {customerName ? `· ${customerName}` : ""}
           </p>
         </div>
-        <table className="mt-3 w-full text-sm">
-          <tbody>
-            {rows.map(([label, value]) => (
-              <tr key={label} className="border-b border-ink-100">
-                <td className="py-1.5 text-ink-600">{label}</td>
-                <td className="py-1.5 text-right font-semibold tabular-nums">{value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <TableScroll>
+          <table className="mt-3 w-full text-sm">
+            <tbody>
+              {rows.map(([label, value]) => (
+                <tr key={label} className="border-b border-ink-100">
+                  <td className="py-1.5 text-ink-600">{label}</td>
+                  <td className="py-1.5 text-right font-semibold tabular-nums">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
         <div className="mt-4 flex justify-center">
           <QrImg value={`BOX|${record._id}|J:${jobNo ?? ""}`} size={72} />
         </div>

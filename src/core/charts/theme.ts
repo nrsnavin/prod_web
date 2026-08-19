@@ -26,6 +26,11 @@ export const chartTheme = {
     critical: "var(--chart-critical)",
   },
 
+  // The chart canvas itself. Needed wherever a mark punches a hole in
+  // the plot — the ring on an active point, a gap between segments —
+  // because that hole has to be the colour behind it, not white.
+  surface: "var(--chart-surface)",
+
   grid: "var(--chart-grid)",
   axis: "var(--chart-axis)",
   ink: "var(--chart-ink)",

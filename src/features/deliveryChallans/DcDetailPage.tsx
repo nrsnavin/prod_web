@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TableScroll } from "@/components/ui/TableScroll";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -187,52 +188,54 @@ export function DcDetailPage() {
           {/* A challan accompanies goods; it is not a tax invoice, so it
               carries no rate, amount or value. Ruled on every side to match
               the generated PDF, which is the copy that travels. */}
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-ink-100 text-xs uppercase tracking-wide text-ink-900">
-                <th className="border border-ink-300 px-2 py-1.5 text-left font-semibold">S.No</th>
-                <th className="border border-ink-300 px-2 py-1.5 text-left font-semibold">
-                  Description of Goods
-                </th>
-                <th className="border border-ink-300 px-2 py-1.5 text-center font-semibold">UOM</th>
-                <th className="border border-ink-300 px-2 py-1.5 text-right font-semibold">Quantity</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-ink-100">
-              {(dc.items ?? []).map((item, i) => {
-                const name =
-                  item.elasticName ||
-                  (typeof item.elastic === "object" && item.elastic ? item.elastic.name : "") ||
-                  item.description ||
-                  "—";
-                return (
-                  <tr key={item._id ?? i}>
-                    <td className="border border-ink-300 px-2 py-1.5 tabular-nums">{i + 1}</td>
-                    <td className="border border-ink-300 px-2 py-1.5">{name}</td>
-                    <td className="border border-ink-300 px-2 py-1.5 text-center">
-                      {item.unit || "m"}
-                    </td>
-                    <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums">
-                      {item.quantity.toLocaleString("en-IN")}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="font-semibold">
-                <td className="border border-ink-300 px-2 py-1.5" colSpan={2}>
-                  Total line items: {(dc.items ?? []).length}
-                </td>
-                <td className="border border-ink-300 px-2 py-1.5 text-right text-xs uppercase tracking-wide text-ink-600">
-                  Total qty
-                </td>
-                <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums">
-                  {(dc.totalQuantity ?? 0).toLocaleString("en-IN")}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+          <TableScroll>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-ink-100 text-xs uppercase tracking-wide text-ink-900">
+                  <th className="border border-ink-300 px-2 py-1.5 text-left font-semibold">S.No</th>
+                  <th className="border border-ink-300 px-2 py-1.5 text-left font-semibold">
+                    Description of Goods
+                  </th>
+                  <th className="border border-ink-300 px-2 py-1.5 text-center font-semibold">UOM</th>
+                  <th className="border border-ink-300 px-2 py-1.5 text-right font-semibold">Quantity</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ink-100">
+                {(dc.items ?? []).map((item, i) => {
+                  const name =
+                    item.elasticName ||
+                    (typeof item.elastic === "object" && item.elastic ? item.elastic.name : "") ||
+                    item.description ||
+                    "—";
+                  return (
+                    <tr key={item._id ?? i}>
+                      <td className="border border-ink-300 px-2 py-1.5 tabular-nums">{i + 1}</td>
+                      <td className="border border-ink-300 px-2 py-1.5">{name}</td>
+                      <td className="border border-ink-300 px-2 py-1.5 text-center">
+                        {item.unit || "m"}
+                      </td>
+                      <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums">
+                        {item.quantity.toLocaleString("en-IN")}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="font-semibold">
+                  <td className="border border-ink-300 px-2 py-1.5" colSpan={2}>
+                    Total line items: {(dc.items ?? []).length}
+                  </td>
+                  <td className="border border-ink-300 px-2 py-1.5 text-right text-xs uppercase tracking-wide text-ink-600">
+                    Total qty
+                  </td>
+                  <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums">
+                    {(dc.totalQuantity ?? 0).toLocaleString("en-IN")}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </TableScroll>
 
           {dc.remarks && (
             <p className="mt-4 text-sm text-ink-600">

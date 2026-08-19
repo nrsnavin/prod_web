@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { TableScroll } from "@/components/ui/TableScroll";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLot } from "./hooks";
@@ -64,22 +65,24 @@ export function LotLedger({ lotId }: { lotId: string }) {
   }
 
   return (
-    <table className="mt-2 w-full text-xs">
-      <thead>
-        <tr className="text-left text-ink-400">
-          <th className="py-1 font-medium">Date</th>
-          <th className="py-1 font-medium">What</th>
-          <th className="py-1 font-medium">Why</th>
-          <th className="py-1 text-right font-medium">Qty</th>
-          <th className="py-1 text-right font-medium">Balance</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-ink-100">
-        {movements.map((m, i) => (
-          <LedgerRow key={`${m.date}-${m.type}-${i}`} movement={m} />
-        ))}
-      </tbody>
-    </table>
+    <TableScroll>
+      <table className="mt-2 w-full text-xs">
+        <thead>
+          <tr className="text-left text-ink-400">
+            <th className="py-1 font-medium">Date</th>
+            <th className="py-1 font-medium">What</th>
+            <th className="py-1 font-medium">Why</th>
+            <th className="py-1 text-right font-medium">Qty</th>
+            <th className="py-1 text-right font-medium">Balance</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-ink-100">
+          {movements.map((m, i) => (
+            <LedgerRow key={`${m.date}-${m.type}-${i}`} movement={m} />
+          ))}
+        </tbody>
+      </table>
+    </TableScroll>
   );
 }
 

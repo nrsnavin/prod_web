@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { QuoteCreatePage } from "./QuoteCreatePage";
 
 // ══════════════════════════════════════════════════════════════════
@@ -34,11 +34,23 @@ vi.mock("@/features/customers/api", () => ({
   },
 }));
 
+// A DATA router, because that is what the app mounts this page in and
+// what the unsaved-changes guard's useBlocker requires. A plain
+// MemoryRouter renders the page but throws the moment the guard asks
+// whether a navigation should be blocked — the test would be checking
+// a page that cannot exist.
 const renderPage = () =>
   render(
-    <MemoryRouter>
-      <QuoteCreatePage />
-    </MemoryRouter>
+    <RouterProvider
+      router={createMemoryRouter(
+        [
+          { path: "/quotes/new", element: <QuoteCreatePage /> },
+          // Somewhere for the guard to block a navigation TO.
+          { path: "/quotes", element: <div>Quotations</div> },
+        ],
+        { initialEntries: ["/quotes/new"] }
+      )}
+    />
   );
 
 const weight = (material: string, product = 1) =>

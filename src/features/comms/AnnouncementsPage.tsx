@@ -55,6 +55,7 @@ function AnnouncementForm({
       <div>
         <label className="block text-sm font-medium text-ink-600 mb-1.5">Message *</label>
         <textarea
+          aria-label="Announcement text"
           rows={4}
           className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
           {...register("body")}

@@ -461,6 +461,7 @@ function PoEditModal({
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Terms / notes</label>
           <textarea
+            aria-label="Notes"
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -470,6 +471,7 @@ function PoEditModal({
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
           <textarea
+            aria-label="Reason for this change"
             rows={2}
             value={auditReason}
             onChange={(e) => setAuditReason(e.target.value)}

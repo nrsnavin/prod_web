@@ -164,6 +164,7 @@ function PackingEditModal({ record, onClose }: { record: PackingRecord; onClose:
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
           <textarea
+            aria-label="Reason for this change"
             rows={2}
             value={auditReason}
             onChange={(e) => setAuditReason(e.target.value)}

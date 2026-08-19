@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { machineService } from "./api";
 import {
+  Machine,
   MachineDetailsPatch,
   MachineFormValues,
   MachineStatus,
@@ -53,7 +54,39 @@ export function useMachineMutations() {
   const setStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: "free" | "maintenance" }) =>
       machineService.setStatus(id, status),
-    onSuccess: invalidate,
+
+    // ── Repeated enough to earn a guess ─────────────────────────────
+    //  Taking looms off the floor and putting them back is done a row
+    //  at a time, often several in a row, and the chip is the only
+    //  thing that says whether it worked. Waiting a round trip for each
+    //  makes a supervisor click twice.
+    //
+    //  Only the list is updated optimistically. The detail page is left
+    //  to the server, because it shows the running job alongside the
+    //  status and guessing that a job vanished would be inventing a
+    //  fact rather than anticipating one.
+    onMutate: async ({ id, status }) => {
+      await qc.cancelQueries({ queryKey: [KEY] });
+      const snapshots = qc.getQueriesData<Machine[]>({ queryKey: [KEY] });
+
+      for (const [key, rows] of snapshots) {
+        if (!Array.isArray(rows)) continue;
+        qc.setQueryData<Machine[]>(
+          key,
+          rows.map((m) => (m._id === id ? { ...m, status } : m))
+        );
+      }
+      return { snapshots };
+    },
+
+    // Every list this touched, back exactly as it was.
+    onError: (_e, _vars, ctx) => {
+      for (const [key, data] of ctx?.snapshots ?? []) qc.setQueryData(key, data);
+    },
+
+    // Still refetch: a status move can change the running job too, and
+    // that part was never guessed.
+    onSettled: invalidate,
   });
   const addServiceLog = useMutation({
     mutationFn: ({ machineId, body }: { machineId: string; body: ServiceLogFormValues }) =>

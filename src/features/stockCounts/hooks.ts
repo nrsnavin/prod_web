@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { stockCountService } from "./api";
-import { CountEntry, StockCountScope, StockCountStatus } from "./types";
+import { applyCounts } from "./optimistic";
+import { CountEntry, StockCount, StockCountScope, StockCountStatus } from "./types";
 
 const KEY = "stock-counts";
 
@@ -47,6 +48,33 @@ export function useStockCountMutations(id?: string) {
     }),
     enter: useMutation({
       mutationFn: (lines: CountEntry[]) => stockCountService.enter(id!, lines),
+
+      // ── The one action people do hundreds of times ───────────────
+      //  Somebody stands at a rack with a sheet of 200 lines and types
+      //  a number into each. Every one of those used to wait for a
+      //  round trip before the row moved, which on a phone at the far
+      //  end of a shed is the difference between an interface that
+      //  feels alive and one people describe as slow.
+      //
+      //  This is deliberately one of only a handful of optimistic
+      //  mutations. It earns it by being repeated; a once-a-week action
+      //  can keep waiting honestly.
+      onMutate: async (lines) => {
+        const key = [KEY, "detail", id];
+        // Stop an in-flight refetch from landing on top of the guess.
+        await qc.cancelQueries({ queryKey: key });
+        const previous = qc.getQueryData<StockCount>(key);
+        if (previous) qc.setQueryData<StockCount>(key, applyCounts(previous, lines));
+        return { previous };
+      },
+
+      // Put the sheet back exactly as it was. A failed entry that left
+      // the guessed number on screen would be the worst outcome here —
+      // a count nobody made, looking like one somebody did.
+      onError: (_err, _lines, ctx) => {
+        if (ctx?.previous) qc.setQueryData([KEY, "detail", id], ctx.previous);
+      },
+
       onSuccess: (res) => {
         // Write the server's copy straight into the cache. A refetch
         // would race the next keystroke and snap a half-typed row back

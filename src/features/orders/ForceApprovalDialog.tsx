@@ -75,6 +75,7 @@ export function ForceApprovalDialog({
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason *</label>
           <textarea
+            aria-label="Reason for approving anyway"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             onBlur={() => setTouched(true)}

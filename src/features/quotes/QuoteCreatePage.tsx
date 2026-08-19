@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { UnsavedChangesGuard } from "@/components/ui/UnsavedChangesGuard";
 import { useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, RotateCcw, UserPlus, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -35,6 +36,7 @@ export function QuoteCreatePage() {
 
   const [products, setProducts] = useState<ProductLine[]>(() => [newProduct()]);
   const [gstPercent, setGstPercent] = useState("5");
+  const [saved, setSaved] = useState(false);
 
   // Two ways to name a customer, because a quotation is usually the
   // FIRST thing sent to somebody who is not on the books yet.
@@ -99,6 +101,19 @@ export function QuoteCreatePage() {
   const filled = (p: ProductLine) =>
     p.materials.filter((m) => num(m.weightGrams) > 0 || num(m.ratePerKg) > 0);
 
+  // ── Is there work here worth protecting? ────────────────────────
+  //  Compared against the empty form rather than tracked with a flag,
+  //  so typing a character and deleting it correctly counts as nothing.
+  //  `saved` turns the guard off for the navigation the save itself
+  //  performs — otherwise finishing a quote asks whether you meant to
+  //  leave the page you just successfully submitted.
+  const started =
+    customerId !== "" ||
+    customerName.trim() !== "" ||
+    customerRef.trim() !== "" ||
+    remarks.trim() !== "" ||
+    products.some((p) => p.materials.some((m) => num(m.weightGrams) > 0 || num(m.ratePerKg) > 0));
+
   const save = () => {
     if (fromMaster && !customerId) {
       toast("Pick a customer, or switch to entering a new one", "error");
@@ -152,6 +167,7 @@ export function QuoteCreatePage() {
       },
       {
         onSuccess: (q) => {
+          setSaved(true);
           toast(`Quotation ${q.quoteNo} raised`, "success");
           navigate(`/quotes/${q._id}`);
         },
@@ -163,6 +179,7 @@ export function QuoteCreatePage() {
 
   return (
     <>
+      <UnsavedChangesGuard when={started && !saved} what="this quotation" />
       <Link to="/quotes" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900">
         <ArrowLeft className="h-4 w-4" /> Quotations
       </Link>
@@ -388,6 +405,7 @@ export function QuoteCreatePage() {
             <div className="mt-3">
               <label className="mb-1.5 block text-sm font-medium text-ink-600">Remarks</label>
               <textarea
+                aria-label="Remarks"
                 rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)}
                 placeholder="Shown on the quotation"
                 className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"

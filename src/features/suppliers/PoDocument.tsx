@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/Card";
+import { TableScroll } from "@/components/ui/TableScroll";
 import { useDocumentSettings } from "@/features/settings/hooks";
 import { PurchaseOrder, PoItem, PoSupplierRef } from "./types";
 
@@ -126,36 +127,38 @@ export function PoDocument({ po }: { po: PurchaseOrder }) {
         </div>
 
         {/* Items */}
-        <table className="mt-4 w-full text-sm">
-          <thead>
-            <tr className="border-b-2 border-ink-300 text-xs uppercase tracking-wide text-ink-500">
-              <th className="py-2 text-left w-8">#</th>
-              <th className="py-2 text-left">Material</th>
-              <th className="py-2 text-left w-16">Unit</th>
-              <th className="py-2 text-right w-20">Qty</th>
-              <th className="py-2 text-right w-24">Rate (₹)</th>
-              <th className="py-2 text-right w-28">Amount (₹)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {po.items.map((it, i) => (
-              <tr key={i} className="border-b border-ink-100 print-label">
-                <td className="py-2">{i + 1}</td>
-                <td className="py-2 font-medium">{itemName(it)}</td>
-                <td className="py-2 text-ink-600">{itemUnit(it) || "—"}</td>
-                <td className="py-2 text-right tabular-nums">{(it.quantity || 0).toLocaleString("en-IN")}</td>
-                <td className="py-2 text-right tabular-nums">{inr(it.price || 0)}</td>
-                <td className="py-2 text-right tabular-nums">{inr((it.price || 0) * (it.quantity || 0))}</td>
+        <TableScroll>
+          <table className="mt-4 w-full text-sm">
+            <thead>
+              <tr className="border-b-2 border-ink-300 text-xs uppercase tracking-wide text-ink-500">
+                <th className="py-2 text-left w-8">#</th>
+                <th className="py-2 text-left">Material</th>
+                <th className="py-2 text-left w-16">Unit</th>
+                <th className="py-2 text-right w-20">Qty</th>
+                <th className="py-2 text-right w-24">Rate (₹)</th>
+                <th className="py-2 text-right w-28">Amount (₹)</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-ink-300 font-semibold">
-              <td className="py-2" colSpan={5}>Grand total</td>
-              <td className="py-2 text-right tabular-nums">₹{inr(total)}</td>
-            </tr>
-          </tfoot>
-        </table>
+            </thead>
+            <tbody>
+              {po.items.map((it, i) => (
+                <tr key={i} className="border-b border-ink-100 print-label">
+                  <td className="py-2">{i + 1}</td>
+                  <td className="py-2 font-medium">{itemName(it)}</td>
+                  <td className="py-2 text-ink-600">{itemUnit(it) || "—"}</td>
+                  <td className="py-2 text-right tabular-nums">{(it.quantity || 0).toLocaleString("en-IN")}</td>
+                  <td className="py-2 text-right tabular-nums">{inr(it.price || 0)}</td>
+                  <td className="py-2 text-right tabular-nums">{inr((it.price || 0) * (it.quantity || 0))}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-ink-300 font-semibold">
+                <td className="py-2" colSpan={5}>Grand total</td>
+                <td className="py-2 text-right tabular-nums">₹{inr(total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </TableScroll>
 
         <p className="mt-2 text-xs text-ink-500">
           Amount in words: <span className="font-medium text-ink-700">{amountInWords(total)} only</span>

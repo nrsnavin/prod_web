@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { lazyChart } from "@/components/ui/LazyChart";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2, Sparkles, FileText, IndianRupee } from "lucide-react";
 import { canAccessPath } from "@/app/navigation";
@@ -27,7 +28,14 @@ import { OrderDeliveryChallans } from "./OrderDeliveryChallans";
 import { OrderElasticProgress, OrderStatus, RawMaterialRequirement, StockShortfall } from "./types";
 import { jobRefId } from "./orderJobRef";
 import { OrderJobGlance } from "./OrderJobGlance";
-import { OrderAnalytics } from "./OrderAnalytics";
+// Recharts is 362 KB and this panel sits three screens down. Loading it
+// with the page meant everyone who opened an order to read its lines
+// paid for a chart they never scrolled to.
+const OrderAnalytics = lazyChart<{ elastics: OrderElasticProgress[] }>(
+  () => import("./OrderAnalytics"),
+  "OrderAnalytics",
+  "h-80"
+);
 import { orderStatusTone, orderStatusLabel } from "./orderStatus";
 import { JobCreateForm } from "@/features/jobs/JobCreateForm";
 import { useTrackRecent } from "@/core/ui/uiStore";
@@ -280,6 +288,7 @@ function OrderEditModal({
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
           <textarea
+            aria-label="Reason for this change"
             rows={2}
             value={auditReason}
             onChange={(e) => setAuditReason(e.target.value)}

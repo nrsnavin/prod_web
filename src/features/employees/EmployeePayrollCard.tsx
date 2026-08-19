@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TableScroll } from "@/components/ui/TableScroll";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Wallet, Factory, Trash2, Fingerprint, ExternalLink, FileDown } from "lucide-react";
@@ -127,44 +128,46 @@ function RangeSlips({ empId }: { empId: string }) {
           </div>
 
           <div className="mt-4 overflow-hidden rounded-lg border border-ink-200">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-ink-100 text-left text-xs text-ink-400">
-                  <th className="px-4 py-2 font-medium">Month</th>
-                  <th className="px-4 py-2 text-right font-medium">Gross</th>
-                  <th className="px-4 py-2 text-right font-medium">Deductions</th>
-                  <th className="px-4 py-2 text-right font-medium">Net</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {(q.data?.slips ?? []).map((sl) => (
-                  <tr key={sl._id} className="border-b border-ink-100 last:border-0">
-                    <td className="px-4 py-2 font-medium">{MONTHS[sl.month - 1]} {sl.year}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{inr(sl.grossEarnings)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{inr(sl.totalDeductions)}</td>
-                    <td className="px-4 py-2 text-right font-semibold tabular-nums">{inr(sl.netPay)}</td>
-                    <td className="px-4 py-2">
-                      <StatusChip tone={statusTone[sl.status] ?? "neutral"}>
-                        {sl.status.replace("_", " ")}
-                      </StatusChip>
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <Button variant="ghost" size="sm" loading={busy === `${sl.year}-${sl.month}`}
-                        onClick={() => downloadPdf(sl.year, sl.month)}>
-                        <FileDown className="h-4 w-4" /> PDF
-                      </Button>
-                    </td>
+            <TableScroll>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-ink-100 text-left text-xs text-ink-400">
+                    <th className="px-4 py-2 font-medium">Month</th>
+                    <th className="px-4 py-2 text-right font-medium">Gross</th>
+                    <th className="px-4 py-2 text-right font-medium">Deductions</th>
+                    <th className="px-4 py-2 text-right font-medium">Net</th>
+                    <th className="px-4 py-2 font-medium">Status</th>
+                    <th className="px-4 py-2" />
                   </tr>
-                ))}
-                {(q.data?.slips?.length ?? 0) === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-ink-400">
-                    No generated payroll in this range.
-                  </td></tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(q.data?.slips ?? []).map((sl) => (
+                    <tr key={sl._id} className="border-b border-ink-100 last:border-0">
+                      <td className="px-4 py-2 font-medium">{MONTHS[sl.month - 1]} {sl.year}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{inr(sl.grossEarnings)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{inr(sl.totalDeductions)}</td>
+                      <td className="px-4 py-2 text-right font-semibold tabular-nums">{inr(sl.netPay)}</td>
+                      <td className="px-4 py-2">
+                        <StatusChip tone={statusTone[sl.status] ?? "neutral"}>
+                          {sl.status.replace("_", " ")}
+                        </StatusChip>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <Button variant="ghost" size="sm" loading={busy === `${sl.year}-${sl.month}`}
+                          onClick={() => downloadPdf(sl.year, sl.month)}>
+                          <FileDown className="h-4 w-4" /> PDF
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {(q.data?.slips?.length ?? 0) === 0 && (
+                    <tr><td colSpan={6} className="px-4 py-6 text-center text-ink-400">
+                      No generated payroll in this range.
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </TableScroll>
           </div>
         </>
       )}

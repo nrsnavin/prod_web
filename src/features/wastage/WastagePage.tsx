@@ -193,7 +193,8 @@ function WastageEditModal({
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
           <textarea
-            rows={2}
+              aria-label="Reason for this change"
+              rows={2}
             value={auditReason}
             onChange={(e) => setAuditReason(e.target.value)}
             placeholder="Why is this being changed? (recorded in the audit log)"

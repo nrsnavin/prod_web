@@ -136,6 +136,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
         <div className="flex items-center gap-2 border-b border-ink-100 pb-3 mb-2">
           <Search className="h-5 w-5 text-ink-400" />
           <input
+            aria-label="Search everything"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}

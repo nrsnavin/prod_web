@@ -110,6 +110,7 @@ export function DocumentSettingsForm() {
           <div>
             <label className="block text-sm font-medium text-ink-600 mb-1.5">Address</label>
             <textarea
+              aria-label="Company address"
               value={addressText}
               disabled={!canEdit}
               onChange={(e) => setAddressText(e.target.value)}
@@ -138,6 +139,7 @@ export function DocumentSettingsForm() {
               <label className="block text-sm font-medium text-ink-600 mb-1.5">Accent colour</label>
               <div className="flex items-center gap-2">
                 <input
+                  aria-label="Accent colour"
                   type="color"
                   value={accent}
                   disabled={!canEdit}
@@ -158,7 +160,9 @@ export function DocumentSettingsForm() {
                 )}
                 {canEdit && (
                   <>
-                    <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp"
+                    <input
+                      aria-label="Choose a logo image"
+                      ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp"
                       className="hidden" onChange={(e) => onPickLogo(e.target.files?.[0])} />
                     <Button size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>
                       <Upload className="h-4 w-4" /> Upload
@@ -184,6 +188,7 @@ export function DocumentSettingsForm() {
           <div>
             <label className="block text-sm font-medium text-ink-600 mb-1.5">Terms &amp; conditions</label>
             <textarea
+              aria-label="Terms and conditions"
               value={form.termsText}
               disabled={!canEdit}
               onChange={(e) => set("termsText", e.target.value)}

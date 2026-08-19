@@ -133,6 +133,7 @@ export function AssistantPage() {
           className="flex items-center gap-2 border-t border-ink-100 p-3"
         >
           <input
+            aria-label="Ask a question"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about orders, wastage, stock, machines…"

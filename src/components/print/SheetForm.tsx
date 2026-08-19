@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { TableScroll } from "@/components/ui/TableScroll";
 import { cn } from "@/components/ui/cn";
 
 /**
@@ -95,12 +96,14 @@ export function SheetTable({
   className?: string;
 }) {
   return (
-    <table className={cn("w-full border-collapse text-xs", className)}>
-      <thead className="bg-ink-100 text-[10px] uppercase tracking-wide text-ink-900">
-        {head}
-      </thead>
-      {children}
-    </table>
+    <TableScroll>
+      <table className={cn("w-full border-collapse text-xs", className)}>
+        <thead className="bg-ink-100 text-[10px] uppercase tracking-wide text-ink-900">
+          {head}
+        </thead>
+        {children}
+      </table>
+    </TableScroll>
   );
 }
 

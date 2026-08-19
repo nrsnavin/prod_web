@@ -118,6 +118,7 @@ export function SheetUploadModal({
               </>
             )}
             <input
+              aria-label="Choose a shift sheet PDF"
               ref={fileRef}
               type="file"
               accept="application/pdf"

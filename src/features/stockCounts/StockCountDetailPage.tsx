@@ -268,6 +268,7 @@ export function StockCountDetailPage() {
                         </span>
                       ) : (
                         <input
+                          aria-label="Counted quantity"
                           type="number"
                           inputMode="decimal"
                           min={0}

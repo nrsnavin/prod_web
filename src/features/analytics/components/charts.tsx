@@ -71,7 +71,11 @@ export function ProductionTrendChart({ data }: { data: TrendPoint[] }) {
           stroke={chartTheme.series[0]}
           strokeWidth={2}
           dot={false}
-          activeDot={{ r: 4, strokeWidth: 2, stroke: "#fff" }}
+          // The ring around the focused point is a hole punched in the
+          // canvas, so it has to be the canvas colour. Hardcoded #fff it
+          // drew a white halo on the dark theme's near-black chart —
+          // exactly where a bypassed token leaks first.
+          activeDot={{ r: 4, strokeWidth: 2, stroke: chartTheme.surface }}
         />
       </LineChart>
     </ResponsiveContainer>

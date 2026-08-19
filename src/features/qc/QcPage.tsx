@@ -169,6 +169,7 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="min-w-0 flex-1">
               <input
+                aria-label="Choose a photo of the defect"
                 ref={fileRef}
                 type="file"
                 accept="image/*"
@@ -245,6 +246,7 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Notes</label>
           <textarea
+            aria-label="Inspection notes"
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

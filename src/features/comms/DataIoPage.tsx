@@ -76,6 +76,7 @@ export function DataIoPage() {
               <Upload className="h-4 w-4" /> Upload file
             </Button>
             <input
+              aria-label="Choose a spreadsheet to import"
               ref={fileRef}
               type="file"
               accept=".xlsx,.xls"

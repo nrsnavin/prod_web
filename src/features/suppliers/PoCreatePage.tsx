@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { UnsavedChangesGuard } from "@/components/ui/UnsavedChangesGuard";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -85,7 +86,7 @@ export function PoCreatePage() {
     control,
     handleSubmit,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty, isSubmitSuccessful },
   } = useForm<PoFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -143,6 +144,13 @@ export function PoCreatePage() {
 
   return (
     <form onSubmit={handleSubmit(submit)} noValidate>
+      {/* isSubmitSuccessful turns it off for the navigation the save
+          itself performs — otherwise finishing a PO asks whether you
+          meant to leave the page you just submitted. */}
+      <UnsavedChangesGuard
+        when={isDirty && !isSubmitSuccessful}
+        what="this purchase order"
+      />
       {/*
         Said on the form, not just carried in the payload. A buyer who
         arrived from an order should see which order this covers before

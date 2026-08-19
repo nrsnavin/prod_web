@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { TableScroll } from "@/components/ui/TableScroll";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, FileText, Check, X, Printer, Plus, FileDown, Settings2, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -110,32 +111,34 @@ function PayslipModal({
           </p>
           {/* A real table so the printed sheet has ruled rows and repeating
               headers, not a run of flex rows. */}
-          <table className="mt-3 w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
-                <th className="py-2 font-medium">Description</th>
-                <th className="py-2 text-right font-medium">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows
-                .filter(([, v]) => v !== undefined && v !== null)
-                .map(([label, value]) => (
-                  <tr key={label} className="border-b border-ink-100">
-                    <td className="py-2 text-ink-600">{label}</td>
-                    <td className="py-2 text-right font-medium tabular-nums">{String(value)}</td>
-                  </tr>
-                ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-ink-200">
-                <td className="py-3 font-semibold">Net pay</td>
-                <td className="py-3 text-right text-xl font-bold tabular-nums">
-                  ₹{Number(data.netPay ?? 0).toLocaleString("en-IN")}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+          <TableScroll>
+            <table className="mt-3 w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+                  <th className="py-2 font-medium">Description</th>
+                  <th className="py-2 text-right font-medium">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows
+                  .filter(([, v]) => v !== undefined && v !== null)
+                  .map(([label, value]) => (
+                    <tr key={label} className="border-b border-ink-100">
+                      <td className="py-2 text-ink-600">{label}</td>
+                      <td className="py-2 text-right font-medium tabular-nums">{String(value)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-ink-200">
+                  <td className="py-3 font-semibold">Net pay</td>
+                  <td className="py-3 text-right text-xl font-bold tabular-nums">
+                    ₹{Number(data.netPay ?? 0).toLocaleString("en-IN")}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </TableScroll>
           <div className="mt-4 flex justify-end gap-2 print:hidden">
             <Button variant="secondary" size="sm" loading={downloading} onClick={downloadPdf}>
               <FileDown className="h-4 w-4" /> Download PDF

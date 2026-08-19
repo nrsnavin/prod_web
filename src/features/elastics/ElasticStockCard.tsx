@@ -318,6 +318,7 @@ export function ElasticStockCard({ elasticId }: { elasticId: string }) {
           <div>
             <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason *</label>
             <textarea
+              aria-label="Reason for the adjustment"
               rows={2}
               value={reason}
               onChange={(ev) => setReason(ev.target.value)}

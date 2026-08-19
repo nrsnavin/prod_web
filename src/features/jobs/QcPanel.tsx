@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TableScroll } from "@/components/ui/TableScroll";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck, Plus, Trash2, FileBadge } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -171,26 +172,28 @@ function CoaSheet({ jobId, onClose }: { jobId: string; onClose: () => void }) {
           {data.items.map((item, i) => (
             <div key={i} className="mt-4 print-label">
               <h2 className="text-sm font-bold">{item.elasticName}</h2>
-              <table className="mt-1 w-full text-sm border border-ink-200">
-                <thead>
-                  <tr className="border-b border-ink-200 bg-ink-100/50 text-left">
-                    <th className="py-1.5 px-2">Parameter</th>
-                    <th className="py-1.5 px-2">Specified</th>
-                    <th className="py-1.5 px-2">Measured</th>
-                    <th className="py-1.5 px-2">Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {item.results.map((r, x) => (
-                    <tr key={x} className="border-b border-ink-100">
-                      <td className="py-1.5 px-2 font-medium">{r.parameter}</td>
-                      <td className="py-1.5 px-2">{r.expected || "—"}</td>
-                      <td className="py-1.5 px-2">{r.measured}</td>
-                      <td className="py-1.5 px-2">{r.pass ? "PASS" : "FAIL"}</td>
+              <TableScroll>
+                <table className="mt-1 w-full text-sm border border-ink-200">
+                  <thead>
+                    <tr className="border-b border-ink-200 bg-ink-100/50 text-left">
+                      <th className="py-1.5 px-2">Parameter</th>
+                      <th className="py-1.5 px-2">Specified</th>
+                      <th className="py-1.5 px-2">Measured</th>
+                      <th className="py-1.5 px-2">Result</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {item.results.map((r, x) => (
+                      <tr key={x} className="border-b border-ink-100">
+                        <td className="py-1.5 px-2 font-medium">{r.parameter}</td>
+                        <td className="py-1.5 px-2">{r.expected || "—"}</td>
+                        <td className="py-1.5 px-2">{r.measured}</td>
+                        <td className="py-1.5 px-2">{r.pass ? "PASS" : "FAIL"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableScroll>
               <p className="mt-1 text-xs text-ink-600">
                 Checked by {item.checkedBy || "—"}
                 {item.checkedAt && ` on ${new Date(item.checkedAt).toLocaleDateString()}`}

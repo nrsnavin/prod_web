@@ -197,6 +197,7 @@ export function PoIntakeModal({ onClose }: { onClose: () => void }) {
       <div className="space-y-4">
         <div className="rounded-lg border border-dashed border-ink-200 p-6 text-center">
           <input
+            aria-label="Choose a purchase order document"
             ref={fileRef}
             type="file"
             accept="image/*,application/pdf"

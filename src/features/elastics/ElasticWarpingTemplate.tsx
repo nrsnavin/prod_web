@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TableScroll } from "@/components/ui/TableScroll";
 import { useForm } from "react-hook-form";
 import { Layers, Pencil, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -92,26 +93,28 @@ export function ElasticWarpingTemplate({ elastic }: { elastic: Elastic }) {
                     {b.totalEnds ?? (b.sections ?? []).reduce((s, x) => s + (x.ends ?? 0), 0)} ends
                   </span>
                 </div>
-                <table className="w-full text-sm">
-                  <thead className="text-xs uppercase tracking-wide text-ink-400">
-                    <tr>
-                      <th className="px-3 py-1.5 text-left font-medium">Warp yarn</th>
-                      <th className="px-3 py-1.5 text-right font-medium">Ends</th>
-                      <th className="px-3 py-1.5 text-right font-medium">Max m</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-ink-100">
-                    {(b.sections ?? []).map((s, j) => (
-                      <tr key={j}>
-                        <td className="px-3 py-1.5">{yarnName(s)}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{s.ends ?? 0}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums text-ink-400">
-                          {s.maxMeters ? s.maxMeters.toLocaleString("en-IN") : "—"}
-                        </td>
+                <TableScroll>
+                  <table className="w-full text-sm">
+                    <thead className="text-xs uppercase tracking-wide text-ink-400">
+                      <tr>
+                        <th className="px-3 py-1.5 text-left font-medium">Warp yarn</th>
+                        <th className="px-3 py-1.5 text-right font-medium">Ends</th>
+                        <th className="px-3 py-1.5 text-right font-medium">Max m</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-ink-100">
+                      {(b.sections ?? []).map((s, j) => (
+                        <tr key={j}>
+                          <td className="px-3 py-1.5">{yarnName(s)}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{s.ends ?? 0}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums text-ink-400">
+                            {s.maxMeters ? s.maxMeters.toLocaleString("en-IN") : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               </div>
             ))}
           </div>
