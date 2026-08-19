@@ -190,3 +190,92 @@ export interface ServiceLogFormValues {
   /** Take the machine off the floor as part of booking the work in. */
   setMaintenance?: boolean;
 }
+
+// ══════════════════════════════════════════════════════════════════
+//  SERVICE SPENDING, AND THE PATTERNS WORTH A LOOK
+//
+//  `findings` are OBSERVATIONS, never verdicts. Every one carries the
+//  innocent reading that is usually the true one, and the UI is
+//  required to show it — see services/serviceAnomaly.js on the server
+//  for why that is a design rule rather than a nicety.
+// ══════════════════════════════════════════════════════════════════
+
+export interface SpendMonth {
+  month: string;        // "2026-08"
+  total: number;
+  labour: number;
+  parts: number;
+  services: number;
+}
+
+export interface ServiceSpend {
+  windowDays: number;
+  series: SpendMonth[];
+  total: number;
+  services: number;
+  /** Median month. One rebuild must not become the budget figure. */
+  typicalMonth: number;
+  meanMonth: number;
+  byType: Array<{ type: string; amount: number }>;
+  byTechnician: Array<{ technician: string; amount: number }>;
+}
+
+export type FindingKind =
+  | "repeat-service"
+  | "issue-across-machines"
+  | "technician-cost"
+  | "duplicate-bill-no"
+  | "duplicate-bill-amount"
+  | "cost-mismatch";
+
+export interface ServiceFinding {
+  kind: FindingKind;
+  subject: string;
+  /** 0..1. Ranking only — it is not a probability of anything. */
+  severity: number;
+  title: string;
+  detail: string;
+  /** The reading that is usually true. Always shown beside the finding. */
+  innocent: string;
+  evidence: Array<Record<string, unknown>>;
+}
+
+export interface ServiceAnomalies {
+  /** False when there is too little history to say anything at all. */
+  ready: boolean;
+  reason?: string;
+  windowDays: number;
+  services: number;
+  dismissed?: number;
+  findings: ServiceFinding[];
+}
+
+export interface CostliestMachine {
+  machineId: string;
+  machineID: string;
+  total: number;
+  services: number;
+  perService: number;
+  lastServiced: string | null;
+}
+
+export interface ServiceAnalytics {
+  days: number;
+  spend: ServiceSpend;
+  anomalies: ServiceAnomalies;
+  costliest: CostliestMachine[];
+}
+
+export interface ProductionMonth {
+  month: string;
+  meters: number;
+  shifts: number;
+  runtimeHours: number;
+}
+
+export interface ProductionSeries {
+  days: number;
+  series: ProductionMonth[];
+  totalMeters: number;
+  totalShifts: number;
+}

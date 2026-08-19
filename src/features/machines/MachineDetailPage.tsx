@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useMachine, useMachineMutations, useServiceBills } from "./hooks";
 import { MachineHealthCard } from "./MachineHealth";
+import { MachineCharts } from "./MachineCharts";
 import { MachineHeadMapEditModal } from "./MachineHeadMapEditModal";
 import { MachineHeadCountModal } from "./MachineHeadCountModal";
 import { MachineEditModal } from "./MachineEditModal";
@@ -375,6 +376,11 @@ export function MachineDetailPage() {
       )}
 
       {id && <MachineHealthCard machineId={id} />}
+
+      {/* Output and cost over the same months, side by side. Either
+          alone says little; together they answer whether this loom is
+          earning its keep. */}
+      {id && <MachineCharts machineId={id} />}
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <Card>

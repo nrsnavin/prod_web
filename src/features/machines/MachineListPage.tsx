@@ -17,6 +17,8 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useMachines, useMachineMutations, useMaintenanceDue } from "./hooks";
 import { MachineHealthBanner } from "./MachineHealth";
+import { FloorBoard } from "./FloorBoard";
+import { ServiceAnalyticsPanel } from "./ServiceAnalyticsPanel";
 import { Machine, MachineFormValues, MachineStatus } from "./types";
 
 const statusTone: Record<MachineStatus, ChipTone> = {
@@ -84,6 +86,10 @@ const columns: Column<Machine>[] = [
     key: "id",
     header: "Machine",
     render: (m) => <span className="font-medium">{m.ID}</span>,
+    // Just the string. DataTable compares with numeric collation, which
+    // already orders "1", "2", "10" arithmetically AND keeps LOOM-2
+    // before LOOM-10 — a numeric accessor here was tried and changed
+    // nothing, so it was removed rather than left as decoration.
     sort: (m) => m.ID ?? "",
   },
   {
@@ -224,6 +230,13 @@ export function MachineListPage() {
         </Card>
       )}
 
+      {/* The floor first. The question somebody walks up to this screen
+          with is "what is running", and a status chip in the sixth
+          column of a forty-row table makes them count. */}
+      <div className="mb-4">
+        <FloorBoard machines={data ?? []} loading={isLoading} />
+      </div>
+
       <div className="mb-4">
         <FilterChips
           options={[
@@ -240,6 +253,7 @@ export function MachineListPage() {
       {isError && <ErrorBanner message={(error as Error).message} />}
 
       <Card>
+        <h3 className="px-5 pt-5 text-sm font-semibold text-ink-900">Every machine</h3>
         <DataTable
           columns={columns}
           // Opens in machine order rather than whatever order the server
@@ -253,6 +267,12 @@ export function MachineListPage() {
           emptyTitle="No machines found"
         />
       </Card>
+
+      {/* Money and patterns last: what somebody comes to this screen for
+          deliberately, not what they glance at on the way past. */}
+      <div className="mt-4">
+        <ServiceAnalyticsPanel />
+      </div>
 
       <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="Add machine">
         <MachineForm

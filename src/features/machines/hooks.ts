@@ -43,6 +43,30 @@ export function useMaintenanceDue(days = 14) {
   });
 }
 
+/** Plant-wide service spending and the patterns worth a look. */
+export function useServiceAnalytics(days = 365) {
+  return useQuery({
+    queryKey: [KEY, "service-analytics", days],
+    queryFn: () => machineService.serviceAnalytics(days),
+  });
+}
+
+export function useMachineSpend(machineId: string | undefined, days = 365) {
+  return useQuery({
+    queryKey: [KEY, "spend", machineId, days],
+    queryFn: () => machineService.machineSpend(machineId!, days),
+    enabled: !!machineId,
+  });
+}
+
+export function useProductionSeries(machineId: string | undefined, days = 365) {
+  return useQuery({
+    queryKey: [KEY, "production-series", machineId, days],
+    queryFn: () => machineService.productionSeries(machineId!, days),
+    enabled: !!machineId,
+  });
+}
+
 export function useMachineMutations() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: [KEY] });
@@ -116,6 +140,12 @@ export function useMachineMutations() {
     }) => machineService.updateDetails(id, patch, confirmHooks),
     onSuccess: invalidate,
   });
+  const dismissFinding = useMutation({
+    mutationFn: ({ kind, subject, reason }: {
+      kind: string; subject: string; reason: string;
+    }) => machineService.dismissFinding(kind, subject, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY, "service-analytics"] }),
+  });
   const uploadServiceBill = useMutation({
     mutationFn: (payload: ServiceBillUpload) => machineService.uploadServiceBill(payload),
     onSuccess: invalidate,
@@ -131,6 +161,7 @@ export function useMachineMutations() {
     updateElasticMap,
     updateHeads,
     updateDetails,
+    dismissFinding,
     uploadServiceBill,
     deleteServiceBill,
   };

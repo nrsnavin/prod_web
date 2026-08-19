@@ -24,6 +24,10 @@ import type { Machine } from "./types";
 
 let machines: Machine[];
 vi.mock("./hooks", () => ({
+  // Added by the service-analytics panel the list page now mounts.
+  useServiceAnalytics: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
+  useProductionSeries: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
+  useMachineSpend: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
   useMachines: () => ({ data: machines, isLoading: false, isError: false, error: null }),
   useMachineMutations: () => ({
     create: { mutate: vi.fn(), isPending: false },
@@ -79,6 +83,36 @@ describe("machine list ordering", () => {
     ]);
 
     expect(idColumn()).toEqual(["LOOM-1", "LOOM-2", "LOOM-3", "LOOM-10", "LOOM-20"]);
+  });
+
+  it("sorts a plain numeric ID as a number", () => {
+    // Some plants number their looms 1, 2, 10 with no prefix at all.
+    // As text that is 1, 10, 2; the accessor hands DataTable a real
+    // number so it sorts arithmetically.
+    renderList([
+      machine({ ID: "10" }),
+      machine({ ID: "2" }),
+      machine({ ID: "1" }),
+      machine({ ID: "21" }),
+      machine({ ID: "3" }),
+    ]);
+
+    expect(idColumn()).toEqual(["1", "2", "3", "10", "21"]);
+  });
+
+  it("keeps numeric and prefixed IDs both in machine order", () => {
+    // A floor part-way through a renaming has both shapes at once, and
+    // neither may come out scrambled.
+    renderList([
+      machine({ ID: "10" }),
+      machine({ ID: "LOOM-2" }),
+      machine({ ID: "2" }),
+      machine({ ID: "LOOM-10" }),
+    ]);
+
+    const ids = idColumn();
+    expect(ids.indexOf("2")).toBeLessThan(ids.indexOf("10"));
+    expect(ids.indexOf("LOOM-2")).toBeLessThan(ids.indexOf("LOOM-10"));
   });
 
   it("opens sorted, without anybody clicking a header", () => {

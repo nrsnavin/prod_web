@@ -8,6 +8,9 @@ import {
   MachineHealthResponse,
   MachineStatus,
   MaintenanceDueItem,
+  ProductionSeries,
+  ServiceAnalytics,
+  ServiceSpend,
   ServiceBill,
   ServiceBillUpload,
   ServiceLogFormValues,
@@ -142,6 +145,31 @@ export const machineService = {
       ...patch,
       ...(confirmHooks ? { confirmHooks: true } : {}),
     });
+  },
+
+  /** Plant-wide service spending, patterns worth a look, costliest machines. */
+  async serviceAnalytics(days = 365): Promise<ServiceAnalytics> {
+    return httpClient.get<ServiceAnalytics>("/machine/service-analytics", { days });
+  },
+
+  /** One machine's service spending. */
+  async machineSpend(machineId: string, days = 365): Promise<{ spend: ServiceSpend }> {
+    return httpClient.get(`/machine/service-analytics/${machineId}`, { days });
+  },
+
+  /** What one machine produced, month by month. Verified shifts only. */
+  async productionSeries(machineId: string, days = 365): Promise<ProductionSeries> {
+    return httpClient.get<ProductionSeries>(`/machine/production-series/${machineId}`, { days });
+  },
+
+  /**
+   * "I have looked at this and it is fine."
+   *
+   * The reason is required by the server, and rightly: it is the only
+   * record of why a pattern was judged harmless.
+   */
+  async dismissFinding(kind: string, subject: string, reason: string): Promise<void> {
+    await httpClient.post("/machine/service-analytics/dismiss", { kind, subject, reason });
   },
 
   async predictiveHealth(): Promise<MachineHealthResponse> {

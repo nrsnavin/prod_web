@@ -27,6 +27,10 @@ import { ApiError } from "@/core/http/httpClient";
 
 const mutate = vi.fn();
 vi.mock("./hooks", () => ({
+  // Added by the service-analytics panel the list page now mounts.
+  useServiceAnalytics: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
+  useProductionSeries: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
+  useMachineSpend: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
   useMachineMutations: () => ({
     updateHeads: { mutate, isPending: false },
   }),
