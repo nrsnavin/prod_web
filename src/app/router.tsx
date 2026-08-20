@@ -183,9 +183,25 @@ export const detailRoutes = [
   { path: "/shift-plans/:id", element: withSuspense(<ShiftPlanDetailPage />) },
 ];
 
+// A path that detailRoutes already handles must NOT also get a
+// nav-generated entry.
+//
+// /materials/groups is both a nav destination and an explicit route,
+// and the nav-generated list is spread FIRST — so its
+// `builtPages[path] ?? <ComingSoonPage/>` fallback matched first and
+// shadowed the real page. The Material Groups screen existed, was
+// imported, was lazy-loaded, and rendered "planned in an upcoming
+// build stage" to anybody who opened it. Nothing errored: a duplicate
+// route is legal, and the first match simply wins.
+//
+// Any future page reachable from the nav AND declared below lands in
+// the same trap, so this is filtered by construction rather than by
+// remembering to add each one to builtPages.
+const detailRoutePaths = new Set(detailRoutes.map((r) => r.path));
+
 const featureRoutes = [
   ...allNavItems
-    .filter((item) => item.path !== "/")
+    .filter((item) => item.path !== "/" && !detailRoutePaths.has(item.path))
     .map((item) => ({
       path: item.path,
       element: builtPages[item.path] ?? <ComingSoonPage />,
