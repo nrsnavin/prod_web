@@ -32,6 +32,25 @@ import {
 // ══════════════════════════════════════════════════════════════════
 //  The one place the list of material groups is edited.
 //
+//  ── A group is NOT a category ────────────────────────────────────
+//  They were briefly the same thing: a material's `category` held its
+//  group's NAME, so creating a group called "Trim Tape" and filing a
+//  yarn under it set that yarn's category to "Trim Tape" — a value
+//  the elastic recipe picker and the MRP sheet cannot read — and the
+//  yarn silently vanished from the warp picker. Renaming a group
+//  restated every member in one request.
+//
+//  They are separate now:
+//    category — warp / weft / covering / Rubber / Chemicals. Fixed,
+//               owned by the system, and what the engine branches on.
+//    group    — anything you like. Add, rename, recolour, archive.
+//               Nothing branches on it; it is for filtering and
+//               reporting.
+//
+//  So this page is free: a group here cannot break a picker, and a
+//  rename cannot restate a material. That is worth saying on the page
+//  itself, because the old behaviour taught people to be careful here.
+//
 //  It used to be edited in eight source files that disagreed with each
 //  other — see features/materialGroups/types.ts. A group added here is
 //  live in the material form, the filter chips, the stock-count scope
@@ -378,7 +397,7 @@ export function MaterialGroupsPage() {
     <div>
       <PageHeader
         title="Material groups"
-        subtitle="The categories raw materials are filed under. Used by the material form, the MRP sheet, stock counts and the phone."
+        subtitle="Your own way of filing raw materials. Separate from the fixed categories the system reads."
         actions={
           <Button onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" /> New group
@@ -387,6 +406,23 @@ export function MaterialGroupsPage() {
       />
 
       {error && <ErrorBanner message={error} />}
+
+      {/*
+        Stated on the page, not just in the code. The old behaviour —
+        where a group WAS the category — trained people to treat this
+        screen as dangerous, and nothing on it says that has changed.
+      */}
+      <Card className="mb-4 flex items-start gap-3 p-4">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
+        <p className="text-sm text-ink-600">
+          Groups are yours to organise however you like — add, rename and
+          recolour them freely. They are <strong>separate</strong> from a
+          material&rsquo;s <strong>category</strong> (warp, weft, covering,
+          Rubber, Chemicals), which is fixed and is what the recipe pickers,
+          the MRP sheet and the forecast read. Changing a group never changes
+          a category.
+        </p>
+      </Card>
 
       <div className="mb-4">
         <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-ink-600">

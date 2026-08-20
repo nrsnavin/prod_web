@@ -1,21 +1,35 @@
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { useSupplierOptions } from "./hooks";
+import { useSupplierOptions, useMaterialCategories } from "./hooks";
 import { useMaterialGroups } from "../materialGroups/hooks";
 import { MaterialFormValues, RawMaterial } from "./types";
 
+// ══════════════════════════════════════════════════════════════════
+//  TWO CLASSIFICATIONS, TWO PICKERS
+//
+//  This form used to ask for a GROUP and let the server derive the
+//  category from it. That made a group called "Trim Tape" able to set
+//  a yarn's category to "Trim Tape" — a value the elastic recipe
+//  picker and the MRP sheet cannot read — and quietly drop that yarn
+//  out of the warp picker.
+//
+//  Category is now required and comes from a fixed list the server
+//  serves. Group is optional and is the mill's own. Neither derives
+//  from the other, so both are asked for.
+// ══════════════════════════════════════════════════════════════════
+
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
-  // The GROUP is what the form picks now, and `category` follows from
-  // it on the server. Kept in the schema because a material that
-  // predates groups carries a category and no link, and editing it
-  // must not blank the one field every reader uses.
-  group: z.string().min(1, "Group is required"),
-  category: z.string().optional(),
+  // Required, because the engine reads it and there is no sensible
+  // default: warp and Chemicals are not interchangeable.
+  category: z.string().min(1, "Category is required"),
+  // Optional, because a material does not have to be filed anywhere.
+  group: z.string().optional(),
   unit: z.string().optional(),
   supplier: z.string().optional(),
   stock: z.coerce.number().min(0).optional(),
@@ -36,18 +50,27 @@ export function MaterialForm({
 }) {
   const suppliers = useSupplierOptions();
   const groups = useMaterialGroups();
+  const categories = useMaterialCategories();
 
-  // A material filed under a category no group carries — which is every
-  // material until the migration runs, and any created by an older
-  // client after it — has nowhere to point. Rather than silently
-  // reassigning it, its own category is offered as an option so saving
-  // the form leaves it where it was.
+  const categoryOptions = (categories.data?.categories ?? []).map((c) => ({
+    value: c,
+    label: c,
+  }));
+
+  // A material written before the two were separated may hold a group
+  // name in `category`. It is offered as an extra option, labelled, so
+  // opening such a material does not present an empty required field —
+  // but it reads as wrong, which is the point: saving the form is the
+  // moment it gets corrected.
+  const legacyCategory =
+    initial?.category &&
+    !(categories.data?.categories ?? []).includes(initial.category)
+      ? [{ value: initial.category, label: `${initial.category} — not a category` }]
+      : [];
+
   const groupOptions = [
+    { value: "", label: "— None —" },
     ...(groups.data ?? []).map((g) => ({ value: g._id, label: g.name })),
-    ...(initial?.category &&
-    !(groups.data ?? []).some((g) => g.name === initial.category)
-      ? [{ value: `name:${initial.category}`, label: `${initial.category} (ungrouped)` }]
-      : []),
   ];
   const {
     register,
@@ -57,12 +80,11 @@ export function MaterialForm({
     resolver: zodResolver(schema),
     defaultValues: {
       name: initial?.name ?? "",
+      category: initial?.category ?? "",
       group:
         initial?.group && typeof initial.group === "object"
           ? initial.group._id
-          : (initial?.group as string) ??
-            (initial?.category ? `name:${initial.category}` : ""),
-      category: initial?.category ?? "",
+          : ((initial?.group as string) ?? ""),
       unit: initial?.unit ?? "kg",
       supplier:
         initial?.supplier && typeof initial.supplier === "object"
@@ -77,21 +99,42 @@ export function MaterialForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <Input label="Material name *" error={errors.name?.message} {...register("name")} />
-      <div className="grid grid-cols-2 gap-3">
-        <Select
-          label="Group *"
-          placeholder={groups.isLoading ? "Loading…" : "Select a group"}
-          options={groupOptions}
-          error={errors.group?.message}
-          {...register("group")}
-        />
-        <Select
-          label="Supplier"
-          placeholder="Select supplier"
-          options={(suppliers.data ?? []).map((s) => ({ value: s._id, label: s.name }))}
-          {...register("supplier")}
-        />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <Select
+            label="Category *"
+            placeholder={categories.isLoading ? "Loading…" : "Select a category"}
+            options={[...categoryOptions, ...legacyCategory]}
+            error={errors.category?.message}
+            {...register("category")}
+          />
+          <p className="mt-1 text-xs text-ink-400">
+            What the system needs to know. Fixed list.
+          </p>
+        </div>
+        <div>
+          <Select
+            label="Group"
+            placeholder={groups.isLoading ? "Loading…" : "None"}
+            options={groupOptions}
+            error={errors.group?.message}
+            {...register("group")}
+          />
+          <p className="mt-1 text-xs text-ink-400">
+            Your own classification. Optional —{" "}
+            <Link to="/materials/groups" className="underline hover:text-ink-900">
+              manage groups
+            </Link>
+            .
+          </p>
+        </div>
       </div>
+      <Select
+        label="Supplier"
+        placeholder="Select supplier"
+        options={(suppliers.data ?? []).map((s) => ({ value: s._id, label: s.name }))}
+        {...register("supplier")}
+      />
       <div className="grid grid-cols-4 gap-3">
         <Input label="Price (₹)" type="number" step="0.01" {...register("price")} />
         {/*

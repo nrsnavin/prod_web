@@ -9,7 +9,19 @@
 // changing the case of "Rubber" anywhere silently emptied the elastic
 // recipe picker with no error at all.
 //
-// The list now comes from the server — see features/materialGroups.
+// It now comes from GET /materials/categories — see useMaterialCategories.
+//
+// ── Category and group are two different things ───────────────────
+// They were briefly ONE: `category` held the group's name, so filing a
+// yarn under a group called "Trim Tape" set its category to "Trim
+// Tape" and silently removed it from the warp picker. Now:
+//
+//   category — the fixed five the engine reads. warp / weft /
+//              covering / Rubber / Chemicals. Required.
+//   group    — whatever the mill wants to track. Optional, free,
+//              renameable, and nothing branches on it.
+//
+// A material has both, and neither derives from the other.
 
 export interface StockMovement {
   date: string;
@@ -82,18 +94,19 @@ export interface RawMaterial {
   _id: string;
   name: string;
   /**
-   * The group's NAME, denormalised onto the material.
+   * One of the fixed five. This is what the engine reads — the MRP
+   * sheet, the forecast, stock-count scope, the elastic recipe
+   * pickers, the mobile chips.
    *
-   * Still the field every existing reader uses — the MRP sheet, the
-   * forecast, stock-count scope, the mobile chips. The server rewrites
-   * it on every member when a group is renamed, so it cannot drift from
-   * `group` below.
+   * Rows written before category and group were separated may still
+   * hold a group name here. They load fine and are corrected the next
+   * time somebody saves that material.
    */
   category: string;
   /**
-   * The link. Populated with name/colour/kind by the list endpoint;
-   * null on a material that predates groups or names a category no
-   * group carries.
+   * The mill's own classification, and nothing to do with `category`.
+   * Populated with name/colour/kind by the list endpoint; null when
+   * nobody has filed this material under a group.
    */
   group?: { _id: string; name: string; colour?: string; kind?: string } | string | null;
   /**
@@ -231,15 +244,17 @@ export interface LotTrace {
 
 export interface MaterialFormValues {
   name: string;
+  /** One of the fixed five. Required — the engine reads it. */
+  category: string;
   /**
-   * A MaterialGroup id, or the sentinel `name:<category>` for a material
-   * whose category no group carries — every material until the migration
-   * runs, and any written by an older client after it. api.ts unpacks
-   * the sentinel so saving such a material leaves it where it was rather
-   * than silently reassigning it.
+   * A MaterialGroup id, or "" for none. Optional: a material does not
+   * have to be filed under anything.
+   *
+   * The `name:<category>` sentinel this used to carry is gone with the
+   * coupling that needed it. The form no longer has to invent a group
+   * for a material that never had one.
    */
-  group: string;
-  category?: string;
+  group?: string;
   unit?: string;
   supplier?: string;
   stock?: number;

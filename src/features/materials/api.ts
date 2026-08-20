@@ -12,23 +12,42 @@ import {
 } from "./types";
 
 /**
- * Turn the form's group field into what the server takes.
+ * What the server takes.
  *
- * The picker holds a MaterialGroup id, except for a material whose
- * category no group carries — those show as `name:<category>` so they
- * can be saved without being quietly moved somewhere else. The server
- * accepts either a `group` id or a `category` name and settles the two
- * against each other; this just picks which one to send.
+ * This used to unpack a `name:<category>` sentinel, which existed only
+ * because a material HAD to belong to a group and one that predated
+ * groups had none to point at. Category and group are independent now,
+ * so "no group" is simply an empty string and there is nothing to
+ * decode.
+ *
+ * `group: ""` is sent as null rather than omitted — omitting it would
+ * mean "leave the link alone", and an edit that clears the group has
+ * to actually clear it.
  */
-function unpackGroup(body: MaterialFormValues) {
+function packClassification(body: MaterialFormValues) {
   const { group, ...rest } = body;
-  if (group?.startsWith("name:")) {
-    return { ...rest, category: group.slice(5), group: undefined };
-  }
-  return { ...rest, group };
+  return { ...rest, group: group ? group : null };
 }
 
 export const materialService = {
+  /**
+   * The fixed vocabulary of `category`, from the server.
+   *
+   * Hardcoding it here is what produced eight disagreeing copies, so
+   * this is fetched even though it changes about as often as the
+   * alphabet. `positions` is the subset the elastic recipe pickers
+   * want — where in the cloth, without the two that say what the
+   * material is.
+   */
+  async categories(): Promise<{ categories: string[]; positions: string[] }> {
+    const res = await httpClient.get<{
+      success: boolean;
+      categories: string[];
+      positions: string[];
+    }>("/materials/categories");
+    return { categories: res.categories, positions: res.positions };
+  },
+
   /**
    * `coverDays` — how long an order should last once it arrives.
    *
@@ -92,7 +111,7 @@ export const materialService = {
   async create(body: MaterialFormValues): Promise<RawMaterial> {
     const res = await httpClient.post<{ success: boolean; material: RawMaterial }>(
       "/materials/create-raw-material",
-      unpackGroup(body)
+      packClassification(body)
     );
     return res.material;
   },
@@ -100,7 +119,7 @@ export const materialService = {
   async update(id: string, body: MaterialFormValues): Promise<RawMaterial> {
     const res = await httpClient.put<{ success: boolean; material: RawMaterial }>(
       "/materials/edit-raw-material",
-      { _id: id, ...unpackGroup(body) }
+      { _id: id, ...packClassification(body) }
     );
     return res.material;
   },

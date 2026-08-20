@@ -16,6 +16,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useMaterials, useMaterialMutations } from "./hooks";
 import { RawMaterial } from "./types";
 import { useMaterialGroups } from "../materialGroups/hooks";
+import { useMaterialCategories } from "./hooks";
 import { MaterialForm } from "./MaterialForm";
 import { ReorderSuggestions, StockTakeModal, BulkPriceUpdateModal } from "./StockOps";
 
@@ -121,21 +122,27 @@ const columns: Column<RawMaterial>[] = [
 
 export function MaterialListPage() {
   const [search, setSearch] = useState("");
-  // Holds a MaterialGroup id, or "all". The chips used to hold the four
-  // hardcoded strings, which is why "Chemicals" — a category the phone
-  // has always offered — had no chip at all.
+  // Two filters, because there are two classifications. This was one
+  // control holding a group id, which meant that once groups existed
+  // there was no way to ask "show me the warp" at all.
+  const [group, setGroup] = useState("all");
   const [category, setCategory] = useState("all");
   const [lowStock, setLowStock] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const groups = useMaterialGroups();
+  const categories = useMaterialCategories();
   const [stockTakeOpen, setStockTakeOpen] = useState(false);
   const [priceUpdateOpen, setPriceUpdateOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const { data, isLoading, isError, error } = useMaterials({
-    search, group: category, lowStock, includeArchived: showArchived,
+    search,
+    group: group === "all" ? undefined : group,
+    category: category === "all" ? undefined : category,
+    lowStock,
+    includeArchived: showArchived,
   });
   const { create } = useMaterialMutations();
 
@@ -184,13 +191,33 @@ export function MaterialListPage() {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <SearchInput value={search} onChange={setSearch} placeholder="Search materials…" className="w-full max-w-sm" />
         <FilterChips
+          label="Category"
           options={[
             { value: "all", label: "All" },
-            ...(groups.data ?? []).map((g) => ({ value: g._id, label: g.name })),
+            ...(categories.data?.categories ?? []).map((c) => ({
+              value: c,
+              label: c,
+            })),
           ]}
           value={category}
           onChange={setCategory}
         />
+        {/*
+          Only when there ARE groups. A row of chips reading just "All"
+          is a control that can do nothing, and it would imply the mill
+          is missing something it has simply not set up yet.
+        */}
+        {(groups.data ?? []).length > 0 && (
+          <FilterChips
+            label="Group"
+            options={[
+              { value: "all", label: "All" },
+              ...(groups.data ?? []).map((g) => ({ value: g._id, label: g.name })),
+            ]}
+            value={group}
+            onChange={setGroup}
+          />
+        )}
         <button
           onClick={() => setLowStock((v) => !v)}
           className={cn(

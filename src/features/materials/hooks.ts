@@ -5,6 +5,21 @@ import { MaterialFormValues } from "./types";
 const KEY = "materials";
 const LOT_KEY = "yarn-lots";
 
+/**
+ * The five categories, cached for the session.
+ *
+ * `staleTime: Infinity` because it is a constant — refetching it on
+ * every mount would be a request per picker open for a list that
+ * cannot change without a deploy.
+ */
+export function useMaterialCategories() {
+  return useQuery({
+    queryKey: [KEY, "categories"],
+    queryFn: () => materialService.categories(),
+    staleTime: Infinity,
+  });
+}
+
 export function useMaterials(params: {
   search: string;
   /** A MaterialGroup id. Preferred — see materialService.list. */
