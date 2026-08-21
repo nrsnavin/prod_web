@@ -223,8 +223,26 @@ export interface MrpData {
       balance: number | null;
       /** Days on the rack. null when the lot is not open. */
       ageDays: number | null;
-      /** true when the warping programme named it. */
+      /** true when something has claimed this lot — see `source`. */
       committed: boolean;
+      /**
+       * WHICH decision put this lot on the sheet. Two different ones
+       * both arrive as `committed`, and they are not the same claim:
+       *
+       *   order      the order set this bag aside when it was approved
+       *              — made before any beam existed, and it is what the
+       *              warping batch picker is measured against;
+       *   programme  the warping plan chose it for a beam section,
+       *              which is a decision about where in the cloth it
+       *              goes;
+       *   available  nothing has claimed it; it is simply open.
+       *
+       * They usually agree. When they do not, that disagreement is the
+       * most useful thing this column can show, so it is not flattened.
+       */
+      source?: "order" | "programme" | "available";
+      /** Kg the order set aside. Null unless `source` is "order". */
+      quantity?: number | null;
     }>;
   }>;
 }

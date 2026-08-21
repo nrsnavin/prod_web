@@ -102,6 +102,41 @@ export interface OrderJobRef {
   elasticSummary?: JobElasticSummary[];
 }
 
+/** One dye lot an order has set aside for a material. */
+export interface OrderLotEarmark {
+  yarnLot: string;
+  lotNo: string;
+  shade?: string;
+  /** Kg of this lot promised to this order. */
+  quantity: number;
+  assignedAt?: string;
+}
+
+/** A lot that can still be chosen, with what is left after other orders. */
+export interface AssignableLot {
+  yarnLot: string;
+  lotNo: string;
+  shade: string;
+  /** On the rack: received less consumed. */
+  balance: number;
+  ageDays: number | null;
+  /** Kg other live orders have already promised themselves. */
+  allocated: number;
+  /** balance − allocated. What this order may take. */
+  free: number;
+}
+
+/** What the picker needs for one material on one order. */
+export interface AssignableLotsResponse {
+  materialId: string;
+  requiredWeight: number;
+  assigned: number;
+  /** requiredWeight − assigned. Partial coverage is normal. */
+  unassigned: number;
+  current: OrderLotEarmark[];
+  lots: AssignableLot[];
+}
+
 export interface RawMaterialRequirement {
   id?: string;
   name?: string;
@@ -128,6 +163,20 @@ export interface RawMaterialRequirement {
   inStock?: number;
   stock?: number;
   stockSufficient?: boolean;
+  /**
+   * Which dye lots this order's draw is expected to come out of.
+   *
+   * An earmark, not a consumption: approving the order debited
+   * `RawMaterial.stock`, and this says which bags that debit is
+   * expected to come from. The yarn is still on the rack and leaves
+   * when a warping batch draws it.
+   *
+   * Routinely PARTIAL — a long-lead yarn gets earmarked as it arrives,
+   * so 250 kg against a 400 kg requirement is an ordinary state and
+   * not an error. Empty means nothing has been chosen, which leaves
+   * every downstream picker unconstrained.
+   */
+  lots?: OrderLotEarmark[];
   unit?: string;
 }
 

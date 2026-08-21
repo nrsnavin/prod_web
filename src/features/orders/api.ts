@@ -12,6 +12,7 @@ import {
   OrderPurchaseOrder,
   OrderYarnLots,
   RaisePoResult,
+  AssignableLotsResponse,
 } from "./types";
 
 export const orderService = {
@@ -108,6 +109,28 @@ export const orderService = {
     body: { materials?: string[]; expectedDate?: string; notes?: string } = {}
   ): Promise<RaisePoResult> {
     return httpClient.post<RaisePoResult>(`/order/${orderId}/raise-po`, body);
+  },
+
+  // ── Dye lot earmarks ────────────────────────────────────────────
+  // Which lots may still be chosen for one material on this order, and
+  // how much of each is free once other live orders are counted. The
+  // order's OWN earmarks are excluded from that total server-side, so
+  // reopening the picker does not show this order's promise counting
+  // against itself.
+  assignableLots(orderId: string, materialId: string): Promise<AssignableLotsResponse> {
+    return httpClient.get<AssignableLotsResponse>(
+      `/order/${orderId}/assignable-lots?materialId=${encodeURIComponent(materialId)}`
+    );
+  },
+
+  // The submission is the WHOLE answer for the materials it names —
+  // sending a material with an empty list is how an assignment is
+  // cleared. Materials left out are untouched.
+  assignLots(
+    orderId: string,
+    assignments: Array<{ rawMaterial: string; lots: Array<{ yarnLot: string; quantity: number }> }>
+  ): Promise<{ success: boolean; message: string }> {
+    return httpClient.post("/order/assign-lots", { orderId, assignments });
   },
 
   async purchaseOrders(orderId: string): Promise<OrderPurchaseOrder[]> {

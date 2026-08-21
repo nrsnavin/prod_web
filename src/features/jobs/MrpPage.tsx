@@ -36,11 +36,24 @@ function MrpLots({ lots }: { lots?: MrpMaterial["lots"] }) {
   return (
     <div className="flex flex-col gap-1">
       {committed.map((l) => (
-        <span key={l.yarnLot ?? l.lotNo} className="flex items-center gap-1.5">
+        <span key={l.yarnLot ?? l.lotNo} className="flex flex-wrap items-center gap-1.5">
           <span className="tabular-nums font-medium">{l.lotNo}</span>
-          <StatusChip tone="info">programmed</StatusChip>
-          {/* A programmed lot that is no longer open has no balance, and
-              that absence is the thing worth seeing: the plan names a
+          {/* Which decision claimed it. "The order set this bag aside"
+              and "the plan runs beam 3 off it" are different claims,
+              and an operator needs to know which one they are looking
+              at before deciding whether they may substitute. */}
+          {l.source === "order" ? (
+            <StatusChip tone="success">set aside by the order</StatusChip>
+          ) : (
+            <StatusChip tone="info">programmed</StatusChip>
+          )}
+          {l.source === "order" && l.quantity != null && l.quantity > 0 && (
+            <span className="text-xs text-ink-500 tabular-nums">
+              {l.quantity.toLocaleString("en-IN")} kg
+            </span>
+          )}
+          {/* A committed lot that is no longer open has no balance, and
+              that absence is the thing worth seeing: the claim names a
               bag the rack may not still hold. */}
           {l.balance == null && (
             <span className="text-xs text-status-warning" title="This lot is no longer open">

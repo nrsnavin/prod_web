@@ -24,6 +24,7 @@ import { pnlService } from "@/features/pnl/api";
 import { OrderExcessPlanning } from "./OrderExcessPlanning";
 import { OrderMaterialPo } from "./OrderMaterialPo";
 import { OrderYarnLots } from "./OrderYarnLots";
+import { OrderLotAssign } from "./OrderLotAssign";
 import { OrderDeliveryChallans } from "./OrderDeliveryChallans";
 import { OrderElasticProgress, OrderStatus, RawMaterialRequirement, StockShortfall } from "./types";
 import { jobRefId } from "./orderJobRef";
@@ -612,6 +613,11 @@ export function OrderDetailPage() {
       {/* Replaces the old read-only requirement table: same figures, but
           live and with the shortfall actually orderable from here. */}
       <OrderMaterialPo orderId={order._id} />
+
+      {/* Placed between what the order NEEDS and what its jobs have
+          actually used: the earmark is the decision that sits between
+          those two facts. */}
+      <OrderLotAssign order={order} />
 
       {/* Which dye lots the goods will carry. Sits below the materials
           because it answers the later question — not what to buy, but
