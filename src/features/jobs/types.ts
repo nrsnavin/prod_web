@@ -205,6 +205,13 @@ export interface MrpData {
     /**
      * The dye lots standing behind this material (utils/materialRequirement.js).
      *
+     * NOT `lots`. The order's own `rawMaterialRequired[].lots` are its
+     * EARMARKS — bags promised to it, with a required quantity — and
+     * api/job.js assigns the MRP result straight onto that field. One
+     * name for both shapes made the assignment throw on a null
+     * quantity and, where it cast, replaced a promise with a list of
+     * candidates. The distinct name is what keeps them apart.
+     *
      * Two different facts share the list, told apart by `committed`:
      * a lot this job's warping programme has already CHOSEN for a beam
      * section, and a lot that is merely AVAILABLE on the rack. Printing
@@ -215,7 +222,7 @@ export interface MrpData {
      * a lot for anything else. Always an array, empty when there are
      * none, so a caller never guards a null.
      */
-    lots?: Array<{
+    lotOptions?: Array<{
       yarnLot: string | null;
       lotNo: string;
       shade: string;

@@ -27,7 +27,7 @@ type MrpMaterial = MrpData["materials"][number];
  * programmed ones come first and are marked. Only warp materials have
  * any: nothing in the system chooses a lot for weft or covering.
  */
-function MrpLots({ lots }: { lots?: MrpMaterial["lots"] }) {
+function MrpLots({ lots }: { lots?: MrpMaterial["lotOptions"] }) {
   if (!lots?.length) return <span className="text-ink-400">—</span>;
 
   const committed = lots.filter((l) => l.committed);
@@ -89,7 +89,7 @@ export const materialColumns: Column<MrpMaterial>[] = [
     key: "lots",
     header: "Dye lot",
     cellClassName: "whitespace-normal",
-    render: (m) => <MrpLots lots={m.lots} />,
+    render: (m) => <MrpLots lots={m.lotOptions} />,
   },
   {
     key: "required",

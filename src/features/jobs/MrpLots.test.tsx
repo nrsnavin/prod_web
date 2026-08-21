@@ -21,7 +21,7 @@ import type { MrpData } from "./types";
 // ═══════════════════════════════════════════════════════════════════
 
 type MrpMaterial = MrpData["materials"][number];
-type MrpLot = NonNullable<MrpMaterial["lots"]>[number];
+type MrpLot = NonNullable<MrpMaterial["lotOptions"]>[number];
 
 const lot = (over: Partial<MrpLot> = {}): MrpLot => ({
   yarnLot: "L1",
@@ -55,20 +55,20 @@ describe("the MRP dye lot column", () => {
   });
 
   it("marks a lot the warping programme has chosen", () => {
-    renderLots(material({ lots: [lot({ lotNo: "D-4471", committed: true })] }));
+    renderLots(material({ lotOptions: [lot({ lotNo: "D-4471", committed: true })] }));
     expect(screen.getByText("D-4471")).toBeInTheDocument();
     expect(screen.getByText(/programmed/i)).toBeInTheDocument();
   });
 
   it("does not call an available lot programmed", () => {
-    renderLots(material({ lots: [lot({ lotNo: "D-1001", committed: false })] }));
+    renderLots(material({ lotOptions: [lot({ lotNo: "D-1001", committed: false })] }));
     expect(screen.queryByText(/programmed/i)).not.toBeInTheDocument();
   });
 
   it("puts the programmed lot ahead of the available ones", () => {
     const { container } = renderLots(
       material({
-        lots: [
+        lotOptions: [
           lot({ yarnLot: "L1", lotNo: "D-1001", committed: false }),
           lot({ yarnLot: "L2", lotNo: "D-4471", committed: true }),
         ],
@@ -82,14 +82,14 @@ describe("the MRP dye lot column", () => {
     // The plan names a bag the rack may not still hold. That absence is
     // the single most actionable thing this column can report.
     renderLots(
-      material({ lots: [lot({ lotNo: "D-4471", committed: true, balance: null })] })
+      material({ lotOptions: [lot({ lotNo: "D-4471", committed: true, balance: null })] })
     );
     expect(screen.getByText(/not on the rack/i)).toBeInTheDocument();
   });
 
   it("does not say that about a programmed lot that is still open", () => {
     renderLots(
-      material({ lots: [lot({ lotNo: "D-4471", committed: true, balance: 80 })] })
+      material({ lotOptions: [lot({ lotNo: "D-4471", committed: true, balance: 80 })] })
     );
     expect(screen.queryByText(/not on the rack/i)).not.toBeInTheDocument();
   });
@@ -98,13 +98,13 @@ describe("the MRP dye lot column", () => {
     const many = ["D-1", "D-2", "D-3", "D-4", "D-5"].map((lotNo, i) =>
       lot({ yarnLot: `L${i}`, lotNo, committed: false })
     );
-    const { container } = renderLots(material({ lots: many }));
+    const { container } = renderLots(material({ lotOptions: many }));
     expect(container.textContent).toContain("+2");
     expect(container.textContent).not.toContain("D-5");
   });
 
   it("shows a dash for a material with no lots", () => {
-    renderLots(material({ lots: [] }));
+    renderLots(material({ lotOptions: [] }));
     expect(screen.getByText("—")).toBeInTheDocument();
   });
 
