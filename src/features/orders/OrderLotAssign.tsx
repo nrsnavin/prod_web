@@ -82,7 +82,7 @@ function AssignDialog({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
-  const toast = useToast();
+  const { toast } = useToast();
   const materialId = materialIdOf(material);
 
   const { data, isLoading, error } = useQuery({
@@ -120,11 +120,13 @@ function AssignDialog({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["order", orderId] });
-      toast.show("Dye lots assigned.", "success");
+      toast("Dye lots assigned.", "success");
       onClose();
     },
     onError: (e) =>
-      toast.show(
+      toast(
+        // The server's own words when it sent any — "D-4471 has 50 kg
+        // free" is worth far more than a house-brand failure line.
         e instanceof ApiError ? e.message : "Could not assign the lots.",
         "error"
       ),
@@ -189,25 +191,23 @@ function AssignDialog({
                   <div className="flex-1">
                     <Select
                       aria-label={`Lot ${i + 1}`}
+                      placeholder="Choose a lot…"
                       value={r.yarnLot}
                       onChange={(e) =>
                         setRows(rows.map((x, j) => (j === i ? { ...x, yarnLot: e.target.value } : x)))
                       }
-                    >
-                      <option value="">Choose a lot…</option>
-                      {data.lots
+                      options={data.lots
                         // A lot already on another row would be rejected
                         // by the server as a duplicate. Hiding it here
                         // means the refusal never has to happen.
                         .filter((l) => l.yarnLot === r.yarnLot || !chosen.has(l.yarnLot))
-                        .map((l) => (
-                          <option key={l.yarnLot} value={l.yarnLot}>
-                            {l.lotNo}
-                            {l.shade ? ` · ${l.shade}` : ""} — {kg(l.free)} free
-                            {l.allocated > 0 ? ` (${kg(l.allocated)} promised elsewhere)` : ""}
-                          </option>
-                        ))}
-                    </Select>
+                        .map((l) => ({
+                          value: l.yarnLot,
+                          label:
+                            `${l.lotNo}${l.shade ? ` · ${l.shade}` : ""} — ${kg(l.free)} free` +
+                            (l.allocated > 0 ? ` (${kg(l.allocated)} promised elsewhere)` : ""),
+                        }))}
+                    />
                     {lot && (
                       <p className="mt-1 text-xs text-ink-500">
                         {kg(lot.balance)} on the rack

@@ -19,8 +19,13 @@ import type { OrderDetail, RawMaterialRequirement } from "./types";
 //    • the lots already set aside are visible without opening anything.
 // ═══════════════════════════════════════════════════════════════════
 
+// Shaped to match the real ToastApi — { toast, dismissAll } — not a
+// convenient invention. A mock that answers to a method the component
+// does not call is a mock that hides a broken call site: the first
+// version of this returned { show }, the component called .show, and
+// both were wrong together while the tests stayed green.
 vi.mock("@/components/ui/Toast", () => ({
-  useToast: () => ({ show: vi.fn() }),
+  useToast: () => ({ toast: vi.fn(), dismissAll: vi.fn() }),
 }));
 
 const material = (over: Partial<RawMaterialRequirement> = {}): RawMaterialRequirement => ({
