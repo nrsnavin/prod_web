@@ -62,6 +62,50 @@ export function MovementReason({ movement: m }: { movement: StockMovement }) {
   return <span className="text-ink-400">—</span>;
 }
 
+/**
+ * Which dye lot a movement came out of.
+ *
+ * Three kinds of answer arrive here and they are not equal, so they do
+ * not look alike (services/lotAttribution.js):
+ *
+ *   • a lot RECORDED on the receipt or adjustment that caused the move;
+ *   • a lot a warping batch drew, which is exact;
+ *   • a lot INFERRED for an order approval or job consumption, where
+ *     nothing was ever recorded and the earliest lot on the rack at the
+ *     time is the best available reading.
+ *
+ * The third is marked. It is the same distinction the Reason column
+ * already draws with `referenceDerived`, and for the same reason: a row
+ * that presents a reading as a record is worse than one that says
+ * nothing, because somebody will act on it.
+ *
+ * Exported for its own tests — reaching it through the page would mean
+ * mocking every unrelated field, and the test would be about the mock.
+ */
+export function MovementLot({ movement: m }: { movement: StockMovement }) {
+  if (!m.lotNo) {
+    return (
+      <span className="text-ink-400" title="No lot recorded for this movement">
+        —
+      </span>
+    );
+  }
+
+  if (m.lotDerived) {
+    return (
+      <span
+        className="text-ink-500 italic tabular-nums"
+        title="Worked out, not recorded: this movement named no lot, so it is shown against the oldest lot that had arrived by then"
+      >
+        {m.lotNo}
+        <span className="ml-1 not-italic text-xs text-ink-400">(inferred)</span>
+      </span>
+    );
+  }
+
+  return <span className="tabular-nums font-medium">{m.lotNo}</span>;
+}
+
 // Exported so a test can assert the Reason column is actually mounted.
 // Testing the cell alone would pass with the column never added.
 export const movementColumns: Column<StockMovement>[] = [
@@ -93,7 +137,24 @@ export const movementColumns: Column<StockMovement>[] = [
     // Sign written explicitly rather than left to toLocaleString: the
     // minus is the whole point of the column, and a "+" has to be added
     // by hand anyway. A zero gets neither, and is not coloured as a gain.
-    render: (m) => (
+    render: (m) => {
+      // A rack movement reports the kilos that came off the rack. Its
+      // `quantity` is 0 — the truth about what stock did — and printing
+      // that 0 would say a warping batch drew nothing.
+      if (m.lotOnly) {
+        const drawn = m.lotQuantity ?? 0;
+        return (
+          <span
+            className="tabular-nums font-semibold text-ink-600"
+            title="Off the rack, against the lot. The stock balance was debited earlier, when the order was approved."
+          >
+            {drawn > 0 ? "+" : drawn < 0 ? "−" : ""}
+            {Math.abs(drawn).toLocaleString("en-IN")}
+            <span className="ml-1 block text-xs font-normal text-ink-400">from the rack</span>
+          </span>
+        );
+      }
+      return (
       <span
         className={
           m.quantity > 0
@@ -118,17 +179,33 @@ export const movementColumns: Column<StockMovement>[] = [
           </span>
         )}
       </span>
-    ),
+      );
+    },
+  },
+  {
+    key: "lot",
+    header: "Dye lot",
+    render: (m) => <MovementLot movement={m} />,
   },
   {
     key: "balance",
     header: "Balance",
     align: "right",
-    render: (m) => (
-      <span className="tabular-nums">
-        {m.balance != null ? m.balance.toLocaleString("en-IN") : "—"}
-      </span>
-    ),
+    // Blank, deliberately, on a row that did not move stock. A warping
+    // batch takes yarn off the rack against a lot; the commercial
+    // balance was debited earlier, at order approval, and repeating it
+    // here would be the same yarn leaving twice. Printing the unchanged
+    // balance would read as though this row had held it there.
+    render: (m) =>
+      m.lotOnly ? (
+        <span className="text-ink-400" title="A rack movement — the stock balance is unchanged">
+          —
+        </span>
+      ) : (
+        <span className="tabular-nums">
+          {m.balance != null ? m.balance.toLocaleString("en-IN") : "—"}
+        </span>
+      ),
   },
   {
     key: "value",

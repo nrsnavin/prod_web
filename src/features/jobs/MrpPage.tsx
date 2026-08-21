@@ -14,13 +14,70 @@ import { MrpShortfallPo } from "./MrpShortfallPo";
 
 type MrpMaterial = MrpData["materials"][number];
 
-const materialColumns: Column<MrpMaterial>[] = [
+/**
+ * The dye lots standing behind one material.
+ *
+ * Two facts live in this list and they are not interchangeable. A
+ * PROGRAMMED lot is one this job's warping plan has already chosen for
+ * a beam section — the decision is made, and it was made because two
+ * lots meeting inside one beam show as a shade band. An available lot
+ * is just yarn on the rack that could be used.
+ *
+ * Rendering them alike would put somebody on the wrong bag, so the
+ * programmed ones come first and are marked. Only warp materials have
+ * any: nothing in the system chooses a lot for weft or covering.
+ */
+function MrpLots({ lots }: { lots?: MrpMaterial["lots"] }) {
+  if (!lots?.length) return <span className="text-ink-400">—</span>;
+
+  const committed = lots.filter((l) => l.committed);
+  const available = lots.filter((l) => !l.committed);
+
+  return (
+    <div className="flex flex-col gap-1">
+      {committed.map((l) => (
+        <span key={l.yarnLot ?? l.lotNo} className="flex items-center gap-1.5">
+          <span className="tabular-nums font-medium">{l.lotNo}</span>
+          <StatusChip tone="info">programmed</StatusChip>
+          {/* A programmed lot that is no longer open has no balance, and
+              that absence is the thing worth seeing: the plan names a
+              bag the rack may not still hold. */}
+          {l.balance == null && (
+            <span className="text-xs text-status-warning" title="This lot is no longer open">
+              not on the rack
+            </span>
+          )}
+        </span>
+      ))}
+      {available.length > 0 && (
+        <span className="text-ink-500 text-xs">
+          {committed.length > 0 ? "also open: " : "open: "}
+          {available
+            .slice(0, 3)
+            .map((l) => l.lotNo)
+            .join(" · ")}
+          {available.length > 3 && ` +${available.length - 3}`}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Exported so a test can assert the Dye lot column is actually
+// mounted. Testing the cell alone would pass with it never added.
+export const materialColumns: Column<MrpMaterial>[] = [
   {
     key: "name",
     header: "Raw material",
     render: (m) => <span className="font-medium">{m.name ?? m.materialName ?? "—"}</span>,
   },
   { key: "cat", header: "Category", render: (m) => m.category ?? "—" },
+  {
+    key: "lots",
+    header: "Dye lot",
+    cellClassName: "whitespace-normal",
+    render: (m) => <MrpLots lots={m.lots} />,
+  },
   {
     key: "required",
     header: "Required (kg)",

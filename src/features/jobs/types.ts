@@ -202,6 +202,30 @@ export interface MrpData {
     // ordered at all.
     supplierId?: string | null;
     supplierName?: string;
+    /**
+     * The dye lots standing behind this material (utils/materialRequirement.js).
+     *
+     * Two different facts share the list, told apart by `committed`:
+     * a lot this job's warping programme has already CHOSEN for a beam
+     * section, and a lot that is merely AVAILABLE on the rack. Printing
+     * them alike would put an operator on the wrong bag, so the sheet
+     * says which.
+     *
+     * Only warp materials get one — nothing in the system ever chooses
+     * a lot for anything else. Always an array, empty when there are
+     * none, so a caller never guards a null.
+     */
+    lots?: Array<{
+      yarnLot: string | null;
+      lotNo: string;
+      shade: string;
+      /** Kg left. null for a committed lot no longer open. */
+      balance: number | null;
+      /** Days on the rack. null when the lot is not open. */
+      ageDays: number | null;
+      /** true when the warping programme named it. */
+      committed: boolean;
+    }>;
   }>;
 }
 

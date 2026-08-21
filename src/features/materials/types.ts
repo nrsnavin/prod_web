@@ -70,6 +70,31 @@ export interface StockMovement {
    * the PO field. A reconstruction and a record are not the same claim.
    */
   referenceDerived?: boolean;
+
+  // ── Which dye lot (services/lotAttribution.js) ──────────────────────
+  /** The lot's number, or "" when no honest answer exists. */
+  lotNo?: string;
+  yarnLot?: string | null;
+  /**
+   * true when the lot was worked out rather than recorded — an order
+   * approval or a job consumption on a warp yarn, attributed to the
+   * earliest lot that had arrived by then. Same claim as
+   * `referenceDerived` above, about a different column, and shown the
+   * same way: a reading must never be rendered as a record.
+   */
+  lotDerived?: boolean;
+  /**
+   * Kilos that left the RACK, on rows where that is not the same as
+   * what left stock.
+   *
+   * A warping batch draws yarn against lots without moving `stock` —
+   * that was debited earlier, at order approval. Those rows carry
+   * `quantity: 0` and put the draw here, so the balance column stays
+   * true. Null on every ordinary movement.
+   */
+  lotQuantity?: number | null;
+  /** true for BATCH_ISSUE / BATCH_RETURN — see lotQuantity. */
+  lotOnly?: boolean;
 }
 
 /**
