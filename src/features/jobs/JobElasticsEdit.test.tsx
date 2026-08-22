@@ -218,3 +218,45 @@ describe("a refusal from the server", () => {
     expect(toast).toHaveBeenCalledWith("Job not found", "error");
   });
 });
+
+describe("what the server said about the dye lots", () => {
+  // Replanning restates the order's material requirement, and a
+  // requirement that falls below what was already set aside gets the
+  // surplus trimmed — yarn ceasing to be spoken for without anybody
+  // asking. The server names the materials that happened on. This modal
+  // used to toast a fixed sentence and throw that away.
+
+  const save = async (result: unknown) => {
+    const user = userEvent.setup();
+    updateMutate.mockImplementation((_b, opts) => opts.onSuccess(result));
+    setup();
+    await user.clear(qtyFor("20mm Woven"));
+    await user.type(qtyFor("20mm Woven"), "300");
+    await giveReason(user);
+    await user.click(screen.getByRole("button", { name: /save quantities/i }));
+  };
+
+  it("repeats the trim the server reported", async () => {
+    await save({
+      success: true,
+      message: "Job quantities updated, and the order requirement recalculated. "
+        + "Dye lots trimmed to fit on Nylon 40D.",
+      lots: { trimmed: [{ rawMaterial: "m1", name: "Nylon 40D", from: 400, to: 100, required: 100 }], released: [] },
+    });
+
+    expect(toast).toHaveBeenCalledWith(
+      expect.stringMatching(/trimmed to fit on Nylon 40D/),
+      "success"
+    );
+  });
+
+  it("still says something when the server sent no message", async () => {
+    // An older backend, or a response shape that changed. A silent
+    // save reads as a save that did not happen.
+    await save({});
+    expect(toast).toHaveBeenCalledWith(
+      expect.stringMatching(/job quantities updated/i),
+      "success"
+    );
+  });
+});

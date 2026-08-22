@@ -105,8 +105,16 @@ export function JobElasticsEditModal({
         auditReason: auditReason.trim(),
       },
       {
-        onSuccess: () => {
-          toast("Job quantities updated — material requirement recalculated", "success");
+        onSuccess: (res) => {
+          // The server's own sentence, not a hardcoded one. When a
+          // replan drops the requirement below what was already set
+          // aside it trims the surplus and names the materials — and a
+          // toast that always says the same thing would throw exactly
+          // that away.
+          toast(
+            res?.message || "Job quantities updated — material requirement recalculated",
+            "success"
+          );
           onClose();
         },
         onError: (e) => {

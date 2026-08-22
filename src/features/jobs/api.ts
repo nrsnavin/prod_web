@@ -1,4 +1,24 @@
 import { httpClient } from "@/core/http/httpClient";
+
+/**
+ * What /job/update-elastics answers with.
+ *
+ * `lots` is the part worth reading. Replanning restates the order's
+ * material requirement, and a requirement that falls below what the
+ * order had already set aside gets the surplus trimmed — yarn ceasing
+ * to be spoken for without anybody asking for it. The server says which
+ * materials that happened on; the modal repeats it, because the person
+ * who just replanned is the only one who can decide where the freed
+ * yarn should go.
+ */
+export interface UpdateElasticsResult {
+  success: boolean;
+  message: string;
+  lots?: {
+    trimmed: Array<{ rawMaterial: string; name: string; from: number; to: number; required: number }>;
+    released: Array<{ rawMaterial: string; name: string; quantity: number }>;
+  };
+}
 import { config } from "@/app/config";
 import {
   JobDetail,
@@ -97,7 +117,12 @@ export const jobService = {
     jobId: string,
     elastics: Array<{ elastic: string; quantity: number }>,
     auditReason: string
-  ) => httpClient.post("/job/update-elastics", { jobId, elastics, auditReason }),
+  ) =>
+    httpClient.post<UpdateElasticsResult>("/job/update-elastics", {
+      jobId,
+      elastics,
+      auditReason,
+    }),
 
   updateStatus: (jobId: string, nextStatus: JobStatus) =>
     httpClient.post("/job/update-status", { jobId, nextStatus }),
