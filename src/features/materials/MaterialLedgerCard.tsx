@@ -97,7 +97,7 @@ export const ledgerColumns = (unit: string): Column<LedgerRow>[] => [
     align: "right",
     render: (r) =>
       r.direction > 0 ? (
-        <span className="text-emerald-600">{fmt(r.quantity)}</span>
+        <span className="text-status-success">{fmt(r.quantity)}</span>
       ) : (
         <span className="text-ink-300">—</span>
       ),
@@ -108,7 +108,7 @@ export const ledgerColumns = (unit: string): Column<LedgerRow>[] => [
     align: "right",
     render: (r) =>
       r.direction < 0 ? (
-        <span className="text-rose-600">{fmt(r.quantity)}</span>
+        <span className="text-status-danger">{fmt(r.quantity)}</span>
       ) : (
         <span className="text-ink-300">—</span>
       ),
@@ -136,14 +136,21 @@ function Totals({
 }) {
   const cells = [
     { label: `Opening (${unit})`, value: fmt(opening) },
-    { label: `Received (${unit})`, value: fmt(received), tone: "text-emerald-600" },
-    { label: `Issued (${unit})`, value: fmt(issued), tone: "text-rose-600" },
+    { label: `Received (${unit})`, value: fmt(received), tone: "text-status-success" },
+    { label: `Issued (${unit})`, value: fmt(issued), tone: "text-status-danger" },
     { label: `Closing (${unit})`, value: fmt(closing) },
   ];
+  // Every colour here is a theme token, and that is not incidental.
+  // This strip shipped with a hardcoded white background and two stock
+  // palette greens: in dark mode it was a white slab carrying near-white
+  // numbers. `surface` is the raised sheet in whichever theme is on,
+  // `ink-*` inverts, and `status-*` is tuned to stay legible as text on
+  // either ground. The hairline between cells is the grid gap showing
+  // `ink-100` through. See src/test/themeTokens.test.ts.
   return (
     <div className="grid grid-cols-2 gap-px bg-ink-100 sm:grid-cols-4">
       {cells.map((c) => (
-        <div key={c.label} className="bg-white px-4 py-3">
+        <div key={c.label} className="bg-surface px-4 py-3">
           <div className="text-xs uppercase tracking-wide text-ink-400">{c.label}</div>
           <div className={`text-lg font-semibold tabular-nums ${c.tone ?? "text-ink-900"}`}>
             {c.value}
@@ -227,7 +234,7 @@ export function MaterialLedgerCard({
       </div>
 
       {backwards && (
-        <p className="px-5 pt-2 text-xs text-rose-600">
+        <p className="px-5 pt-2 text-xs text-status-danger">
           The From date is after the To date.
         </p>
       )}
@@ -247,7 +254,7 @@ export function MaterialLedgerCard({
       {/* The one thing a ledger must never do quietly: show a closing
           balance that is not the stock on the rack, without saying why. */}
       {data && data.stockNow !== data.closing && (
-        <p className="px-5 pt-3 text-xs text-amber-700">
+        <p className="px-5 pt-3 text-xs text-status-warning">
           Stock today is {fmt(data.stockNow)} {data.material.unit || unit} — movements after
           this period are not listed above.
         </p>
