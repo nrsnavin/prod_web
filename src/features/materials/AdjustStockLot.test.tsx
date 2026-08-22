@@ -1,9 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { MaterialDetailPage, movementColumns } from "./MaterialDetailPage";
-import { RawMaterial, StockMovement, YarnLot } from "./types";
+import { MaterialDetailPage } from "./MaterialDetailPage";
+import { ledgerColumns } from "./MaterialLedgerCard";
+import { LedgerRow, RawMaterial, YarnLot } from "./types";
 
 const adjustMutate = vi.fn(
   (_a: unknown, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.()
@@ -24,6 +25,7 @@ const material: RawMaterial = {
 };
 
 vi.mock("./hooks", () => ({
+  useMaterialLedger: () => ({ data: undefined, isLoading: false, error: null, refetch: () => {} }),
   useMaterial: () => ({ data: material, isLoading: false, isError: false }),
   useMaterialMutations: () => ({
     update: { mutate: vi.fn(), isPending: false },
@@ -168,113 +170,107 @@ describe("naming the dye lot on a stock adjustment", () => {
   });
 });
 
-describe("the stock movements table", () => {
-  it("renders a populated order reference instead of crashing on it", async () => {
-    // The detail endpoint populates stockMovements.order, so it arrives as
-    // an object. Dropped straight into JSX it took the whole page down with
-    // React error #31 — "objects are not valid as a React child".
-    material.stockMovements = [
-      {
-        date: "2026-07-01T00:00:00.000Z",
-        type: "ORDER_APPROVAL",
-        quantity: -40,
-        balance: 60,
-        order: { _id: "o1", orderNo: 1042 },
-      },
-    ];
-    render(
-      <MemoryRouter initialEntries={["/materials/m1"]}>
-        <Routes>
-          <Route path="/materials/:id" element={<MaterialDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+describe("the ledger's cells", () => {
+  // Tested against `ledgerColumns` directly rather than through the page.
+  // The page renders the ledger from its own query now, so reaching these
+  // cells through MaterialDetailPage would mean mocking that query and
+  // the test would be about the mock. What matters here is the cells.
 
-    expect(screen.getByText("Order #1042")).toBeInTheDocument();
-    material.stockMovements = [];
-  });
-
-  it("still renders a plain id, for a payload that was never populated", () => {
-    material.stockMovements = [
-      { date: "2026-07-01T00:00:00.000Z", type: "ORDER_APPROVAL", quantity: -40, order: "raw-id" },
-    ];
-    render(
-      <MemoryRouter initialEntries={["/materials/m1"]}>
-        <Routes>
-          <Route path="/materials/:id" element={<MaterialDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-    expect(screen.getByText("raw-id")).toBeInTheDocument();
-    material.stockMovements = [];
-  });
-});
-
-describe("the ledger's quantity column", () => {
-  const renderPage = () =>
-    render(
-      <MemoryRouter initialEntries={["/materials/m1"]}>
-        <Routes>
-          <Route path="/materials/:id" element={<MaterialDetailPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-  const movement = (over: Partial<StockMovement> = {}): StockMovement => ({
+  const row = (over: Partial<LedgerRow> = {}): LedgerRow => ({
+    _id: "r1",
     date: "2026-07-01T00:00:00.000Z",
-    type: "STOCK_ADJUST",
-    quantity: 0,
+    type: "ORDER_APPROVAL",
+    label: "Order approval",
+    quantity: 40,
+    direction: -1,
+    signedQuantity: -40,
+    balance: 60,
+    reference: "",
+    referenceId: null,
+    referenceKind: null,
+    lotNo: "",
+    unitPrice: 0,
+    remarks: "",
     ...over,
   });
 
-  afterEach(() => {
-    material.stockMovements = [];
-  });
-
-  it("shows a deduction in red, with a minus", () => {
-    material.stockMovements = [movement({ type: "ORDER_APPROVAL", quantity: -40, balance: 60 })];
-    renderPage();
-
-    const cell = screen.getByText("−40");
-    expect(cell).toHaveClass("text-status-danger");
-    expect(screen.getByText("60")).toBeInTheDocument();
-  });
-
-  it("shows an addition in green, with a plus", () => {
-    material.stockMovements = [movement({ type: "PO_INWARD", quantity: 100, balance: 160 })];
-    renderPage();
-
-    const cell = screen.getByText("+100");
-    expect(cell).toHaveClass("text-status-success");
-  });
-
-  // The page carries other zeros and dashes (min stock, empty panels), so
-  // these assertions are scoped to the ledger row rather than the page.
-  const ledgerRow = (type: string) => {
-    const chip = screen.getByText(type.replace(/_/g, " "));
-    return within(chip.closest("tr")!);
+  const cell = (key: string, r: LedgerRow) => {
+    const col = ledgerColumns("kg").find((c) => c.key === key);
+    expect(col).toBeDefined();
+    return render(<MemoryRouter>{col!.render(r)}</MemoryRouter>);
   };
 
-  it("does not colour a zero movement as a gain", () => {
-    material.stockMovements = [movement({ type: "STOCK_ADJUST", quantity: 0, balance: 60 })];
-    renderPage();
-
-    expect(ledgerRow("STOCK_ADJUST").getByText("0")).not.toHaveClass("text-status-success");
+  it("puts a receipt in the In column and leaves Out empty", () => {
+    const r = row({ direction: 1, label: "Goods receipt", quantity: 100, signedQuantity: 100 });
+    cell("in", r);
+    expect(screen.getByText("100")).toBeInTheDocument();
+    cell("out", r);
+    // Two dashes would now be on screen if Out had printed the quantity.
+    expect(screen.queryAllByText("100")).toHaveLength(1);
   });
 
-  it("shows a dash when no balance was ever recorded", () => {
-    material.stockMovements = [movement({ type: "PO_INWARD", quantity: 10 })];
-    renderPage();
+  it("puts an issue in the Out column and leaves In empty", () => {
+    const r = row({ direction: -1, quantity: 40 });
+    cell("out", r);
+    expect(screen.getByText("40")).toBeInTheDocument();
+    cell("in", r);
+    expect(screen.queryAllByText("40")).toHaveLength(1);
+  });
 
-    // More than one cell on this row renders a dash — the Reason column
-    // does too when nothing explains the movement — so the balance cell
-    // cannot be found by its text. Found by the column's position in
-    // `movementColumns` rather than a hard-coded index: this broke once
-    // already when a column was inserted ahead of it, and the number in
-    // the test said nothing about which column it meant.
-    const balanceAt = movementColumns.findIndex((c) => c.key === "balance");
-    const cells = screen.getByText("PO INWARD").closest("tr")!.querySelectorAll("td");
-    expect(cells[balanceAt]).toHaveTextContent("—");
+  it("shows the quantity unsigned, because the column already says which way", () => {
+    // A minus inside the Out column would read as a negative issue.
+    cell("out", row({ direction: -1, quantity: 40 }));
+    expect(screen.queryByText("−40")).not.toBeInTheDocument();
+    expect(screen.queryByText("-40")).not.toBeInTheDocument();
+  });
+
+  it("links an order reference", () => {
+    cell("reference", row({ reference: "Order #1042", referenceKind: "order", referenceId: "o1" }));
+    expect(screen.getByRole("link", { name: "Order #1042" })).toHaveAttribute(
+      "href",
+      "/orders/o1"
+    );
+  });
+
+  it("links a purchase order reference", () => {
+    cell(
+      "reference",
+      row({ reference: "PO-77", referenceKind: "purchaseOrder", referenceId: "p1" })
+    );
+    expect(screen.getByRole("link", { name: "PO-77" })).toHaveAttribute(
+      "href",
+      "/purchase-orders/p1"
+    );
+  });
+
+  it("links a job reference", () => {
+    cell("reference", row({ reference: "Job J-55", referenceKind: "job", referenceId: "j1" }));
+    expect(screen.getByRole("link", { name: "Job J-55" })).toHaveAttribute("href", "/jobs/j1");
+  });
+
+  it("shows an unlinked reference as plain text rather than a dead link", () => {
+    cell("reference", row({ reference: "Manual entry", referenceKind: null, referenceId: null }));
+    expect(screen.getByText("Manual entry")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("shows a dash when nothing identifies the movement", () => {
+    cell("reference", row());
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
+  it("puts the dye lot in the details column", () => {
+    cell("details", row({ lotNo: "D-4471" }));
+    expect(screen.getByText(/Lot D-4471/)).toBeInTheDocument();
+  });
+
+  it("shows the running balance", () => {
+    cell("balance", row({ balance: 1234.5 }));
+    expect(screen.getByText("1,234.5")).toBeInTheDocument();
+  });
+
+  it("names the unit in the balance header, so the number is not bare", () => {
+    const col = ledgerColumns("mtr").find((c) => c.key === "balance");
+    expect(col!.header).toBe("Balance (mtr)");
   });
 });

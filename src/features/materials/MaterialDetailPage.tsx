@@ -12,153 +12,14 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
-import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useMaterial, useMaterialMutations, useYarnLots } from "./hooks";
-import { StockMovement } from "./types";
 import { MaterialForm } from "./MaterialForm";
 import { MaterialLots } from "./MaterialLots";
-
-/**
- * The document behind a movement, or the reason someone typed.
- *
- * Exported for its own tests: reaching it through the page would mean
- * mocking every unrelated field the page renders, and the test would
- * then be about the mock.
- */
-export function MovementReason({ movement: m }: { movement: StockMovement }) {
-  const to =
-    m.referenceKind === "order"
-      ? `/orders/${m.referenceId}`
-      : m.referenceKind === "purchaseOrder"
-        ? `/purchase-orders/${m.referenceId}`
-        : null;
-
-  if (m.reference) {
-    return (
-      <span className="inline-flex flex-wrap items-baseline gap-1.5">
-        {to && m.referenceId ? (
-          <Link to={to} className="text-brand-600 hover:underline">
-            {m.reference}
-          </Link>
-        ) : (
-          <span>{m.reference}</span>
-        )}
-        {/* Matched from the inward history rather than recorded at the
-            time. Saying so keeps a reconstruction from passing as a
-            record. */}
-        {m.referenceDerived && (
-          <span className="text-xs text-ink-400" title="Matched from the inward history">
-            matched
-          </span>
-        )}
-      </span>
-    );
-  }
-  if (m.reason) return <span className="text-ink-600">{m.reason}</span>;
-  return <span className="text-ink-400">—</span>;
-}
-
-// Exported so a test can assert the Reason column is actually mounted.
-// Testing the cell alone would pass with the column never added.
-export const movementColumns: Column<StockMovement>[] = [
-  { key: "date", header: "Date", render: (m) => new Date(m.date).toLocaleDateString() },
-  {
-    key: "type",
-    header: "Type",
-    render: (m) => (
-      <StatusChip tone={m.quantity > 0 ? "success" : m.quantity < 0 ? "danger" : "neutral"}>
-        {/* The server says it in words. `type` is a database value —
-            ORDER_APPROVAL, PO_INWARD — not a sentence. */}
-        {m.typeLabel ?? m.type}
-      </StatusChip>
-    ),
-  },
-  {
-    key: "why",
-    header: "Reason",
-    cellClassName: "whitespace-normal",
-    // The column the ledger was missing. A row reading "-40" with
-    // nothing beside it is checkable but not explainable, and "why did
-    // this drop by 40 in March" is the question the ledger exists for.
-    render: (m) => <MovementReason movement={m} />,
-  },
-  {
-    key: "qty",
-    header: "Quantity",
-    align: "right",
-    // Sign written explicitly rather than left to toLocaleString: the
-    // minus is the whole point of the column, and a "+" has to be added
-    // by hand anyway. A zero gets neither, and is not coloured as a gain.
-    render: (m) => (
-      <span
-        className={
-          m.quantity > 0
-            ? "text-status-success font-semibold tabular-nums"
-            : m.quantity < 0
-              ? "text-status-danger font-semibold tabular-nums"
-              : "text-ink-400 tabular-nums"
-        }
-      >
-        {m.quantity > 0 ? "+" : m.quantity < 0 ? "−" : ""}
-        {Math.abs(m.quantity).toLocaleString("en-IN")}
-        {/*
-          Stock floors at zero, so a write-off can move less than was
-          asked for. Saying so here is the difference between a row that
-          explains a short write-off and one that looks like it lost a
-          number — the quantity above is always what actually moved.
-        */}
-        {m.requested != null && m.requested !== m.quantity && (
-          <span className="ml-1 block text-xs font-normal text-ink-400">
-            asked {m.requested > 0 ? "+" : "−"}
-            {Math.abs(m.requested).toLocaleString("en-IN")}
-          </span>
-        )}
-      </span>
-    ),
-  },
-  {
-    key: "balance",
-    header: "Balance",
-    align: "right",
-    render: (m) => (
-      <span className="tabular-nums">
-        {m.balance != null ? m.balance.toLocaleString("en-IN") : "—"}
-      </span>
-    ),
-  },
-  {
-    key: "value",
-    header: "Value (₹)",
-    align: "right",
-    // Priced from the cost recorded on the row, never from the
-    // material's cost today: the average moves with every receipt, so
-    // pricing an old movement at it would value the yarn at a cost it
-    // never had. Rows written before costs were stamped show a dash
-    // rather than a guess.
-    render: (m) => (
-      <span className="tabular-nums text-ink-600">
-        {m.value == null ? "—" : Math.round(m.value).toLocaleString("en-IN")}
-      </span>
-    ),
-  },
-  {
-    key: "reason",
-    header: "Reason / Ref",
-    // `order` arrives populated from the detail endpoint, so it must be
-    // read for its number rather than dropped into JSX — rendering the
-    // object crashed the whole page with React error #31.
-    render: (m) => {
-      if (m.reason) return m.reason;
-      if (!m.order) return "—";
-      if (typeof m.order === "string") return m.order;
-      return m.order.orderNo != null ? `Order #${m.order.orderNo}` : "—";
-    },
-  },
-];
+import { MaterialLedgerCard } from "./MaterialLedgerCard";
 
 const adjustSchema = z.object({
   adjustment: z.coerce
@@ -427,16 +288,7 @@ export function MaterialDetailPage() {
         unplaced={material.unplacedQty ?? 0}
       />
 
-      <Card className="mt-4">
-        <h3 className="font-semibold px-5 pt-5">Stock movements</h3>
-        <DataTable
-          columns={movementColumns}
-          rows={material.stockMovements ?? []}
-          rowKey={(m, ) => `${m.date}-${m.type}-${m.quantity}-${m.balance ?? ""}`}
-          emptyTitle="No stock movements"
-          emptyDescription="Inwards, consumption and adjustments will appear here."
-        />
-      </Card>
+      <MaterialLedgerCard materialId={material._id} unit={material.unit} />
 
       <FormScreen open={editOpen} onClose={() => setEditOpen(false)} title="Edit material">
         <MaterialForm

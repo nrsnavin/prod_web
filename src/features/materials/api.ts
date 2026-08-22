@@ -1,8 +1,11 @@
 import { httpClient } from "@/core/http/httpClient";
+import { config } from "@/app/config";
 import {
   BulkPriceResult,
   RemoveResult,
+  LedgerRange,
   LotTrace,
+  MaterialLedger,
   MaterialFormValues,
   RawMaterial,
   ReplenishmentForecast,
@@ -245,6 +248,43 @@ export const materialService = {
       `/yarn-lots/${id}/adjust`,
       body
     );
+  },
+
+  /**
+   * Stock movements over a date range, with a running balance.
+   *
+   * Blank ends are omitted rather than sent empty — the server reads a
+   * missing `from` as "from the beginning" and an empty string as a
+   * date it cannot parse, which is a 400 rather than the open range the
+   * user meant by clearing the box.
+   */
+  async ledger(id: string, range: LedgerRange): Promise<MaterialLedger> {
+    const params: Record<string, string> = { id };
+    if (range.from) params.from = range.from;
+    if (range.to) params.to = range.to;
+    const res = await httpClient.get<{ success: boolean } & MaterialLedger>(
+      "/materials/ledger",
+      params
+    );
+    return res;
+  },
+
+  /**
+   * The print link for exactly the range on screen.
+   *
+   * Built as a URL rather than fetched, because the browser's own PDF
+   * viewer is what should open it — pulling the bytes through the http
+   * client and re-serving them as a blob would lose the filename and
+   * break the back button.
+   *
+   * The API is cookie-authenticated (`withCredentials`), so a plain
+   * navigation carries the session; there is no token to append.
+   */
+  ledgerPdfUrl(id: string, range: LedgerRange): string {
+    const params = new URLSearchParams({ id });
+    if (range.from) params.set("from", range.from);
+    if (range.to) params.set("to", range.to);
+    return `${config.apiBaseUrl}/materials/ledger.pdf?${params.toString()}`;
   },
 
   async supplierOptions(search?: string): Promise<SupplierOption[]> {

@@ -72,6 +72,62 @@ export interface StockMovement {
   referenceDerived?: boolean;
 }
 
+// ══════════════════════════════════════════════════════════════════
+//  THE DATE-RANGED LEDGER
+//
+//  A different shape from StockMovement above, and deliberately so.
+//  StockMovement comes off the material's embedded array, which the
+//  server caps at 500 rows and the detail route trims to 50 — it can
+//  only ever answer "what happened lately". LedgerRow comes from the
+//  uncapped inward/outward logs and can answer "what happened in
+//  March", which is the question a store keeper actually has.
+// ══════════════════════════════════════════════════════════════════
+
+export interface LedgerRow {
+  _id: string;
+  date: string | null;
+  /** RECEIPT | ADJUST_IN | ORDER_APPROVAL | JOB_CONSUMPTION | STOCK_ADJUST */
+  type: string;
+  /** The same thing said in words, by the server. */
+  label: string;
+  /** Always positive. `direction` carries the sign. */
+  quantity: number;
+  /** +1 into stock, −1 out of it. */
+  direction: 1 | -1;
+  /** quantity × direction — what the balance moved by. */
+  signedQuantity: number;
+  /** The running balance AFTER this row. */
+  balance: number;
+  reference: string;
+  referenceId: string | null;
+  referenceKind: "order" | "purchaseOrder" | "job" | null;
+  lotNo: string;
+  unitPrice: number;
+  remarks: string;
+}
+
+export interface MaterialLedger {
+  material: { _id: string; name: string; category: string; unit: string };
+  range: { from: string | null; to: string | null };
+  opening: number;
+  closing: number;
+  /**
+   * The material's stock right now. Equal to `closing` when the range
+   * runs to today. When it does not, the page says so rather than
+   * showing two balances that quietly disagree.
+   */
+  stockNow: number;
+  totals: { received: number; adjustedIn: number; issued: number; net: number };
+  count: number;
+  rows: LedgerRow[];
+}
+
+/** What the date pickers hold. Empty string means that end is open. */
+export interface LedgerRange {
+  from: string;
+  to: string;
+}
+
 /**
  * What the server did when asked to remove a master record.
  *

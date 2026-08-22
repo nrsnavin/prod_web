@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { materialService } from "./api";
-import { MaterialFormValues } from "./types";
+import { LedgerRange, MaterialFormValues } from "./types";
 
 const KEY = "materials";
 const LOT_KEY = "yarn-lots";
@@ -60,6 +60,26 @@ export function useMaterial(id: string | undefined) {
     queryKey: [KEY, "detail", id],
     queryFn: () => materialService.getById(id!),
     enabled: !!id,
+  });
+}
+
+/**
+ * The date-ranged stock movement ledger.
+ *
+ * Lives here rather than inside MaterialLedgerCard for one concrete
+ * reason: five page tests do `vi.mock("./hooks", ...)` wholesale and
+ * render MaterialDetailPage without a QueryClientProvider. A useQuery
+ * called from the card itself would escape that mock and throw "No
+ * QueryClient set" in every one of them.
+ */
+export function useMaterialLedger(id: string | undefined, range: LedgerRange) {
+  return useQuery({
+    queryKey: [KEY, "ledger", id, range.from, range.to],
+    queryFn: () => materialService.ledger(id!, range),
+    enabled: !!id,
+    // Keep the previous period on screen while the new one loads, so
+    // pressing Show does not blank the table and jump the page.
+    placeholderData: (prev) => prev,
   });
 }
 

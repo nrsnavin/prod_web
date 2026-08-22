@@ -27,6 +27,7 @@ const navigate = vi.fn();
 let material: RawMaterial;
 
 vi.mock("./hooks", () => ({
+  useMaterialLedger: () => ({ data: undefined, isLoading: false, error: null, refetch: () => {} }),
   useMaterial: () => ({ data: material, isLoading: false, isError: false }),
   useYarnLots: () => ({ data: [], isLoading: false }),
   useMaterialMutations: () => ({
