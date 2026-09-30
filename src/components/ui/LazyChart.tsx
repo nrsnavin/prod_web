@@ -1,5 +1,6 @@
 import { ComponentType, Suspense, lazy } from "react";
 import { Skeleton } from "./Skeleton";
+import { recoverFromStaleChunk } from "@/pwa/staleChunk";
 
 // ══════════════════════════════════════════════════════════════════
 //  THE CHART LIBRARY ARRIVES WITH THE CHART, NOT WITH THE PAGE
@@ -35,7 +36,9 @@ export function lazyChart<P extends object>(
   height = "h-64"
 ): ComponentType<P> {
   const Loaded = lazy(() =>
-    loader().then((m) => ({ default: m[name] as ComponentType<Record<string, unknown>> }))
+    loader()
+      .then((m) => ({ default: m[name] as ComponentType<Record<string, unknown>> }))
+      .catch((err) => recoverFromStaleChunk<{ default: ComponentType<Record<string, unknown>> }>(err))
   );
 
   return function LazyChart(props: P) {

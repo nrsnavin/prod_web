@@ -2,7 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!--
+      Installed as an app (see public/site.webmanifest and pwa/sw.js).
+      viewport-fit=cover lets the page reach under a phone's notch and
+      home bar; the layout keeps its content clear of them with the
+      env(safe-area-inset-*) paddings in AppShell, Topbar, Sidebar and
+      the toasts. The apple-* tags are what iOS reads instead of the
+      manifest when the app is added to the home screen.
+    -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Jarvis" />
+    <meta name="application-name" content="Jarvis" />
     <meta name="theme-color" content="#F8F8F8" />
     <title>Jarvis ERP</title>
     <!--

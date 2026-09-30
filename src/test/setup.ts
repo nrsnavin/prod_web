@@ -4,7 +4,7 @@ import { cleanup } from "@testing-library/react";
 
 // jsdom doesn't implement scrollIntoView, which some components (e.g. the
 // Combobox active-option scroll) call in effects.
-if (!Element.prototype.scrollIntoView) {
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
 

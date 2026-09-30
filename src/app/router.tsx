@@ -9,12 +9,17 @@ import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { ComingSoonPage } from "@/features/common/ComingSoonPage";
 import { allNavItems } from "./navigation";
+import { recoverFromStaleChunk } from "@/pwa/staleChunk";
 
 // Feature pages are lazy-loaded so each module (and heavy deps like
 // recharts) ships as its own chunk.
+// A chunk that fails to load because a deploy replaced it reloads the
+// page once instead of showing an error — see pwa/staleChunk.ts.
 const lazyPage = (loader: () => Promise<Record<string, unknown>>, name: string) =>
   lazy(() =>
-    loader().then((m) => ({ default: m[name] as React.ComponentType }))
+    loader()
+      .then((m) => ({ default: m[name] as React.ComponentType }))
+      .catch((err) => recoverFromStaleChunk<{ default: React.ComponentType }>(err))
   );
 
 const AnalyticsPage = lazyPage(() => import("@/features/analytics/AnalyticsPage"), "AnalyticsPage");

@@ -157,7 +157,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[60] flex w-80 flex-col gap-2">
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-[calc(1rem+env(safe-area-inset-right))] z-[60] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2">
         {/* Two regions, because a region's politeness is fixed when it
             is created. A failure should interrupt; a confirmation
             should wait its turn. */}

@@ -14,9 +14,12 @@ import { machineService } from "@/features/machines/api";
 import { useBreakdown } from "./hooks";
 import { GroupDim, BreakdownRow } from "./types";
 import { InsightsList } from "./InsightsList";
+import { recoverFromStaleChunk } from "@/pwa/staleChunk";
 
 const BreakdownBarChart = lazy(() =>
-  import("./charts").then((m) => ({ default: m.BreakdownBarChart }))
+  import("./charts")
+    .then((m) => ({ default: m.BreakdownBarChart }))
+    .catch((err) => recoverFromStaleChunk<{ default: typeof import("./charts").BreakdownBarChart }>(err))
 );
 
 const DIMS: { key: GroupDim; label: string; icon: typeof Cog }[] = [

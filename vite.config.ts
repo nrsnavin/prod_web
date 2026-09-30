@@ -2,6 +2,7 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { serviceWorkerPlugin } from "./pwa/vitePlugin";
 
 // In dev, /api is proxied to the backend so the app runs same-origin
 // (no CORS, and the httpOnly auth cookie is accepted on localhost).
@@ -11,7 +12,9 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = env.VITE_PROXY_TARGET || "https://api.baluelastics.com";
 
   return {
-    plugins: [react()],
+    // The service worker is built from pwa/sw.js — see that file for what
+    // it caches and, more importantly, what it never does.
+    plugins: [react(), serviceWorkerPlugin(fileURLToPath(new URL("./pwa/sw.js", import.meta.url)))],
     build: {
       rollupOptions: {
         output: {

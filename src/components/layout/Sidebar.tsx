@@ -32,6 +32,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 bg-surface border-r border-ink-100 flex flex-col",
+          "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]",
           "transition-all lg:translate-x-0",
           collapsed ? "w-64 lg:w-16" : "w-64",
           mobileOpen ? "translate-x-0" : "-translate-x-full"

@@ -30,12 +30,14 @@ export function AppShell() {
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
       />
-      <div className={cn("flex flex-col min-h-screen transition-all", collapsed ? "lg:pl-16" : "lg:pl-64")}>
+      {/* Below lg the side insets keep content clear of a landscape phone's
+          notch; at lg the sidebar offset takes over. */}
+      <div className={cn("flex flex-col min-h-screen transition-all pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]", collapsed ? "lg:pl-16" : "lg:pl-64")}>
         <Topbar
           onMenuClick={() => setMobileNavOpen(true)}
           onSearchClick={() => setSearchOpen(true)}
         />
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:p-6 lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <RequireDeptAccess>
             <Outlet />
           </RequireDeptAccess>

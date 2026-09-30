@@ -5,6 +5,7 @@ import { useAuth } from "@/core/auth/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ThemeToggle } from "./ThemeToggle";
 import { SandboxBadge } from "./SandboxBadge";
+import { AppStatus } from "./AppStatus";
 
 export interface TopbarProps {
   onMenuClick: () => void;
@@ -29,7 +30,7 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 h-16 bg-surface/90 backdrop-blur border-b border-ink-100 flex items-center gap-3 px-4 lg:px-6">
+    <header className="sticky top-0 z-20 h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-surface/90 backdrop-blur border-b border-ink-100 flex items-center gap-3 px-4 lg:px-6">
       <button
         className="lg:hidden p-2 rounded-lg text-ink-600 hover:bg-ink-100"
         onClick={onMenuClick}
@@ -53,6 +54,7 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
         {/* Renders nothing unless this session is actually routed to a
             sandbox database, so the live app is unchanged. */}
         <SandboxBadge />
+        <AppStatus />
         <ThemeToggle />
         <button
           onClick={() => navigate("/profile")}
