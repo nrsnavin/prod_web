@@ -410,13 +410,13 @@ export function WarpingBatches({
         </div>
 
         {!plan ? (
-          <EmptyState
+          <EmptyState compact
             title="No warping plan"
             description="Create the beam plan first — a batch is run against its beams."
             icon={<Boxes className="h-6 w-6" />}
           />
         ) : (batches?.length ?? 0) === 0 ? (
-          <EmptyState
+          <EmptyState compact
             title="No batches yet"
             description="Start a batch to record which yarn lots this programme is warped from."
             icon={<Boxes className="h-6 w-6" />}

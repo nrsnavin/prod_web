@@ -76,7 +76,7 @@ export function JobYarnLots({ jobId }: { jobId: string }) {
       </div>
 
       {!anyLots ? (
-        <EmptyState
+        <EmptyState compact
           title="No lots recorded"
           description="Lots appear here once one is chosen in the warping programme, or a warping batch is issued against this job."
           icon={<Layers className="h-6 w-6" />}

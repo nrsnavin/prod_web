@@ -179,3 +179,23 @@ describe("OrderMaterialPo", () => {
     expect(screen.getByText(/via J-12/)).toBeInTheDocument();
   });
 });
+
+describe("a cancelled order", () => {
+  it("says its stock was released, not that it is still held", () => {
+    // Cancelling releases every reservation and returns material to stock.
+    mrp = { orderId: "o1", orderNo: 1042, status: "Cancelled", materials: [material({ allocated: 30 })] } as OrderMrp;
+    renderPanel();
+    expect(screen.getByText("Stock released")).toBeInTheDocument();
+    expect(screen.queryByText(/stock allocated/i)).toBeNull();
+    expect(screen.getByText(/went back into the balance/i)).toBeInTheDocument();
+    expect(screen.queryByText(/not allocated to this order/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /raise po/i })).toBeNull();
+  });
+
+  it("still reads as allocated while the order is live", () => {
+    mrp = { orderId: "o1", orderNo: 1042, status: "Approved", materials: [material()] } as OrderMrp;
+    renderPanel();
+    expect(screen.getByText(/stock allocated/i)).toBeInTheDocument();
+    expect(screen.queryByText("Stock released")).toBeNull();
+  });
+});

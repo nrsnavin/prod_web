@@ -94,10 +94,14 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
   // whereas guessing the other way would quietly remove the only way to
   // buy for an order that has not been approved at all.
   const approved = !!mrp?.status && mrp.status !== "Open";
+  // Cancelling releases every reservation and returns drawn material to
+  // stock (api/order.js cancel). "Stock allocated — held against the
+  // order" would then be false, so a cancelled order says what happened.
+  const ended = mrp?.status === "Cancelled" || mrp?.status === "Deleted";
   // A forced approval took only what was there. That remainder is real
   // and nothing is holding it, so it gets said out loud rather than
   // disappearing behind the allocation notice.
-  const unallocated = approved
+  const unallocated = approved && !ended
     ? materials.filter((m) => (m.allocated ?? 0) > 0 && outstandingOf(m) > 0)
     : [];
 
@@ -129,7 +133,9 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
           <div className="min-w-0">
             <h3 className="font-semibold">Raw material for this order</h3>
             <p className="text-xs text-ink-400">
-              {approved
+              {ended
+                ? "This order was cancelled. Stock that was held against it went back into the balance, and nothing more will be bought for it."
+                : approved
                 ? "Stock for this order was allocated when it was approved — held against the order and already out of the balance below. Buying happens before approval."
                 : "The requirement for everything ordered, not only what has been planned into jobs. Only the gap is bought — never stock on hand, never what is already on an open PO — and what is bought stays linked to this order."}
             </p>
@@ -139,15 +145,16 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
               <ShoppingCart className="h-4 w-4" /> Raise PO for shortfall
             </Button>
           )}
-          {approved && (
+          {approved && !ended && (
             <StatusChip tone="success">
               <Lock className="h-3 w-3" /> Stock allocated
             </StatusChip>
           )}
+          {ended && <StatusChip tone="neutral">Stock released</StatusChip>}
         </div>
 
         {materials.length === 0 ? (
-          <EmptyState
+          <EmptyState compact
             title="No material requirement"
             description="No BOM materials resolved for the elastics on this order."
             icon={<Boxes className="h-6 w-6" />}

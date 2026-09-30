@@ -240,7 +240,7 @@ export function WarpingDetailPage() {
         <Card className="p-5">
           <h3 className="font-semibold">Warping plan</h3>
           {!hasPlan ? (
-            <EmptyState
+            <EmptyState compact
               title="No plan yet"
               description="Create the beam & section plan before starting the warping."
               action={
@@ -450,7 +450,7 @@ function OptimizeLayoutModal({
         </div>
 
         {!isFetching && data && (!data.beams || data.beams.length === 0) ? (
-          <EmptyState title="Nothing to optimise" description={data.message || "No warp-yarn ends found on this warping."} />
+          <EmptyState compact title="Nothing to optimise" description={data.message || "No warp-yarn ends found on this warping."} />
         ) : m ? (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

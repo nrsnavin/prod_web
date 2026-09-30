@@ -112,7 +112,7 @@ function LotTrace({ lotId, onClose }: { lotId: string; onClose: () => void }) {
     <FormScreen open onClose={onClose} title={`Lot ${data?.lot.lotNo ?? ""} — where it went`} width="max-w-2xl">
       {isLoading && <p className="text-sm text-ink-400">Loading…</p>}
       {data && data.batches.length === 0 && (
-        <EmptyState
+        <EmptyState compact
           title="Not issued yet"
           description="This lot has not been drawn into a warping batch."
         />
@@ -216,7 +216,7 @@ export function MaterialLots({
         </div>
 
         {lots.length === 0 ? (
-          <EmptyState
+          <EmptyState compact
             title="No lots recorded"
             description="Receive a purchase order with a lot number, or add a lot for yarn already on the rack."
             icon={<Layers className="h-6 w-6" />}

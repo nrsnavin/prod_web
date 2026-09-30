@@ -7,6 +7,10 @@ import { KpiTile } from "./components/KpiTile";
 import { AttendanceCard } from "./components/AttendanceCard";
 import { LowStockCard } from "./components/LowStockCard";
 import { AnnouncementsCard } from "./components/AnnouncementsCard";
+import { FloorCard } from "./components/FloorCard";
+import { useMachines } from "@/features/machines/hooks";
+import { useProductionRange } from "@/features/shifts/hooks";
+import { toISODate } from "@/features/analytics/components/FilterBar";
 import { Link } from "react-router-dom";
 import { History } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -26,6 +30,18 @@ export function DashboardPage() {
   const pendingShifts = usePendingShiftCount(canShifts);
   const announcements = useActiveAnnouncements();
 
+  // The floor strip. Each part only for a department that may open the
+  // screen it links to — and only then fetched.
+  const canMachines = canAccessPath("/machines", dept);
+  const canProduction = canAccessPath("/production", dept);
+  const canOrders = canAccessPath("/orders", dept);
+  const machines = useMachines("all", canMachines);
+  const today = new Date();
+  const yesterday = new Date(today.getTime() - 86_400_000);
+  const production = useProductionRange(toISODate(yesterday), toISODate(today), canProduction);
+  const dayTotal = (iso: string) =>
+    production.data?.find((d) => d.date?.slice(0, 10) === iso)?.totalProduction ?? 0;
+
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const att = kpis.data?.attendanceToday;
@@ -43,6 +59,8 @@ export function DashboardPage() {
             onClick={() => {
               kpis.refetch();
               pendingShifts.refetch();
+              if (canMachines) machines.refetch();
+              if (canProduction) production.refetch();
               announcements.refetch();
             }}
           >
@@ -57,6 +75,29 @@ export function DashboardPage() {
         // read "["dashboard","kpis"] data is undefined".
         <ErrorBanner message={`Couldn't load the dashboard figures. ${errorMessage(kpis.error, "the dashboard figures")}`} />
       )}
+
+      <FloorCard
+        looms={
+          canMachines
+            ? {
+                running: (machines.data ?? []).filter((m) => m.status === "running").length,
+                maintenance: (machines.data ?? []).filter((m) => m.status === "maintenance").length,
+                total: machines.data?.length ?? 0,
+                loading: machines.isLoading,
+              }
+            : undefined
+        }
+        metres={
+          canProduction
+            ? {
+                today: dayTotal(toISODate(today)),
+                yesterday: dayTotal(toISODate(yesterday)),
+                loading: production.isLoading,
+              }
+            : undefined
+        }
+        lateOrders={canOrders ? { count: kpis.data?.lateOrders, loading: kpis.isLoading } : undefined}
+      />
 
       {/* Tiles are department-aware: each shows only when its target
           screen is accessible, so no tile ever links into a bounce. */}

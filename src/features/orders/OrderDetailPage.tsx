@@ -584,9 +584,13 @@ export function OrderDetailPage() {
           )}
         </div>
         {(order.jobs?.length ?? 0) === 0 ? (
-          <EmptyState
-            title="No jobs yet"
-            description="Create a job to send this order to the floor."
+          <EmptyState compact
+            title={order.status === "Cancelled" ? "No jobs" : "No jobs yet"}
+            description={
+              order.status === "Cancelled"
+                ? "This order was cancelled."
+                : "Create a job to send this order to the floor."
+            }
           />
         ) : (
           <ul className="mt-3 divide-y divide-ink-100">

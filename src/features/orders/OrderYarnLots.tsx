@@ -67,7 +67,7 @@ export function OrderYarnLots({ orderId }: { orderId: string }) {
       </div>
 
       {!anything ? (
-        <EmptyState
+        <EmptyState compact
           title="No lots yet"
           description="Lots appear here once a warping programme on one of this order's jobs names one."
           icon={<Layers className="h-6 w-6" />}

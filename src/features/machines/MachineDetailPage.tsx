@@ -411,7 +411,7 @@ export function MachineDetailPage() {
             </Button>
           </div>
           {(machine.serviceLogs?.length ?? 0) === 0 ? (
-            <EmptyState title="No service logs" description="Record maintenance work as it happens." />
+            <EmptyState compact title="No service logs" description="Record maintenance work as it happens." />
           ) : (
             <ul className="mt-3 divide-y divide-ink-100">
               {machine.serviceLogs.map((log, i) => {

@@ -87,7 +87,7 @@ export function OrderDeliveryChallans({ orderId }: { orderId: string }) {
 
       {dcs.length === 0 ? (
         <div className="p-5">
-          <EmptyState
+          <EmptyState compact
             icon={<Truck className="h-6 w-6" />}
             title="Nothing despatched yet"
             description="Delivery challans raised against this order will appear here."

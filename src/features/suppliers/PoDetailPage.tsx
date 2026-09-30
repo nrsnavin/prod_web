@@ -240,7 +240,7 @@ export function InwardForm({
   };
 
   if (items.length === 0) {
-    return <EmptyState title="Nothing on this PO" description="This purchase order has no lines." />;
+    return <EmptyState compact title="Nothing on this PO" description="This purchase order has no lines." />;
   }
 
   return (
@@ -629,7 +629,7 @@ export function PoDetailPage() {
       <Card className="mt-4 p-5">
         <h3 className="font-semibold">Inward history</h3>
         {inwardHistory.length === 0 ? (
-          <EmptyState title="No inwards yet" description="Received goods will appear here." />
+          <EmptyState compact title="No inwards yet" description="Received goods will appear here." />
         ) : (
           <ul className="mt-3 divide-y divide-ink-100">
             {inwardHistory.map((rec: InwardRecord) => (

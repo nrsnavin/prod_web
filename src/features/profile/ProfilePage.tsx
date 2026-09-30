@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Mail, Calendar, Building2, ShieldCheck, Check } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { LogoutButton } from "@/components/layout/LogoutButton";
 import { Card } from "@/components/ui/Card";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { DescriptionList } from "@/components/ui/DescriptionList";
@@ -48,7 +49,13 @@ export function ProfilePage() {
 
   return (
     <>
-      <PageHeader title="Your profile" subtitle="Your account details and what you can access." />
+      <PageHeader
+        title="Your profile"
+        subtitle="Your account details and what you can access."
+        actions={
+          <LogoutButton className="inline-flex h-10 items-center gap-2 rounded-lg border border-ink-200 bg-surface px-4 text-sm font-medium text-ink-900 hover:border-ink-400 hover:bg-ink-100" />
+        }
+      />
 
       <Card className="p-5">
         <div className="flex flex-wrap items-center gap-4">

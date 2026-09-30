@@ -31,25 +31,22 @@ mostly about phones, plus two ways the app could mislead someone:
 | 11 | Field errors and hints weren't connected to their inputs, so a screen reader said "invalid" without the reason | 🟡 a11y | `aria-describedby` on Input and Select |
 | 12 | Auto Planner rendered `<li>` inside `<li>` (invalid markup; React warned on every render) | 🟡 | Inner row is a div |
 
-### Open — worth doing next
+### Fixed in the follow-up pass
 
-- **The dashboard doesn't show the floor.** "What's happening on the
-  floor today" gives four counts. Looms running, metres today against
-  plan, and late jobs are what a supervisor opens it for. The Machines
-  page has a good "floor right now" strip that could lead the dashboard.
-- **Detail pages spend a screen on empty sections.** A new order shows
-  three full-height "nothing yet" panels (jobs, challans, dye lots).
-  Collapse empty sections to one line.
-- **Cancelled orders still invite action.** "Create a job to send this
-  order to the floor" and "Stock allocated" appear on a cancelled order.
-- **Logout is one tap from the avatar in the top bar.** It is confirmed,
-  but on a phone it sits where people tap for their profile. It
-  belongs in the profile page or menu.
+| # | Finding | Fix |
+|---|---|---|
+| 13 | The dashboard didn't show the floor | A strip at the top: looms running (with maintenance), metres so far today beside yesterday's total, and late orders (a new server-side count: live orders past their supply date). Each part is shown only to departments that can open the screen it links to |
+| 14 | Detail pages spent a screen on empty sections | `EmptyState compact`: one line inside a section; used in orders, jobs, materials, machines, POs and warping |
+| 15 | Cancelled orders still invited action and said "Stock allocated — held against the order" | "No jobs — This order was cancelled"; the material card says the stock was released, which is what the server does on cancel |
+| 16 | Log out was one tap from the avatar in the phone top bar | Desktop only in the top bar; on phones it sits in the menu drawer, and on the profile page for everyone |
+| 17 | Login used a factory glyph, the app icon a J | One `BrandMark` (the favicon's J) on login and in the sidebar |
+
+### Left as is, on purpose
+
 - **Native date inputs follow the device's language** (mm/dd/yyyy on a
-  US-English device). They are consistent within a device. A custom
-  date picker is only worth building if it causes mistakes.
-- **Brand mark differs on the login screen** (a factory glyph) from the
-  app icon and the sidebar (the J).
+  US-English device). Consistent within a device, and every date the
+  app *displays* is now unambiguous. A custom picker is only worth it if
+  this causes mistakes.
 
 ---
 

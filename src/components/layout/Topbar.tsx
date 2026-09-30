@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { Menu, Search, LogOut } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/auth/useAuth";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { LogoutButton } from "./LogoutButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { SandboxBadge } from "./SandboxBadge";
 import { AppStatus } from "./AppStatus";
@@ -13,22 +12,8 @@ export interface TopbarProps {
 }
 
 export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [confirmLogout, setConfirmLogout] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-
-  const handleLogout = async () => {
-    setLoggingOut(true);
-    try {
-      await logout();
-      navigate("/login", { replace: true });
-    } finally {
-      setLoggingOut(false);
-      setConfirmLogout(false);
-    }
-  };
-
   return (
     <header className="sticky top-0 z-20 h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-surface/90 backdrop-blur border-b border-ink-100 flex items-center gap-3 px-4 lg:px-6">
       <button
@@ -73,25 +58,14 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
             {user?.username?.charAt(0) ?? "?"}
           </span>
         </button>
-        <button
-          onClick={() => setConfirmLogout(true)}
-          className="p-2 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900"
-          title="Log out"
-          aria-label="Log out"
-        >
-          <LogOut className="h-5 w-5" />
-        </button>
+        {/* Desktop only. On a phone it sat beside the avatar, exactly
+            where a thumb goes for the profile; there it lives in the
+            menu drawer and on the profile page instead. */}
+        <LogoutButton
+          iconOnly
+          className="hidden sm:inline-flex p-2 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-ink-900"
+        />
       </div>
-
-      <ConfirmDialog
-        open={confirmLogout}
-        title="Log out?"
-        message="You'll need to sign in again to get back in."
-        confirmLabel="Log out"
-        loading={loggingOut}
-        onConfirm={handleLogout}
-        onCancel={() => setConfirmLogout(false)}
-      />
     </header>
   );
 }

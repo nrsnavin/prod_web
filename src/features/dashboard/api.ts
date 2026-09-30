@@ -20,6 +20,8 @@ export interface AttendanceBreakdown {
 export interface DashboardKpis {
   openJobs: number;
   pendingLeaves: number;
+  /** Live orders past their supply date. Absent from an older API. */
+  lateOrders?: number;
   lowStock: { count: number; items: LowStockItem[] };
   attendanceToday: {
     totalMarked: number;

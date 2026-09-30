@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Factory } from "lucide-react";
+import { BrandMark } from "@/components/layout/BrandMark";
 import { Card } from "@/components/ui/Card";
 import { config } from "@/app/config";
 
@@ -14,7 +14,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
           {/* Sits on the always-red brand panel, so it is a white scrim in
               both themes rather than the themeable surface token. */}
           <span className="h-10 w-10 rounded-xl bg-white/15 grid place-items-center">
-            <Factory className="h-5 w-5" />
+            <BrandMark className="h-7 w-7" />
           </span>
           <span className="text-xl font-bold tracking-tight">{config.appName}</span>
         </div>

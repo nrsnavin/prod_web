@@ -106,11 +106,12 @@ export function useShiftMutations() {
   return { createPlan, deletePlan, verify };
 }
 
-export function useProductionRange(startDate: string, endDate: string) {
+export function useProductionRange(startDate: string, endDate: string, enabled = true) {
   return useQuery({
     queryKey: ["production", "range", startDate, endDate],
     queryFn: () => productionService.dateRange(startDate, endDate),
     placeholderData: (prev) => prev,
+    enabled,
   });
 }
 

@@ -12,11 +12,12 @@ import {
 
 const KEY = "machines";
 
-export function useMachines(status: MachineStatus | "all") {
+export function useMachines(status: MachineStatus | "all", enabled = true) {
   return useQuery({
     queryKey: [KEY, status],
     queryFn: () => machineService.list(status),
     placeholderData: (prev) => prev,
+    enabled,
   });
 }
 
