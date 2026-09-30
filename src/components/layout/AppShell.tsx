@@ -4,6 +4,7 @@ import { RequireDeptAccess } from "@/app/guards";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { GlobalSearch } from "./GlobalSearch";
+import { BottomNav } from "./BottomNav";
 import { useUiStore } from "@/core/ui/uiStore";
 import { cn } from "@/components/ui/cn";
 
@@ -37,12 +38,15 @@ export function AppShell() {
           onMenuClick={() => setMobileNavOpen(true)}
           onSearchClick={() => setSearchOpen(true)}
         />
-        <main className="flex-1 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:p-6 lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        {/* Below lg the bottom bar (~56px) sits over the page's foot, so the
+            page ends above it. */}
+        <main className="flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:p-6 lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <RequireDeptAccess>
             <Outlet />
           </RequireDeptAccess>
         </main>
       </div>
+      <BottomNav onMore={() => setMobileNavOpen(true)} />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );

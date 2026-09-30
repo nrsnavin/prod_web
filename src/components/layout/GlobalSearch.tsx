@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, CornerDownLeft, FileText, Users, Cable, Boxes, Truck, LucideIcon } from "lucide-react";
+import { Search, CornerDownLeft, FileText, Users, Cable, Boxes, Truck, ShoppingCart, Cog, LucideIcon } from "lucide-react";
 import { allNavItems, canAccess } from "@/app/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/components/ui/cn";
@@ -20,53 +20,113 @@ interface Hit {
   path: string;
 }
 
+// ══════════════════════════════════════════════════════════════════
+//  SEARCH IN THE APP'S OWN WORDS
+//
+//  The app writes a job as "J-3" and an order as "#4" on every screen,
+//  and people type what they read. Search used to find a job only from
+//  a bare "3", and never looked at orders or machines at all, so "J-3",
+//  "#4", a customer PO or "LOOM-04" all came back empty.
+// ══════════════════════════════════════════════════════════════════
+
+export interface ParsedQuery {
+  /** A job number, from "3", "J-3", "j3", "job 3". */
+  jobNo?: number;
+  /** An order number, from "4", "#4", "order 4". */
+  orderNo?: number;
+}
+
+export function parseQuery(q: string): ParsedQuery {
+  const s = q.trim();
+  const bare = s.match(/^\d+$/);
+  if (bare) return { jobNo: Number(s), orderNo: Number(s) };
+  const job = s.match(/^(?:j|job)\s*-?\s*#?\s*(\d+)$/i);
+  if (job) return { jobNo: Number(job[1]) };
+  const order = s.match(/^(?:order\s*)?#\s*(\d+)$/i) || s.match(/^order\s+(\d+)$/i);
+  if (order) return { orderNo: Number(order[1]) };
+  return {};
+}
+
 // Entity lookups reuse the modules' own search endpoints; each source
-// fails independently so one bad endpoint never blanks the whole list.
+// fails independently so one bad endpoint never blanks the whole list
+// (and a department that may not read orders simply gets none).
 async function searchEntities(q: string): Promise<Hit[]> {
-  const isNum = /^\d+$/.test(q);
-  const [customers, elastics, dcs, jobs, materials] = await Promise.allSettled([
-    httpClient.get<{ customers: Array<{ _id: string; name: string; phoneNumber?: string }> }>(
-      "/customer/all-customers",
-      { search: q, limit: 5, page: 1 }
-    ),
-    httpClient.get<{ elastics: Array<{ _id: string; name: string; weaveType?: string }> }>(
-      "/elastic/get-elastics",
-      { search: q, limit: 5, page: 1 }
-    ),
+  const parsed = parseQuery(q);
+  // A job or order number is a lookup, not a phrase: don't also ask the
+  // name-search endpoints for "J-3".
+  const numeric = parsed.jobNo !== undefined || parsed.orderNo !== undefined;
+  const none = Promise.resolve(null);
+  const [customers, elastics, dcs, jobs, materials, orders, machines] = await Promise.allSettled([
+    numeric
+      ? none
+      : httpClient.get<{ customers: Array<{ _id: string; name: string; phoneNumber?: string }> }>(
+          "/customer/all-customers",
+          { search: q, limit: 5, page: 1 }
+        ),
+    numeric
+      ? none
+      : httpClient.get<{ elastics: Array<{ _id: string; name: string; weaveType?: string }> }>(
+          "/elastic/get-elastics",
+          { search: q, limit: 5, page: 1 }
+        ),
     httpClient.get<{ dcs: Array<{ _id: string; dcNumber: string; customerName?: string }> }>(
       "/dc/list",
       { search: q, limit: 5, page: 1 }
     ),
-    isNum
+    parsed.jobNo !== undefined
       ? httpClient.get<{ jobs: Array<{ _id: string; jobOrderNo: number; customer?: { name?: string } }> }>(
           "/job/jobs",
-          { search: q, limit: 5, page: 1 }
+          { search: String(parsed.jobNo), limit: 5, page: 1 }
         )
-      : Promise.resolve(null),
-    httpClient.get<{ materials: Array<{ _id: string; name: string; category?: string }> }>(
-      "/materials/get-raw-materials",
-      { search: q }
-    ),
+      : none,
+    numeric
+      ? none
+      : httpClient.get<{ materials: Array<{ _id: string; name: string; category?: string }> }>(
+          "/materials/get-raw-materials",
+          { search: q }
+        ),
+    parsed.jobNo !== undefined && parsed.orderNo === undefined
+      ? none
+      : httpClient.get<{ orders: Array<{ _id: string; orderNo: number; po?: string; customer?: { name?: string } | null }> }>(
+          "/order/list",
+          { status: "all", search: parsed.orderNo !== undefined ? String(parsed.orderNo) : q, limit: 5, page: 1 }
+        ),
+    numeric
+      ? none
+      : httpClient.get<{ machines: Array<{ _id: string; ID: string; status?: string }> }>("/machine/get-machines"),
   ]);
 
   const hits: Hit[] = [];
+  if (orders.status === "fulfilled" && orders.value) {
+    for (const o of (orders.value.orders ?? []).slice(0, 5))
+      hits.push({ icon: ShoppingCart, label: `Order #${o.orderNo}`, sub: [o.po, o.customer?.name].filter(Boolean).join(" · ") || "Order", path: `/orders/${o._id}` });
+  }
+  if (machines.status === "fulfilled" && machines.value) {
+    // The list is the whole plant (tens of looms), so it is matched here
+    // rather than by a search endpoint that does not exist.
+    const needle = q.toLowerCase().replace(/[\s-]/g, "");
+    for (const m of (machines.value.machines ?? [])
+      .filter((m) => m.ID.toLowerCase().replace(/[\s-]/g, "").includes(needle))
+      .slice(0, 5))
+      hits.push({ icon: Cog, label: m.ID, sub: m.status ? `Machine · ${m.status}` : "Machine", path: `/machines/${m._id}` });
+  }
   if (jobs.status === "fulfilled" && jobs.value) {
     for (const j of jobs.value.jobs ?? [])
       hits.push({ icon: FileText, label: `Job J-${j.jobOrderNo}`, sub: j.customer?.name, path: `/jobs/${j._id}` });
   }
-  if (customers.status === "fulfilled") {
+  if (customers.status === "fulfilled" && customers.value) {
     for (const c of (customers.value.customers ?? []).slice(0, 5))
       hits.push({ icon: Users, label: c.name, sub: c.phoneNumber || "Customer", path: `/customers/${c._id}` });
   }
-  if (elastics.status === "fulfilled") {
+  if (elastics.status === "fulfilled" && elastics.value) {
     for (const e of (elastics.value.elastics ?? []).slice(0, 5))
       hits.push({ icon: Cable, label: e.name, sub: e.weaveType || "Elastic", path: `/elastics/${e._id}` });
   }
-  if (materials.status === "fulfilled") {
+  if (materials.status === "fulfilled" && materials.value) {
     for (const m of (materials.value.materials ?? []).slice(0, 5))
       hits.push({ icon: Boxes, label: m.name, sub: m.category || "Material", path: `/materials/${m._id}` });
   }
-  if (dcs.status === "fulfilled") {
+  if (dcs.status === "fulfilled" && dcs.value) {
     for (const d of (dcs.value.dcs ?? []).slice(0, 5))
       hits.push({ icon: Truck, label: d.dcNumber, sub: d.customerName || "Delivery challan", path: `/delivery-challans/${d._id}` });
   }
@@ -140,7 +200,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search jobs, customers, elastics, materials, DCs… or jump to a page"
+            placeholder="J-3, #4, a PO, a customer, LOOM-04… or a page"
             className="flex-1 outline-none text-sm placeholder:text-ink-400"
           />
           {entities.isFetching && (
