@@ -12,12 +12,18 @@ export interface ModalProps {
   width?: string;
   /** Set false for non-form dialogs (search palette) so typing never triggers the discard prompt */
   confirmDirtyClose?: boolean;
+  /**
+   * "sheet" (default): on a phone the dialog rises from the bottom, where
+   * the thumb is. "top": stays near the top on every screen — for the
+   * search palette, whose results the phone keyboard would cover.
+   */
+  placement?: "sheet" | "top";
 }
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, onClose, title, children, width = "max-w-lg", confirmDirtyClose = true }: ModalProps) {
+export function Modal({ open, onClose, title, children, width = "max-w-lg", confirmDirtyClose = true, placement = "sheet" }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
   const restoreRef = useRef<HTMLElement | null>(null);
@@ -87,7 +93,12 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center app-scrim p-4 pt-[10vh]"
+      className={cn(
+        "fixed inset-0 z-50 flex justify-center app-scrim",
+        placement === "sheet"
+          ? "items-end sm:items-start sm:p-4 sm:pt-[10vh]"
+          : "items-start p-4 pt-[10vh]"
+      )}
       onMouseDown={(e) => e.target === e.currentTarget && requestClose()}
       role="dialog"
       aria-modal="true"
@@ -99,6 +110,10 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
           // `relative` so the discard prompt can cover this panel and
           // nothing else.
           "relative w-full bg-surface rounded-card shadow-card-hover flex flex-col max-h-[85vh]",
+          // A sheet on a phone: square bottom, rounded top, clear of the
+          // home bar, sliding up unless the phone asks for less motion.
+          placement === "sheet" &&
+            "max-sm:max-w-none rounded-b-none rounded-t-2xl pb-[env(safe-area-inset-bottom)] motion-safe:animate-sheet-up sm:rounded-card sm:pb-0 sm:motion-safe:animate-none",
           width
         )}
         onInput={() => {

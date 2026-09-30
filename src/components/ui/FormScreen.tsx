@@ -123,7 +123,9 @@ export function FormScreen({
             dirtyRef.current = true;
           }}
         >
-          <div className="rounded-card bg-surface p-5 shadow-card sm:p-6">{children}</div>
+          {/* form-screen-card: index.css pins the form's action row to the
+              bottom of the screen on a phone. */}
+          <div className="form-screen-card rounded-card bg-surface p-5 shadow-card sm:p-6">{children}</div>
         </div>
       </div>
       <DiscardChangesPrompt

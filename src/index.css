@@ -292,6 +292,50 @@
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   FORM ACTIONS STAY UNDER THE THUMB
+   On a phone a full-screen form's last row of buttons (the one with
+   the submit) sticks to the bottom of the screen, so Save is never
+   below the fold — on New order it sat at 864px on an 844px screen.
+   One rule for every FormScreen; a form opts in by having its buttons
+   in a row that is the form's last child, which is how they are built.
+   The negative margin spans the card's own padding (p-5).
+   ══════════════════════════════════════════════════════════════════ */
+@media (max-width: 639px) {
+  .form-screen-card form > :last-child:has(> button[type="submit"]) {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin: 0 -1.25rem -1.25rem;
+    padding: 0.75rem 1.25rem calc(0.75rem + env(safe-area-inset-bottom));
+    background: rgb(var(--color-surface));
+    border-top: 1px solid rgb(var(--color-ink-100));
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   A TAP YOU CAN SEE
+   On a mouse, rows and buttons light up before the click; a finger got
+   nothing until the next screen arrived, which on a slow network reads
+   as "did it register?". On touch screens anything tappable dims while
+   pressed — the same cue iOS itself uses. Hover-capable devices are
+   untouched.
+   ══════════════════════════════════════════════════════════════════ */
+@media (hover: none) {
+  a[href],
+  button,
+  [role="button"],
+  tr[tabindex] {
+    -webkit-tap-highlight-color: transparent;
+  }
+  a[href]:active,
+  button:not(:disabled):active,
+  [role="button"]:active,
+  tr[tabindex]:active {
+    opacity: 0.6;
+  }
+}
+
 /* A row that scrolls sideways (tab bars on a phone) without drawing a
    scrollbar under it — the cut-off last tab is the cue that it scrolls. */
 .no-scrollbar {

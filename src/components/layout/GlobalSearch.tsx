@@ -191,7 +191,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} width="max-w-xl" confirmDirtyClose={false}>
+    <Modal open={open} onClose={onClose} width="max-w-xl" confirmDirtyClose={false} placement="top">
       <div onKeyDown={onKeyDown}>
         <div className="flex items-center gap-2 border-b border-ink-100 pb-3 mb-2">
           <Search className="h-5 w-5 text-ink-400" />

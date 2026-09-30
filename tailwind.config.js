@@ -64,6 +64,16 @@ export default {
       borderRadius: {
         card: "12px",
       },
+      // Short and eased out: a sheet arriving, a screen settling. Always
+      // used behind `motion-safe:` so reduce-motion turns them off.
+      keyframes: {
+        "sheet-up": { from: { transform: "translateY(100%)" }, to: { transform: "translateY(0)" } },
+        "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+      },
+      animation: {
+        "sheet-up": "sheet-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "fade-in": "fade-in 160ms ease-out",
+      },
     },
   },
   plugins: [],

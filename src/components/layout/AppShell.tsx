@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { RequireDeptAccess } from "@/app/guards";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { GlobalSearch } from "./GlobalSearch";
 import { BottomNav } from "./BottomNav";
+import { PullToRefresh } from "./PullToRefresh";
 import { useUiStore } from "@/core/ui/uiStore";
 import { cn } from "@/components/ui/cn";
 
@@ -12,6 +13,7 @@ export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const [searchOpen, setSearchOpen] = useState(false);
+  const { pathname } = useLocation();
 
   // ⌘K / Ctrl+K opens global search
   useEffect(() => {
@@ -42,10 +44,15 @@ export function AppShell() {
             page ends above it. */}
         <main className="flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:p-6 lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <RequireDeptAccess>
-            <Outlet />
+            {/* A short fade as each screen arrives, so the eye sees the
+                change rather than a jump; off under reduce-motion. */}
+            <div key={pathname} className="motion-safe:animate-fade-in">
+              <Outlet />
+            </div>
           </RequireDeptAccess>
         </main>
       </div>
+      <PullToRefresh />
       <BottomNav onMore={() => setMobileNavOpen(true)} />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
