@@ -85,7 +85,7 @@ export function SampleCreateForm({
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <AsyncCombobox
           label="Customer"
           placeholder="Not a customer yet"
@@ -105,7 +105,7 @@ export function SampleCreateForm({
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Input
           label="Quantity (m)"
           type="number"

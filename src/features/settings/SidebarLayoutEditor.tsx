@@ -53,7 +53,7 @@ export function SidebarLayoutEditor() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {sections.map((section) => {
           const items = orderedItems(section.items, navOrder[section.label]);
           return (

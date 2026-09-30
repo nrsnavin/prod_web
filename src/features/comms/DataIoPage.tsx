@@ -46,7 +46,7 @@ export function DataIoPage() {
         subtitle="Bulk raw-material and elastic data via Excel."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 max-w-3xl">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 max-w-3xl">
         <Card className="p-6">
           <FileSpreadsheet className="h-8 w-8 text-status-success" />
           <h3 className="mt-3 font-semibold">Export current data</h3>

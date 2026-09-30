@@ -55,7 +55,7 @@ export function JobShiftSummary({ summary }: { summary: Summary | undefined }) {
 
   return (
     <div className="px-5 pb-1 pt-3">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-xl bg-ink-50 px-3 py-2">
             <p className="text-xs uppercase tracking-wide text-ink-400">{s.label}</p>

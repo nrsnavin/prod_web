@@ -40,7 +40,7 @@ export function ElasticGroupsPage() {
       {isError && <ErrorBanner message={(error as Error).message} />}
 
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
         </div>
       ) : (data?.length ?? 0) === 0 ? (
@@ -52,7 +52,7 @@ export function ElasticGroupsPage() {
           />
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {data!.map((g) => (
             <Card
               key={g._id}

@@ -119,7 +119,7 @@ function LotPicker({
         </p>
       )}
       {(lots?.length ?? 0) > 0 && (
-        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_130px]">
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_130px]">
           <select
             aria-label={`Dye lot for ${materialName}`}
             value={value.yarnLot}

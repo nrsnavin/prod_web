@@ -174,7 +174,7 @@ function GroupForm({
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Select
           label="What this group says"
           value={values.kind}
@@ -206,7 +206,7 @@ function GroupForm({
           Filled in when a material is added to this group. Changing them here
           leaves existing materials exactly as they are.
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input
             label="Unit"
             value={values.defaultUnit}

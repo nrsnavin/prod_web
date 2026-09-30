@@ -193,7 +193,7 @@ export function QuoteCreatePage() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
           {/* ── Customer ─────────────────────────────────────── */}
           <Card className="p-5">
@@ -235,13 +235,13 @@ export function QuoteCreatePage() {
               />
             )}
 
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input label="Address" placeholder="Where the quotation is going"
                 value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} />
               <Input label="Their reference / enquiry no"
                 value={customerRef} onChange={(e) => setCustomerRef(e.target.value)} />
             </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input label="GSTIN" value={customerGstin} onChange={(e) => setCustomerGstin(e.target.value)} />
               <Input label="Phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
             </div>
@@ -276,7 +276,7 @@ export function QuoteCreatePage() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Input
                     label="Product *" placeholder="e.g. 20mm Woven Elastic"
                     value={p.productName}
@@ -349,7 +349,7 @@ export function QuoteCreatePage() {
                   <Plus className="h-4 w-4" /> Add material
                 </Button>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Input
                     label="Conversion (₹/m)" type="number" step="0.01" min="0"
                     aria-label={`Conversion cost for product ${pi + 1}`}
@@ -396,7 +396,7 @@ export function QuoteCreatePage() {
           {/* ── The document ─────────────────────────────────── */}
           <Card className="p-5">
             <h3 className="mb-4 font-semibold">Quotation details</h3>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Input label="Quote date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               <Input label="Valid until" type="date" value={validTill} onChange={(e) => setValidTill(e.target.value)} />
               <Input label="GST %" type="number" step="0.01" min="0"

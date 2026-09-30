@@ -318,13 +318,13 @@ export function WastagePage() {
         }
       />
 
-      <div className="mb-4 flex gap-1 border-b border-ink-200">
+      <div className="mb-4 flex gap-1 overflow-x-auto no-scrollbar border-b border-ink-200">
         {(["jobs", "summary", "rootCause"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px",
+              "shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium border-b-2",
               tab === t
                 ? "border-brand-500 text-brand-600"
                 : "border-transparent text-ink-600 hover:text-ink-900"
@@ -438,7 +438,7 @@ export function WastagePage() {
                   </p>
                 </Card>
               </div>
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Card className="p-5">
                   <h3 className="font-semibold">Top employees by wastage</h3>
                   <ul className="mt-2 divide-y divide-ink-100">
@@ -561,7 +561,7 @@ export function WastagePage() {
                 </div>
               )}
 
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <Card className="p-5">
                   <h3 className="font-semibold">Top reasons</h3>
                   <ul className="mt-2 divide-y divide-ink-100">

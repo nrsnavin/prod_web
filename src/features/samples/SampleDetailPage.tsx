@@ -187,7 +187,7 @@ export function SampleDetailPage() {
         </div>
       </Card>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Card className="p-5">
           <h3 className="font-semibold">Log</h3>
 

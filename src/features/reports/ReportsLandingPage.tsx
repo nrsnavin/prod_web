@@ -100,7 +100,7 @@ export function ReportsLandingPage() {
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ink-400">
               {section.group}
             </h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {section.items.map((def) => (
                 <ReportCard key={def.title} def={def} />
               ))}

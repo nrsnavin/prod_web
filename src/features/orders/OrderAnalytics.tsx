@@ -117,7 +117,7 @@ export function OrderAnalytics({ elastics }: { elastics: OrderElasticProgress[] 
   const barHeight = Math.max(200, bars.length * 46 + 40);
 
   return (
-    <div className="mt-4 grid gap-4 lg:grid-cols-3">
+    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
       {/* Fulfillment donut + totals */}
       <Card className="p-5">
         <h3 className="mb-1 font-semibold">Fulfillment</h3>

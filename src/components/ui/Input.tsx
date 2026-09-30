@@ -5,10 +5,15 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   hint?: string;
+  /**
+   * A number field that takes negatives (a stock adjustment). Skips the
+   * decimal keypad, which on an iPhone has no minus key.
+   */
+  allowNegative?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, hint, className, id: idProp, ...rest }, ref) => {
+  ({ label, error, hint, className, id: idProp, allowNegative, ...rest }, ref) => {
     const autoId = useId();
     const id = idProp ?? autoId;
     // The message under the field is read out with it — otherwise a
@@ -36,6 +41,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           aria-invalid={!!error}
           aria-describedby={describedBy}
+          // A number field opens the phone's number keypad rather than the
+          // full keyboard's top row. `decimal` has digits and a point, so it
+          // suits whole numbers too; a field that takes negatives opts out.
+          inputMode={rest.type === "number" && !allowNegative ? "decimal" : undefined}
           {...rest}
         />
         {error ? (

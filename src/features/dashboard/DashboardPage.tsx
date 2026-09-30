@@ -168,7 +168,7 @@ export function DashboardPage() {
         </Card>
       )}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <AttendanceCard data={att} loading={kpis.isLoading} />
         <LowStockCard data={kpis.data?.lowStock} loading={kpis.isLoading} />
         <AnnouncementsCard

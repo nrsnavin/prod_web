@@ -255,6 +255,7 @@ function OrderEditModal({
                   <span className="flex-1 truncate text-sm">{l.name}</span>
                   <input
                     type="number"
+            inputMode="decimal"
                     min={0}
                     step="any"
                     value={l.quantity}

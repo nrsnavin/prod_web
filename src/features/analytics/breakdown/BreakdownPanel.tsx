@@ -216,7 +216,7 @@ export function BreakdownPanel({
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-5 lg:col-span-2">
           <h3 className="mb-3 font-semibold">
             Production vs wastage by {DIMS.find((d) => d.key === groupBy)?.label.toLowerCase()}

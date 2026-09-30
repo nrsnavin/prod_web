@@ -7,7 +7,7 @@ import { config } from "@/app/config";
 // forgot-password, reset-password) so they stay visually identical.
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
       {/* Brand panel */}
       <div className="hidden lg:flex flex-col justify-between bg-brand-500 text-white p-12">
         <div className="flex items-center gap-2.5">

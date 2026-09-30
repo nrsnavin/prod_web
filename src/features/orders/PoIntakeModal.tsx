@@ -120,7 +120,7 @@ function Result({ result }: { result: PoIntakeResult }) {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <p className="text-xs uppercase tracking-wide text-ink-400">Customer</p>
             {d.customer.confident ? (

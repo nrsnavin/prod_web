@@ -457,6 +457,7 @@ export function WarpingPlanForm({
               Tapes
               <input
                 type="number"
+            inputMode="decimal"
                 min={1}
                 max={99}
                 aria-label="Number of tapes"
@@ -496,6 +497,7 @@ export function WarpingPlanForm({
           <label className="flex items-center gap-2 text-sm">
             <input
               type="number"
+            inputMode="decimal"
               min={0}
               aria-label="Shared section length"
               value={uniformValue}

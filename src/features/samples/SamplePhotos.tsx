@@ -128,7 +128,7 @@ export function SamplePhotos({
 
       {canAdd ? (
         <div className="mt-4 border-t border-ink-100 pt-4">
-          <div className="grid items-end gap-2 sm:grid-cols-[1fr_auto]">
+          <div className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_auto]">
             <Input
               label="Caption (optional)"
               value={caption}

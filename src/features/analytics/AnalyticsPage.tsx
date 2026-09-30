@@ -111,13 +111,13 @@ export function AnalyticsPage() {
       )}
 
       {/* Tabs */}
-      <div className="mt-5 mb-4 flex gap-1 border-b border-ink-200">
+      <div className="mt-5 mb-4 flex gap-1 overflow-x-auto no-scrollbar border-b border-ink-200">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={cn(
-              "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+              "shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
               tab === t.key
                 ? "border-brand-500 text-brand-600"
                 : "border-transparent text-ink-600 hover:text-ink-900"
@@ -134,7 +134,7 @@ export function AnalyticsPage() {
       </div>
 
       {tab === "overview" && (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="p-5 lg:col-span-2">
             <h3 className="font-semibold mb-3">Daily production trend</h3>
             {isLoading ? (

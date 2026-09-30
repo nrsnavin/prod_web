@@ -194,6 +194,7 @@ export function SheetUploadModal({
                     <td className="p-2 text-right">
                       <input aria-label="Production metres"
                         type="number"
+            inputMode="decimal"
                         value={r.production ?? ""}
                         disabled={r.alreadyClosed}
                         onChange={(e) =>

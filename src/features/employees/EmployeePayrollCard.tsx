@@ -407,7 +407,7 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
             </dl>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Attendance */}
             <div className="rounded-lg border border-ink-100 p-4">
               <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-400">

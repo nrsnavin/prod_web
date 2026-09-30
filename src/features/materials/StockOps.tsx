@@ -155,6 +155,7 @@ export function StockTakeModal({
               </div>
               <input aria-label="Counted stock"
                 type="number"
+            inputMode="decimal"
                 step="0.01"
                 placeholder="Counted"
                 value={v ?? ""}
@@ -279,6 +280,7 @@ export function BulkPriceUpdateModal({
               </div>
               <input aria-label="New price"
                 type="number"
+            inputMode="decimal"
                 step="0.01"
                 min="0"
                 placeholder="New price"

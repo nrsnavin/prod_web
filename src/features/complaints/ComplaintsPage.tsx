@@ -143,7 +143,7 @@ export function ComplaintsPage() {
 
       <ThemesPanel />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,22rem)_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,22rem)_1fr]">
         <Card className="overflow-hidden">
           <div className="border-b border-ink-100 p-3">
             <Select

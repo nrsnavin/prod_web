@@ -90,7 +90,7 @@ export function DocumentSettingsForm() {
   const accent = HEX.test(form.accentColor) ? form.accentColor : "#1D6FEB";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* ── Form ─────────────────────────────────────────────── */}
       <div className="lg:col-span-2 space-y-6">
         {!canEdit && (
@@ -101,7 +101,7 @@ export function DocumentSettingsForm() {
 
         <Card className="p-5 space-y-4">
           <h3 className="text-sm font-semibold text-ink-900">Company identity</h3>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input label="Company name" value={form.companyName} disabled={!canEdit}
               onChange={(e) => set("companyName", e.target.value)} />
             <Input label="Tagline" value={form.tagline} disabled={!canEdit}
@@ -120,7 +120,7 @@ export function DocumentSettingsForm() {
             />
             <p className="mt-1 text-xs text-ink-400">Up to 6 lines. Blank lines are ignored.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input label="GSTIN" value={form.gstin} disabled={!canEdit}
               onChange={(e) => set("gstin", e.target.value)} />
             <Input label="Phone" value={form.phone} disabled={!canEdit}

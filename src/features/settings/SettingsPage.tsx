@@ -27,13 +27,13 @@ export function SettingsPage() {
     <>
       <PageHeader title="Settings" subtitle="Personalize the app's look and configure document branding" />
 
-      <div className="mb-6 flex gap-1 border-b border-ink-100">
+      <div className="mb-6 flex gap-1 overflow-x-auto no-scrollbar border-b border-ink-100">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+              "flex items-center gap-2 shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
               tab === t.id
                 ? "border-brand-500 text-brand-600"
                 : "border-transparent text-ink-500 hover:text-ink-800"

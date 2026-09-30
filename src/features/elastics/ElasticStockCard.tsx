@@ -308,6 +308,7 @@ export function ElasticStockCard({ elasticId }: { elasticId: string }) {
       <FormScreen open={adjustOpen} onClose={() => setAdjustOpen(false)} title="Adjust stock" width="max-w-md">
         <div className="space-y-4">
           <Input
+        allowNegative
             label="Adjustment (m) — negative reduces"
             type="number"
             step="0.01"

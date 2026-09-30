@@ -73,7 +73,7 @@ export function MachineCharts({ machineId, days = 365 }: {
 
   if (busy) {
     return (
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>
         <Card className="p-5"><Skeleton className="h-64 w-full" /></Card>
       </div>
@@ -103,7 +103,7 @@ export function MachineCharts({ machineId, days = 365 }: {
   }));
 
   return (
-    <div className="mt-4 grid gap-4 xl:grid-cols-2">
+    <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
       <Card className="p-5">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-400">

@@ -160,7 +160,7 @@ export function QuoteDetailPage() {
             </table>
           </div>
 
-          <div className="grid gap-4 p-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             <dl className="space-y-2 text-sm">
               <Row label="Materials" value={line.materialCost} dp={4} />
               <Row label="Conversion" value={line.conversionCost} dp={4} />

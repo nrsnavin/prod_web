@@ -229,7 +229,7 @@ export function WarpingDetailPage() {
         />
       </Card>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="p-5">
           <h3 className="font-semibold">Elastics on this programme</h3>
           <div className="mt-2">

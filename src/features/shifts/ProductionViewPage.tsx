@@ -403,7 +403,7 @@ export function ProductionViewPage() {
                   <p className="font-semibold whitespace-nowrap">{day.dateLabel}</p>
                   <p className="text-xs text-ink-400">{day.dayOfWeek}</p>
                 </div>
-                <div className="grid flex-1 gap-2 sm:grid-cols-2 min-w-64">
+                <div className="grid grid-cols-1 flex-1 gap-2 sm:grid-cols-2 min-w-64">
                   <ShiftSlice
                     slice={day.dayShift}
                     label="Day"

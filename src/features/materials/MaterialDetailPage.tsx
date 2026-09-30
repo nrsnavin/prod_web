@@ -66,6 +66,7 @@ function AdjustStockForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <Input
+        allowNegative
         label="Adjustment (+ adds, − removes) *"
         type="number"
         step="0.01"
@@ -89,7 +90,7 @@ function AdjustStockForm({
             Which lot this stock belongs to. A new number opens a lot; an existing
             one is topped up. Leave blank if it cannot be placed.
           </p>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Input aria-label="Lot no" placeholder="Lot no" {...register("lotNo")} />
             <Input aria-label="Shade" placeholder="Shade (optional)" {...register("shade")} />
           </div>
@@ -228,7 +229,7 @@ export function MaterialDetailPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-5">
           <p className="text-sm text-ink-400">Current stock</p>
           <p className={`mt-1 text-3xl font-bold tabular-nums ${low ? "text-status-danger" : ""}`}>

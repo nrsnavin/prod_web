@@ -180,12 +180,12 @@ export function PoCreatePage() {
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Main column */}
         <div className="space-y-4 lg:col-span-2">
           <Card className="p-5">
             <h3 className="mb-3 font-semibold">Vendor</h3>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Controller
                 control={control}
                 name="supplier"
@@ -213,7 +213,7 @@ export function PoCreatePage() {
                 <p className="flex items-center gap-1.5 font-medium">
                   <Building2 className="h-4 w-4 text-ink-400" /> {selectedSupplier.name}
                 </p>
-                <div className="mt-1 grid gap-x-6 gap-y-0.5 text-ink-600 sm:grid-cols-2">
+                <div className="mt-1 grid grid-cols-1 gap-x-6 gap-y-0.5 text-ink-600 sm:grid-cols-2">
                   {selectedSupplier.gstin && <p>GSTIN: {selectedSupplier.gstin}</p>}
                   {selectedSupplier.phoneNumber && <p>Ph: {selectedSupplier.phoneNumber}</p>}
                   {selectedSupplier.contactPerson && <p>Contact: {selectedSupplier.contactPerson}</p>}

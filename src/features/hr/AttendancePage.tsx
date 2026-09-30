@@ -137,6 +137,7 @@ function MarkModal({
               />
               <input aria-label="Overtime minutes"
                 type="number"
+            inputMode="decimal"
                 min={0}
                 placeholder="OT"
                 title="Overtime minutes (used only when no In/Out times given)"

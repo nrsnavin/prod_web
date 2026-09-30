@@ -249,6 +249,7 @@ function PayDialog({ row, onClose }: { row: PayrollEmployeeRow; onClose: () => v
                     </div>
                     <input aria-label="Amount to recover from this advance"
                       type="number"
+            inputMode="decimal"
                       min={0}
                       max={bal}
                       placeholder="0"
@@ -485,7 +486,7 @@ function SettingsPanel() {
         {SETTING_GROUPS.map((g) => (
           <div key={g.title}>
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{g.title}</p>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {g.fields.map((f) => (
                 <Input
                   key={f.key}

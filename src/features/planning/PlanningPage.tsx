@@ -46,15 +46,17 @@ function SequenceRow({ row }: { row: PlanRow }) {
   return (
     // A div: the caller wraps each row in its own <li> with the reorder
     // buttons, and an <li> directly inside an <li> is invalid markup.
-    <div className="flex items-center gap-3 py-2.5 text-sm">
+    // Wraps on a phone: the rate chip and the finish date drop under the
+    // elastic instead of pushing the row past the screen's edge.
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 text-sm">
       <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink-100 text-xs font-semibold tabular-nums">
         {row.sequence + 1}
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 font-medium">
-          <span className="truncate">{row.elasticName}</span>
+      <div className="min-w-0 flex-1 basis-52">
+        <p className="flex min-w-0 items-center gap-1.5 font-medium">
+          <span className="min-w-0 truncate">{row.elasticName}</span>
           {row.changeover && (
-            <span className="inline-flex items-center gap-0.5 text-xs text-status-warning" title="Elastic changeover">
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-status-warning" title="Elastic changeover">
               <Repeat className="h-3 w-3" /> changeover
             </span>
           )}
@@ -64,8 +66,8 @@ function SequenceRow({ row }: { row: PlanRow }) {
         </p>
       </div>
       <StatusChip tone={rateTone[row.rateSource]}>{rateLabel[row.rateSource]}</StatusChip>
-      <div className="w-32 shrink-0 text-right">
-        <p className="flex items-center justify-end gap-1 tabular-nums">
+      <div className="shrink-0 sm:w-32 sm:text-right">
+        <p className="flex items-center gap-1 tabular-nums sm:justify-end">
           <Clock className="h-3.5 w-3.5 text-ink-400" />
           {row.weavingDays}d → {fmtDate(row.projectedFinish)}
         </p>
@@ -381,7 +383,9 @@ export function PlanningPage() {
               />
             </Card>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {/* grid-cols-1 is minmax(0, 1fr): without it the one implicit
+                  column grows to its widest card, past a phone's edge. */}
               {shown.map((mp) => (
                 <MachineCard
                   key={mp.machineId}

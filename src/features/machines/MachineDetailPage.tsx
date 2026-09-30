@@ -384,7 +384,7 @@ export function MachineDetailPage() {
           earning its keep. */}
       {id && <MachineCharts machineId={id} />}
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card>
           <div className="flex items-baseline gap-3 px-5 pt-5">
             <h3 className="font-semibold">Recent shifts</h3>

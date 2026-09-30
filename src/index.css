@@ -292,6 +292,15 @@
   }
 }
 
+/* A row that scrolls sideways (tab bars on a phone) without drawing a
+   scrollbar under it — the cut-off last tab is the cue that it scrolls. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Nothing should ever scroll the PAGE sideways. Wide content scrolls
    inside its own container — see components/ui/TableScroll. This is
    the backstop for anything that slips through. */

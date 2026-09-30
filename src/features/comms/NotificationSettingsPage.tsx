@@ -48,7 +48,7 @@ export function NotificationSettingsPage() {
       {isLoading || !s ? (
         <Skeleton className="h-64 w-full" />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="p-5">
             <div className="flex items-center gap-3">
               <span className="h-10 w-10 rounded-lg bg-ink-100 grid place-items-center text-ink-600">

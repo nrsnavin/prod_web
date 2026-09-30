@@ -198,7 +198,7 @@ export function PdfDesignerPage() {
   if (isLoading || !tpl) return <Skeleton className="h-[600px] w-full" />;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[220px_1fr_260px]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr_260px]">
       {/* ── Left rail ──────────────────────────────────────── */}
       <div className="space-y-4">
         <Card className="p-3 space-y-3">
@@ -390,6 +390,7 @@ function PropertiesPanel({
       <span className="mb-1 block text-[11px] font-medium text-ink-500">{label}</span>
       <input
         type="number"
+            inputMode="decimal"
         step={step}
         value={Number(el[k] ?? 0)}
         onChange={(e) => onChange({ [k]: Number(e.target.value) } as Partial<TemplateElement>)}
@@ -557,7 +558,8 @@ function TableColumnsEditor({
               <option value="center">center</option>
               <option value="right">right</option>
             </select>
-            <input aria-label="Column width" type="number" step={0.5} value={c.width} onChange={(e) => patchCol(i, { width: Number(e.target.value) })}
+            <input aria-label="Column width" type="number"
+            inputMode="decimal" step={0.5} value={c.width} onChange={(e) => patchCol(i, { width: Number(e.target.value) })}
               className="h-7 rounded border border-ink-200 px-1.5 text-xs" title="Relative width" />
           </div>
         </div>

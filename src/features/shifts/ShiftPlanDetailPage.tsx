@@ -227,7 +227,7 @@ export function ShiftPlanDetailPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="p-5">
           <p className="text-sm text-ink-400">Total production</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">

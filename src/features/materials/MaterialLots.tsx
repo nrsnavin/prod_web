@@ -82,7 +82,7 @@ function AddLotForm({
         of this material is not yet assigned to a lot. A lot cannot claim more
         than that.
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input label="Lot no" placeholder="e.g. D-4471" error={formState.errors.lotNo?.message} {...register("lotNo")} />
         <Input
           label={`Quantity (kg) — up to ${unplaced.toLocaleString("en-IN")}`}

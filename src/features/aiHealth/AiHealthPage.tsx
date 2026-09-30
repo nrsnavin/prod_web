@@ -183,7 +183,7 @@ export function AiHealthPage() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-400">
               Models in use
             </h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {([["Text", data.models.text], ["Vision", data.models.vision]] as const).map(
                 ([label, m]) => (
                   <div key={label} className="rounded-lg border border-ink-100 p-3">

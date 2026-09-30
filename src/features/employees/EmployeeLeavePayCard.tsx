@@ -42,7 +42,7 @@ export function EmployeeLeavePayCard({ empId }: { empId: string }) {
   if (pay.isError && leave.isError) return null;
 
   return (
-    <div className="mt-4 grid gap-4 xl:grid-cols-2">
+    <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
       {/* Pay: unpaid total + recent payslips */}
       <Card className="p-5">
         <h3 className="flex items-center gap-2 font-semibold">

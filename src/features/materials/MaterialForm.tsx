@@ -99,7 +99,7 @@ export function MaterialForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
       <Input label="Material name *" error={errors.name?.message} {...register("name")} />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Select
             label="Category *"

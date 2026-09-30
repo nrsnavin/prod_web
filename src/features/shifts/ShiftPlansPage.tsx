@@ -111,7 +111,7 @@ export function ShiftPlansPage() {
           produces the same as a machine with a broken head. */}
       <StaffingForecast />
 
-      <div className="mb-4 flex gap-1 border-b border-ink-100">
+      <div className="mb-4 flex gap-1 overflow-x-auto no-scrollbar border-b border-ink-100">
         {([
           { id: "today", label: "Today" },
           { id: "by-date", label: "By date" },
@@ -120,7 +120,7 @@ export function ShiftPlansPage() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={
-              "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors " +
+              "flex items-center gap-2 shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium border-b-2 transition-colors " +
               (tab === t.id
                 ? "border-brand-500 text-brand-600"
                 : "border-transparent text-ink-500 hover:text-ink-900")
@@ -154,12 +154,12 @@ export function ShiftPlansPage() {
       )}
 
       {view.isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Skeleton className="h-48" />
           <Skeleton className="h-48" />
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <ShiftCard
             summary={view.data?.dayShift}
             icon={<Sun className="h-4 w-4" />}

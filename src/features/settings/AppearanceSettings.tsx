@@ -58,7 +58,7 @@ export function AppearanceSettings() {
       <div
         role="radiogroup"
         aria-label="Theme"
-        className="mt-4 grid gap-3 sm:grid-cols-3"
+        className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3"
       >
         {THEME_OPTIONS.map((o) => {
           const active = theme === o.value;

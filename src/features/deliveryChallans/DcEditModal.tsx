@@ -278,11 +278,11 @@ export function DcEditModal({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Input label="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
           <Input label="Dispatch date" type="date" value={dispatchDate} onChange={(e) => setDispatchDate(e.target.value)} />
         </div>
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <Input label="Vehicle no" value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} />
           <Input label="Driver" value={driverName} onChange={(e) => setDriverName(e.target.value)} />
           <Input label="Transporter" value={transporter} onChange={(e) => setTransporter(e.target.value)} />

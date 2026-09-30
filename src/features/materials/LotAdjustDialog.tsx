@@ -65,6 +65,7 @@ export function LotAdjustDialog({ lot, onClose }: { lot: YarnLot; onClose: () =>
 
       <div className="mt-4 space-y-3">
         <Input
+        allowNegative
           label="Change (kg)"
           type="number"
           step="0.01"

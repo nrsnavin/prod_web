@@ -120,7 +120,10 @@ export const navSections: NavSection[] = [
   {
     label: "Production",
     items: [
-      { label: "Auto Planner", path: "/planner", icon: Wand2, departments: ["admin", "production"] },
+      // Admin only, matching the server: every /planner route is
+      // isAdmin("admin"), so offering it to production led to an empty
+      // screen full of 403s.
+      { label: "Auto Planner", path: "/planner", icon: Wand2, departments: ["admin"] },
       { label: "Warping", path: "/warping", icon: Layers, departments: ["admin", "production"] },
       { label: "Covering", path: "/covering", icon: Disc3, departments: ["admin", "production"] },
       { label: "Packing", path: "/packing", icon: Package, departments: ["admin", "packing"] },

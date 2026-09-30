@@ -57,7 +57,7 @@ const jobTone = (status: string): ChipTone =>
 
 export function ElasticHistory({ elasticId }: { elasticId: string }) {
   return (
-    <div className="mt-4 grid gap-4 xl:grid-cols-2">
+    <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
       <ElasticOrders elasticId={elasticId} />
       <ElasticJobs elasticId={elasticId} />
     </div>
