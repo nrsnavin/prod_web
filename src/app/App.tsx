@@ -3,6 +3,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useThemeEffect } from "@/core/ui/theme";
 import { AppRouter } from "./router";
+import { TouchHints } from "@/components/layout/TouchHints";
 import { refetchIntervalFor, refetchOnFocusFor } from "./queryPolicy";
 
 const queryClient = new QueryClient({
@@ -30,6 +31,8 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <AppRouter />
+          {/* Shows `title` hints on touch screens, which never show them. */}
+          <TouchHints />
         </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>

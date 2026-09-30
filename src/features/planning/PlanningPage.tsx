@@ -333,8 +333,10 @@ export function PlanningPage() {
             </Card>
           )}
 
-          {/* Accept bar */}
-          <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 p-4">
+          {/* Accept bar. Pinned above the bottom bar below lg: on a phone
+              "Accept plan" otherwise sat most of a screen down, under the
+              summary and the still-running looms. */}
+          <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 p-4 max-lg:sticky max-lg:bottom-[calc(3.75rem+env(safe-area-inset-bottom))] max-lg:z-10 max-lg:shadow-card-hover">
             <div className="flex items-center gap-2 text-sm">
               <Wand2 className="h-4 w-4 text-brand-500" />
               <span>
