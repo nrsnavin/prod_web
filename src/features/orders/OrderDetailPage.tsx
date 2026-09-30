@@ -44,6 +44,7 @@ import { OrderEtaCard } from "@/features/analytics/breakdown/OrderEtaCard";
 import { OrderSuggestedPlan } from "./OrderSuggestedPlan";
 import { ForceApprovalDialog } from "./ForceApprovalDialog";
 import { formatDate } from "@/core/format/date";
+import { Section, SectionNav } from "@/components/layout/SectionNav";
 
 const elasticColumns: Column<OrderElasticProgress>[] = [
   { key: "name", header: "Elastic", render: (e) => <span className="font-medium">{e.name}</span> },
@@ -556,6 +557,16 @@ export function OrderDetailPage() {
         />
       </Card>
 
+      <SectionNav
+        sections={[
+          { id: "progress", label: "Progress" },
+          { id: "jobs", label: "Jobs" },
+          { id: "dispatch", label: "Dispatch" },
+          { id: "material", label: "Material" },
+          { id: "lots", label: "Dye lots" },
+        ]}
+      />
+
       <OrderEtaCard
         orderId={order._id}
         active={order.status === "Approved" || order.status === "InProgress"}
@@ -565,6 +576,7 @@ export function OrderDetailPage() {
         <OrderSuggestedPlan order={order} open={planOpen} onClose={() => setPlanOpen(false)} />
       )}
 
+      <Section id="progress">
       <OrderAnalytics elastics={order.elastics ?? []} />
 
       <Card className="mt-4">
@@ -576,7 +588,9 @@ export function OrderDetailPage() {
           emptyTitle="No elastics on this order"
         />
       </Card>
+      </Section>
 
+      <Section id="jobs">
       <Card className="mt-4 p-5">
         <div className="flex items-baseline gap-3">
           <h3 className="font-semibold">Jobs</h3>
@@ -601,19 +615,23 @@ export function OrderDetailPage() {
           </ul>
         )}
       </Card>
+      </Section>
 
       {/* What has actually left the building, and on which note. Sits
           directly under the jobs and above the material panels: it
           answers the question the order is most often opened for —
           "how much have we sent?" — which the page could not answer at
           all without leaving it for the DC list. */}
-      <OrderDeliveryChallans orderId={order._id} />
+      <Section id="dispatch">
+        <OrderDeliveryChallans orderId={order._id} />
+      </Section>
 
       {/* Jobs planned past what the order asked for. Sits ABOVE the
           material panel because it is the reason that panel's figures
           moved — reading them in the other order invites the question
           this card already answers. Renders nothing when there is no
           excess. */}
+      <Section id="material">
       <OrderExcessPlanning rows={order.excessPlanning ?? []} />
 
       {/* Replaces the old read-only requirement table: same figures, but
@@ -624,11 +642,14 @@ export function OrderDetailPage() {
           actually used: the earmark is the decision that sits between
           those two facts. */}
       <OrderLotAssign order={order} />
+      </Section>
 
       {/* Which dye lots the goods will carry. Sits below the materials
           because it answers the later question — not what to buy, but
           what went in. */}
-      <OrderYarnLots orderId={order._id} />
+      <Section id="lots">
+        <OrderYarnLots orderId={order._id} />
+      </Section>
 
       {confirm && (
         <ConfirmDialog

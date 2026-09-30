@@ -348,9 +348,18 @@
 /* Nothing should ever scroll the PAGE sideways. Wide content scrolls
    inside its own container — see components/ui/TableScroll. This is
    the backstop for anything that slips through. */
-html,
-body {
+/* NOT `overflow-x: hidden` on body. That makes body a scroll container
+   (its overflow-y computes to auto), and every `position: sticky` in the
+   app — the top bar, table headers, pinned form buttons, the section
+   bar — then sticks to body, which never scrolls, so on a phone the
+   "sticky" top bar scrolled away with the page. On html the value
+   belongs to the viewport and creates no container; `clip` on body
+   clips without becoming a scroller. */
+html {
   overflow-x: hidden;
+}
+body {
+  overflow-x: clip;
 }
 
 @media print {

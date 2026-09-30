@@ -304,6 +304,7 @@ export function JobDetailPage() {
               columns={shiftColumns}
               rows={job.shiftDetails ?? []}
               rowKey={(s) => s.id}
+              compactEmpty
               emptyTitle="No shifts recorded yet"
               emptyDescription="Shifts appear here once one is planned on the machine running this job."
             />

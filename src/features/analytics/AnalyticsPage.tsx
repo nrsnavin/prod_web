@@ -14,6 +14,7 @@ import { FilterBar, presetRange } from "./components/FilterBar";
 import { ProductionTrendChart, WeeklyPatternChart, DayNightSplit } from "./components/charts";
 import { MachineTable, EmployeeTable } from "./components/tables";
 import { AnomaliesList } from "./components/AnomaliesList";
+import { change, previousPeriod, type Change } from "./comparison";
 import { BreakdownPanel } from "./breakdown/BreakdownPanel";
 import { ForecastPanel } from "./breakdown/ForecastPanel";
 
@@ -28,7 +29,17 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "anomalies", label: "Anomalies" },
 ];
 
-function StatTile({ label, value, loading }: { label: string; value: string; loading: boolean }) {
+function StatTile({
+  label, value, loading, delta, higherIsBetter = true,
+}: {
+  label: string;
+  value: string;
+  loading: boolean;
+  /** Against the previous period of the same length; absent = not compared. */
+  delta?: Change;
+  higherIsBetter?: boolean;
+}) {
+  const good = delta && delta.direction !== "flat" && (delta.direction === "up") === higherIsBetter;
   return (
     <Card className="p-4">
       <p className="text-xs text-ink-400">{label}</p>
@@ -36,6 +47,17 @@ function StatTile({ label, value, loading }: { label: string; value: string; loa
         <Skeleton className="mt-1.5 h-7 w-16" />
       ) : (
         <p className="mt-0.5 text-2xl font-bold tabular-nums">{value}</p>
+      )}
+      {!loading && delta && delta.pct !== null && (
+        <p
+          className={cn(
+            "mt-0.5 text-xs font-medium tabular-nums",
+            delta.direction === "flat" ? "text-ink-400" : good ? "text-status-success" : "text-status-danger"
+          )}
+        >
+          {delta.direction === "up" ? "▲" : delta.direction === "down" ? "▼" : "■"} {Math.abs(delta.pct)}%
+          <span className="font-normal text-ink-400"> vs previous</span>
+        </p>
       )}
     </Card>
   );
@@ -50,6 +72,9 @@ export function AnalyticsPage() {
 
   const { data, isLoading, isError, error } = useAnalytics(filters);
   const s = data?.summary;
+  // The same length of time just before, for the change on each tile.
+  const previous = useAnalytics(previousPeriod(filters));
+  const p = previous.data?.summary;
   const fmt = (n?: number) => (n ?? 0).toLocaleString("en-IN");
 
   // On-time delivery over the last 90 days (order-linked dispatches).
@@ -86,14 +111,14 @@ export function AnalyticsPage() {
       {/* Summary stat tiles — only for the production-summary tabs */}
       {tab !== "forecast" && tab !== "breakdown" && (
       <div className="grid gap-3 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
-        <StatTile label="Total production (m)" value={fmt(s?.totalProduction)} loading={isLoading} />
-        <StatTile label="Shifts" value={fmt(s?.activeShifts)} loading={isLoading} />
+        <StatTile label="Total production (m)" value={fmt(s?.totalProduction)} loading={isLoading} delta={change(s?.totalProduction, p?.totalProduction)} />
+        <StatTile label="Shifts" value={fmt(s?.activeShifts)} loading={isLoading} delta={change(s?.activeShifts, p?.activeShifts)} />
         <StatTile label="Machines" value={fmt(s?.activeMachines)} loading={isLoading} />
         <StatTile label="Operators" value={fmt(s?.activeEmployees)} loading={isLoading} />
-        <StatTile label="Avg / shift (m)" value={fmt(s?.avgPerShift)} loading={isLoading} />
-        <StatTile label="Efficiency score" value={`${s?.avgEfficiencyScore ?? 0}`} loading={isLoading} />
-        <StatTile label="Consistency" value={`${s?.factoryConsistency ?? 0}%`} loading={isLoading} />
-        <StatTile label="Anomalies" value={fmt(s?.anomalyCount)} loading={isLoading} />
+        <StatTile label="Avg / shift (m)" value={fmt(s?.avgPerShift)} loading={isLoading} delta={change(s?.avgPerShift, p?.avgPerShift)} />
+        <StatTile label="Efficiency score" value={`${s?.avgEfficiencyScore ?? 0}`} loading={isLoading} delta={change(s?.avgEfficiencyScore, p?.avgEfficiencyScore)} />
+        <StatTile label="Consistency" value={`${s?.factoryConsistency ?? 0}%`} loading={isLoading} delta={change(s?.factoryConsistency, p?.factoryConsistency)} />
+        <StatTile label="Anomalies" value={fmt(s?.anomalyCount)} loading={isLoading} delta={change(s?.anomalyCount, p?.anomalyCount)} higherIsBetter={false} />
         {canOtd && (
           <StatTile
             label="On-time delivery (90d)"

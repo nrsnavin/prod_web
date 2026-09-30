@@ -57,6 +57,8 @@ export interface DataTableProps<T> {
    * the table for a grid whose columns only mean something side by side.
    */
   phoneLayout?: "cards" | "table";
+  /** One-line empty state, for a table that is a section of a detail page. */
+  compactEmpty?: boolean;
 }
 
 const alignClass = {
@@ -79,6 +81,7 @@ export function DataTable<T>({
   defaultSortKey,
   defaultSortDir,
   phoneLayout = "cards",
+  compactEmpty = false,
 }: DataTableProps<T>) {
   const isPhone = useIsPhone();
   // Never crash on a missing/undefined rows prop — render empty instead.
@@ -123,7 +126,14 @@ export function DataTable<T>({
     return <ErrorState error={error} what={errorWhat ?? "this"} onRetry={onRetry} />;
   }
   if (rows.length === 0) {
-    return <EmptyState title={emptyTitle} description={emptyDescription} />;
+    return compactEmpty ? (
+      // A table fills its card edge to edge; the one-line state does not.
+      <div className="px-5 pb-5">
+        <EmptyState compact title={emptyTitle} description={emptyDescription} />
+      </div>
+    ) : (
+      <EmptyState title={emptyTitle} description={emptyDescription} />
+    );
   }
   if (isPhone && phoneLayout === "cards") {
     return (

@@ -28,6 +28,7 @@ import { MachineHeadElastic, MachineShiftRow, MachineStatus, ServiceLogFormValue
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { Pencil } from "lucide-react";
 import { formatDate } from "@/core/format/date";
+import { Section, SectionNav } from "@/components/layout/SectionNav";
 
 const statusTone: Record<MachineStatus, ChipTone> = {
   running: "success",
@@ -329,6 +330,16 @@ export function MachineDetailPage() {
         />
       </Card>
 
+      <SectionNav
+        sections={[
+          { id: "heads", label: "Heads" },
+          { id: "health", label: "Health" },
+          { id: "output", label: "Output & cost" },
+          { id: "history", label: "Shifts & service" },
+        ]}
+      />
+
+      <Section id="heads">
       <Card className="mt-4">
         <div className="flex items-center justify-between px-5 pt-5">
           <div className="flex items-baseline gap-3">
@@ -345,9 +356,11 @@ export function MachineDetailPage() {
           columns={headElasticColumns}
           rows={machine.elastics ?? []}
           rowKey={(h) => `head-${h.head ?? "x"}-${h.elastic?._id ?? "none"}`}
-          emptyTitle="No elastics threaded on this machine"
+          compactEmpty
+              emptyTitle="No elastics threaded on this machine"
         />
       </Card>
+      </Section>
 
       {editOpen && id && (
         <MachineEditModal
@@ -377,13 +390,14 @@ export function MachineDetailPage() {
         />
       )}
 
-      {id && <MachineHealthCard machineId={id} />}
+      <Section id="health">{id && <MachineHealthCard machineId={id} />}</Section>
 
       {/* Output and cost over the same months, side by side. Either
           alone says little; together they answer whether this loom is
           earning its keep. */}
-      {id && <MachineCharts machineId={id} />}
+      <Section id="output">{id && <MachineCharts machineId={id} />}</Section>
 
+      <Section id="history">
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card>
           <div className="flex items-baseline gap-3 px-5 pt-5">
@@ -398,7 +412,8 @@ export function MachineDetailPage() {
             columns={shiftColumns}
             rows={machine.result ?? []}
             rowKey={(s) => s.id}
-            emptyTitle="No shifts recorded"
+            compactEmpty
+              emptyTitle="No shifts recorded"
             emptyDescription="Shifts appear here once this machine is included in a shift plan."
           />
         </Card>
@@ -467,6 +482,7 @@ export function MachineDetailPage() {
           )}
         </Card>
       </div>
+      </Section>
 
       <FormScreen open={logOpen} onClose={() => setLogOpen(false)} title="Add service log">
         <ServiceLogForm

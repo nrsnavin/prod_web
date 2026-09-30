@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/components/ui/cn";
+import { useIsPhone } from "@/core/hooks/useMediaQuery";
 import { usePlannerWeights, useResetWeights } from "./hooks";
 import type { WeightsReport } from "./types";
 
@@ -160,15 +161,29 @@ export function LearnedWeightsPanel() {
   const reset = useResetWeights();
   const { toast } = useToast();
   const [confirming, setConfirming] = useState(false);
+  // Folded on a phone, where it stood between the planner and the plan:
+  // "Accept plan" sat a screen and a half down, behind the explanation.
+  // A tap opens it; on a wider screen it starts open.
+  const isPhone = useIsPhone();
+  const [expanded, setExpanded] = useState<boolean | null>(null);
+  const open = expanded ?? !isPhone;
 
   return (
     <Card className="mb-4 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ink-400">
-            <Brain className="h-4 w-4" /> What the planner has learned
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-400">
+            <button
+              type="button"
+              onClick={() => setExpanded(!open)}
+              aria-expanded={open}
+              className="flex items-center gap-2 uppercase tracking-wide"
+            >
+              <Brain className="h-4 w-4" /> What the planner has learned
+              <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} aria-hidden />
+            </button>
           </h2>
-          <p className="mt-1 max-w-2xl text-xs text-ink-400">
+          <p className={cn("mt-1 max-w-2xl text-xs text-ink-400", !open && "hidden")}>
             Every time a plan is changed before it is accepted, that is a statement
             about what this plant would rather have. These are the numbers it has
             taken from those.
@@ -181,7 +196,7 @@ export function LearnedWeightsPanel() {
         )}
       </div>
 
-      {isLoading ? <Skeleton className="mt-4 h-28 w-full" /> : data ? <Body data={data} /> : null}
+      {open && (isLoading ? <Skeleton className="mt-4 h-28 w-full" /> : data ? <Body data={data} /> : null)}
 
       {confirming && (
         <ConfirmDialog
