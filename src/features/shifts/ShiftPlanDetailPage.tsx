@@ -18,6 +18,7 @@ import { OutsourcedMark } from "./OutsourcedTag";
 import { isProductionLocked, productionLockReason } from "@/features/jobs/productionLock";
 import { sheetService } from "./sheet";
 import { SheetUploadModal } from "./SheetUploadModal";
+import { formatDate } from "@/core/format/date";
 
 const columns: Column<ShiftPlanMachineRow>[] = [
   { key: "machine", header: "Machine", render: (m) => <span className="font-medium">{m.machineName}</span> },
@@ -81,7 +82,7 @@ export function EnterProductionModal({
           <p className="text-ink-600">
             {row.operatorName}
             {row.jobOrderNo ? ` · J-${row.jobOrderNo}` : ""} · {plan.shift === "DAY" ? "Day" : "Night"} ·{" "}
-            {new Date(plan.date).toLocaleDateString()}
+            {formatDate(plan.date)}
           </p>
         </div>
 
@@ -208,7 +209,7 @@ export function ShiftPlanDetailPage() {
       </Link>
       <PageHeader
         title={
-          `${plan.shift === "DAY" ? "Day" : "Night"} shift — ${new Date(plan.date).toLocaleDateString()}`
+          `${plan.shift === "DAY" ? "Day" : "Night"} shift — ${formatDate(plan.date)}`
         }
         subtitle={plan.description}
         actions={

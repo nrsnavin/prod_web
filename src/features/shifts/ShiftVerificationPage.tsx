@@ -15,6 +15,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { usePendingVerification, useShiftMutations } from "./hooks";
 import { PendingShift } from "./types";
+import { formatDate } from "@/core/format/date";
 
 // A shift's job hangs off either the machine's running order or the
 // shift's own job ref — the same fallback the job number uses, so the
@@ -59,7 +60,7 @@ function VerifyModal({
           <p className="text-ink-600">
             {shift.machine?.ID ?? "Machine"} {jobNo && `· J-${jobNo}`} ·{" "}
             {shift.shiftPlan?.shift ?? ""}{" "}
-            {shift.shiftPlan?.date && `· ${new Date(shift.shiftPlan.date).toLocaleDateString()}`}
+            {shift.shiftPlan?.date && `· ${formatDate(shift.shiftPlan.date)}`}
           </p>
           <p className="mt-1 text-xs text-ink-400">
             Submitted: {submittedMeters.toLocaleString("en-IN")} m · {submittedTimer || "—"}

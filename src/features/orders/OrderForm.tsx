@@ -110,7 +110,7 @@ export function OrderForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Controller
           control={control}
           name="customer"
@@ -127,7 +127,7 @@ export function OrderForm({
         />
         <Input label="Customer PO ref *" error={errors.po?.message} {...register("po")} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input label="Order date *" type="date" error={errors.date?.message} {...register("date")} />
         <Input label="Supply date *" type="date" error={errors.supplyDate?.message} {...register("supplyDate")} />
       </div>

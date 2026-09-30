@@ -7,6 +7,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { orderStatusTone, orderStatusLabel } from "@/features/orders/orderStatus";
 import { OrderStatus } from "@/features/orders/types";
 import { customerService, CustomerOrderRow } from "./api";
+import { formatDate } from "@/core/format/date";
 
 function OrderRow({ o }: { o: CustomerOrderRow }) {
   return (
@@ -20,8 +21,8 @@ function OrderRow({ o }: { o: CustomerOrderRow }) {
           {o.po ? <span className="text-ink-400"> · PO {o.po}</span> : null}
         </p>
         <p className="text-xs text-ink-400">
-          {o.supplyDate ? `Supply ${new Date(o.supplyDate).toLocaleDateString()}` : ""}
-          {o.createdAt ? ` · Created ${new Date(o.createdAt).toLocaleDateString()}` : ""}
+          {o.supplyDate ? `Supply ${formatDate(o.supplyDate)}` : ""}
+          {o.createdAt ? ` · Created ${formatDate(o.createdAt)}` : ""}
         </p>
       </div>
       <span className="flex items-center gap-2 shrink-0">

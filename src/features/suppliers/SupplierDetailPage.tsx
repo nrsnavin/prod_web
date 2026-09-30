@@ -11,6 +11,7 @@ import { useTrackRecent } from "@/core/ui/uiStore";
 import { supplierService, poService } from "./api";
 import { poStatusTone } from "./PoListPage";
 import { PurchaseOrder } from "./types";
+import { formatDate } from "@/core/format/date";
 
 function PoRow({ po }: { po: PurchaseOrder }) {
   const when = po.date ?? po.createdAt;
@@ -23,8 +24,8 @@ function PoRow({ po }: { po: PurchaseOrder }) {
         <p className="font-medium text-sm">PO #{po.poNo}</p>
         <p className="text-xs text-ink-400">
           {(po.items?.length ?? 0)} item{(po.items?.length ?? 0) === 1 ? "" : "s"}
-          {when ? ` · ${new Date(when).toLocaleDateString()}` : ""}
-          {po.expectedDate ? ` · Expected ${new Date(po.expectedDate).toLocaleDateString()}` : ""}
+          {when ? ` · ${formatDate(when)}` : ""}
+          {po.expectedDate ? ` · Expected ${formatDate(po.expectedDate)}` : ""}
         </p>
       </div>
       <span className="flex items-center gap-2 shrink-0">

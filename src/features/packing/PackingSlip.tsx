@@ -2,6 +2,7 @@ import { PrintModal } from "@/components/print/PrintModal";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { QrImg } from "@/components/print/QrImg";
 import { PackingRecord } from "./types";
+import { formatDate } from "@/core/format/date";
 
 function name(x?: { name: string } | string | null): string {
   return typeof x === "object" && x ? x.name : "—";
@@ -34,7 +35,7 @@ export function PackingSlip({
     ["Batch", record.batch || "—"],
     [
       "Packed on",
-      record.createdAt ? new Date(record.createdAt).toLocaleDateString() : "—",
+      record.createdAt ? formatDate(record.createdAt) : "—",
     ],
   ];
 

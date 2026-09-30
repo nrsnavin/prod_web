@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { feedbackService, FeedbackItem } from "./api";
+import { formatDate } from "@/core/format/date";
 
 const statusTone: Record<string, ChipTone> = {
   open: "warning",
@@ -124,7 +125,7 @@ export function FeedbackPage() {
                     </p>
                   )}
                   <p className="mt-1 text-xs text-ink-400">
-                    {f.createdAt && new Date(f.createdAt).toLocaleDateString()}
+                    {f.createdAt && formatDate(f.createdAt)}
                   </p>
                 </div>
                 <StatusChip tone={statusTone[f.status] ?? "neutral"}>{f.status}</StatusChip>

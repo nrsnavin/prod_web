@@ -366,13 +366,13 @@ export function ProductionViewPage() {
         {isFetching && !isLoading && (
           <span className="ml-1 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-ink-300 border-t-brand-500" aria-label="Refreshing" />
         )}
-        <div className="flex items-center gap-2 text-sm ml-2">
+        <div className="flex w-full min-w-0 items-center gap-2 text-sm sm:ml-2 sm:w-auto">
           <input aria-label="Start date"
             type="date"
             value={range.startDate}
             max={range.endDate}
             onChange={(e) => setRange((r) => ({ ...r, startDate: e.target.value }))}
-            className="h-9 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500"
+            className="h-9 min-w-0 flex-1 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500 sm:flex-none"
           />
           <span className="text-ink-400">→</span>
           <input aria-label="End date"
@@ -381,7 +381,7 @@ export function ProductionViewPage() {
             min={range.startDate}
             max={toISODate(new Date())}
             onChange={(e) => setRange((r) => ({ ...r, endDate: e.target.value }))}
-            className="h-9 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500"
+            className="h-9 min-w-0 flex-1 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500 sm:flex-none"
           />
         </div>
       </Card>
@@ -399,8 +399,8 @@ export function ProductionViewPage() {
           {[...(data ?? [])].reverse().map((day) => (
             <Card key={day.date} className={cn("p-4", !day.hasData && "opacity-60")}>
               <div className="flex flex-wrap items-center gap-4">
-                <div className="w-28">
-                  <p className="font-semibold">{day.dateLabel}</p>
+                <div className="w-full sm:w-28">
+                  <p className="font-semibold whitespace-nowrap">{day.dateLabel}</p>
                   <p className="text-xs text-ink-400">{day.dayOfWeek}</p>
                 </div>
                 <div className="grid flex-1 gap-2 sm:grid-cols-2 min-w-64">

@@ -27,6 +27,7 @@ import { ServiceBills } from "./ServiceBills";
 import { MachineHeadElastic, MachineShiftRow, MachineStatus, ServiceLogFormValues } from "./types";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { Pencil } from "lucide-react";
+import { formatDate } from "@/core/format/date";
 
 const statusTone: Record<MachineStatus, ChipTone> = {
   running: "success",
@@ -58,7 +59,7 @@ const shiftStatusLabel: Record<MachineShiftRow["status"], string> = {
 };
 
 const shiftColumns: Column<MachineShiftRow>[] = [
-  { key: "date", header: "Date", render: (s) => new Date(s.date).toLocaleDateString() },
+  { key: "date", header: "Date", render: (s) => formatDate(s.date) },
   {
     key: "shift",
     header: "Shift",
@@ -321,7 +322,7 @@ export function MachineDetailPage() {
             {
               label: "Purchased",
               value: machine.dateOfPurchase
-                ? new Date(machine.dateOfPurchase).toLocaleDateString()
+                ? formatDate(machine.dateOfPurchase)
                 : undefined,
             },
           ]}
@@ -430,7 +431,7 @@ export function MachineDetailPage() {
                         {log.type}
                       </StatusChip>
                       <span className="text-xs text-ink-400">
-                        {new Date(log.date).toLocaleDateString()}
+                        {formatDate(log.date)}
                       </span>
                       {log.cost ? (
                         <span className="ml-auto text-sm font-semibold tabular-nums">
@@ -442,7 +443,7 @@ export function MachineDetailPage() {
                     <p className="mt-0.5 text-xs text-ink-400">
                       {log.technician && <>By {log.technician} · </>}
                       {log.nextServiceDate && (
-                        <>Next service {new Date(log.nextServiceDate).toLocaleDateString()}</>
+                        <>Next service {formatDate(log.nextServiceDate)}</>
                       )}
                     </p>
                     {mismatch && (

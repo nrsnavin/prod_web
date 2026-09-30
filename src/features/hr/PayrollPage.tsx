@@ -17,6 +17,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { payrollService, PayrollEmployeeRow, PayrollSettings, MonthRange, PayrollRangeRow } from "./api";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
+import { formatDate } from "@/core/format/date";
 
 const payrollTone: Record<string, ChipTone> = {
   draft: "neutral",
@@ -882,7 +883,7 @@ export function PayrollPage() {
                     <p className="text-sm font-medium">{a.employee?.name ?? "—"}</p>
                     <p className="text-xs text-ink-400">
                       {a.reason || "No reason given"}
-                      {a.createdAt && ` · ${new Date(a.createdAt).toLocaleDateString()}`}
+                      {a.createdAt && ` · ${formatDate(a.createdAt)}`}
                     </p>
                   </div>
                   <div className="text-right">

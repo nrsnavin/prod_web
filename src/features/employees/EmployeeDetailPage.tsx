@@ -19,9 +19,10 @@ import { EmployeeLeavePayCard } from "./EmployeeLeavePayCard";
 import { EmployeeAttendanceCard } from "./EmployeeAttendanceCard";
 import { EmployeeBonusCard } from "./EmployeeBonusCard";
 import { SkillProfileCard } from "./SkillProfileCard";
+import { formatDate } from "@/core/format/date";
 
 const shiftColumns: Column<EmployeeShiftRow>[] = [
-  { key: "date", header: "Date", render: (s) => new Date(s.date).toLocaleDateString() },
+  { key: "date", header: "Date", render: (s) => formatDate(s.date) },
   {
     key: "shift",
     header: "Shift",

@@ -1,5 +1,60 @@
 # Jarvis ERP Web — UX Audit
 
+## Audit of 30 Sep 2026 — installable app, phone and dark mode
+
+Method: a production-shaped build against a seeded local API, driven in
+Chromium at 1440×900 and 390×844 (touch) in both themes: the login flow,
+20 list screens, 6 detail pages and the New order form. Each screen was
+checked automatically (horizontal overflow, touch targets under 32px,
+unlabelled buttons and fields, console errors) and reviewed by eye.
+
+The baseline is good. No screen overflows sideways on a phone, every
+button has an accessible name, dialogs trap and restore focus, and
+unsaved-form and error states are handled. Most of the 17 items further
+down have been fixed since that audit was written. What was left was
+mostly about phones, plus two ways the app could mislead someone:
+
+### Fixed in this pass
+
+| # | Finding | Impact | Fix |
+|---|---|---|---|
+| 1 | Not installable: no service worker, no 192/512 or maskable icons | 🔴 | Installable standalone PWA: manifest, icons, a service worker that caches the app and never the data, an Update button, offline indicator and install button (see pwa/sw.js) |
+| 2 | Dates in the browser's locale: on a US-English PC, 10 Sep read "9/10/2026", which reads as 9 Oct in India. On supply-by dates and delivery challans | 🔴 misleads | One `formatDate` → "10 Sep 2026" on all 51 screens and printouts |
+| 3 | Order charts: "Delivered" and "Not produced" drawn in the same amber (identical in dark mode) | 🔴 misleads | Delivered moved to the palette's purple |
+| 4 | On a phone, text buttons in a row got squeezed and clipped ("prepa", "weav", "packi"): the touch-target CSS for icon-only buttons also matched text-only ones | 🟠 | Rule now needs an svg child; icons don't shrink |
+| 5 | Lists on a phone showed about 2 of 7 columns. Status was off-screen behind a sideways scroll | 🟠 | Below `sm`, the shared table turns each row into a card: title, status badge, labelled fields, a sort menu. Applies to all 37 list screens |
+| 6 | The dashboard's four KPI tiles took 1½ screens on a phone | 🟠 | 2×2 grid, compact tile |
+| 7 | Top-bar search label wrapped onto two lines on a phone | 🟡 | One line ("Search") |
+| 8 | Dashboard error showed raw internals (`["dashboard","kpis"] data is undefined`) and had no retry | 🟡 | Shared error banner with Retry |
+| 9 | New order form: two fields per row on a phone cut the customer picker to "Select custo…" | 🟡 | One column below `sm` |
+| 10 | Production view: date range pushed past the card's padding; day headings wrapped | 🟡 | Inputs share the row; headings stay on one line |
+| 11 | Field errors and hints weren't connected to their inputs, so a screen reader said "invalid" without the reason | 🟡 a11y | `aria-describedby` on Input and Select |
+| 12 | Auto Planner rendered `<li>` inside `<li>` (invalid markup; React warned on every render) | 🟡 | Inner row is a div |
+
+### Open — worth doing next
+
+- **The dashboard doesn't show the floor.** "What's happening on the
+  floor today" gives four counts. Looms running, metres today against
+  plan, and late jobs are what a supervisor opens it for. The Machines
+  page has a good "floor right now" strip that could lead the dashboard.
+- **Detail pages spend a screen on empty sections.** A new order shows
+  three full-height "nothing yet" panels (jobs, challans, dye lots).
+  Collapse empty sections to one line.
+- **Cancelled orders still invite action.** "Create a job to send this
+  order to the floor" and "Stock allocated" appear on a cancelled order.
+- **Logout is one tap from the avatar in the top bar.** It is confirmed,
+  but on a phone it sits where people tap for their profile. It
+  belongs in the profile page or menu.
+- **Native date inputs follow the device's language** (mm/dd/yyyy on a
+  US-English device). They are consistent within a device. A custom
+  date picker is only worth building if it causes mistakes.
+- **Brand mark differs on the login screen** (a factory glyph) from the
+  app icon and the sidebar (the J).
+
+---
+
+## Earlier audit (kept for history — most items below are now done)
+
 Usability audit of the web frontend. Findings come from driving every
 screen in a real browser (login, all list/detail pages, forms, modals,
 print previews, mobile viewport) plus a code-level review of the

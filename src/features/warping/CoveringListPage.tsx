@@ -9,6 +9,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useCoverings } from "./hooks";
 import { Covering, ProgrammeStatus } from "./types";
 import { ProgrammeChip, elasticNames } from "./programmeShared";
+import { formatDate } from "@/core/format/date";
 
 const columns: Column<Covering>[] = [
   {
@@ -36,7 +37,7 @@ const columns: Column<Covering>[] = [
   {
     key: "date",
     header: "Date",
-    render: (c) => (c.date ? new Date(c.date).toLocaleDateString() : "—"),
+    render: (c) => (c.date ? formatDate(c.date) : "—"),
   },
   { key: "status", header: "Status", render: (c) => <ProgrammeChip status={c.status} /> },
 ];

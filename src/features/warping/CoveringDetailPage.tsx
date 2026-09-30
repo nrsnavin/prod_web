@@ -13,6 +13,7 @@ import { ProgrammeChip, ElasticLines } from "./programmeShared";
 import { CoveringLabels } from "./CoveringLabels";
 import { CoveringProgrammeSheet } from "./CoveringProgrammeSheet";
 import { CoveringBeamEntries } from "./CoveringBeamEntries";
+import { formatDate } from "@/core/format/date";
 
 export function CoveringDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -116,11 +117,11 @@ export function CoveringDetailPage() {
                 </Link>
               ) : undefined,
             },
-            { label: "Opened", value: covering.date ? new Date(covering.date).toLocaleDateString() : undefined },
+            { label: "Opened", value: covering.date ? formatDate(covering.date) : undefined },
             {
               label: "Completed",
               value: covering.completedDate
-                ? new Date(covering.completedDate).toLocaleDateString()
+                ? formatDate(covering.completedDate)
                 : undefined,
             },
             { label: "Remarks", value: covering.remarks },

@@ -43,6 +43,7 @@ import { useTrackRecent } from "@/core/ui/uiStore";
 import { OrderEtaCard } from "@/features/analytics/breakdown/OrderEtaCard";
 import { OrderSuggestedPlan } from "./OrderSuggestedPlan";
 import { ForceApprovalDialog } from "./ForceApprovalDialog";
+import { formatDate } from "@/core/format/date";
 
 const elasticColumns: Column<OrderElasticProgress>[] = [
   { key: "name", header: "Elastic", render: (e) => <span className="font-medium">{e.name}</span> },
@@ -543,11 +544,11 @@ export function OrderDetailPage() {
             { label: "GSTIN", value: order.customer?.gstin },
             {
               label: "Order date",
-              value: order.date ? new Date(order.date).toLocaleDateString() : undefined,
+              value: order.date ? formatDate(order.date) : undefined,
             },
             {
               label: "Supply by",
-              value: order.supplyDate ? new Date(order.supplyDate).toLocaleDateString() : undefined,
+              value: order.supplyDate ? formatDate(order.supplyDate) : undefined,
             },
             { label: "Description", value: order.description },
           ]}

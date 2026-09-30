@@ -9,6 +9,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useWarpings } from "./hooks";
 import { ProgrammeStatus, Warping } from "./types";
 import { ProgrammeChip, elasticNames } from "./programmeShared";
+import { formatDate } from "@/core/format/date";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All" },
@@ -58,7 +59,7 @@ const columns: Column<Warping>[] = [
   {
     key: "date",
     header: "Date",
-    render: (w) => (w.date ? new Date(w.date).toLocaleDateString() : "—"),
+    render: (w) => (w.date ? formatDate(w.date) : "—"),
   },
   { key: "status", header: "Status", render: (w) => <ProgrammeChip status={w.status} /> },
 ];

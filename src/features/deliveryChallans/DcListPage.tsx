@@ -16,6 +16,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useDcs, useDcMutations } from "./hooks";
 import { DcStatus, DcType, DeliveryChallan } from "./types";
 import { DcForm } from "./DcForm";
+import { formatDate } from "@/core/format/date";
 
 export const dcStatusTone: Record<DcStatus, ChipTone> = {
   draft: "neutral",
@@ -50,7 +51,7 @@ const columns: Column<DeliveryChallan>[] = [
   {
     key: "dispatch",
     header: "Dispatch",
-    render: (d) => (d.dispatchDate ? new Date(d.dispatchDate).toLocaleDateString() : "—"),
+    render: (d) => (d.dispatchDate ? formatDate(d.dispatchDate) : "—"),
   },
   {
     key: "status",

@@ -16,6 +16,7 @@ import { ORDER_FILTERS, OrderFilter, OrderListItem } from "./types";
 import { orderStatusTone, orderStatusLabel, orderFilterLabel } from "./orderStatus";
 import { OrderForm } from "./OrderForm";
 import { PoIntakeModal } from "./PoIntakeModal";
+import { formatDate } from "@/core/format/date";
 
 const columns: Column<OrderListItem>[] = [
   { key: "no", header: "Order #", render: (o) => <span className="font-medium">#{o.orderNo}</span> },
@@ -24,12 +25,12 @@ const columns: Column<OrderListItem>[] = [
   {
     key: "date",
     header: "Order date",
-    render: (o) => (o.date ? new Date(o.date).toLocaleDateString() : "—"),
+    render: (o) => (o.date ? formatDate(o.date) : "—"),
   },
   {
     key: "supply",
     header: "Supply by",
-    render: (o) => (o.supplyDate ? new Date(o.supplyDate).toLocaleDateString() : "—"),
+    render: (o) => (o.supplyDate ? formatDate(o.supplyDate) : "—"),
   },
   {
     key: "status",

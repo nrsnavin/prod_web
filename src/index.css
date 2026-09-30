@@ -251,10 +251,21 @@
   }
 
   /* Icon-only controls are square, and the height alone would leave a
-     44×24 target that is still easy to miss sideways. */
-  button:not(:has(> :not(svg))),
-  [role="button"]:not(:has(> :not(svg))) {
+     44×24 target that is still easy to miss sideways.
+
+     `:has(> svg)` is load-bearing. CSS cannot see text nodes, so without
+     it a TEXT-only button ("All", "Weaving") also has no non-svg child
+     and matched. A min-width of 44px replaces a flex item's default
+     `min-width: auto`, which is what stops it shrinking below its own
+     text — so every text button in a flex row could be squeezed to
+     44px and clipped. On the job list that turned the status filters
+     into "prepa", "weav", "packi". flex-shrink: 0 keeps an icon (and an
+     icon beside bare text) at its full width in a row that runs out of
+     room. */
+  button:has(> svg):not(:has(> :not(svg))),
+  [role="button"]:has(> svg):not(:has(> :not(svg))) {
     min-width: 44px;
+    flex-shrink: 0;
   }
 
   /* An inline link inside a paragraph must NOT become a 44px block —

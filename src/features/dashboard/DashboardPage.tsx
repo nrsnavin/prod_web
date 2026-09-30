@@ -12,6 +12,8 @@ import { History } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { useUiStore } from "@/core/ui/uiStore";
 import { canAccessPath, effectiveDepartment } from "@/app/navigation";
+import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { errorMessage } from "@/components/ui/ErrorState";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -51,14 +53,16 @@ export function DashboardPage() {
       />
 
       {kpis.isError && (
-        <p className="mb-4 rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">
-          Couldn't load dashboard KPIs: {(kpis.error as Error).message}
-        </p>
+        // The shared banner, with Retry — the raw message here used to
+        // read "["dashboard","kpis"] data is undefined".
+        <ErrorBanner message={`Couldn't load the dashboard figures. ${errorMessage(kpis.error, "the dashboard figures")}`} />
       )}
 
       {/* Tiles are department-aware: each shows only when its target
           screen is accessible, so no tile ever links into a bounce. */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Two across even on a phone: four full-width tiles took a screen
+          and a half to say four numbers. */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {canAccessPath("/jobs", dept) && (
           <KpiTile
             label="Open jobs"

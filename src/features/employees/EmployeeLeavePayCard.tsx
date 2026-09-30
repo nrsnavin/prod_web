@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { leaveService, payrollService } from "@/features/hr/api";
+import { formatDate } from "@/core/format/date";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -106,7 +107,7 @@ export function EmployeeLeavePayCard({ empId }: { empId: string }) {
               <li key={l.id} className="py-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
-                    {l.dateLabel ?? (l.date ? new Date(l.date).toLocaleDateString() : "—")}
+                    {l.dateLabel ?? (l.date ? formatDate(l.date) : "—")}
                   </span>
                   <StatusChip tone={leaveTone[l.status] ?? "neutral"}>{l.status}</StatusChip>
                 </div>

@@ -4,6 +4,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLot } from "./hooks";
 import type { LotMovement, YarnLot } from "./types";
+import { formatDate } from "@/core/format/date";
 
 /**
  * How long a lot has sat on the rack, as a chip.
@@ -89,7 +90,7 @@ export function LotLedger({ lotId }: { lotId: string }) {
 function LedgerRow({ movement: m }: { movement: LotMovement }) {
   return (
     <tr>
-      <td className="py-1 text-ink-600">{new Date(m.date).toLocaleDateString()}</td>
+      <td className="py-1 text-ink-600">{formatDate(m.date)}</td>
       <td className="py-1">{m.typeLabel ?? m.type}</td>
       <td className="py-1 text-ink-600">
         {m.reference ? (

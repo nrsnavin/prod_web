@@ -11,6 +11,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, hint, className, id: idProp, ...rest }, ref) => {
     const autoId = useId();
     const id = idProp ?? autoId;
+    // The message under the field is read out with it — otherwise a
+    // screen reader hears "invalid" and never learns why.
+    const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
     return (
       <div className="space-y-1.5">
         {label && (
@@ -32,12 +35,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className
           )}
           aria-invalid={!!error}
+          aria-describedby={describedBy}
           {...rest}
         />
         {error ? (
-          <p className="text-xs text-status-danger">{error}</p>
+          <p id={`${id}-error`} className="text-xs text-status-danger">{error}</p>
         ) : hint ? (
-          <p className="text-xs text-ink-400">{hint}</p>
+          <p id={`${id}-hint`} className="text-xs text-ink-400">{hint}</p>
         ) : null}
       </div>
     );

@@ -44,7 +44,9 @@ function StatTile({ label, value, tone }: { label: string; value: string | numbe
 
 function SequenceRow({ row }: { row: PlanRow }) {
   return (
-    <li className="flex items-center gap-3 py-2.5 text-sm">
+    // A div: the caller wraps each row in its own <li> with the reorder
+    // buttons, and an <li> directly inside an <li> is invalid markup.
+    <div className="flex items-center gap-3 py-2.5 text-sm">
       <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-ink-100 text-xs font-semibold tabular-nums">
         {row.sequence + 1}
       </span>
@@ -73,7 +75,7 @@ function SequenceRow({ row }: { row: PlanRow }) {
           <span className="text-xs text-status-success">On time (due {fmtDate(row.dueDate)})</span>
         )}
       </div>
-    </li>
+    </div>
   );
 }
 

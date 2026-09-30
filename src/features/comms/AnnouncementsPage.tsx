@@ -19,6 +19,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { Announcement } from "@/features/dashboard/api";
 import { announcementService, AnnouncementFormValues } from "./api";
+import { formatDate } from "@/core/format/date";
 
 const schema = z.object({
   title: z.string().min(1, "Title required"),
@@ -155,7 +156,7 @@ export function AnnouncementsPage() {
                   </p>
                   {a.body && <p className="mt-1 text-sm text-ink-600">{a.body}</p>}
                   <p className="mt-1 text-xs text-ink-400">
-                    {a.createdAt && new Date(a.createdAt).toLocaleDateString()}
+                    {a.createdAt && formatDate(a.createdAt)}
                   </p>
                 </div>
                 <button

@@ -18,6 +18,7 @@ import { ElasticForm } from "./ElasticForm";
 import { ElasticStockCard } from "./ElasticStockCard";
 import { ElasticWarpingTemplate } from "./ElasticWarpingTemplate";
 import { ElasticHistory } from "./ElasticHistory";
+import { formatDate } from "@/core/format/date";
 
 function materialName(mw?: MaterialWeight): string {
   if (!mw?.id) return "—";
@@ -214,7 +215,7 @@ export function ElasticDetailPage() {
                 {
                   label: "Created",
                   value: elastic.createdAt
-                    ? new Date(elastic.createdAt).toLocaleDateString()
+                    ? formatDate(elastic.createdAt)
                     : undefined,
                 },
               ]}

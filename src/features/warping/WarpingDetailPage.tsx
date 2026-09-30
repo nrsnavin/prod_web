@@ -20,6 +20,7 @@ import { ProgrammeChip, ElasticLines } from "./programmeShared";
 import { WarpingPlanForm } from "./WarpingPlanForm";
 import { WarpingProgrammeSheet, BeamLabels } from "./WarpingPrints";
 import { WarpingBatches } from "./WarpingBatches";
+import { formatDate } from "@/core/format/date";
 
 export function WarpingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -217,11 +218,11 @@ export function WarpingDetailPage() {
                 </Link>
               ) : undefined,
             },
-            { label: "Opened", value: warping.date ? new Date(warping.date).toLocaleDateString() : undefined },
+            { label: "Opened", value: warping.date ? formatDate(warping.date) : undefined },
             {
               label: "Completed",
               value: warping.completedDate
-                ? new Date(warping.completedDate).toLocaleDateString()
+                ? formatDate(warping.completedDate)
                 : undefined,
             },
           ]}

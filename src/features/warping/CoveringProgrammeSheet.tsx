@@ -3,6 +3,7 @@ import {
   SheetHeader, SheetPane, SheetSection, SheetTable, SheetSignatures, Th, Td,
 } from "@/components/print/SheetForm";
 import { BeamEntry, Covering, ElasticOrderedLine } from "./types";
+import { formatDate } from "@/core/format/date";
 
 // The detail endpoint populates each planned elastic with its composition,
 // so the sheet can show spandex details like the Flutter covering PDF.
@@ -124,7 +125,7 @@ export function CoveringProgrammeSheet({
           subtitle="Covering build sheet for one job order"
           fields={[
             { label: "Job order", value: <strong>J-{covering.job?.jobOrderNo ?? "—"}</strong> },
-            { label: "Opened", value: covering.date ? new Date(covering.date).toLocaleDateString() : "—" },
+            { label: "Opened", value: covering.date ? formatDate(covering.date) : "—" },
             { label: "Status", value: <span className="capitalize">{covering.status.replace("_", " ")}</span> },
             { label: "Lines", value: lines.length },
           ]}

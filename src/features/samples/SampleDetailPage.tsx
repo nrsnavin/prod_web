@@ -18,6 +18,7 @@ import { useSample, useSampleMutations } from "./hooks";
 import { SamplePhotos } from "./SamplePhotos";
 import { SampleStatusChip, STATUS_LABEL, isTerminal, formatWhen, formatQty } from "./sampleShared";
 import { SampleLogEntry, SampleStatus } from "./types";
+import { formatDate } from "@/core/format/date";
 
 // One sample request and everything that happened to it.
 //
@@ -172,7 +173,7 @@ export function SampleDetailPage() {
             {
               label: "Wanted by",
               value: sample.targetDate
-                ? new Date(sample.targetDate).toLocaleDateString()
+                ? formatDate(sample.targetDate)
                 : undefined,
             },
             { label: "Priority", value: sample.priority },

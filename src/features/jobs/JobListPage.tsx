@@ -11,6 +11,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useJobs } from "./hooks";
 import { JOB_STATUSES, JobListItem, JobStatus } from "./types";
 import { jobStatusTone } from "./jobStatus";
+import { formatDate } from "@/core/format/date";
 
 const columns: Column<JobListItem>[] = [
   {
@@ -23,7 +24,7 @@ const columns: Column<JobListItem>[] = [
   {
     key: "date",
     header: "Date",
-    render: (j) => (j.date ? new Date(j.date).toLocaleDateString() : "—"),
+    render: (j) => (j.date ? formatDate(j.date) : "—"),
   },
   {
     key: "status",

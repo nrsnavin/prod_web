@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useCoveringMutations } from "./hooks";
 import { BeamEntry, Covering } from "./types";
+import { formatDate } from "@/core/format/date";
 
 function enteredByName(by: BeamEntry["enteredBy"]): string | null {
   if (by && typeof by === "object") return by.name ?? null;
@@ -83,7 +84,7 @@ export function CoveringBeamEntries({ covering }: { covering: Covering }) {
                   <span className="tabular-nums"> · {fmtKg(e.weight)} kg</span>
                   {e.note && <span className="text-ink-400"> · {e.note}</span>}
                   <div className="text-xs text-ink-400">
-                    {e.enteredAt ? new Date(e.enteredAt).toLocaleDateString() : ""}
+                    {e.enteredAt ? formatDate(e.enteredAt) : ""}
                     {by ? ` · by ${by}` : ""}
                   </div>
                 </div>

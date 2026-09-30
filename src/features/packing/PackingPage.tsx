@@ -15,6 +15,7 @@ import { usePackingGrouped, usePackingByJob, usePackingMutations } from "./hooks
 import { PackingRecord } from "./types";
 import { PackingForm } from "./PackingForm";
 import { PackingSlip } from "./PackingSlip";
+import { formatDate } from "@/core/format/date";
 
 function name(x?: { name: string } | string | null): string {
   return typeof x === "object" && x ? x.name : "—";
@@ -46,7 +47,7 @@ function JobPackings({
     {
       key: "date",
       header: "Date",
-      render: (p) => (p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"),
+      render: (p) => (p.createdAt ? formatDate(p.createdAt) : "—"),
     },
     {
       key: "act",

@@ -28,6 +28,7 @@ import {
   useWastageRootCause,
 } from "./hooks";
 import { WastageFormValues, WastageRecord } from "./types";
+import { formatDate } from "@/core/format/date";
 
 const schema = z.object({
   job: z.string().min(1, "Select job"),
@@ -225,7 +226,7 @@ function WastageRow({ w }: { w: WastageRecord }) {
         </p>
         <p className="text-xs text-ink-400">
           {typeof w.employee === "object" && w.employee ? w.employee.name : "—"} · {w.reason}
-          {w.createdAt && ` · ${new Date(w.createdAt).toLocaleDateString()}`}
+          {w.createdAt && ` · ${formatDate(w.createdAt)}`}
         </p>
       </div>
       {(w.penalty ?? 0) > 0 && (

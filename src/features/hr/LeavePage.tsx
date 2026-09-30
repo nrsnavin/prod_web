@@ -16,6 +16,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useEmployees } from "@/features/employees/hooks";
 import { leaveService, LeaveCreateInput } from "./api";
+import { formatDate } from "@/core/format/date";
 
 export function LeavePage() {
   const { toast } = useToast();
@@ -95,12 +96,12 @@ export function LeavePage() {
                 </div>
                 <div className="text-right text-sm">
                   <p className="font-medium">
-                    {l.date ? new Date(l.date).toLocaleDateString() : "—"}
-                    {l.toDate && ` → ${new Date(l.toDate).toLocaleDateString()}`}
+                    {l.date ? formatDate(l.date) : "—"}
+                    {l.toDate && ` → ${formatDate(l.toDate)}`}
                   </p>
                   {l.createdAt && (
                     <p className="text-xs text-ink-400">
-                      requested {new Date(l.createdAt).toLocaleDateString()}
+                      requested {formatDate(l.createdAt)}
                     </p>
                   )}
                 </div>

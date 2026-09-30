@@ -34,6 +34,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             className
           )}
           aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : undefined}
           {...rest}
         >
           {placeholder && <option value="">{placeholder}</option>}
@@ -43,7 +44,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             </option>
           ))}
         </select>
-        {error && <p className="text-xs text-status-danger">{error}</p>}
+        {error && <p id={`${id}-error`} className="text-xs text-status-danger">{error}</p>}
       </div>
     );
   }

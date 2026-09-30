@@ -22,6 +22,7 @@ import { usePurchaseOrder, usePoMutations } from "./hooks";
 import { poService } from "./api";
 import { InwardRecord, PoItem, poItemPending, poItemReceived } from "./types";
 import { poStatusTone } from "./PoListPage";
+import { formatDate } from "@/core/format/date";
 
 function materialName(item: PoItem): string {
   return typeof item.rawMaterial === "object" && item.rawMaterial
@@ -615,7 +616,7 @@ export function PoDetailPage() {
         <StatusChip tone={poStatusTone[po.status]}>{po.status}</StatusChip>
         {po.createdAt && (
           <span className="ml-3 text-sm text-ink-400">
-            Created {new Date(po.createdAt).toLocaleDateString()}
+            Created {formatDate(po.createdAt)}
           </span>
         )}
       </div>
@@ -640,7 +641,7 @@ export function PoDetailPage() {
                       : "Material"}
                   </p>
                   <p className="text-xs text-ink-400">
-                    {new Date(rec.inwardDate ?? rec.createdAt ?? "").toLocaleDateString()}
+                    {formatDate(rec.inwardDate ?? rec.createdAt ?? "")}
                     {rec.lotNo && ` · lot ${rec.lotNo}`}
                     {rec.remarks && ` · ${rec.remarks}`}
                   </p>

@@ -16,6 +16,7 @@ import { CustomerForm } from "./CustomerForm";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { CustomerElasticGroups } from "@/features/elasticGroups/CustomerElasticGroups";
 import { CustomerOrdersCard } from "./CustomerOrdersCard";
+import { formatDate } from "@/core/format/date";
 
 export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -118,7 +119,7 @@ export function CustomerDetailPage() {
             {
               label: "Customer since",
               value: customer.createdAt
-                ? new Date(customer.createdAt).toLocaleDateString()
+                ? formatDate(customer.createdAt)
                 : undefined,
             },
           ]}

@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError, httpClient } from "@/core/http/httpClient";
 import { PrintModal } from "@/components/print/PrintModal";
 import { JobDetail } from "./types";
+import { formatDate } from "@/core/format/date";
 
 interface QcResult {
   parameter: string;
@@ -196,7 +197,7 @@ function CoaSheet({ jobId, onClose }: { jobId: string; onClose: () => void }) {
               </TableScroll>
               <p className="mt-1 text-xs text-ink-600">
                 Checked by {item.checkedBy || "—"}
-                {item.checkedAt && ` on ${new Date(item.checkedAt).toLocaleDateString()}`}
+                {item.checkedAt && ` on ${formatDate(item.checkedAt)}`}
               </p>
             </div>
           ))}
@@ -248,7 +249,7 @@ export function QcPanel({ job }: { job: JobDetail }) {
                 <p className="text-xs text-ink-400">
                   {r.results.length} parameters
                   {r.checkedBy?.name && ` · ${r.checkedBy.name}`}
-                  {r.createdAt && ` · ${new Date(r.createdAt).toLocaleDateString()}`}
+                  {r.createdAt && ` · ${formatDate(r.createdAt)}`}
                   {r.defectCode && ` · ${r.defectCode}`}
                   {(r.rejectedMeters ?? 0) > 0 && ` · ${r.rejectedMeters}m rejected`}
                 </p>

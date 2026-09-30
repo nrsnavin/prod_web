@@ -12,6 +12,7 @@ import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { usePurchaseOrders } from "./hooks";
 import { PoStatus, PurchaseOrder } from "./types";
+import { formatDate } from "@/core/format/date";
 
 export const poStatusTone: Record<PoStatus, ChipTone> = {
   Open: "info",
@@ -57,7 +58,7 @@ const columns: Column<PurchaseOrder>[] = [
   {
     key: "date",
     header: "Created",
-    render: (po) => (po.createdAt ? new Date(po.createdAt).toLocaleDateString() : "—"),
+    render: (po) => (po.createdAt ? formatDate(po.createdAt) : "—"),
   },
 ];
 

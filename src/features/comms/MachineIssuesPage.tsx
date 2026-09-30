@@ -18,6 +18,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { cn } from "@/components/ui/cn";
 import { machineService } from "@/features/machines/api";
 import { issueService, MachineIssue } from "./api";
+import { formatDate } from "@/core/format/date";
 
 const SEVERITIES = ["low", "medium", "high", "critical"];
 const SERVICE_TYPES = ["Corrective", "Preventive", "Breakdown", "Inspection", "Other"];
@@ -327,7 +328,7 @@ export function MachineIssuesPage() {
                   <p className="mt-1 text-sm text-ink-600">{i.description ?? i.title ?? ""}</p>
                   <p className="mt-1 text-xs text-ink-400">
                     {i.employee?.name && `Reported by ${i.employee.name}`}
-                    {i.createdAt && ` · ${new Date(i.createdAt).toLocaleDateString()}`}
+                    {i.createdAt && ` · ${formatDate(i.createdAt)}`}
                   </p>
                   {i.resolutionNotes && (
                     <p className="mt-2 rounded-lg bg-status-successBg px-3 py-2 text-sm">

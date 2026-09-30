@@ -41,10 +41,14 @@ export function Topbar({ onMenuClick, onSearchClick }: TopbarProps) {
 
       <button
         onClick={onSearchClick}
-        className="flex items-center gap-2 h-10 flex-1 max-w-md px-3 rounded-lg border border-ink-200 bg-canvas text-sm text-ink-400 hover:border-ink-400 transition-colors"
+        className="flex min-w-0 items-center gap-2 h-10 flex-1 max-w-md px-3 rounded-lg border border-ink-200 bg-canvas text-sm text-ink-400 hover:border-ink-400 transition-colors"
       >
-        <Search className="h-4 w-4" />
-        <span className="flex-1 text-left">Search anything…</span>
+        <Search className="h-4 w-4 shrink-0" />
+        {/* One line whatever the width — on a phone it wrapped to two. */}
+        <span className="flex-1 truncate text-left">
+          <span className="sm:hidden">Search</span>
+          <span className="hidden sm:inline">Search anything…</span>
+        </span>
         <kbd className="hidden md:inline-block text-[11px] font-medium bg-surface border border-ink-200 rounded px-1.5 py-0.5">
           ⌘K
         </kbd>

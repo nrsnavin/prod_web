@@ -5,6 +5,7 @@ import {
 import { QrImg } from "@/components/print/QrImg";
 import { Warping, WarpingPlan, WarpingPlanSection } from "./types";
 import { beamElasticName, elasticLineName, groupBeamsByTape } from "./programmeShared";
+import { formatDate } from "@/core/format/date";
 
 function yarnName(y: unknown): string {
   return typeof y === "object" && y !== null ? ((y as { name?: string }).name ?? "—") : "—";
@@ -53,7 +54,7 @@ export function WarpingProgrammeSheet({
           subtitle="Beam build sheet for one job order"
           fields={[
             { label: "Job order", value: <strong>J-{jobNo}</strong> },
-            { label: "Opened", value: warping.date ? new Date(warping.date).toLocaleDateString() : "—" },
+            { label: "Opened", value: warping.date ? formatDate(warping.date) : "—" },
             { label: "Status", value: <span className="capitalize">{warping.status.replace("_", " ")}</span> },
             { label: "Beams", value: plan ? plan.noOfBeams : "—" },
             ...(tapeCount > 1 ? [{ label: "Tapes", value: tapeCount }] : []),
@@ -204,7 +205,7 @@ export function BeamLabels({
                   Total ends: <span className="font-bold text-ink-900">{beam.totalEnds ?? "—"}</span>
                 </p>
                 <p className="text-ink-600">
-                  Date: {warping.date ? new Date(warping.date).toLocaleDateString() : "—"}
+                  Date: {warping.date ? formatDate(warping.date) : "—"}
                 </p>
               </div>
             </div>

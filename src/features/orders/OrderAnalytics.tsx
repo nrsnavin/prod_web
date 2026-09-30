@@ -12,8 +12,11 @@ const C_PRODUCED = chartTheme.status.good;    // green
 const C_PACKED = chartTheme.series[0];        // blue
 const C_PENDING = chartTheme.status.warning;  // amber
 // The one that means "gone to the customer". Distinct from packed,
-// which sits beside it in both charts and is the step before.
-const C_DELIVERED = chartTheme.series[2];
+// which sits beside it in both charts and is the step before — and from
+// pending. It was series[2], an amber that is #eda100 against pending's
+// #fab219 in light mode and the SAME #f2bc3f in dark, so "Delivered"
+// and "Not produced" could not be told apart in either chart.
+const C_DELIVERED = chartTheme.series[3];
 
 /**
  * The four parts of an ordered quantity, guaranteed to add up to it.

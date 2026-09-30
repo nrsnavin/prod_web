@@ -5,6 +5,7 @@ import { QrImg } from "@/components/print/QrImg";
 import { cn } from "@/components/ui/cn";
 import { BeamEntry, Covering } from "./types";
 import { elasticLineName } from "./programmeShared";
+import { formatDate } from "@/core/format/date";
 
 function fmtKg(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
@@ -84,7 +85,7 @@ export function CoveringLabels({
                       <p className="text-base font-black leading-tight">{elasticName}</p>
                     )}
                     <p className="text-xs text-ink-600 mt-0.5">
-                      {entry.enteredAt ? new Date(entry.enteredAt).toLocaleDateString() : ""}
+                      {entry.enteredAt ? formatDate(entry.enteredAt) : ""}
                       {by ? ` · By ${by}` : ""}
                     </p>
                   </div>

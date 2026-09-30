@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useJobYarnLots } from "./hooks";
 import type { JobLotUse } from "./types";
+import { formatDate } from "@/core/format/date";
 
 /**
  * Which dye lots this job's goods carry, grouped by the elastic they were
@@ -139,7 +140,7 @@ function LotRow({ lot: l }: { lot: JobLotUse }) {
         {l.beamNos.length > 0 ? ` · beam ${l.beamNos.join(", ")}` : ""}
         {!planned &&
           (l.issuedDate
-            ? ` · issued ${new Date(l.issuedDate).toLocaleDateString()}`
+            ? ` · issued ${formatDate(l.issuedDate)}`
             : " · not yet issued")}
         {/* The batch drew this yarn once, not once per elastic —
             dividing it would invent a figure. */}

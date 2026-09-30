@@ -16,6 +16,7 @@ import { DcStatus } from "./types";
 import { dcStatusTone } from "./DcListPage";
 import { DcEditModal } from "./DcEditModal";
 import { CompanyLetterhead, CompanyDocumentFooter } from "@/components/documents/CompanyLetterhead";
+import { formatDate } from "@/core/format/date";
 
 export function DcDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -158,7 +159,7 @@ export function DcDetailPage() {
             <div className="text-right">
               <p className="font-bold">{dc.dcNumber}</p>
               <p className="text-ink-600">
-                {dc.dispatchDate ? new Date(dc.dispatchDate).toLocaleDateString() : ""}
+                {dc.dispatchDate ? formatDate(dc.dispatchDate) : ""}
               </p>
               {orderNo && <p className="text-ink-600">Against order #{orderNo}</p>}
             </div>
