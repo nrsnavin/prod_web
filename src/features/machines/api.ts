@@ -100,11 +100,13 @@ export const machineService = {
   async updateElasticMap(
     id: string,
     elastics: Array<{ head: number; elastic: string | null }>,
-    confirmHooks = false
+    confirmHooks = false,
+    expectedVersion?: number
   ): Promise<void> {
     await httpClient.put("/machine/updateOrder", {
       id, elastics,
       ...(confirmHooks ? { confirmHooks: true } : {}),
+      ...(expectedVersion === undefined ? {} : { expectedVersion }),
     });
   },
 
@@ -138,12 +140,14 @@ export const machineService = {
   async updateDetails(
     machineId: string,
     patch: MachineDetailsPatch,
-    confirmHooks = false
+    confirmHooks = false,
+    expectedVersion?: number
   ): Promise<MachineDetailsUpdateResult> {
     return httpClient.patch("/machine/update-details", {
       machineId,
       ...patch,
       ...(confirmHooks ? { confirmHooks: true } : {}),
+      ...(expectedVersion === undefined ? {} : { expectedVersion }),
     });
   },
 

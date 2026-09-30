@@ -142,6 +142,11 @@ export function MaterialDetailPage() {
   const { data: material, isLoading, isError, error } = useMaterial(id);
   const { update, remove, setArchived, adjustStock } = useMaterialMutations();
   const [editOpen, setEditOpen] = useState(false);
+  // The version this record had when the edit form OPENED, sent back as
+  // expectedVersion. Captured here rather than read at save time: the
+  // page refetches every 10 s, and reading it later would hand a stale
+  // form the other person's newer version and let it overwrite them.
+  const [editVersion, setEditVersion] = useState<number | undefined>(undefined);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -180,7 +185,7 @@ export function MaterialDetailPage() {
             <Button variant="secondary" onClick={() => setAdjustOpen(true)}>
               <Scale className="h-4 w-4" /> Adjust stock
             </Button>
-            <Button variant="secondary" onClick={() => setEditOpen(true)}>
+            <Button variant="secondary" onClick={() => { setEditVersion(material.__v); setEditOpen(true); }}>
               <Pencil className="h-4 w-4" /> Edit
             </Button>
             {/*
@@ -297,7 +302,7 @@ export function MaterialDetailPage() {
           onCancel={() => setEditOpen(false)}
           onSubmit={(values) =>
             update.mutate(
-              { id: material._id, body: values },
+              { id: material._id, body: values, expectedVersion: editVersion },
               {
                 onSuccess: () => {
                   setEditOpen(false);

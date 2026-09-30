@@ -45,6 +45,11 @@ export function ElasticDetailPage() {
   const { data: elastic, isLoading, isError, error } = useElastic(id);
   const { create, update, recalculate, setArchived, remove } = useElasticMutations();
   const [editOpen, setEditOpen] = useState(false);
+  // The version this record had when the edit form OPENED, sent back as
+  // expectedVersion. Captured here rather than read at save time: the
+  // page refetches every 10 s, and reading it later would hand a stale
+  // form the other person's newer version and let it overwrite them.
+  const [editVersion, setEditVersion] = useState<number | undefined>(undefined);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -89,7 +94,7 @@ export function ElasticDetailPage() {
             >
               <Calculator className="h-4 w-4" /> Recalculate cost
             </Button>
-            <Button variant="secondary" onClick={() => setEditOpen(true)}>
+            <Button variant="secondary" onClick={() => { setEditVersion(elastic.__v); setEditOpen(true); }}>
               <Pencil className="h-4 w-4" /> Edit
             </Button>
             <Button variant="secondary" onClick={() => setCloneOpen(true)}>
@@ -234,7 +239,7 @@ export function ElasticDetailPage() {
           onCancel={() => setEditOpen(false)}
           onSubmit={(values) =>
             update.mutate(
-              { id: elastic._id, body: values },
+              { id: elastic._id, body: values, expectedVersion: editVersion },
               {
                 onSuccess: () => {
                   setEditOpen(false);

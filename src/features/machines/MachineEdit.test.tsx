@@ -292,3 +292,23 @@ describe("when the server refuses", () => {
     );
   });
 });
+
+describe("the version a save is checked against", () => {
+  it("is the one the dialog opened with, even after the page refetches", async () => {
+    // The page polls every 10 s. If the dialog read machine.__v at save
+    // time, a refetch bringing someone else's newer version would let
+    // this stale form overwrite their edit. It must send what it opened
+    // with, so the server can refuse it.
+    const { rerender } = render(
+      <MachineEditModal machineId="m1" machine={detail({ __v: 3 })} onClose={() => {}} />
+    );
+    rerender(<MachineEditModal machineId="m1" machine={detail({ __v: 4 })} onClose={() => {}} />);
+    await retype(/manufacturer/i, "Jakob Muller");
+    await userEvent.click(review());
+    await userEvent.click(saveBtn());
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedVersion: 3 }),
+      expect.anything()
+    );
+  });
+});

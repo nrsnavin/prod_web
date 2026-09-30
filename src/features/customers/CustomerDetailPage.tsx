@@ -24,6 +24,11 @@ export function CustomerDetailPage() {
   const { data: customer, isLoading, isError, error } = useCustomer(id);
   const { update, setArchived } = useCustomerMutations();
   const [editOpen, setEditOpen] = useState(false);
+  // The version this record had when the edit form OPENED, sent back as
+  // expectedVersion. Captured here rather than read at save time: the
+  // page refetches every 10 s, and reading it later would hand a stale
+  // form the other person's newer version and let it overwrite them.
+  const [editVersion, setEditVersion] = useState<number | undefined>(undefined);
   const [confirmOpen, setConfirmOpen] = useState(false);
   useTrackRecent("Customer", `/customers/${id}`, customer?.name);
 
@@ -53,7 +58,7 @@ export function CustomerDetailPage() {
         subtitle={customer.contactName}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setEditOpen(true)}>
+            <Button variant="secondary" onClick={() => { setEditVersion(customer.__v); setEditOpen(true); }}>
               <Pencil className="h-4 w-4" /> Edit
             </Button>
             {/* Archiving is reversible, so restoring is offered in the
@@ -131,7 +136,7 @@ export function CustomerDetailPage() {
           onCancel={() => setEditOpen(false)}
           onSubmit={(values) =>
             update.mutate(
-              { id: customer._id, body: values },
+              { id: customer._id, body: values, expectedVersion: editVersion },
               {
                 onSuccess: () => {
                   setEditOpen(false);

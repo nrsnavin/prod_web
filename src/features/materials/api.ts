@@ -119,10 +119,10 @@ export const materialService = {
     return res.material;
   },
 
-  async update(id: string, body: MaterialFormValues): Promise<RawMaterial> {
+  async update(id: string, body: MaterialFormValues, expectedVersion?: number): Promise<RawMaterial> {
     const res = await httpClient.put<{ success: boolean; material: RawMaterial }>(
       "/materials/edit-raw-material",
-      { _id: id, ...packClassification(body) }
+      { _id: id, ...packClassification(body), ...(expectedVersion === undefined ? {} : { expectedVersion }) }
     );
     return res.material;
   },

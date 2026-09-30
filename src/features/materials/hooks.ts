@@ -170,8 +170,8 @@ export function useMaterialMutations() {
     onSuccess: invalidate,
   });
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: MaterialFormValues }) =>
-      materialService.update(id, body),
+    mutationFn: ({ id, body, expectedVersion }: { id: string; body: MaterialFormValues; expectedVersion?: number }) =>
+      materialService.update(id, body, expectedVersion),
     onSuccess: invalidate,
   });
   // Resolves with what the server actually did — deleted, or archived

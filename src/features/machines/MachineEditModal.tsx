@@ -144,10 +144,15 @@ export function MachineEditModal({
     ])
   );
 
+  // The machine's version when this dialog opened (it is mounted only
+  // while open). Not machine.__v at save time: the page refetches every
+  // 10 s, and a later read would let a stale dialog overwrite a newer edit.
+  const [openedVersion] = useState(machine.__v);
+
   const save = (confirmHooks = false) => {
     setError(null);
     updateDetails.mutate(
-      { id: machineId, patch, confirmHooks },
+      { id: machineId, patch, confirmHooks, expectedVersion: openedVersion },
       {
         onSuccess: () => {
           toast(

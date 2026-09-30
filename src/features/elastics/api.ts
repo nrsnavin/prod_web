@@ -36,10 +36,10 @@ export const elasticService = {
     return res.elastic;
   },
 
-  async update(id: string, body: ElasticFormValues): Promise<Elastic> {
+  async update(id: string, body: ElasticFormValues, expectedVersion?: number): Promise<Elastic> {
     const res = await httpClient.put<{ success: boolean; elastic: Elastic }>(
       "/elastic/update-elastic",
-      { _id: id, ...body }
+      { _id: id, ...body, ...(expectedVersion === undefined ? {} : { expectedVersion }) }
     );
     return res.elastic;
   },

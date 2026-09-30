@@ -371,6 +371,7 @@ export function MachineDetailPage() {
           heads={machine.heads}
           current={machine.elastics ?? []}
           jobId={machine.currentJob?.id ?? null}
+          version={machine.__v}
           onClose={() => setMapEditOpen(false)}
         />
       )}

@@ -71,8 +71,8 @@ export function useElasticMutations() {
     onSuccess: invalidate,
   });
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: ElasticFormValues }) =>
-      elasticService.update(id, body),
+    mutationFn: ({ id, body, expectedVersion }: { id: string; body: ElasticFormValues; expectedVersion?: number }) =>
+      elasticService.update(id, body, expectedVersion),
     onSuccess: invalidate,
   });
   const recalculate = useMutation({

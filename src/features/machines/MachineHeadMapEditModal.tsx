@@ -16,12 +16,15 @@ export function MachineHeadMapEditModal({
   heads,
   current,
   jobId,
+  version,
   onClose,
 }: {
   machineId: string;
   heads: number;
   current: MachineHeadElastic[];
   jobId: string | null;
+  /** The machine's __v when the map was opened. */
+  version?: number;
   onClose: () => void;
 }) {
   const { toast } = useToast();
@@ -60,13 +63,17 @@ export function MachineHeadMapEditModal({
     setHeadMap(next);
   };
 
+  // Fixed at open — the modal is mounted only while open — so a refetch
+  // cannot hand a stale map someone else's newer version.
+  const [openedVersion] = useState(version);
+
   const save = (confirmHooks = false) => {
     const elastics = Array.from({ length: heads }, (_, i) => ({
       head: i + 1,
       elastic: headMap[i + 1] || null,
     }));
     updateElasticMap.mutate(
-      { id: machineId, elastics, confirmHooks },
+      { id: machineId, elastics, confirmHooks, expectedVersion: openedVersion },
       {
         onSuccess: () => {
           setHookClash(null);

@@ -29,8 +29,8 @@ export function useCustomerMutations() {
     onSuccess: invalidate,
   });
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: CustomerFormValues }) =>
-      customerService.update(id, body),
+    mutationFn: ({ id, body, expectedVersion }: { id: string; body: CustomerFormValues; expectedVersion?: number }) =>
+      customerService.update(id, body, expectedVersion),
     onSuccess: invalidate,
   });
   const setArchived = useMutation({

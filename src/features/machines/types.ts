@@ -88,6 +88,13 @@ export interface MachineHeadElastic {
 }
 
 export interface MachineDetail {
+  /**
+   * Mongoose's document version. Sent back as `expectedVersion` when this
+   * record is saved, so a save made from a stale screen is refused (409,
+   * code VERSION_CONFLICT) rather than silently overwriting someone
+   * else's edit.
+   */
+  __v?: number;
   id: string; // Machine.ID (display code)
   status: MachineStatus;
   manufacturer: string;

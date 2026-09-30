@@ -152,12 +152,14 @@ export function useMachineMutations() {
     onError: refetchIfGone,
   });
   const updateElasticMap = useMutation({
-    mutationFn: ({ id, elastics, confirmHooks }: {
+    mutationFn: ({ id, elastics, confirmHooks, expectedVersion }: {
       id: string;
       elastics: Array<{ head: number; elastic: string | null }>;
       /** Go ahead despite an elastic needing more hooks than the machine has. */
       confirmHooks?: boolean;
-    }) => machineService.updateElasticMap(id, elastics, confirmHooks),
+      /** The machine's __v when the map was opened; see utils/versioning.js. */
+      expectedVersion?: number;
+    }) => machineService.updateElasticMap(id, elastics, confirmHooks, expectedVersion),
     onSuccess: invalidate,
     onError: refetchIfGone,
   });
@@ -168,12 +170,14 @@ export function useMachineMutations() {
     onError: refetchIfGone,
   });
   const updateDetails = useMutation({
-    mutationFn: ({ id, patch, confirmHooks }: {
+    mutationFn: ({ id, patch, confirmHooks, expectedVersion }: {
       id: string;
       patch: MachineDetailsPatch;
       /** Go ahead despite stranding an elastic already on the loom. */
       confirmHooks?: boolean;
-    }) => machineService.updateDetails(id, patch, confirmHooks),
+      /** The machine's __v when the dialog was opened. */
+      expectedVersion?: number;
+    }) => machineService.updateDetails(id, patch, confirmHooks, expectedVersion),
     onSuccess: invalidate,
     onError: refetchIfGone,
   });

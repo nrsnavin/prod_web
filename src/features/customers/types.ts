@@ -1,4 +1,11 @@
 export interface Customer {
+  /**
+   * Mongoose's document version. Sent back as `expectedVersion` when this
+   * record is saved, so a save made from a stale screen is refused (409,
+   * code VERSION_CONFLICT) rather than silently overwriting someone
+   * else's edit.
+   */
+  __v?: number;
   _id: string;
   name: string;
   /** Soft-deleted: hidden from lists and pickers, never removed. */

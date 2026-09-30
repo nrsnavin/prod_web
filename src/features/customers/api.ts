@@ -28,10 +28,10 @@ export const customerService = {
     return res.data;
   },
 
-  async update(id: string, body: CustomerFormValues): Promise<Customer> {
+  async update(id: string, body: CustomerFormValues, expectedVersion?: number): Promise<Customer> {
     const res = await httpClient.put<{ success: boolean; data: Customer }>(
       "/customer/update",
-      { _id: id, ...body }
+      { _id: id, ...body, ...(expectedVersion === undefined ? {} : { expectedVersion }) }
     );
     return res.data;
   },
