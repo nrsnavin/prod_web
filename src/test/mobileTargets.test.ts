@@ -97,6 +97,15 @@ describe("the page never scrolls sideways", () => {
   it("keeps the backstop on the document itself", () => {
     // Wide content scrolls inside its own container (TableScroll).
     // This is what catches anything that slips through.
-    expect(css).toMatch(/html,\s*\n?\s*body\s*\{[^}]*overflow-x:\s*hidden/);
+    expect(css).toMatch(/(^|\n)html\s*\{[^}]*overflow-x:\s*hidden/);
+    expect(css).toMatch(/(^|\n)body\s*\{[^}]*overflow-x:\s*clip/);
+  });
+
+  it("never makes body a scroll container, which breaks every sticky element", () => {
+    // overflow-x: hidden on body computes overflow-y to auto, and the top
+    // bar, table headers and pinned buttons then stick to body — which
+    // never scrolls — so on a phone they scrolled away with the page.
+    const bodyRules = [...css.matchAll(/(^|[\n,])\s*body\s*\{([^}]*)\}/g)].map((m) => m[2]);
+    expect(bodyRules.some((r) => /overflow(-x|-y)?:\s*(hidden|auto|scroll)/.test(r))).toBe(false);
   });
 });
