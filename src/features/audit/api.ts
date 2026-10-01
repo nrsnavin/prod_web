@@ -1,10 +1,20 @@
 import { httpClient } from "@/core/http/httpClient";
 
 // Mirrors GET /api/v2/audit/recent (prod/api/audit.js) — the plant-wide
-// fingerprint feed across Orders, Jobs, POs and DCs.
+// fingerprint feed across orders, jobs, POs, DCs, quotes, stock counts,
+// material groups, and changes to logins.
 
 export interface AuditEntry {
-  entityType: "Order" | "JobOrder" | "PurchaseOrder" | "DeliveryChallan";
+  entityType:
+    | "Order"
+    | "JobOrder"
+    | "PurchaseOrder"
+    | "DeliveryChallan"
+    | "Quote"
+    | "StockCount"
+    | "MaterialGroup"
+    /** A change to someone's access: login created, edited, deleted, PIN set. */
+    | "Login";
   entityId: string;
   entityNo: string | number | null;
   code: string;

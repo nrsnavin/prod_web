@@ -15,11 +15,16 @@ const entityMeta: Record<AuditEntry["entityType"], { label: string; path: (e: Au
   JobOrder:        { label: "Job",    path: (e) => `/jobs/${e.entityId}` },
   PurchaseOrder:   { label: "PO",     path: (e) => `/purchase-orders/${e.entityId}` },
   DeliveryChallan: { label: "DC",     path: (e) => `/delivery-challans/${e.entityId}` },
+  Quote:           { label: "Quote",  path: (e) => `/quotes/${e.entityId}` },
+  StockCount:      { label: "Stock count", path: (e) => `/stock-counts/${e.entityId}` },
+  MaterialGroup:   { label: "Material group", path: () => "/materials/groups" },
+  // A deleted login has no page; the Users screen is where logins live.
+  Login:           { label: "Login",  path: (e) => (/DELETED/.test(e.code) ? null : "/users") },
 };
 
 // Destructive/corrective actions surface in red so reviews scan fast.
-const dangerCodes = /DELETED|CANCELLED/;
-const editCodes   = /UPDATED|EDITED/;
+const dangerCodes = /DELETED|CANCELLED|_OFF$/;
+const editCodes   = /UPDATED|EDITED|RESET/;
 
 function tone(code: string): "danger" | "warning" | "neutral" {
   if (dangerCodes.test(code)) return "danger";
@@ -46,7 +51,7 @@ export function AuditPage() {
     <>
       <PageHeader
         title="Audit trail"
-        subtitle="Every recorded action across orders, jobs, purchase orders and delivery challans — who did what, when, and why."
+        subtitle="Every recorded action across orders, jobs, purchase orders, challans, quotes, stock counts and logins — who did what, when, and why."
         actions={
           <Button variant="secondary" onClick={() => refetch()} loading={isFetching}>
             <RefreshCw className="h-4 w-4" /> Refresh
