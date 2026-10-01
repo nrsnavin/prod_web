@@ -1,3 +1,4 @@
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { ClipboardList, ShieldCheck, CalendarOff, Fingerprint, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -76,77 +77,81 @@ export function DashboardPage() {
         <ErrorBanner message={`Couldn't load the dashboard figures. ${errorMessage(kpis.error, "the dashboard figures")}`} />
       )}
 
-      <FloorCard
-        looms={
-          canMachines
-            ? {
-                running: (machines.data ?? []).filter((m) => m.status === "running").length,
-                maintenance: (machines.data ?? []).filter((m) => m.status === "maintenance").length,
-                total: machines.data?.length ?? 0,
-                loading: machines.isLoading,
-              }
-            : undefined
-        }
-        metres={
-          canProduction
-            ? {
-                today: dayTotal(toISODate(today)),
-                yesterday: dayTotal(toISODate(yesterday)),
-                loading: production.isLoading,
-              }
-            : undefined
-        }
-        lateOrders={canOrders ? { count: kpis.data?.lateOrders, loading: kpis.isLoading } : undefined}
-      />
+      <ErrorBoundary variant="section" label="The floor">
+        <FloorCard
+          looms={
+            canMachines
+              ? {
+                  running: (machines.data ?? []).filter((m) => m.status === "running").length,
+                  maintenance: (machines.data ?? []).filter((m) => m.status === "maintenance").length,
+                  total: machines.data?.length ?? 0,
+                  loading: machines.isLoading,
+                }
+              : undefined
+          }
+          metres={
+            canProduction
+              ? {
+                  today: dayTotal(toISODate(today)),
+                  yesterday: dayTotal(toISODate(yesterday)),
+                  loading: production.isLoading,
+                }
+              : undefined
+          }
+          lateOrders={canOrders ? { count: kpis.data?.lateOrders, loading: kpis.isLoading } : undefined}
+        />
+      </ErrorBoundary>
 
       {/* Tiles are department-aware: each shows only when its target
           screen is accessible, so no tile ever links into a bounce. */}
       {/* Two across even on a phone: four full-width tiles took a screen
           and a half to say four numbers. */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        {canAccessPath("/jobs", dept) && (
-          <KpiTile
-            label="Open jobs"
-            value={kpis.data?.openJobs ?? "—"}
-            icon={ClipboardList}
-            to="/jobs"
-            loading={kpis.isLoading}
-            footer="preparatory → packing"
-          />
-        )}
-        {canShifts && (
-          <KpiTile
-            label="Shifts to verify"
-            value={pendingShifts.data ?? "—"}
-            icon={ShieldCheck}
-            to="/shift-verification"
-            loading={pendingShifts.isLoading}
-            alert={(pendingShifts.data ?? 0) > 0}
-            footer="submitted by workers"
-          />
-        )}
-        {canAccessPath("/leave", dept) && (
-          <KpiTile
-            label="Pending leaves"
-            value={kpis.data?.pendingLeaves ?? "—"}
-            icon={CalendarOff}
-            to="/leave"
-            loading={kpis.isLoading}
-            alert={(kpis.data?.pendingLeaves ?? 0) > 0}
-            footer="awaiting decision"
-          />
-        )}
-        {canAccessPath("/attendance", dept) && (
-          <KpiTile
-            label="Attendance today"
-            value={att ? `${att.attendancePct}%` : "—"}
-            icon={Fingerprint}
-            to="/attendance"
-            loading={kpis.isLoading}
-            footer={att ? `${att.totalMarked}/${att.totalEmployees} marked` : undefined}
-          />
-        )}
-      </div>
+      <ErrorBoundary variant="section" label="The figures">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          {canAccessPath("/jobs", dept) && (
+            <KpiTile
+              label="Open jobs"
+              value={kpis.data?.openJobs ?? "—"}
+              icon={ClipboardList}
+              to="/jobs"
+              loading={kpis.isLoading}
+              footer="preparatory → packing"
+            />
+          )}
+          {canShifts && (
+            <KpiTile
+              label="Shifts to verify"
+              value={pendingShifts.data ?? "—"}
+              icon={ShieldCheck}
+              to="/shift-verification"
+              loading={pendingShifts.isLoading}
+              alert={(pendingShifts.data ?? 0) > 0}
+              footer="submitted by workers"
+            />
+          )}
+          {canAccessPath("/leave", dept) && (
+            <KpiTile
+              label="Pending leaves"
+              value={kpis.data?.pendingLeaves ?? "—"}
+              icon={CalendarOff}
+              to="/leave"
+              loading={kpis.isLoading}
+              alert={(kpis.data?.pendingLeaves ?? 0) > 0}
+              footer="awaiting decision"
+            />
+          )}
+          {canAccessPath("/attendance", dept) && (
+            <KpiTile
+              label="Attendance today"
+              value={att ? `${att.attendancePct}%` : "—"}
+              icon={Fingerprint}
+              to="/attendance"
+              loading={kpis.isLoading}
+              footer={att ? `${att.totalMarked}/${att.totalEmployees} marked` : undefined}
+            />
+          )}
+        </div>
+      </ErrorBoundary>
 
       {recent.length > 0 && (
         <Card className="mt-4 p-4">
@@ -169,12 +174,18 @@ export function DashboardPage() {
       )}
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        <AttendanceCard data={att} loading={kpis.isLoading} />
-        <LowStockCard data={kpis.data?.lowStock} loading={kpis.isLoading} />
-        <AnnouncementsCard
-          items={announcements.data}
-          loading={announcements.isLoading}
-        />
+        <ErrorBoundary variant="section" label="Attendance">
+          <AttendanceCard data={att} loading={kpis.isLoading} />
+        </ErrorBoundary>
+        <ErrorBoundary variant="section" label="Low stock">
+          <LowStockCard data={kpis.data?.lowStock} loading={kpis.isLoading} />
+        </ErrorBoundary>
+        <ErrorBoundary variant="section" label="Announcements">
+          <AnnouncementsCard
+            items={announcements.data}
+            loading={announcements.isLoading}
+          />
+        </ErrorBoundary>
       </div>
     </>
   );

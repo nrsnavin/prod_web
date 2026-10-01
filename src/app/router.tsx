@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react";
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { RouteError } from "@/components/ui/ErrorBoundary";
 import { AppShell } from "@/components/layout/AppShell";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { RequireAuth } from "./guards";
@@ -226,9 +227,13 @@ function HomeRoute() {
 }
 
 const router = createBrowserRouter([
-  { path: "/login", element: <LoginPage /> },
-  { path: "/forgot-password", element: <ForgotPasswordPage /> },
-  { path: "/reset-password", element: <ResetPasswordPage /> },
+  // errorElement: what fails outside a page (the shell itself, a route
+  // that can't load) gets a plain screen with a way out, never React
+  // Router's developer page. A page's own crash is held inside the shell
+  // (AppShell), so the menus stay.
+  { path: "/login", element: <LoginPage />, errorElement: <RouteError /> },
+  { path: "/forgot-password", element: <ForgotPasswordPage />, errorElement: <RouteError /> },
+  { path: "/reset-password", element: <ResetPasswordPage />, errorElement: <RouteError /> },
   {
     path: "/",
     element: (
@@ -236,6 +241,7 @@ const router = createBrowserRouter([
         <AppShell />
       </RequireAuth>
     ),
+    errorElement: <RouteError />,
     children: [
       // An employee login opens on their own day, never the plant
       // dashboard (whose figures the server refuses them anyway).

@@ -1,3 +1,4 @@
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Pencil } from "lucide-react";
@@ -134,17 +135,29 @@ export function EmployeeDetailPage() {
         </Card>
       </div>
 
-      {canGrantAccess && <WorkerAccessCard empId={emp.id} />}
+      <ErrorBoundary variant="section" label="App access">
+        {canGrantAccess && <WorkerAccessCard empId={emp.id} />}
+      </ErrorBoundary>
 
-      <SkillProfileCard empId={emp.id} profile={emp.skillProfile} />
+      <ErrorBoundary variant="section" label="Skill profile">
+        <SkillProfileCard empId={emp.id} profile={emp.skillProfile} />
+      </ErrorBoundary>
 
-      <EmployeePayrollCard empId={emp.id} />
+      <ErrorBoundary variant="section" label="Pay">
+        <EmployeePayrollCard empId={emp.id} />
+      </ErrorBoundary>
 
-      <EmployeeBonusCard empId={emp.id} />
+      <ErrorBoundary variant="section" label="Bonus">
+        <EmployeeBonusCard empId={emp.id} />
+      </ErrorBoundary>
 
-      <EmployeeAttendanceCard empId={emp.id} />
+      <ErrorBoundary variant="section" label="Attendance">
+        <EmployeeAttendanceCard empId={emp.id} />
+      </ErrorBoundary>
 
-      <EmployeeLeavePayCard empId={emp.id} />
+      <ErrorBoundary variant="section" label="Leave and pay">
+        <EmployeeLeavePayCard empId={emp.id} />
+      </ErrorBoundary>
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Recent shifts</h3>

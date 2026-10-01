@@ -1,3 +1,4 @@
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarCheck, Gauge, Megaphone, Recycle, Ruler } from "lucide-react";
@@ -70,72 +71,78 @@ export function MyHomePage() {
             />
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {today.data!.map((sh) => (
-              <ShiftCard key={sh.id} shift={sh} onEnter={() => setEntering(sh)} />
-            ))}
-          </div>
+          <ErrorBoundary variant="section" label="Your shift">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {today.data!.map((sh) => (
+                <ShiftCard key={sh.id} shift={sh} onEnter={() => setEntering(sh)} />
+              ))}
+            </div>
+          </ErrorBoundary>
         )}
       </section>
 
       <h2 className="mt-6 mb-3 text-sm font-semibold uppercase tracking-wide text-ink-400">Last 30 days</h2>
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <KpiTile
-          label="Average per shift"
-          value={s?.avgPerShift != null ? `${s.avgPerShift.toLocaleString("en-IN")} m` : "—"}
-          icon={Ruler}
-          to="/my/performance"
-          loading={perf.isLoading}
-          footer={s?.changePct != null ? `${s.changePct > 0 ? "▲" : s.changePct < 0 ? "▼" : "■"} ${Math.abs(s.changePct)}% on the 30 days before` : `${s?.shifts ?? 0} shifts`}
-        />
-        <KpiTile
-          label="Against the plant"
-          value={vsPlant != null ? `${vsPlant > 0 ? "+" : ""}${vsPlant}%` : "—"}
-          icon={Gauge}
-          to="/my/performance"
-          loading={perf.isLoading}
-          footer={s?.plantAvgPerShift != null ? `plant ${s.plantAvgPerShift.toLocaleString("en-IN")} m a shift` : "no plant figure yet"}
-        />
-        <KpiTile
-          label="Wastage this month"
-          value={`${wastedThisMonth.toLocaleString("en-IN")} m`}
-          icon={Recycle}
-          to="/my/performance"
-          loading={wastage.isLoading}
-          alert={wastedThisMonth > 0}
-          footer="recorded against you"
-        />
-        <KpiTile
-          label="Present this month"
-          value={present != null ? String(present) : "—"}
-          icon={CalendarCheck}
-          to="/my/pay"
-          loading={attendance.isLoading}
-          footer={attendance.data ? `${attendance.data.stats.absent} absent · ${attendance.data.stats.onLeave} on leave` : "shifts"}
-        />
-      </div>
+      <ErrorBoundary variant="section" label="Your numbers">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          <KpiTile
+            label="Average per shift"
+            value={s?.avgPerShift != null ? `${s.avgPerShift.toLocaleString("en-IN")} m` : "—"}
+            icon={Ruler}
+            to="/my/performance"
+            loading={perf.isLoading}
+            footer={s?.changePct != null ? `${s.changePct > 0 ? "▲" : s.changePct < 0 ? "▼" : "■"} ${Math.abs(s.changePct)}% on the 30 days before` : `${s?.shifts ?? 0} shifts`}
+          />
+          <KpiTile
+            label="Against the plant"
+            value={vsPlant != null ? `${vsPlant > 0 ? "+" : ""}${vsPlant}%` : "—"}
+            icon={Gauge}
+            to="/my/performance"
+            loading={perf.isLoading}
+            footer={s?.plantAvgPerShift != null ? `plant ${s.plantAvgPerShift.toLocaleString("en-IN")} m a shift` : "no plant figure yet"}
+          />
+          <KpiTile
+            label="Wastage this month"
+            value={`${wastedThisMonth.toLocaleString("en-IN")} m`}
+            icon={Recycle}
+            to="/my/performance"
+            loading={wastage.isLoading}
+            alert={wastedThisMonth > 0}
+            footer="recorded against you"
+          />
+          <KpiTile
+            label="Present this month"
+            value={present != null ? String(present) : "—"}
+            icon={CalendarCheck}
+            to="/my/pay"
+            loading={attendance.isLoading}
+            footer={attendance.data ? `${attendance.data.stats.absent} absent · ${attendance.data.stats.onLeave} on leave` : "shifts"}
+          />
+        </div>
+      </ErrorBoundary>
 
-      <Card className="mt-6 p-5">
-        <h2 className="flex items-center gap-2 font-semibold">
-          <Megaphone className="h-4 w-4 text-ink-400" aria-hidden /> Notices
-        </h2>
-        {notices.isLoading ? (
-          <Skeleton className="mt-3 h-16 w-full" />
-        ) : (notices.data ?? []).length === 0 ? (
-          <EmptyState compact title="No notices right now" />
-        ) : (
-          <ul className="mt-3 divide-y divide-ink-100">
-            {notices.data!.slice(0, 5).map((n) => (
-              <li key={n._id} className="py-3">
-                <p className="font-medium">{n.title}</p>
-                {n.body && <p className="mt-0.5 text-sm text-ink-600 whitespace-pre-line">{n.body}</p>}
-                {n.createdAt && <p className="mt-1 text-xs text-ink-400">{formatDate(n.createdAt)}</p>}
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link to="/announcements" className="mt-2 inline-block text-sm font-medium text-brand-600">All notices</Link>
-      </Card>
+      <ErrorBoundary variant="section" label="Notices">
+        <Card className="mt-6 p-5">
+          <h2 className="flex items-center gap-2 font-semibold">
+            <Megaphone className="h-4 w-4 text-ink-400" aria-hidden /> Notices
+          </h2>
+          {notices.isLoading ? (
+            <Skeleton className="mt-3 h-16 w-full" />
+          ) : (notices.data ?? []).length === 0 ? (
+            <EmptyState compact title="No notices right now" />
+          ) : (
+            <ul className="mt-3 divide-y divide-ink-100">
+              {notices.data!.slice(0, 5).map((n) => (
+                <li key={n._id} className="py-3">
+                  <p className="font-medium">{n.title}</p>
+                  {n.body && <p className="mt-0.5 text-sm text-ink-600 whitespace-pre-line">{n.body}</p>}
+                  {n.createdAt && <p className="mt-1 text-xs text-ink-400">{formatDate(n.createdAt)}</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link to="/announcements" className="mt-2 inline-block text-sm font-medium text-brand-600">All notices</Link>
+        </Card>
+      </ErrorBoundary>
 
       <EnterProductionScreen shift={entering} onClose={() => setEntering(null)} />
     </>

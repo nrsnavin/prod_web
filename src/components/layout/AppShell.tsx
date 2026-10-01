@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Outlet, useLocation } from "react-router-dom";
 import { RequireDeptAccess } from "@/app/guards";
 import { Sidebar } from "./Sidebar";
@@ -70,7 +71,10 @@ export function AppShell() {
             {/* A short fade as each screen arrives, so the eye sees the
                 change rather than a jump; off under reduce-motion. */}
             <div key={pathname} className="motion-safe:animate-fade-in">
-              <Outlet />
+              {/* Keyed with the page, so moving to another page clears it. */}
+              <ErrorBoundary variant="page">
+                <Outlet />
+              </ErrorBoundary>
             </div>
           </RequireDeptAccess>
         </main>
