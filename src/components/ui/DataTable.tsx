@@ -1,4 +1,4 @@
-import { ReactNode, useId, useMemo, useState } from "react";
+import { ReactNode, RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "./Skeleton";
 import { EmptyState } from "./EmptyState";
@@ -103,6 +103,9 @@ export function DataTable<T>({
     });
   }, [rows, columns, sortKey, sortDir]);
 
+  const { limit, more, sentinel } = useIncrementalRows(sorted.length);
+  const visible = sorted.length > limit ? sorted.slice(0, limit) : sorted;
+
   const toggleSort = (key: string) => {
     if (sortKey === key) setSortDir((d) => (d === 1 ? -1 : 1));
     else {
@@ -137,9 +140,10 @@ export function DataTable<T>({
   }
   if (isPhone && phoneLayout === "cards") {
     return (
+      <>
       <PhoneCards
         columns={columns}
-        rows={sorted}
+        rows={visible}
         rowKey={rowKey}
         onRowClick={onRowClick}
         sortKey={sortKey}
@@ -149,6 +153,8 @@ export function DataTable<T>({
           setSortDir(dir);
         }}
       />
+      <MoreRows shown={visible.length} total={sorted.length} onMore={more} sentinel={sentinel} />
+      </>
     );
   }
   return (
@@ -198,7 +204,7 @@ export function DataTable<T>({
           </tr>
         </thead>
         <tbody className="divide-y divide-ink-100">
-          {sorted.map((row) => (
+          {visible.map((row) => (
             <tr
               key={rowKey(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -236,6 +242,65 @@ export function DataTable<T>({
           ))}
         </tbody>
       </table>
+      <MoreRows shown={visible.length} total={sorted.length} onMore={more} sentinel={sentinel} />
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  LONG LISTS, A SCREENFUL AT A TIME
+//
+//  A table drew every row it was given. At a few hundred rows that is
+//  fine; at a few thousand (a year of shifts, a big customer's order
+//  history) the first paint takes seconds on a low-end phone and every
+//  sort redraws them all. Past RENDER_STEP rows, the table now draws
+//  the first RENDER_STEP and adds the next as the reader nears the end
+//  — sorting still covers every row, since only the drawing is staged.
+//  "Show more" does the same for a keyboard, and stands in where the
+//  browser can't watch the scroll.
+// ══════════════════════════════════════════════════════════════════
+
+export const RENDER_STEP = 200;
+
+function useIncrementalRows(total: number) {
+  const [limit, setLimit] = useState(RENDER_STEP);
+  const more = useCallback(() => setLimit((l) => l + RENDER_STEP), []);
+  const sentinel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || limit >= total || typeof IntersectionObserver === "undefined") return;
+    // Starts drawing the next rows well before the end is reached.
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) more();
+    }, { rootMargin: "800px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [limit, total, more]);
+
+  return { limit, more, sentinel };
+}
+
+function MoreRows({
+  shown,
+  total,
+  onMore,
+  sentinel,
+}: {
+  shown: number;
+  total: number;
+  onMore: () => void;
+  sentinel: RefObject<HTMLDivElement>;
+}) {
+  if (shown >= total) return null;
+  return (
+    <div ref={sentinel} className="flex items-center justify-center gap-3 border-t border-ink-100 px-4 py-3 text-sm text-ink-500">
+      <span className="tabular-nums">
+        Showing {shown.toLocaleString("en-IN")} of {total.toLocaleString("en-IN")}
+      </span>
+      <button type="button" onClick={onMore} className="font-medium text-brand-600 hover:text-brand-700">
+        Show more
+      </button>
     </div>
   );
 }
