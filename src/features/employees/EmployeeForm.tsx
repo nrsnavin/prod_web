@@ -29,11 +29,21 @@ export function EmployeeForm({
   submitting,
   onSubmit,
   onCancel,
+  aadhaarOnFile,
+  canEditAadhaar = true,
 }: {
   initial?: Partial<EmployeeFormValues>;
   submitting: boolean;
   onSubmit: (values: EmployeeFormValues) => void;
   onCancel: () => void;
+  /**
+   * Editing: the masked number on file ("XXXX XXXX 1234"), shown as the
+   * field's placeholder. The real number never comes to the browser, so
+   * the field starts empty and is sent only when someone types a new one.
+   */
+  aadhaarOnFile?: string | null;
+  /** Only an admin may set an Aadhaar number; the server enforces it too. */
+  canEditAadhaar?: boolean;
 }) {
   const {
     register,
@@ -46,7 +56,7 @@ export function EmployeeForm({
       department: initial?.department ?? "weaving",
       phoneNumber: initial?.phoneNumber ?? "",
       role: initial?.role ?? "",
-      aadhar: initial?.aadhar ?? "",
+      aadhar: "",
     },
   });
 
@@ -59,8 +69,11 @@ export function EmployeeForm({
 
   const [skillProfile, setSkillProfile] = useState<SkillProfile>(initial?.skillProfile ?? {});
 
-  const submit = (basic: BasicValues) =>
-    onSubmit({ ...basic, hourlyRate, skillProfile });
+  // An empty Aadhaar field means "keep what is on file": leave it out.
+  const submit = ({ aadhar, ...basic }: BasicValues) =>
+    onSubmit({ ...basic, ...(aadhar?.trim() ? { aadhar: aadhar.trim() } : {}), hourlyRate, skillProfile });
+
+  const onFile = aadhaarOnFile && aadhaarOnFile !== "Not Provided" ? aadhaarOnFile : null;
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
@@ -81,7 +94,21 @@ export function EmployeeForm({
           error={errors.phoneNumber?.message}
           {...register("phoneNumber")}
         />
-        <Input label="Aadhar" inputMode="numeric" {...register("aadhar")} />
+        <Input
+          label="Aadhaar"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder={onFile ?? undefined}
+          disabled={!canEditAadhaar}
+          hint={
+            !canEditAadhaar
+              ? "Only an admin can change this"
+              : onFile
+                ? "Type a new number to replace it"
+                : undefined
+          }
+          {...register("aadhar")}
+        />
       </div>
 
       <div className="grid grid-cols-2 items-end gap-3">

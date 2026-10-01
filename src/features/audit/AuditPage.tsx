@@ -18,6 +18,7 @@ const entityMeta: Record<AuditEntry["entityType"], { label: string; path: (e: Au
   Quote:           { label: "Quote",  path: (e) => `/quotes/${e.entityId}` },
   StockCount:      { label: "Stock count", path: (e) => `/stock-counts/${e.entityId}` },
   MaterialGroup:   { label: "Material group", path: () => "/materials/groups" },
+  Employee:        { label: "Employee", path: (e) => `/employees/${e.entityId}` },
   // A deleted login has no page; the Users screen is where logins live.
   Login:           { label: "Login",  path: (e) => (/DELETED/.test(e.code) ? null : "/users") },
 };

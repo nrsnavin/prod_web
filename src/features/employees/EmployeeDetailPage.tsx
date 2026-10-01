@@ -21,6 +21,7 @@ import { EmployeeAttendanceCard } from "./EmployeeAttendanceCard";
 import { EmployeeBonusCard } from "./EmployeeBonusCard";
 import { SkillProfileCard } from "./SkillProfileCard";
 import { WorkerAccessCard } from "./WorkerAccessCard";
+import { AadhaarValue } from "./AadhaarValue";
 import { useAuth } from "@/core/auth/useAuth";
 import { canAccessPath } from "@/app/navigation";
 import { formatDate } from "@/core/format/date";
@@ -92,7 +93,10 @@ export function EmployeeDetailPage() {
               { label: "Phone", value: emp.phoneNumber },
               { label: "Department", value: <span className="capitalize">{emp.department}</span> },
               { label: "Role", value: emp.role },
-              { label: "Aadhar", value: emp.aadhar },
+              {
+                label: "Aadhaar",
+                value: <AadhaarValue empId={emp.id} masked={emp.aadhar} canReveal={user?.role === "admin"} />,
+              },
               { label: "Skill", value: emp.skill },
               { label: "Total shifts", value: emp.totalShifts },
             ]}
@@ -176,10 +180,12 @@ export function EmployeeDetailPage() {
             department: emp.department,
             phoneNumber: emp.phoneNumber,
             role: emp.role,
-            aadhar: emp.aadhar,
+            aadhar: undefined,
             hourlyRate: emp.hourlyRate,
             skillProfile: emp.skillProfile ?? undefined,
           }}
+          aadhaarOnFile={emp.aadhar}
+          canEditAadhaar={user?.role === "admin"}
           submitting={update.isPending}
           onCancel={() => setEditOpen(false)}
           onSubmit={(values) =>

@@ -34,6 +34,12 @@ export const employeeService = {
     return res.employee;
   },
 
+  /** The full Aadhaar number: admins only, and every look is recorded. */
+  async revealAadhaar(id: string): Promise<string | null> {
+    const res = await httpClient.get<{ success: boolean; aadhar: string | null }>("/employee/aadhaar", { id });
+    return res.aadhar;
+  },
+
   async setPerformance(id: string, performance: number): Promise<void> {
     await httpClient.patch("/employee/performance", { id, performance });
   },

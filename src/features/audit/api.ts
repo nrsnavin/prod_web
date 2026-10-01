@@ -13,6 +13,8 @@ export interface AuditEntry {
     | "Quote"
     | "StockCount"
     | "MaterialGroup"
+    /** An admin viewed an employee's full Aadhaar number. */
+    | "Employee"
     /** A change to someone's access: login created, edited, deleted, PIN set. */
     | "Login";
   entityId: string;
