@@ -6,6 +6,7 @@ import { cn } from "@/components/ui/cn";
 import { config } from "@/app/config";
 import { useUiStore } from "@/core/ui/uiStore";
 import { LogoutButton } from "./LogoutButton";
+import { employeeSections, myWorkSection } from "@/features/me/employeeNav";
 import { BrandMark } from "./BrandMark";
 
 export interface SidebarProps {
@@ -19,7 +20,14 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const navHidden = useUiStore((s) => s.navHidden);
   const navOrder = useUiStore((s) => s.navOrder);
-  const sections = applyNavPrefs(visibleSections(user), { navHidden, navOrder });
+  // An employee login gets its own short menu; a manager who is also on
+  // the payroll gets theirs plus "My work" at the end.
+  const sections = user?.selfService
+    ? employeeSections()
+    : [
+        ...applyNavPrefs(visibleSections(user), { navHidden, navOrder }),
+        ...(user?.employeeId ? [myWorkSection()] : []),
+      ];
 
   return (
     <>
@@ -69,7 +77,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                   <li key={path}>
                     <NavLink
                       to={path}
-                      end={path === "/"}
+                      end={path === "/" || path === "/my"}
                       onClick={onMobileClose}
                       title={label}
                       className={({ isActive }) =>

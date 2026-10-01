@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/components/ui/cn";
 import { httpClient } from "@/core/http/httpClient";
 import { useAuth } from "@/core/auth/useAuth";
+import { employeeSections } from "@/features/me/employeeNav";
 
 export interface GlobalSearchProps {
   open: boolean;
@@ -139,19 +140,22 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   const navigate = useNavigate();
 
   const q = query.trim();
+  const { user } = useAuth();
   const entities = useQuery({
     queryKey: ["global-search", q],
     queryFn: () => searchEntities(q),
-    enabled: open && q.length >= 2,
+    // An employee login may read no plant records, so it is not asked to.
+    enabled: open && q.length >= 2 && !user?.selfService,
     staleTime: 15_000,
   });
 
-  const { user } = useAuth();
   const pageHits: Hit[] = useMemo(() => {
     const needle = q.toLowerCase();
     // Only offer pages this user can actually open — otherwise search
     // surfaces screens that bounce on click.
-    const accessible = allNavItems.filter((i) => canAccess(i, user));
+    const accessible = user?.selfService
+      ? employeeSections().flatMap((s) => s.items)
+      : allNavItems.filter((i) => canAccess(i, user));
     const items = needle
       ? accessible.filter((i) => i.label.toLowerCase().includes(needle))
       : accessible;

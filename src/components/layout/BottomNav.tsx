@@ -3,6 +3,7 @@ import { LayoutDashboard, Menu, type LucideIcon } from "lucide-react";
 import { allNavItems, canAccess, effectiveDepartment, type AccessCtx } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { cn } from "@/components/ui/cn";
+import { MY_WORK } from "@/features/me/employeeNav";
 
 // ══════════════════════════════════════════════════════════════════
 //  FOUR SCREENS UNDER THE THUMB
@@ -69,7 +70,8 @@ const tabClass = (active: boolean) =>
 
 export function BottomNav({ onMore }: { onMore: () => void }) {
   const { user } = useAuth();
-  const tabs = tabsFor(user);
+  // An employee login's four: their day, their shift, how they did, pay.
+  const tabs = user?.selfService ? MY_WORK : tabsFor(user);
   return (
     <nav
       aria-label="Main"
@@ -77,7 +79,7 @@ export function BottomNav({ onMore }: { onMore: () => void }) {
     >
       <div className="mx-auto flex max-w-lg pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
         {tabs.map(({ path, label, icon: Icon }) => (
-          <NavLink key={path} to={path} end={path === "/"} className={({ isActive }) => tabClass(isActive)}>
+          <NavLink key={path} to={path} end={path === "/" || path === "/my"} className={({ isActive }) => tabClass(isActive)}>
             {({ isActive }) => (
               <>
                 <Icon className={cn("h-[22px] w-[22px]", isActive && "stroke-[2.25]")} aria-hidden />

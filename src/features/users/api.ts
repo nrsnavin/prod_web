@@ -8,6 +8,10 @@ export interface ManagedUser {
   department?: string | null;
   features?: string[];
   createdAt?: string;
+  /** The employee record this login belongs to, if any. */
+  employee?: { _id: string; name: string; department?: string } | null;
+  /** An employee login: sees only their own work (the server's rule). */
+  selfService?: boolean;
 }
 
 export interface UserCreateInput {
@@ -16,6 +20,8 @@ export interface UserCreateInput {
   password: string;
   department: string;
   features?: string[];
+  employee?: string | null;
+  selfService?: boolean;
 }
 
 export interface UserUpdateInput {
@@ -24,6 +30,9 @@ export interface UserUpdateInput {
   password?: string;
   department?: string;
   features?: string[];
+  /** An id links; null unlinks; absent leaves the link alone. */
+  employee?: string | null;
+  selfService?: boolean;
 }
 
 export const usersService = {

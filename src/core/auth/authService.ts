@@ -7,8 +7,14 @@ interface LoginResponse {
   role: string;
   department?: string | null;
   features?: string[];
+  employee?: string | { _id?: string } | null;
+  selfService?: boolean;
   token: string;
 }
+
+/** The employee id from either a bare id or a populated record. */
+export const employeeIdOf = (e: string | { _id?: string } | null | undefined): string | null =>
+  !e ? null : typeof e === "string" ? e : e._id ?? null;
 
 interface MeResponse {
   success: boolean;
@@ -18,6 +24,8 @@ interface MeResponse {
     role: string;
     department?: string | null;
     features?: string[];
+    employee?: string | { _id?: string } | null;
+    selfService?: boolean;
   };
 }
 
@@ -37,6 +45,8 @@ class ApiAuthService implements AuthService {
       role: res.role,
       department: res.department ?? null,
       features: res.features ?? undefined,
+      employeeId: employeeIdOf(res.employee),
+      selfService: res.selfService === true,
     };
   }
 
@@ -55,6 +65,8 @@ class ApiAuthService implements AuthService {
       role: res.user.role,
       department: res.user.department ?? null,
       features: res.user.features ?? undefined,
+      employeeId: employeeIdOf(res.user.employee),
+      selfService: res.user.selfService === true,
     };
   }
 
@@ -91,6 +103,8 @@ class ApiAuthService implements AuthService {
       role: res.role,
       department: res.department ?? null,
       features: res.features ?? undefined,
+      employeeId: employeeIdOf(res.employee),
+      selfService: res.selfService === true,
     };
   }
 }

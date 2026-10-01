@@ -31,6 +31,8 @@ const LIVE: ReadonlySet<string> = new Set([
   "jobs", "job",
   "warpings", "warping-batches", "coverings", "packing",
   "attendance", "attendance-active",
+  // The employee view: their shift can be verified or reassigned any time.
+  "my-today",
 ]);
 
 const STATIC: ReadonlySet<string> = new Set([
@@ -48,6 +50,8 @@ const STATIC: ReadonlySet<string> = new Set([
   "staffing-forecast", "forecast-orders", "forecast-etas", "eta-risks",
   "group-breakdown", "machine-health", "machine-health-advice",
   "warp-optimize", "reorder-suggestions", "planner",
+  // The employee view's settled records.
+  "my-elastic", "my-profile", "my-payslip", "my-leaves", "my-attendance",
 ]);
 
 export const INTERVAL_MS: Record<Freshness, number | false> = {

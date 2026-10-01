@@ -8,12 +8,35 @@ import { BottomNav } from "./BottomNav";
 import { PullToRefresh } from "./PullToRefresh";
 import { useUiStore } from "@/core/ui/uiStore";
 import { cn } from "@/components/ui/cn";
+import { authService } from "@/core/auth/authService";
+import { useAuthStore } from "@/core/auth/authStore";
+
+/**
+ * Refreshes the saved session from the server once per app load. The
+ * session was only ever written at sign-in, so a change an admin made
+ * since — a new feature, a login made an employee login — did not reach
+ * anyone already signed in until they signed out and back in.
+ */
+function useSessionRefresh() {
+  const setSession = useAuthStore((s) => s.setSession);
+  useEffect(() => {
+    let live = true;
+    authService
+      .fetchCurrentUser()
+      .then((u) => live && setSession(u))
+      .catch(() => undefined); // a 401 already clears the session (authStore)
+    return () => {
+      live = false;
+    };
+  }, [setSession]);
+}
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const [searchOpen, setSearchOpen] = useState(false);
   const { pathname } = useLocation();
+  useSessionRefresh();
 
   // ⌘K / Ctrl+K opens global search
   useEffect(() => {

@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom"
 import { AppShell } from "@/components/layout/AppShell";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { RequireAuth } from "./guards";
+import { useAuth } from "@/core/auth/useAuth";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
@@ -22,6 +23,11 @@ const lazyPage = (loader: () => Promise<Record<string, unknown>>, name: string) 
       .catch((err) => recoverFromStaleChunk<{ default: React.ComponentType }>(err))
   );
 
+const MyHomePage = lazyPage(() => import("@/features/me/MyHomePage"), "MyHomePage");
+const MyShiftPage = lazyPage(() => import("@/features/me/MyShiftPage"), "MyShiftPage");
+const MyElasticPage = lazyPage(() => import("@/features/me/MyElasticPage"), "MyElasticPage");
+const MyPerformancePage = lazyPage(() => import("@/features/me/MyPerformancePage"), "MyPerformancePage");
+const MyPayPage = lazyPage(() => import("@/features/me/MyPayPage"), "MyPayPage");
 const AnalyticsPage = lazyPage(() => import("@/features/analytics/AnalyticsPage"), "AnalyticsPage");
 const ReportsLandingPage = lazyPage(() => import("@/features/reports/ReportsLandingPage"), "ReportsLandingPage");
 const ProductionReportPage = lazyPage(() => import("@/features/reports/ProductionReportPage"), "ProductionReportPage");
@@ -214,6 +220,11 @@ const featureRoutes = [
   ...detailRoutes,
 ];
 
+function HomeRoute() {
+  const { user } = useAuth();
+  return user?.selfService ? <Navigate to="/my" replace /> : <DashboardPage />;
+}
+
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/forgot-password", element: <ForgotPasswordPage /> },
@@ -226,7 +237,17 @@ const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
+      // An employee login opens on their own day, never the plant
+      // dashboard (whose figures the server refuses them anyway).
+      { index: true, element: <HomeRoute /> },
+      // The employee view: a worker's own records, open to any login
+      // linked to an employee and scoped by the server to that employee.
+      // Not nav items, so not permissions — see features/me/employeeNav.
+      { path: "/my", element: withSuspense(<MyHomePage />) },
+      { path: "/my/shift", element: withSuspense(<MyShiftPage />) },
+      { path: "/my/elastic/:id", element: withSuspense(<MyElasticPage />) },
+      { path: "/my/performance", element: withSuspense(<MyPerformancePage />) },
+      { path: "/my/pay", element: withSuspense(<MyPayPage />) },
       // Not a nav item — every authenticated user reaches their own
       // profile regardless of department, so it stays outside the
       // nav-derived featureRoutes (and the access gate they're built for).

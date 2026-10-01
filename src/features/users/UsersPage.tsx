@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { FormScreen } from "@/components/ui/FormScreen";
+import { employeeService } from "@/features/employees/api";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -41,6 +42,12 @@ export function UserFormScreen({
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
   const [department, setDepartment] = useState(user?.department ?? "production");
+  // A worker's login: linked to their employee record, and shown only
+  // their own shift, loom, performance and pay. The server then grants it
+  // nothing beyond the screens every login has.
+  const [employeeId, setEmployeeId] = useState<string>(user?.employee?._id ?? "");
+  const [selfService, setSelfService] = useState<boolean>(user?.selfService ?? false);
+  const employees = useQuery({ queryKey: ["employees", "all"], queryFn: () => employeeService.list("all") });
   // Per-user feature access — a SUBSET of what the user's role/department
   // can reach. Seeded from the saved set (intersected with the role, so
   // stale/out-of-role keys drop off), or the department default on create.
@@ -81,7 +88,9 @@ export function UserFormScreen({
   const alwaysKeys = new Set(
     FEATURE_GROUPS.flatMap((g) => g.features.filter((f) => f.always).map((f) => f.key))
   );
-  const grantsNothing = scoped.every((k) => alwaysKeys.has(k));
+  // An employee login grants nothing beyond the always-on screens by
+  // design, so the "no access" warning would be noise there.
+  const grantsNothing = !selfService && scoped.every((k) => alwaysKeys.has(k));
   const [confirmNoAccess, setConfirmNoAccess] = useState(false);
 
   const save = useMutation({
@@ -93,8 +102,16 @@ export function UserFormScreen({
             department,
             features: scoped,
             ...(password ? { password } : {}),
+            // Only send the link when it changed, so an edit never fights
+            // another admin who linked the employee meanwhile.
+            ...(employeeId !== (user?.employee?._id ?? "") ? { employee: employeeId || null } : {}),
+            ...(selfService ? { selfService: true } : {}),
           })
-        : usersService.create({ name, email, password, department, features: scoped });
+        : usersService.create({
+            name, email, password, department, features: scoped,
+            ...(employeeId ? { employee: employeeId } : {}),
+            ...(selfService ? { selfService: true } : {}),
+          });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
@@ -112,6 +129,7 @@ export function UserFormScreen({
     if (!name.trim() || !email.trim()) return toast("Name and email are required", "error");
     if (!isEdit && password.length < 4) return toast("Password must be at least 4 characters", "error");
     if (isEdit && password && password.length < 4) return toast("Password must be at least 4 characters", "error");
+    if (selfService && !employeeId) return toast("Pick the employee this login belongs to", "error");
     // Saving nobody any access is legitimate — but it is a decision, not a
     // slip, so make it explicit rather than silent.
     if (grantsNothing) return setConfirmNoAccess(true);
@@ -141,6 +159,40 @@ export function UserFormScreen({
           />
         </div>
 
+        <div className="rounded-lg border border-ink-200 p-4">
+          <Select
+            label="Employee record"
+            value={employeeId}
+            onChange={(e) => {
+              setEmployeeId(e.target.value);
+              if (!e.target.value) setSelfService(false);
+            }}
+            options={[
+              { value: "", label: employees.isLoading ? "Loading employees…" : "Not linked" },
+              ...[...(employees.data ?? [])]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((e) => ({ value: e._id, label: e.department ? `${e.name} · ${e.department}` : e.name })),
+            ]}
+          />
+          <label className="mt-3 flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4"
+              checked={selfService}
+              disabled={!employeeId || department === "admin"}
+              onChange={(e) => setSelfService(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium text-ink-900">Employee login</span>
+              <span className="block text-xs text-ink-500">
+                Opens on their own day: their shift, the loom and its elastics, their performance, wastage and pay.
+                No manager screens and no one else's records.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        {!selfService && (
         <div>
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-ink-600">Feature access</p>
@@ -207,6 +259,7 @@ export function UserFormScreen({
             })}
           </div>
         </div>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
@@ -262,9 +315,15 @@ export function UsersPage() {
       key: "department",
       header: "Department",
       render: (u) => (
-        <StatusChip tone={u.department === "admin" ? "info" : "neutral"}>
-          {DEPARTMENT_LABELS[u.department ?? ""] ?? u.department ?? u.role ?? "—"}
-        </StatusChip>
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <StatusChip tone={u.department === "admin" ? "info" : "neutral"}>
+            {DEPARTMENT_LABELS[u.department ?? ""] ?? u.department ?? u.role ?? "—"}
+          </StatusChip>
+          {u.selfService && <StatusChip tone="success">Employee login</StatusChip>}
+          {!u.selfService && u.employee && (
+            <span className="text-xs text-ink-500" title="Linked employee record">{u.employee.name}</span>
+          )}
+        </span>
       ),
     },
     {

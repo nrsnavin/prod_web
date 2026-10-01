@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { DEPARTMENT_LABELS, FEATURE_GROUPS } from "@/app/navigation";
 import { profileService } from "./api";
+import { useMyProfile } from "@/features/me/hooks";
 
 // Read fresh from the server rather than the auth store: the session
 // persisted at login never carried email or the linked Employee record
@@ -28,6 +29,8 @@ const initials = (name: string) =>
 
 export function ProfilePage() {
   const { data: me, isLoading, isError, error } = useMe();
+  // Role, skill and experience from the linked employee record.
+  const work = useMyProfile(!!me?.employee);
 
   if (isLoading) {
     return (
@@ -129,6 +132,18 @@ export function ProfilePage() {
                   value: me.employee.department
                     ? DEPARTMENT_LABELS[me.employee.department] ?? me.employee.department
                     : undefined,
+                },
+                { label: "Role", value: work.data?.role ?? undefined },
+                {
+                  label: "Skill level",
+                  value: work.data?.skill != null ? String(work.data.skill) : undefined,
+                },
+                {
+                  label: "Experience",
+                  value:
+                    work.data?.yearsOfExperience != null
+                      ? `${work.data.yearsOfExperience} year${work.data.yearsOfExperience === 1 ? "" : "s"}`
+                      : undefined,
                 },
                 { label: "Phone", value: me.employee.phoneNumber },
                 {

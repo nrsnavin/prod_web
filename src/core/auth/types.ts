@@ -7,6 +7,14 @@ export interface SessionUser {
   /** Per-user feature keys (nav paths) the user may open. When present,
    *  this — not department — decides what the nav/guards allow. */
   features?: string[];
+  /** The employee record this login belongs to, when it is a workforce member. */
+  employeeId?: string | null;
+  /**
+   * A worker's login: the app shows the employee view (their own shift,
+   * loom, performance and pay) instead of the manager's. The server's
+   * rule (utils/features.js isSelfServiceOnly), never re-derived here.
+   */
+  selfService?: boolean;
 }
 
 export interface LoginCredentials {
