@@ -28,10 +28,19 @@ export function useAuth() {
     [setSession]
   );
 
+  const workerLogin = useCallback(
+    async (phone: string, pin: string) => {
+      const session = await authService.workerLogin(phone, pin);
+      setSession(session);
+      return session;
+    },
+    [setSession]
+  );
+
   const logout = useCallback(async () => {
     await authService.logout();
     clearSession();
   }, [clearSession]);
 
-  return { user, isAuthenticated: user !== null, login, requestOtp, verifyOtp, logout };
+  return { user, isAuthenticated: user !== null, login, requestOtp, verifyOtp, workerLogin, logout };
 }

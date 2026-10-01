@@ -19,6 +19,9 @@ import { EmployeeLeavePayCard } from "./EmployeeLeavePayCard";
 import { EmployeeAttendanceCard } from "./EmployeeAttendanceCard";
 import { EmployeeBonusCard } from "./EmployeeBonusCard";
 import { SkillProfileCard } from "./SkillProfileCard";
+import { WorkerAccessCard } from "./WorkerAccessCard";
+import { useAuth } from "@/core/auth/useAuth";
+import { canAccessPath } from "@/app/navigation";
 import { formatDate } from "@/core/format/date";
 
 const shiftColumns: Column<EmployeeShiftRow>[] = [
@@ -43,6 +46,9 @@ export function EmployeeDetailPage() {
   const { update, setPerformance } = useEmployeeMutations();
   const [editOpen, setEditOpen] = useState(false);
   const [perf, setPerf] = useState<number | null>(null);
+  const { user } = useAuth();
+  // Giving a worker a login is an admin's, through the Users permission.
+  const canGrantAccess = user?.role === "admin" && canAccessPath("/users", user);
 
   if (isLoading) {
     return (
@@ -127,6 +133,8 @@ export function EmployeeDetailPage() {
           )}
         </Card>
       </div>
+
+      {canGrantAccess && <WorkerAccessCard empId={emp.id} />}
 
       <SkillProfileCard empId={emp.id} profile={emp.skillProfile} />
 

@@ -36,6 +36,7 @@ import { ApiError } from "@/core/http/httpClient";
 const login     = vi.fn();
 const requestOtp = vi.fn();
 const verifyOtp  = vi.fn();
+const workerLogin = vi.fn();
 
 vi.mock("@/core/auth/useAuth", () => ({
   useAuth: () => ({
@@ -44,6 +45,7 @@ vi.mock("@/core/auth/useAuth", () => ({
     login,
     requestOtp,
     verifyOtp,
+    workerLogin,
     logout: vi.fn(),
   }),
 }));
@@ -73,6 +75,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useRealTimers();
   sessionStorage.clear();
+  localStorage.clear();
   requestOtp.mockResolvedValue({ message: "sent" });
 });
 
@@ -366,5 +369,66 @@ describe("getting back", () => {
 
     expect(await screen.findByRole("button", { name: /send code/i })).toBeInTheDocument();
     expect(screen.queryByLabelText(/^password$/i)).not.toBeInTheDocument();
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────
+//  Workers have no email. They sign in with the phone number on their
+//  employee record and a PIN an admin gave them.
+describe("signing in with a phone and PIN", () => {
+  const openPhone = async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: /use phone and pin/i }));
+  };
+
+  it("is offered on the first screen, and asks for phone and PIN", async () => {
+    await openPhone();
+    expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^pin$/i)).toHaveAttribute("type", "password");
+    expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument();
+  });
+
+  it("signs in with the 10 digits, however the number was typed", async () => {
+    workerLogin.mockResolvedValue({});
+    await openPhone();
+    await userEvent.type(screen.getByLabelText(/phone number/i), "+91 98765 43210");
+    await userEvent.type(screen.getByLabelText(/^pin$/i), "4826");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+    await waitFor(() => expect(workerLogin).toHaveBeenCalledWith("9876543210", "4826"));
+    expect(navigate).toHaveBeenCalledWith("/", { replace: true });
+  });
+
+  it("checks the number and PIN before asking the server", async () => {
+    await openPhone();
+    await userEvent.type(screen.getByLabelText(/phone number/i), "12345");
+    await userEvent.type(screen.getByLabelText(/^pin$/i), "12");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+    expect(await screen.findByText(/10-digit phone number/i)).toBeInTheDocument();
+    expect(screen.getByText(/4 to 6 digits/i)).toBeInTheDocument();
+    expect(workerLogin).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's answer and clears the PIN for another try", async () => {
+    workerLogin.mockRejectedValue(new ApiError("Wrong phone number or PIN", 401));
+    await openPhone();
+    await userEvent.type(screen.getByLabelText(/phone number/i), "9876543210");
+    await userEvent.type(screen.getByLabelText(/^pin$/i), "4826");
+    await userEvent.click(screen.getByRole("button", { name: /^sign in$/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong phone number or PIN");
+    expect(screen.getByLabelText(/^pin$/i)).toHaveValue("");
+  });
+
+  it("is where this device opens next time, until email is chosen again", async () => {
+    const first = renderPage();
+    await userEvent.click(screen.getByRole("button", { name: /use phone and pin/i }));
+    first.unmount();
+
+    const second = renderPage();
+    expect(screen.getByLabelText(/phone number/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /sign in with email instead/i }));
+    second.unmount();
+
+    renderPage();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
   });
 });

@@ -16,11 +16,14 @@ export interface MeEmployee {
 export interface MeProfile {
   id: string;
   name: string;
-  email: string;
+  /** Null for a worker login, which signs in by phone and PIN. */
+  email: string | null;
   role: string;
   department?: string | null;
   features: string[];
   employee: MeEmployee | null;
+  /** A worker's login: sees only their own work (the server's rule). */
+  selfService?: boolean;
   createdAt?: string;
 }
 

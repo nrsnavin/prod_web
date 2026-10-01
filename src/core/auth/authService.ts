@@ -97,16 +97,27 @@ class ApiAuthService implements AuthService {
   async verifyOtp(email: string, otp: string): Promise<SessionUser> {
     // Same response shape + cookie as /login-user.
     const res = await this.client.post<LoginResponse>("/user/verify-otp", { email, otp });
-    return {
-      id: res.id,
-      username: res.username,
-      role: res.role,
-      department: res.department ?? null,
-      features: res.features ?? undefined,
-      employeeId: employeeIdOf(res.employee),
-      selfService: res.selfService === true,
-    };
+    return sessionFrom(res);
   }
+
+  async workerLogin(phone: string, pin: string): Promise<SessionUser> {
+    // Same response shape + cookie as /login-user.
+    const res = await this.client.post<LoginResponse>("/user/worker-login", { phone, pin });
+    return sessionFrom(res);
+  }
+}
+
+/** The session every sign-in route answers with. */
+function sessionFrom(res: LoginResponse): SessionUser {
+  return {
+    id: res.id,
+    username: res.username,
+    role: res.role,
+    department: res.department ?? null,
+    features: res.features ?? undefined,
+    employeeId: employeeIdOf(res.employee),
+    selfService: res.selfService === true,
+  };
 }
 
 export const authService: AuthService = new ApiAuthService(httpClient);

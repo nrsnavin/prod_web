@@ -126,7 +126,9 @@ export function UserFormScreen({
   });
 
   const submit = () => {
-    if (!name.trim() || !email.trim()) return toast("Name and email are required", "error");
+    // A worker login has no email; it signs in by phone and PIN.
+    const needsEmail = !(isEdit && user?.phoneSignIn && !user.email);
+    if (!name.trim() || (needsEmail && !email.trim())) return toast("Name and email are required", "error");
     if (!isEdit && password.length < 4) return toast("Password must be at least 4 characters", "error");
     if (isEdit && password && password.length < 4) return toast("Password must be at least 4 characters", "error");
     if (selfService && !employeeId) return toast("Pick the employee this login belongs to", "error");
@@ -310,7 +312,16 @@ export function UsersPage() {
 
   const columns: Column<ManagedUser>[] = [
     { key: "name", header: "Name", render: (u) => <span className="font-medium">{u.name}</span> },
-    { key: "email", header: "Email", render: (u) => <span className="text-ink-600">{u.email}</span> },
+    {
+      key: "email",
+      header: "Email",
+      render: (u) =>
+        u.email ? (
+          <span className="text-ink-600">{u.email}</span>
+        ) : (
+          <span className="text-ink-400">{u.phoneSignIn ? "Phone and PIN" : "—"}</span>
+        ),
+    },
     {
       key: "department",
       header: "Department",

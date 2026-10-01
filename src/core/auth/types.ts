@@ -37,4 +37,7 @@ export interface AuthService {
   // for a session, same as login().
   requestOtp(email: string): Promise<{ message: string }>;
   verifyOtp(email: string, otp: string): Promise<SessionUser>;
+  // Worker sign-in: the phone number on their employee record and the
+  // PIN an admin set. Same session as login().
+  workerLogin(phone: string, pin: string): Promise<SessionUser>;
 }

@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocation, useNavigate, Navigate } from "react-router-dom";
-import { ArrowLeft, KeyRound, MailCheck } from "lucide-react";
+import { ArrowLeft, KeyRound, MailCheck, Smartphone } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
 import { SESSION_EXPIRED_KEY } from "@/core/auth/authStore";
 import { Button } from "@/components/ui/Button";
@@ -69,16 +69,59 @@ const passwordSchema = z.object({
 });
 type PasswordValues = z.infer<typeof passwordSchema>;
 
+// ── Workers: phone number + PIN ─────────────────────────────────────────
+//  Most of the floor has no email. A worker signs in with the phone
+//  number on their employee record and a PIN an admin gave them.
+
+/** The 10 digits in a phone number however it was typed (+91, 0, spaces). */
+export function phoneDigits(raw: string): string | null {
+  const d = raw.replace(/\D/g, "");
+  if (d.length === 10) return d;
+  if (d.length === 11 && d.startsWith("0")) return d.slice(1);
+  if (d.length === 12 && d.startsWith("91")) return d.slice(2);
+  return null;
+}
+
+const phoneSchema = z.object({
+  phone: z
+    .string()
+    .min(1, "Enter your phone number")
+    .refine((v) => phoneDigits(v) !== null, "Enter your 10-digit phone number"),
+  pin: z.string().min(1, "Enter your PIN").regex(/^\d{4,6}$/, "Your PIN is 4 to 6 digits"),
+});
+type PhoneValues = z.infer<typeof phoneSchema>;
+
+/**
+ * Which way this device signed in last. A phone kept on the floor opens
+ * straight on phone + PIN; an office browser on email. Per device only,
+ * so storage that fails simply means the email screen.
+ */
+export const LOGIN_MODE_KEY = "jarvis.loginMode";
+const readMode = (): "phone" | "email" => {
+  try {
+    return localStorage.getItem(LOGIN_MODE_KEY) === "phone" ? "phone" : "email";
+  } catch {
+    return "email";
+  }
+};
+const rememberMode = (mode: "phone" | "email") => {
+  try {
+    localStorage.setItem(LOGIN_MODE_KEY, mode);
+  } catch {
+    /* a convenience only */
+  }
+};
+
 /** The server telling us it has no mailer at all. */
 export const MAILER_NOT_CONFIGURED = "MAILER_NOT_CONFIGURED";
 
-type Step = "email" | "code" | "password";
+type Step = "email" | "code" | "password" | "phone";
 
 export function LoginPage() {
-  const { isAuthenticated, login, requestOtp, verifyOtp } = useAuth();
+  const { isAuthenticated, login, requestOtp, verifyOtp, workerLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [step, setStep] = useState<Step>("email");
+  const [step, setStep] = useState<Step>(() => (readMode() === "phone" ? "phone" : "email"));
   const [email, setEmail] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
@@ -122,7 +165,29 @@ export function LoginPage() {
           onSent={goToCode}
           onMailerUnavailable={(forEmail) => goToPassword(forEmail, true)}
           onUsePassword={(forEmail) => goToPassword(forEmail, false)}
+          onUsePhone={() => {
+            rememberMode("phone");
+            setServerError(null);
+            setStep("phone");
+          }}
           requestOtp={requestOtp}
+        />
+      )}
+
+      {step === "phone" && (
+        <PhoneStep
+          sessionExpired={sessionExpired}
+          serverError={serverError}
+          setServerError={setServerError}
+          onUseEmail={() => {
+            rememberMode("email");
+            setServerError(null);
+            setStep("email");
+          }}
+          onSubmit={async (phone, pin) => {
+            await workerLogin(phone, pin);
+            finishSignIn();
+          }}
         />
       )}
 
@@ -174,6 +239,7 @@ function EmailStep({
   onSent,
   onMailerUnavailable,
   onUsePassword,
+  onUsePhone,
   requestOtp,
 }: {
   sessionExpired: boolean;
@@ -182,6 +248,7 @@ function EmailStep({
   onSent: (email: string) => void;
   onMailerUnavailable: (email: string) => void;
   onUsePassword: (email: string) => void;
+  onUsePhone: () => void;
   requestOtp: (email: string) => Promise<{ message: string }>;
 }) {
   const {
@@ -258,6 +325,111 @@ function EmailStep({
           className="font-medium text-brand-500 hover:text-brand-600"
         >
           Sign in with a password instead
+        </button>
+      </p>
+
+      {/* A button, not a text link: on the floor this is the main way in. */}
+      <Button type="button" variant="secondary" size="lg" className="mt-4 w-full" onClick={onUsePhone}>
+        <Smartphone className="h-4 w-4" aria-hidden />
+        Use phone and PIN
+      </Button>
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+function PhoneStep({
+  sessionExpired,
+  serverError,
+  setServerError,
+  onUseEmail,
+  onSubmit,
+}: {
+  sessionExpired: boolean;
+  serverError: string | null;
+  setServerError: (v: string | null) => void;
+  onUseEmail: () => void;
+  onSubmit: (phone: string, pin: string) => Promise<void>;
+}) {
+  const {
+    register,
+    handleSubmit,
+    resetField,
+    formState: { errors, isSubmitting },
+  } = useForm<PhoneValues>({ resolver: zodResolver(phoneSchema) });
+
+  const submit = async (values: PhoneValues) => {
+    setServerError(null);
+    try {
+      await onSubmit(phoneDigits(values.phone)!, values.pin);
+    } catch (err) {
+      // A wrong PIN is typed again, not edited: clear it.
+      resetField("pin");
+      setServerError(err instanceof ApiError ? err.message : "Couldn't sign you in — try again.");
+    }
+  };
+
+  return (
+    <>
+      <span className="mb-4 grid h-12 w-12 place-items-center rounded-full bg-brand-50">
+        <Smartphone className="h-6 w-6 text-brand-500" />
+      </span>
+      <h2 className="text-xl font-bold">Sign in with your phone</h2>
+      <p className="mt-1 text-sm text-ink-400">
+        Use the phone number on your employee record and the PIN you were given.
+      </p>
+
+      {sessionExpired && (
+        <p className="mt-3 rounded-lg bg-status-warningBg px-3 py-2 text-sm text-status-warning">
+          Your session expired — please sign in again.
+        </p>
+      )}
+
+      <form className="mt-6 space-y-4" onSubmit={handleSubmit(submit)} noValidate>
+        <Input
+          label="Phone number"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel-national"
+          placeholder="98765 43210"
+          autoFocus
+          error={errors.phone?.message}
+          {...register("phone")}
+        />
+        <Input
+          label="PIN"
+          type="password"
+          inputMode="numeric"
+          autoComplete="current-password"
+          maxLength={6}
+          placeholder="••••"
+          className="tracking-[0.5em]"
+          error={errors.pin?.message}
+          {...register("pin")}
+        />
+
+        {serverError && (
+          <p role="alert" className="text-sm text-status-danger bg-status-dangerBg rounded-lg px-3 py-2">
+            {serverError}
+          </p>
+        )}
+
+        <Button type="submit" size="lg" loading={isSubmitting} className="w-full">
+          Sign in
+        </Button>
+      </form>
+
+      <p className="mt-5 text-sm text-ink-400">
+        Forgot your PIN? Ask your admin to reset it.
+      </p>
+
+      <p className="mt-5 border-t border-ink-100 pt-4 text-center text-sm text-ink-400">
+        <button
+          type="button"
+          onClick={onUseEmail}
+          className="font-medium text-brand-500 hover:text-brand-600"
+        >
+          Sign in with email instead
         </button>
       </p>
     </>

@@ -85,7 +85,8 @@ export function ProfilePage() {
                 label: "Email",
                 value: (
                   <span className="inline-flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5 text-ink-400" /> {me.email}
+                    <Mail className="h-3.5 w-3.5 text-ink-400" />{" "}
+                    {me.email ?? <span className="text-ink-400">None — signs in with phone and PIN</span>}
                   </span>
                 ),
               },
@@ -159,6 +160,9 @@ export function ProfilePage() {
         </Card>
       )}
 
+      {/* A worker's screens are their own work, not a feature list —
+          and that list names screens (the dashboard) they never see. */}
+      {!me.selfService && (
       <Card className="mt-4 p-5">
         <h3 className="font-semibold">Feature access</h3>
         <p className="text-xs text-ink-400">
@@ -189,6 +193,7 @@ export function ProfilePage() {
           })}
         </div>
       </Card>
+      )}
     </>
   );
 }

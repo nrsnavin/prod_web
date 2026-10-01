@@ -3,7 +3,8 @@ import { httpClient } from "@/core/http/httpClient";
 export interface ManagedUser {
   _id: string;
   name: string;
-  email: string;
+  /** Null for a worker login: it signs in by phone and PIN, with no real address. */
+  email: string | null;
   role: string;
   department?: string | null;
   features?: string[];
@@ -12,6 +13,7 @@ export interface ManagedUser {
   employee?: { _id: string; name: string; department?: string } | null;
   /** An employee login: sees only their own work (the server's rule). */
   selfService?: boolean;
+  phoneSignIn?: boolean;
 }
 
 export interface UserCreateInput {

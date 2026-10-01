@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useAuth } from "@/core/auth/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -65,6 +66,9 @@ export function EmployeeListPage() {
 
   const { data, isLoading, isError, error } = useEmployees(department);
   const { create } = useEmployeeMutations();
+  // Registering a worker is the admin's alone; the server refuses anyone else.
+  const { user } = useAuth();
+  const canRegister = user?.role === "admin";
 
   const rows = useMemo(() => {
     const list = data ?? [];
@@ -84,9 +88,11 @@ export function EmployeeListPage() {
         title="Employees"
         subtitle={data ? `${rows.length} of ${data.length} employees` : undefined}
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> Add employee
-          </Button>
+          canRegister ? (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> Add employee
+            </Button>
+          ) : undefined
         }
       />
 
