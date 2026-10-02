@@ -3,7 +3,7 @@ import { LayoutDashboard, Menu, type LucideIcon } from "lucide-react";
 import { allNavItems, canAccess, effectiveDepartment, type AccessCtx } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { cn } from "@/components/ui/cn";
-import { MY_WORK } from "@/features/me/employeeNav";
+import { MY_WORK_TABS } from "@/features/me/employeeNav";
 
 // ══════════════════════════════════════════════════════════════════
 //  FOUR SCREENS UNDER THE THUMB
@@ -70,8 +70,8 @@ const tabClass = (active: boolean) =>
 
 export function BottomNav({ onMore }: { onMore: () => void }) {
   const { user } = useAuth();
-  // An employee login's four: their day, their shift, how they did, pay.
-  const tabs = user?.selfService ? MY_WORK : tabsFor(user);
+  // An employee login's four: their day, their shift, leave and pay.
+  const tabs = user?.selfService ? MY_WORK_TABS : tabsFor(user);
   return (
     <nav
       aria-label="Main"

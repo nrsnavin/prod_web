@@ -1,4 +1,4 @@
-import { CalendarClock, Gauge, Home, Wallet, type LucideIcon } from "lucide-react";
+import { CalendarClock, CalendarOff, Gauge, Home, Wallet, type LucideIcon } from "lucide-react";
 import { allNavItems, type NavSection } from "@/app/navigation";
 
 // ══════════════════════════════════════════════════════════════════
@@ -16,15 +16,22 @@ export interface WorkTab {
   path: string;
   label: string;
   icon: LucideIcon;
+  /** false: in the menu, not on the phone's bottom bar (it holds four). */
+  bottom?: boolean;
 }
 
-/** The employee view's four main screens, in tab order. */
+/** The employee view's screens, in menu order. */
 export const MY_WORK: WorkTab[] = [
   { path: "/my", label: "Home", icon: Home },
   { path: "/my/shift", label: "My shift", icon: CalendarClock },
-  { path: "/my/performance", label: "Performance", icon: Gauge },
+  { path: "/my/leave", label: "Leave", icon: CalendarOff },
+  // Off the bottom bar for Leave: Home's tiles open it in one tap.
+  { path: "/my/performance", label: "Performance", icon: Gauge, bottom: false },
   { path: "/my/pay", label: "Pay", icon: Wallet },
 ];
+
+/** The four on the phone's bottom bar. */
+export const MY_WORK_TABS = MY_WORK.filter((t) => t.bottom !== false);
 
 /**
  * The plant screens an employee keeps: notices, reporting an issue,

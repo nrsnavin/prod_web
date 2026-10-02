@@ -112,6 +112,16 @@ export interface MyLeave {
   reason: string;
   status: "pending" | "approved" | "rejected" | string;
   reviewNotes?: string;
+  reviewedAt?: string | null;
+  createdAt?: string;
+}
+
+/** What a worker sends to apply for one day (or one shift) of leave. */
+export interface LeaveApplication {
+  date: string; // YYYY-MM-DD
+  shift: "DAY" | "NIGHT" | "BOTH";
+  leaveType: "casual" | "sick" | "unpaid";
+  reason: string;
 }
 
 export interface MyPayslip {

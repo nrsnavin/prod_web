@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { employeeSections, MY_WORK } from "./employeeNav";
+import { employeeSections, MY_WORK_TABS } from "./employeeNav";
 import { dayLabel, EnterProductionScreen, normaliseTimer, shiftStatus } from "./components";
 import { MyShift } from "./types";
 
@@ -22,16 +22,16 @@ const shift = (over: Partial<MyShift> = {}): MyShift => ({
 });
 
 describe("the employee menu", () => {
-  it("is their own four screens plus notices, issues, feedback and settings — no manager screen", () => {
+  it("is their own five screens plus notices, issues, feedback and settings — no manager screen", () => {
     const paths = employeeSections().flatMap((s) => s.items.map((i) => i.path));
-    expect(paths).toEqual(["/my", "/my/shift", "/my/performance", "/my/pay", "/announcements", "/machine-issues", "/feedback", "/settings"]);
+    expect(paths).toEqual(["/my", "/my/shift", "/my/leave", "/my/performance", "/my/pay", "/announcements", "/machine-issues", "/feedback", "/settings"]);
     for (const manager of ["/", "/orders", "/jobs", "/machines", "/payroll", "/employees", "/assistant"]) {
       expect(paths).not.toContain(manager);
     }
   });
 
-  it("puts the same four in the bottom bar, Home first", () => {
-    expect(MY_WORK.map((t) => t.label)).toEqual(["Home", "My shift", "Performance", "Pay"]);
+  it("puts four in the bottom bar, Home first, Performance one tap away in the menu", () => {
+    expect(MY_WORK_TABS.map((t) => t.label)).toEqual(["Home", "My shift", "Leave", "Pay"]);
   });
 });
 

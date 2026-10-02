@@ -29,6 +29,7 @@ const MyShiftPage = lazyPage(() => import("@/features/me/MyShiftPage"), "MyShift
 const MyElasticPage = lazyPage(() => import("@/features/me/MyElasticPage"), "MyElasticPage");
 const MyPerformancePage = lazyPage(() => import("@/features/me/MyPerformancePage"), "MyPerformancePage");
 const MyPayPage = lazyPage(() => import("@/features/me/MyPayPage"), "MyPayPage");
+const MyLeavePage = lazyPage(() => import("@/features/me/MyLeavePage"), "MyLeavePage");
 const AnalyticsPage = lazyPage(() => import("@/features/analytics/AnalyticsPage"), "AnalyticsPage");
 const ReportsLandingPage = lazyPage(() => import("@/features/reports/ReportsLandingPage"), "ReportsLandingPage");
 const ProductionReportPage = lazyPage(() => import("@/features/reports/ProductionReportPage"), "ProductionReportPage");
@@ -254,6 +255,7 @@ const router = createBrowserRouter([
       { path: "/my/elastic/:id", element: withSuspense(<MyElasticPage />) },
       { path: "/my/performance", element: withSuspense(<MyPerformancePage />) },
       { path: "/my/pay", element: withSuspense(<MyPayPage />) },
+      { path: "/my/leave", element: withSuspense(<MyLeavePage />) },
       // Not a nav item — every authenticated user reaches their own
       // profile regardless of department, so it stays outside the
       // nav-derived featureRoutes (and the access gate they're built for).

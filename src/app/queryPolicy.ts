@@ -51,7 +51,9 @@ const STATIC: ReadonlySet<string> = new Set([
   "group-breakdown", "machine-health", "machine-health-advice",
   "warp-optimize", "reorder-suggestions", "planner",
   // The employee view's settled records.
-  "my-elastic", "my-profile", "my-payslip", "my-leaves", "my-attendance",
+  // (Leave is not here: a worker waiting on a request should see it
+  // approved without reloading, so it refreshes like other warm data.)
+  "my-elastic", "my-profile", "my-payslip", "my-attendance",
 ]);
 
 export const INTERVAL_MS: Record<Freshness, number | false> = {

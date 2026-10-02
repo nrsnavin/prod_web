@@ -50,6 +50,14 @@ export function useMyLeaves() {
   return useQuery({ queryKey: ["my-leaves", id], queryFn: () => meService.leaves(id!), enabled: !!id });
 }
 
+export function useCancelLeave() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => meService.cancelLeave(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-leaves"] }),
+  });
+}
+
 export function useMyPayslip(year: number, month: number) {
   const id = useMyEmployeeId();
   return useQuery({

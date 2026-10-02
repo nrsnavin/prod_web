@@ -1,7 +1,7 @@
 import { httpClient } from "@/core/http/httpClient";
 import { config } from "@/app/config";
 import {
-  ElasticSpec, MyAttendanceMonth, MyLeave, MyPayslip, MyPerformance, MyProfile, MyShift, MyWastage,
+  ElasticSpec, LeaveApplication, MyAttendanceMonth, MyLeave, MyPayslip, MyPerformance, MyProfile, MyShift, MyWastage,
 } from "./types";
 
 // The employee view's reads. /me routes take the worker from the login;
@@ -33,6 +33,14 @@ export const meService = {
   },
   async leaves(employeeId: string): Promise<MyLeave[]> {
     return (await httpClient.get<{ data: MyLeave[] }>(`/leave/employee/${employeeId}`)).data;
+  },
+  /** Always for the signed-in worker: the server takes them from the login. */
+  applyLeave(body: LeaveApplication) {
+    return httpClient.post<{ success: boolean; data: MyLeave }>("/leave/request", body);
+  },
+  /** Only a pending request of the worker's own; the server checks both. */
+  cancelLeave(id: string) {
+    return httpClient.delete<{ success: boolean }>(`/leave/${encodeURIComponent(id)}`);
   },
   /** null when the month's payslip has not been generated yet. */
   async payslip(employeeId: string, year: number, month: number): Promise<MyPayslip | null> {

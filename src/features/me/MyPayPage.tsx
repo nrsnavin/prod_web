@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -7,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useMyAttendance, useMyEmployeeId, useMyLeaves, useMyPayslip } from "./hooks";
+import { leaveShiftLabel, leaveStatusLabel, leaveTone, leaveTypeLabel } from "./leave";
 import { meService } from "./api";
 
 // ══════════════════════════════════════════════════════════════════
@@ -15,7 +17,8 @@ import { meService } from "./api";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const rupees = (n: number | null | undefined) => (n == null ? "—" : `₹${Math.round(n).toLocaleString("en-IN")}`);
-const leaveTone = (s: string) => (s === "approved" ? "success" : s === "rejected" ? "danger" : "warning");
+// Labels shared with the Leave screen (./leave.ts). "Whole day" used to
+// read as "Day" here, which is a different request.
 
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
@@ -119,7 +122,10 @@ export function MyPayPage() {
       </div>
 
       <Card className="mt-4 p-5">
-        <h2 className="font-semibold">Leave this month</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-semibold">Leave this month</h2>
+          <Link to="/my/leave" className="text-sm font-medium text-brand-600">Apply or see all</Link>
+        </div>
         {leaves.isLoading ? (
           <Skeleton className="mt-3 h-16 w-full" />
         ) : monthLeaves.length === 0 ? (
@@ -129,10 +135,10 @@ export function MyPayPage() {
             {monthLeaves.map((l) => (
               <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
                 <span>
-                  {l.dateLabel} · {l.shift === "NIGHT" ? "Night" : "Day"} · <span className="capitalize">{l.leaveType}</span>
+                  {l.dateLabel} · {leaveShiftLabel(l.shift)} · {leaveTypeLabel(l.leaveType)}
                   {l.reviewNotes && <span className="block text-xs text-ink-500">{l.reviewNotes}</span>}
                 </span>
-                <StatusChip tone={leaveTone(l.status)}>{l.status}</StatusChip>
+                <StatusChip tone={leaveTone(l.status)}>{leaveStatusLabel(l.status)}</StatusChip>
               </li>
             ))}
           </ul>

@@ -1,7 +1,7 @@
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarCheck, Gauge, Megaphone, Recycle, Ruler } from "lucide-react";
+import { CalendarCheck, CalendarOff, Gauge, Megaphone, Recycle, Ruler } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -11,7 +11,9 @@ import { useAuth } from "@/core/auth/useAuth";
 import { KpiTile } from "@/features/dashboard/components/KpiTile";
 import { useActiveAnnouncements } from "@/features/dashboard/hooks";
 import { formatDate } from "@/core/format/date";
-import { useMyAttendance, useMyPerformance, useMyToday, useMyWastage } from "./hooks";
+import { useMyAttendance, useMyLeaves, useMyPerformance, useMyToday, useMyWastage } from "./hooks";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { leaveShiftLabel, leaveStatusLabel, leaveTone, localISO, splitLeaves } from "./leave";
 import { EnterProductionScreen, ShiftCard } from "./components";
 import { MyShift } from "./types";
 
@@ -81,6 +83,10 @@ export function MyHomePage() {
         )}
       </section>
 
+      <ErrorBoundary variant="section" label="Your leave">
+        <LeaveCard />
+      </ErrorBoundary>
+
       <h2 className="mt-6 mb-3 text-sm font-semibold uppercase tracking-wide text-ink-400">Last 30 days</h2>
       <ErrorBoundary variant="section" label="Your numbers">
         <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -146,5 +152,47 @@ export function MyHomePage() {
 
       <EnterProductionScreen shift={entering} onClose={() => setEntering(null)} />
     </>
+  );
+}
+
+/**
+ * What's waiting or coming up, and the way to ask for more. Requests the
+ * worker is waiting on come first: that is what they open the app to see.
+ */
+function LeaveCard() {
+  const leaves = useMyLeaves();
+  const today = localISO(new Date());
+  const { upcoming } = splitLeaves(leaves.data ?? [], today);
+  const waiting = (leaves.data ?? []).filter((l) => l.status === "pending");
+  const shown = [...waiting, ...upcoming.filter((l) => l.status !== "pending")].slice(0, 3);
+
+  return (
+    <Card className="mt-4 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 font-semibold">
+          <CalendarOff className="h-4 w-4 text-ink-400" aria-hidden /> Leave
+        </h2>
+        <div className="flex gap-3 text-sm font-medium">
+          <Link to="/my/leave?apply=1" className="text-brand-600">Apply for leave</Link>
+          <Link to="/my/leave" className="text-ink-500 hover:text-ink-900">All</Link>
+        </div>
+      </div>
+      {leaves.isLoading ? (
+        <Skeleton className="mt-3 h-10 w-full" />
+      ) : shown.length === 0 ? (
+        <p className="mt-2 text-sm text-ink-500">Nothing waiting or coming up.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-ink-100">
+          {shown.map((l) => (
+            <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              <span>
+                {l.dateLabel} · {leaveShiftLabel(l.shift)}
+              </span>
+              <StatusChip tone={leaveTone(l.status)}>{leaveStatusLabel(l.status)}</StatusChip>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
