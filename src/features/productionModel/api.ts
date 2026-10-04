@@ -65,8 +65,10 @@ export interface MachineExpectation {
   trainedAt: string;
   machine: { id: string; code: string; heads: number };
   elastics: Array<{ id: string; name: string | null; pick: number | null; heads: number }>;
+  /** From the Elastic records of the elastics on the heads; never typed. */
   pick: number | null;
-  pickFrom: "entered" | "heads" | null;
+  /** Why there is no single pick: nothing threaded, a record without a pick, or records that disagree. */
+  pickProblem: "no-elastics" | "no-pick" | "mixed" | null;
   summary: MachineRate | null;
   prediction: Prediction | null;
   runTimeFrom: "entered" | "full-shift" | "shift" | null;
@@ -84,11 +86,8 @@ export interface ShiftExpectation {
 }
 
 export const productionModelService = {
-  machine(id: string, q: { runTime?: string; pick?: number }) {
-    return httpClient.get<MachineExpectation>(`/production-model/machine/${encodeURIComponent(id)}`, {
-      ...(q.runTime ? { runTime: q.runTime } : {}),
-      ...(q.pick ? { pick: q.pick } : {}),
-    });
+  machine(id: string, runTime?: string) {
+    return httpClient.get<MachineExpectation>(`/production-model/machine/${encodeURIComponent(id)}`, runTime ? { runTime } : undefined);
   },
   shift(id: string, runTime?: string) {
     return httpClient.get<ShiftExpectation>(`/production-model/shift/${encodeURIComponent(id)}`, runTime ? { runTime } : undefined);
@@ -99,10 +98,10 @@ export const productionModelService = {
   },
 };
 
-export function useMachineExpectation(id: string | undefined, q: { runTime?: string; pick?: number }) {
+export function useMachineExpectation(id: string | undefined, runTime?: string) {
   return useQuery({
-    queryKey: ["production-model", "machine", id, q.runTime ?? "", q.pick ?? ""],
-    queryFn: () => productionModelService.machine(id!, q),
+    queryKey: ["production-model", "machine", id, runTime ?? ""],
+    queryFn: () => productionModelService.machine(id!, runTime),
     enabled: !!id,
     placeholderData: (prev) => prev,
     staleTime: 5 * 60_000,

@@ -120,7 +120,7 @@ const machineReply = (over: Partial<MachineExpectation> = {}): MachineExpectatio
   available: true, reason: null, trainedAt: "2026-10-04T10:00:00Z",
   machine: { id: "m1", code: "LOOM-01", heads: 4 },
   elastics: [{ id: "e1", name: "E12", pick: 12, heads: 4 }],
-  pick: 12, pickFrom: "heads",
+  pick: 12, pickProblem: null,
   summary: { basis: "machine", shifts: 60, speedIndex: 1.08, scatterPct: 9, metresPerHeadHour: 60, pick: 12 },
   prediction: prediction({ perHead: 720, low: 650, high: 790, total: 2880, minutes: 720, pick: 12, heads: 4 }),
   runTimeFrom: "entered",
@@ -144,19 +144,40 @@ describe("expected production, on the machine page", () => {
     expect(screen.getByText("Learned from 60 shifts")).toBeInTheDocument();
     expect(screen.getByText(/LOOM-01 runs 8% faster than the plant's typical loom\. Its shifts usually land within ±9%/)).toBeInTheDocument();
     expect(screen.getByText(/for the machine \(4 heads\): 720 m per head, likely/)).toBeInTheDocument();
-    expect(screen.getByText("E12 (pick 12) on 4 heads")).toBeInTheDocument();
+    expect(screen.getByTestId("running-pick")).toHaveTextContent("Pick12From the elastic record: E12 on 4 heads");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(get).toHaveBeenCalledWith("/production-model/machine/m1", { runTime: "12:00" });
   });
 
-  it("recalculates for another run time and pick", async () => {
+  it("recalculates for another run time; the pick is the elastic's own, with nothing to type", async () => {
     get.mockResolvedValue(machineReply());
     wrap(<ProductionModelCard machineId="m1" />);
     await screen.findByText("2,880 m");
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("textbox")).toHaveLength(1); // run time only
     const runTime = screen.getByLabelText("Run time");
     await userEvent.clear(runTime);
     await userEvent.type(runTime, "6.30");
-    await userEvent.type(screen.getByLabelText("Pick"), "20");
-    await waitFor(() => expect(get).toHaveBeenLastCalledWith("/production-model/machine/m1", { runTime: "6:30", pick: 20 }));
+    await waitFor(() => expect(get).toHaveBeenLastCalledWith("/production-model/machine/m1", { runTime: "6:30" }));
+  });
+
+  it.each([
+    ["no-elastics", /No elastic is threaded/],
+    ["no-pick", /has no pick in its record/],
+  ] as const)("says why there is no prediction (%s)", async (pickProblem, why) => {
+    get.mockResolvedValue(machineReply({ pickProblem, pick: null, prediction: null }));
+    wrap(<ProductionModelCard machineId="m1" />);
+    expect(await screen.findByRole("status")).toHaveTextContent(why);
+    expect(screen.queryByText("2,880 m")).not.toBeInTheDocument();
+  });
+
+  it("flags elastic records that disagree on the pick", async () => {
+    get.mockResolvedValue(machineReply({
+      pickProblem: "mixed", pick: 16,
+      elastics: [{ id: "e1", name: "E12", pick: 12, heads: 2 }, { id: "e2", name: "E24", pick: 24, heads: 2 }],
+    }));
+    wrap(<ProductionModelCard machineId="m1" />);
+    expect(await screen.findByRole("status")).toHaveTextContent("different picks in their records (E12: 12, E24: 24)");
   });
 
   it("shows its accuracy beside simpler guesses", async () => {

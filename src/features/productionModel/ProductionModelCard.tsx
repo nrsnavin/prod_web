@@ -13,7 +13,8 @@ import { Evaluation, cleanRunTime, hoursMinutes, metres, useMachineExpectation }
 //
 //  What the model has learned about this loom (its speed against the
 //  plant's typical loom, how much its shifts scatter), a calculator for
-//  "what will it make in this run time at this pick", and how accurate
+//  "what will it make in this run time" at the pick of the elastics on
+//  its heads (from their Elastic records), and how accurate
 //  the model was on recent shifts it hadn't seen, beside simpler ways of
 //  guessing, so nobody has to take it on trust.
 // ══════════════════════════════════════════════════════════════════
@@ -33,11 +34,8 @@ function speedSentence(index: number): string {
 
 export function ProductionModelCard({ machineId }: { machineId: string }) {
   const [runTime, setRunTime] = useState("12:00");
-  const [pick, setPick] = useState("");
-  // Debounced as plain values: an object would be new on every render.
   const askRunTime = useDebouncedValue(cleanRunTime(runTime), 300);
-  const askPick = useDebouncedValue(Number(pick) > 0 ? Number(pick) : undefined, 300);
-  const { data, isLoading, isError } = useMachineExpectation(machineId, { runTime: askRunTime || undefined, pick: askPick });
+  const { data, isLoading, isError } = useMachineExpectation(machineId, askRunTime || undefined);
 
   if (isLoading) return <Skeleton className="mt-4 h-56 w-full" />;
   if (isError || !data) return null;
@@ -66,9 +64,18 @@ export function ProductionModelCard({ machineId }: { machineId: string }) {
   const s = data.summary;
   const p = data.prediction;
   const runTimeBad = runTime.trim() !== "" && !cleanRunTime(runTime);
-  const headsPick = data.elastics.length
-    ? data.elastics.map((e) => `${e.name ?? "Unnamed"} (pick ${e.pick ?? "?"}) on ${e.heads} head${e.heads === 1 ? "" : "s"}`).join(", ")
-    : "No elastics on the heads";
+  // The pick is the running elastics' own, from their records: every
+  // head runs on the same pick, so there is nothing to type.
+  const running = data.elastics.length
+    ? data.elastics.map((e) => `${e.name ?? "Unnamed elastic"} on ${e.heads} head${e.heads === 1 ? "" : "s"}`).join(", ")
+    : null;
+  const pickNote: Record<NonNullable<typeof data.pickProblem>, string> = {
+    "no-elastics": "No elastic is threaded on this loom's heads, so there is no pick to predict from.",
+    "no-pick": "An elastic on this loom has no pick in its record. Add the pick to the elastic to see a prediction.",
+    mixed: `The elastics on the heads have different picks in their records (${data.elastics
+      .map((e) => `${e.name ?? "Unnamed"}: ${e.pick ?? "none"}`)
+      .join(", ")}). Every head runs on one pick, so one of these records needs correcting.`,
+  };
 
   return (
     <Card className="mt-4 space-y-4 p-5">
@@ -94,17 +101,18 @@ export function ProductionModelCard({ machineId }: { machineId: string }) {
           error={runTimeBad ? "Write it like 7:30" : undefined}
           hint={runTime.trim() === "" ? "Empty means a full 12-hour shift" : undefined}
         />
-        <Input
-          label="Pick"
-          type="number"
-          min={1}
-          step="any"
-          placeholder={data.pickFrom === "heads" && data.pick ? String(data.pick) : "e.g. 14"}
-          value={pick}
-          onChange={(e) => setPick(e.target.value)}
-          hint={pick ? "Try another elastic's pick" : headsPick}
-        />
+        <div className="space-y-1.5" data-testid="running-pick">
+          <p className="text-sm font-medium text-ink-600">Pick</p>
+          <p className="flex h-10 items-center text-sm font-semibold tabular-nums text-ink-900">{data.pick ?? "—"}</p>
+          <p className="text-xs text-ink-400">{running ? `From the elastic record: ${running}` : "No elastic on the heads"}</p>
+        </div>
       </div>
+
+      {data.pickProblem && (
+        <p role="status" className="rounded-lg bg-status-warningBg px-3 py-2 text-sm text-status-warning">
+          {pickNote[data.pickProblem]}
+        </p>
+      )}
 
       {p ? (
         <div className="rounded-xl bg-ink-100/60 p-4" aria-live="polite">
@@ -122,9 +130,7 @@ export function ProductionModelCard({ machineId }: { machineId: string }) {
             </p>
           )}
         </div>
-      ) : (
-        <p className="text-sm text-ink-500">Enter a pick to see what it would make. This loom has no elastic with a pick on its heads.</p>
-      )}
+      ) : null}
 
       {data.evaluation && <Accuracy evaluation={data.evaluation} />}
     </Card>
