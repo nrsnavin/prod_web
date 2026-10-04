@@ -1,4 +1,5 @@
 import { TimerPhotoReader } from "./TimerPhotoReader";
+import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, Trash2, Sun, Moon, Download, UploadCloud, Gauge } from "lucide-react";
@@ -87,14 +88,17 @@ export function EnterProductionModal({
           </p>
         </div>
 
-        <Input
-          label="Production (m) *"
-          type="number"
-          step="0.01"
-          autoFocus
-          value={meters}
-          onChange={(e) => setMeters(e.target.value)}
-        />
+        <div className="space-y-2">
+          <Input
+            label="Production (m) *"
+            type="number"
+            step="0.01"
+            autoFocus
+            value={meters}
+            onChange={(e) => setMeters(e.target.value)}
+          />
+          <ExpectedOutput shiftId={row.id} runTime={timer} entered={meters} />
+        </div>
         <div className="space-y-2">
           <Input label="Runtime (HH:MM:SS)" value={timer} onChange={(e) => setTimer(e.target.value)} />
           <TimerPhotoReader onUse={setTimer} />

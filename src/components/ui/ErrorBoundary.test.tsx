@@ -61,6 +61,21 @@ describe("a section", () => {
   });
 });
 
+describe("a hint inside a form", () => {
+  it("disappears and leaves the form usable", () => {
+    render(
+      <form>
+        <label>Metres <input /></label>
+        <ErrorBoundary variant="hint">
+          <Bomb />
+        </ErrorBoundary>
+      </form>
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Metres")).toBeInTheDocument();
+  });
+});
+
 describe("a page inside the app", () => {
   const Shell = () => (
     <div>

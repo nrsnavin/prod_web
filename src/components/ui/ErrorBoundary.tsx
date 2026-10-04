@@ -30,7 +30,12 @@ export function isChunkLoadError(error: unknown): boolean {
   );
 }
 
-type Variant = "screen" | "page" | "section";
+/**
+ * `hint`: an optional aid inside a form (an expected figure beside a
+ * field). If it fails, it disappears and the form carries on: there is
+ * nothing for the person to retry and nothing they lose.
+ */
+type Variant = "screen" | "page" | "section" | "hint";
 
 interface Props {
   children: ReactNode;
@@ -67,6 +72,7 @@ export class ErrorBoundary extends Component<Props, State> {
     const { error } = this.state;
     if (!error) return this.props.children;
     const variant = this.props.variant ?? "screen";
+    if (variant === "hint") return null;
     if (variant === "section") return <SectionFallback label={this.props.label} error={error} onRetry={this.retry} />;
     if (variant === "page") return <PageFallback error={error} onRetry={this.retry} />;
     return <ScreenFallback error={error} />;

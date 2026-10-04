@@ -11,6 +11,7 @@ import { errorMessage } from "@/components/ui/ErrorState";
 import { formatDate } from "@/core/format/date";
 import { useSubmitProduction } from "./hooks";
 import { TimerPhotoReader } from "@/features/shifts/TimerPhotoReader";
+import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
 import { MyShift } from "./types";
 
 const sameDay = (a: Date, b: Date) =>
@@ -144,6 +145,7 @@ export function EnterProductionScreen({ shift, onClose }: { shift: MyShift | nul
           error={error && /metres/i.test(error) ? error : undefined}
           autoFocus
         />
+        <ExpectedOutput shiftId={shift.id} runTime={timer} entered={metres} mine />
         <Input
           label="Run time"
           hint="Hours and minutes the loom ran, like 7:30 or 7.30"

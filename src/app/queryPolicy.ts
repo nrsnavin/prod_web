@@ -50,6 +50,8 @@ const STATIC: ReadonlySet<string> = new Set([
   "staffing-forecast", "forecast-orders", "forecast-etas", "eta-risks",
   "group-breakdown", "machine-health", "machine-health-advice",
   "warp-optimize", "reorder-suggestions", "planner",
+  // The production model retrains every 15 minutes on the server.
+  "production-model", "expected-output",
   // The employee view's settled records.
   // (Leave is not here: a worker waiting on a request should see it
   // approved without reloading, so it refreshes like other warm data.)

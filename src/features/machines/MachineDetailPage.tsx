@@ -20,6 +20,8 @@ import { ApiError } from "@/core/http/httpClient";
 import { useMachine, useMachineMutations, useServiceBills } from "./hooks";
 import { MachineHealthCard } from "./MachineHealth";
 import { MachineCharts } from "./MachineCharts";
+import { ProductionModelCard } from "@/features/productionModel/ProductionModelCard";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { MachineHeadMapEditModal } from "./MachineHeadMapEditModal";
 import { MachineHeadCountModal } from "./MachineHeadCountModal";
 import { MachineEditModal } from "./MachineEditModal";
@@ -334,6 +336,7 @@ export function MachineDetailPage() {
         sections={[
           { id: "heads", label: "Heads" },
           { id: "health", label: "Health" },
+          { id: "expected", label: "Expected output" },
           { id: "output", label: "Output & cost" },
           { id: "history", label: "Shifts & service" },
         ]}
@@ -391,6 +394,16 @@ export function MachineDetailPage() {
       )}
 
       <Section id="health">{id && <MachineHealthCard machineId={id} />}</Section>
+
+      {/* What this loom should make in a run time at a pick, learned from
+          its own verified shifts (services/productionModel.js). */}
+      <Section id="expected">
+        {id && (
+          <ErrorBoundary variant="section" label="Expected production">
+            <ProductionModelCard machineId={id} />
+          </ErrorBoundary>
+        )}
+      </Section>
 
       {/* Output and cost over the same months, side by side. Either
           alone says little; together they answer whether this loom is

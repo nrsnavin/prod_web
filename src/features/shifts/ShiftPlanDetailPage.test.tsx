@@ -11,6 +11,8 @@ vi.mock("./hooks", () => ({
   useShiftMutations: () => ({ verify: { mutate: verifyMutate, isPending: false } }),
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast }) }));
+// The expected-output hint has its own tests (features/productionModel).
+vi.mock("@/features/productionModel/ExpectedOutput", () => ({ ExpectedOutput: () => null }));
 
 const plan: ShiftPlanDetail = {
   _id: "p1",
