@@ -1,3 +1,4 @@
+import { TimerPhotoReader } from "./TimerPhotoReader";
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, Trash2, Sun, Moon, Download, UploadCloud, Gauge } from "lucide-react";
@@ -94,7 +95,10 @@ export function EnterProductionModal({
           value={meters}
           onChange={(e) => setMeters(e.target.value)}
         />
-        <Input label="Runtime (HH:MM:SS)" value={timer} onChange={(e) => setTimer(e.target.value)} />
+        <div className="space-y-2">
+          <Input label="Runtime (HH:MM:SS)" value={timer} onChange={(e) => setTimer(e.target.value)} />
+          <TimerPhotoReader onUse={setTimer} />
+        </div>
         <Input
           label="Note"
           placeholder="Optional"

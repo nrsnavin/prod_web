@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { errorMessage } from "@/components/ui/ErrorState";
 import { formatDate } from "@/core/format/date";
 import { useSubmitProduction } from "./hooks";
+import { TimerPhotoReader } from "@/features/shifts/TimerPhotoReader";
 import { MyShift } from "./types";
 
 const sameDay = (a: Date, b: Date) =>
@@ -152,6 +153,7 @@ export function EnterProductionScreen({ shift, onClose }: { shift: MyShift | nul
           onChange={(e) => setTimer(e.target.value)}
           error={error && /run time/i.test(error) ? error : undefined}
         />
+        <TimerPhotoReader onUse={setTimer} />
         <div className="space-y-1.5">
           <label htmlFor="shift-note" className="block text-sm font-medium text-ink-600">
             Note for the supervisor
