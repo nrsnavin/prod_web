@@ -24,6 +24,13 @@ vi.mock("./hooks", () => ({
   useShiftMutations: () => ({ verify: { mutate: verifyMutate, isPending: false } }),
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
+const photos = vi.fn();
+vi.mock("./TimerPhotos", () => ({
+  TimerPhotos: (props: Record<string, unknown>) => {
+    photos(props);
+    return <p>timer-photos</p>;
+  },
+}));
 const expected = vi.fn();
 vi.mock("@/features/productionModel/ExpectedOutput", () => ({
   ExpectedOutput: (props: Record<string, unknown>) => {
@@ -40,5 +47,8 @@ describe("verifying a shift", () => {
     expect(screen.getByLabelText("Verified production per head (m) *")).toHaveValue(356);
     expect(screen.getByText("expected-output")).toBeInTheDocument();
     expect(expected).toHaveBeenLastCalledWith({ shiftId: "sd-9", runTime: "7:30:00", entered: "356" });
+    // The photos of the timer, to check the run time against.
+    expect(screen.getByText("timer-photos")).toBeInTheDocument();
+    expect(photos).toHaveBeenLastCalledWith({ shiftId: "sd-9" });
   });
 });

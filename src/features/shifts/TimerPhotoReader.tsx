@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Check, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/ErrorState";
-import { httpClient } from "@/core/http/httpClient";
+import { ApiError, httpClient } from "@/core/http/httpClient";
 import { cn } from "@/components/ui/cn";
 import { Answers, Step, TYPE_IT, TimerReading, nextStep } from "./timerReading";
 
@@ -15,20 +15,28 @@ import { Answers, Step, TYPE_IT, TimerReading, nextStep } from "./timerReading";
 //  about anything it isn't sure of, one question at a time, with the
 //  photo beside the question so it can be checked. Nothing fills the
 //  field until the person presses "Use this", and the field stays
-//  editable after. The photo is shrunk on the phone before it is sent
-//  and is not kept on the server.
+//  editable after. The photo is shrunk on the phone before it is sent.
+//  Given the shift, the server keeps the photo with it (read or not), so
+//  whoever verifies the entry can see the display (TimerPhotos.tsx).
 // ══════════════════════════════════════════════════════════════════
 
 interface OcrResponse {
   reading: TimerReading;
   suggestionId: string | null;
+  /** Set when the photo was kept with the shift. */
+  photoId?: string | null;
 }
 
 export const timerOcrService = {
-  read(photo: Blob): Promise<OcrResponse> {
+  read(photo: Blob, shiftId?: string): Promise<OcrResponse> {
     const form = new FormData();
+    if (shiftId) form.append("shiftId", shiftId); // before the file, so it is read first
     form.append("photo", photo, "timer.jpg");
     return httpClient.post<OcrResponse>("/ocr/timer", form);
+  },
+  /** The kept photo the run time was filled from; settles its reading too. Best effort. */
+  used(photoId: string, runTime: string) {
+    return httpClient.post(`/ocr/timer/photo/${encodeURIComponent(photoId)}/use`, { runTime }).catch(() => undefined);
   },
   /** What was actually used, for the AI accuracy report. Best effort. */
   settle(id: string, runTime: string) {
@@ -62,11 +70,28 @@ export async function shrinkPhoto(file: File, maxSide = 1600): Promise<Blob> {
 type State =
   | { phase: "idle" }
   | { phase: "reading" }
-  | { phase: "steps"; reading: TimerReading; suggestionId: string | null; answers: Answers }
-  | { phase: "failed"; message: string }
-  | { phase: "used"; runTime: string };
+  | { phase: "steps"; reading: TimerReading; suggestionId: string | null; photoId: string | null; answers: Answers }
+  | { phase: "failed"; message: string; kept: boolean }
+  | { phase: "used"; runTime: string; kept: boolean };
 
-export function TimerPhotoReader({ onUse, shiftHours = 12 }: { onUse: (runTime: string) => void; shiftHours?: number }) {
+/** The id of a photo the server kept even though it couldn't read it. */
+function keptPhotoId(e: unknown): string | null {
+  const details = e instanceof ApiError ? (e.data?.details as { photoId?: unknown } | undefined) : undefined;
+  return typeof details?.photoId === "string" ? details.photoId : null;
+}
+
+const KEPT = "The photo is saved with this shift for whoever verifies it.";
+
+export function TimerPhotoReader({
+  onUse,
+  shiftHours = 12,
+  shiftId,
+}: {
+  onUse: (runTime: string) => void;
+  shiftHours?: number;
+  /** Keeps the photo with this shift for verification. */
+  shiftId?: string;
+}) {
   const input = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ phase: "idle" });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -83,10 +108,10 @@ export function TimerPhotoReader({ onUse, shiftHours = 12 }: { onUse: (runTime: 
     setState({ phase: "reading" });
     setTyped("");
     try {
-      const { reading, suggestionId } = await timerOcrService.read(await shrinkPhoto(file));
-      setState({ phase: "steps", reading, suggestionId, answers: {} });
+      const { reading, suggestionId, photoId = null } = await timerOcrService.read(await shrinkPhoto(file), shiftId);
+      setState({ phase: "steps", reading, suggestionId, photoId, answers: {} });
     } catch (e) {
-      setState({ phase: "failed", message: errorMessage(e, "the photo") });
+      setState({ phase: "failed", message: errorMessage(e, "the photo"), kept: !!keptPhotoId(e) });
     }
   };
 
@@ -99,9 +124,10 @@ export function TimerPhotoReader({ onUse, shiftHours = 12 }: { onUse: (runTime: 
   };
 
   const use = (runTime: string) => {
-    if (state.phase === "steps" && state.suggestionId) void timerOcrService.settle(state.suggestionId, runTime);
+    if (state.phase === "steps" && state.photoId) void timerOcrService.used(state.photoId, runTime);
+    else if (state.phase === "steps" && state.suggestionId) void timerOcrService.settle(state.suggestionId, runTime);
     onUse(runTime);
-    setState({ phase: "used", runTime });
+    setState({ phase: "used", runTime, kept: state.phase === "steps" && !!state.photoId });
   };
 
   const fileInput = (
@@ -137,6 +163,7 @@ export function TimerPhotoReader({ onUse, shiftHours = 12 }: { onUse: (runTime: 
         {fileInput}
         <Check className="h-4 w-4 text-status-success" aria-hidden />
         Filled from the photo: <span className="font-medium tabular-nums text-ink-900">{state.runTime}</span>
+        {state.kept && <span className="text-xs text-ink-400">(photo saved with the shift)</span>}
         <button type="button" onClick={pick} className="font-medium text-brand-600">Retake</button>
       </div>
     );
@@ -155,7 +182,13 @@ export function TimerPhotoReader({ onUse, shiftHours = 12 }: { onUse: (runTime: 
           </p>
         )}
 
-        {state.phase === "failed" && <p role="alert" className="text-status-danger">{state.message}</p>}
+        {state.phase === "failed" && (
+          <>
+            <p role="alert" className="text-status-danger">{state.message}</p>
+            {state.kept && <p className="text-xs text-ink-500">{KEPT}</p>}
+          </>
+        )}
+        {state.phase === "steps" && state.photoId && step?.kind === "type" && <p className="text-xs text-ink-500">{KEPT}</p>}
 
         {step?.kind === "type" && <p className="text-ink-700">{step.reason}</p>}
 

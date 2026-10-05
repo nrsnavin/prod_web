@@ -101,7 +101,7 @@ export function EnterProductionModal({
         </div>
         <div className="space-y-2">
           <Input label="Runtime (HH:MM:SS)" value={timer} onChange={(e) => setTimer(e.target.value)} />
-          <TimerPhotoReader onUse={setTimer} />
+          <TimerPhotoReader onUse={setTimer} shiftId={row.id} />
         </div>
         <Input
           label="Note"

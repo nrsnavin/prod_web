@@ -52,6 +52,8 @@ const STATIC: ReadonlySet<string> = new Set([
   "warp-optimize", "reorder-suggestions", "planner",
   // The production model retrains every 15 minutes on the server.
   "production-model", "expected-output",
+  // A kept timer photo never changes once taken.
+  "timer-photo-file",
   // The employee view's settled records.
   // (Leave is not here: a worker waiting on a request should see it
   // approved without reloading, so it refreshes like other warm data.)
