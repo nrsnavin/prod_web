@@ -168,7 +168,7 @@ export function SheetUploadModal({
                   <th className="p-2 text-left">Machine</th>
                   <th className="p-2 text-left">Operator</th>
                   <th className="p-2 text-left">Job</th>
-                  <th className="p-2 text-right">Production (m)</th>
+                  <th className="p-2 text-right">Per head (m)</th>
                   <th className="p-2 text-left">Timer</th>
                   <th className="p-2 text-left">Remarks</th>
                   <th className="p-2 text-center">Conf.</th>

@@ -69,7 +69,7 @@ describe("entering production", () => {
   it("sends metres, run time and note for this shift, then closes", async () => {
     post.mockResolvedValue({ success: true });
     const onClose = open(shift());
-    await userEvent.type(screen.getByLabelText("Metres produced"), "512");
+    await userEvent.type(screen.getByLabelText("Metres produced per head"), "512");
     await userEvent.type(screen.getByLabelText("Run time"), "7.30");
     await userEvent.type(screen.getByLabelText("Note for the supervisor"), "warp break");
     await userEvent.click(screen.getByRole("button", { name: "Send for verification" }));
@@ -87,7 +87,7 @@ describe("entering production", () => {
 
   it("starts from what was already entered when changing an entry", () => {
     open(shift({ status: "pending_verification", submitted: { production: 300, timer: "6:00", feedback: "ok", at: null } }));
-    expect(screen.getByLabelText("Metres produced")).toHaveValue(300);
+    expect(screen.getByLabelText("Metres produced per head")).toHaveValue(300);
     expect(screen.getByLabelText("Run time")).toHaveValue("6:00");
   });
 });

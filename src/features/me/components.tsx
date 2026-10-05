@@ -136,7 +136,7 @@ export function EnterProductionScreen({ shift, onClose }: { shift: MyShift | nul
           {dayLabel(shift.date)} · {shiftName(shift.shift)} · {shift.machine?.code ?? "—"}
         </p>
         <Input
-          label="Metres produced"
+          label="Metres produced per head"
           type="number"
           min={0}
           step="any"

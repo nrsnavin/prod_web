@@ -90,7 +90,7 @@ export function EnterProductionModal({
 
         <div className="space-y-2">
           <Input
-            label="Production (m) *"
+            label="Production per head (m) *"
             type="number"
             step="0.01"
             autoFocus

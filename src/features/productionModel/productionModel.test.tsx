@@ -140,10 +140,10 @@ describe("expected production, on the machine page", () => {
   it("describes the loom against the plant and predicts a full shift at its own pick", async () => {
     get.mockResolvedValue(machineReply());
     wrap(<ProductionModelCard machineId="m1" />);
-    expect(await screen.findByText("2,880 m")).toBeInTheDocument();
+    expect(await screen.findByTestId("expected-per-head")).toHaveTextContent(/^720 m per head$/);
     expect(screen.getByText("Learned from 60 shifts")).toBeInTheDocument();
     expect(screen.getByText(/LOOM-01 runs 8% faster than the plant's typical loom\. Its shifts usually land within ±9%/)).toBeInTheDocument();
-    expect(screen.getByText(/for the machine \(4 heads\): 720 m per head, likely/)).toBeInTheDocument();
+    expect(screen.getByTestId("expected-range")).toHaveTextContent(/^likely 650 m–790 m per head · 2,880 m for the machine \(4 heads\)$/);
     expect(screen.getByTestId("running-pick")).toHaveTextContent("Pick12From the elastic record: E12 on 4 heads");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(get).toHaveBeenCalledWith("/production-model/machine/m1", { runTime: "12:00" });
@@ -152,7 +152,7 @@ describe("expected production, on the machine page", () => {
   it("recalculates for another run time; the pick is the elastic's own, with nothing to type", async () => {
     get.mockResolvedValue(machineReply());
     wrap(<ProductionModelCard machineId="m1" />);
-    await screen.findByText("2,880 m");
+    await screen.findByTestId("expected-per-head");
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
     expect(screen.getAllByRole("textbox")).toHaveLength(1); // run time only
     const runTime = screen.getByLabelText("Run time");
@@ -168,7 +168,7 @@ describe("expected production, on the machine page", () => {
     get.mockResolvedValue(machineReply({ pickProblem, pick: null, prediction: null }));
     wrap(<ProductionModelCard machineId="m1" />);
     expect(await screen.findByRole("status")).toHaveTextContent(why);
-    expect(screen.queryByText("2,880 m")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("expected-per-head")).not.toBeInTheDocument();
   });
 
   it("flags elastic records that disagree on the pick", async () => {

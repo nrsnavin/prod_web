@@ -15,6 +15,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { usePendingVerification, useShiftMutations } from "./hooks";
 import { PendingShift } from "./types";
+import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
 import { formatDate } from "@/core/format/date";
 
 // A shift's job hangs off either the machine's running order or the
@@ -63,17 +64,22 @@ function VerifyModal({
             {shift.shiftPlan?.date && `· ${formatDate(shift.shiftPlan.date)}`}
           </p>
           <p className="mt-1 text-xs text-ink-400">
-            Submitted: {submittedMeters.toLocaleString("en-IN")} m · {submittedTimer || "—"}
+            Submitted: {submittedMeters.toLocaleString("en-IN")} m per head · {submittedTimer || "—"}
           </p>
         </div>
 
-        <Input
-          label="Verified production (m) *"
-          type="number"
-          step="0.01"
-          value={meters}
-          onChange={(e) => setMeters(e.target.value)}
-        />
+        <div className="space-y-2">
+          <Input
+            label="Verified production per head (m) *"
+            type="number"
+            step="0.01"
+            value={meters}
+            onChange={(e) => setMeters(e.target.value)}
+          />
+          {/* Verifying is the last chance to catch a slip before it reaches
+              the job and order totals. */}
+          <ExpectedOutput shiftId={shift._id} runTime={timer} entered={meters} />
+        </div>
         <Input
           label="Runtime (HH:MM:SS)"
           value={timer}

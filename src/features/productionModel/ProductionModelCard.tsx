@@ -119,10 +119,13 @@ export function ProductionModelCard({ machineId }: { machineId: string }) {
           <p className="text-sm text-ink-500">
             In {hoursMinutes(p.minutes)} at pick {p.pick}
           </p>
-          <p className="text-2xl font-semibold tabular-nums text-ink-900">{metres(p.total)}</p>
-          <p className="text-sm text-ink-600">
-            for the machine ({p.heads} head{p.heads === 1 ? "" : "s"}): {metres(p.perHead)} per head, likely{" "}
-            <span className="tabular-nums">{metres(p.low)}–{metres(p.high)}</span>
+          {/* Per head first: production is entered and judged per head. */}
+          <p className="text-2xl font-semibold tabular-nums text-ink-900" data-testid="expected-per-head">
+            {metres(p.perHead)} <span className="text-base font-medium text-ink-500">per head</span>
+          </p>
+          <p className="text-sm text-ink-600" data-testid="expected-range">
+            likely <span className="tabular-nums">{metres(p.low)}–{metres(p.high)}</span> per head ·{" "}
+            <span className="tabular-nums">{metres(p.total)}</span> for the machine ({p.heads} head{p.heads === 1 ? "" : "s"})
           </p>
           {s.metresPerHeadHour != null && (
             <p className="mt-1 text-xs text-ink-400">

@@ -49,7 +49,7 @@ describe("EnterProductionModal (add production to an open shift)", () => {
     const onClose = vi.fn();
     render(<EnterProductionModal plan={plan} row={row} onClose={onClose} />);
 
-    await user.type(screen.getByLabelText(/Production \(m\)/i), "1250");
+    await user.type(screen.getByLabelText(/Production per head \(m\)/i), "1250");
     await user.click(screen.getByRole("button", { name: /save production/i }));
 
     expect(verifyMutate).toHaveBeenCalledWith(
