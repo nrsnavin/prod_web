@@ -35,6 +35,27 @@ export interface DeliveryChallan {
   totalAmount?: number;
   remarks?: string;
   createdAt?: string;
+  /** Set when it was sent with more than was in stock, and why. */
+  stockShortfall?: {
+    reason: string;
+    lines: DcShortLine[];
+    at?: string;
+  } | null;
+}
+
+/** One line of a challan that ships more than is on the shelf. */
+export interface DcShortLine {
+  elastic?: string;
+  name?: string;
+  shipping: number;
+  onHand: number;
+  short: number;
+}
+
+/** What the server sends with a 409 DC_STOCK_SHORT. */
+export interface DcStockShort {
+  shortfalls: DcShortLine[];
+  minReasonLength: number;
 }
 
 export interface DcOrderInfo {
@@ -77,6 +98,8 @@ export interface DcUpdateBody {
   transporter?: string;
   lrNumber?: string;
   remarks?: string;
+  /** Why it ships more than is in stock; only after a DC_STOCK_SHORT refusal. */
+  stockShortfallReason?: string;
 }
 
 export interface DcFormValues {
@@ -94,4 +117,6 @@ export interface DcFormValues {
   lrNumber?: string;
   items: DcFormItem[];
   remarks?: string;
+  /** Why it ships more than is in stock; only after a DC_STOCK_SHORT refusal. */
+  stockShortfallReason?: string;
 }

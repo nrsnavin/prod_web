@@ -14,8 +14,9 @@ import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useDcs, useDcMutations } from "./hooks";
-import { DcStatus, DcType, DeliveryChallan } from "./types";
+import { DcFormValues, DcStatus, DcType, DeliveryChallan } from "./types";
 import { DcForm } from "./DcForm";
+import { StockShortDialog, stockShortFrom } from "./StockShortDialog";
 import { formatDate } from "@/core/format/date";
 
 export const dcStatusTone: Record<DcStatus, ChipTone> = {
@@ -71,6 +72,31 @@ export function DcListPage() {
 
   const { data, isLoading, isError, error } = useDcs({ page, type, status, search });
   const { create } = useDcMutations();
+  // A challan refused for shipping more than is in stock, held while the
+  // user says why; confirming resends the same values with the reason.
+  const [stockShort, setStockShort] = useState<{
+    values: DcFormValues;
+    short: NonNullable<ReturnType<typeof stockShortFrom>>;
+  } | null>(null);
+
+  const submit = (values: DcFormValues) =>
+    create.mutate(values, {
+      onSuccess: (dc) => {
+        setStockShort(null);
+        setCreateOpen(false);
+        toast(`DC ${dc.dcNumber} created`, "success");
+        navigate(`/delivery-challans/${dc._id}`);
+      },
+      onError: (e) => {
+        const short = stockShortFrom(e);
+        if (short && !values.stockShortfallReason) {
+          setStockShort({ values, short });
+          return;
+        }
+        setStockShort(null);
+        toast(e instanceof ApiError ? e.message : "Failed to create DC", "error");
+      },
+    });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 20)) : 1;
 
@@ -142,19 +168,19 @@ export function DcListPage() {
         <DcForm
           submitting={create.isPending}
           onCancel={() => setCreateOpen(false)}
-          onSubmit={(values) =>
-            create.mutate(values, {
-              onSuccess: (dc) => {
-                setCreateOpen(false);
-                toast(`DC ${dc.dcNumber} created`, "success");
-                navigate(`/delivery-challans/${dc._id}`);
-              },
-              onError: (e) =>
-                toast(e instanceof ApiError ? e.message : "Failed to create DC", "error"),
-            })
-          }
+          onSubmit={(values) => submit(values)}
         />
       </FormScreen>
+
+      <StockShortDialog
+        open={!!stockShort}
+        short={stockShort?.short ?? null}
+        loading={create.isPending}
+        onClose={() => setStockShort(null)}
+        onConfirm={(reason) =>
+          stockShort && submit({ ...stockShort.values, stockShortfallReason: reason })
+        }
+      />
     </>
   );
 }

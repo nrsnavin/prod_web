@@ -254,6 +254,24 @@ export function DcDetailPage() {
         </Card>
       </div>
 
+      {/* Internal note, never printed: it went out with more than the
+          stock showed, and this is why. */}
+      {dc.stockShortfall?.reason && (
+        <div className="mt-4 rounded-lg bg-status-warningBg px-3 py-2 text-sm text-status-warning print:hidden">
+          <p>
+            <span className="font-medium">Sent with more than was in stock:</span>{" "}
+            {dc.stockShortfall.reason}
+          </p>
+          {(dc.stockShortfall.lines ?? []).length > 0 && (
+            <p className="mt-1 text-xs tabular-nums">
+              {dc.stockShortfall.lines
+                .map((l) => `${l.name || "Elastic"}: shipped ${l.shipping}, ${l.onHand} in stock`)
+                .join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
+
       {dc.status === "cancelled" && (
         <p className="mt-4 text-sm text-ink-400 print:hidden">
           This DC is cancelled — deducted stock and reservations were restored.{" "}

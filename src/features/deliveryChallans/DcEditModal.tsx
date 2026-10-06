@@ -8,7 +8,8 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { elasticService } from "@/features/elastics/api";
 import { useDcMutations } from "./hooks";
-import { DcItem, DeliveryChallan } from "./types";
+import { DcItem, DcUpdateBody, DeliveryChallan } from "./types";
+import { StockShortDialog, stockShortFrom } from "./StockShortDialog";
 
 /** The elastic id on a line, whether the API populated it or not. */
 export function itemElasticId(item: DcItem): string {
@@ -96,6 +97,12 @@ export function DcEditModal({
   const [lrNumber, setLrNumber] = useState(dc.lrNumber ?? "");
   const [remarks, setRemarks] = useState(dc.remarks ?? "");
   const [auditReason, setAuditReason] = useState("");
+  // An edit refused for shipping more than is in stock, held while the
+  // user says why; confirming resends the same edit with the reason.
+  const [stockShort, setStockShort] = useState<{
+    body: DcUpdateBody;
+    short: NonNullable<ReturnType<typeof stockShortFrom>>;
+  } | null>(null);
 
   // The combobox hands back an id, not the option. The stored line also
   // carries `elasticName` — it is what the printed challan and the PDF
@@ -160,44 +167,52 @@ export function DcEditModal({
       return;
     }
 
-    update.mutate(
-      {
-        id: dc._id,
-        auditReason: auditReason.trim(),
-        ...(loadedVersion === undefined ? {} : { expectedVersion: loadedVersion }),
-        customerName,
-        dispatchDate,
-        vehicleNo,
-        driverName,
-        transporter,
-        lrNumber,
-        remarks,
-        // Only when they changed — see `linesChanged`.
-        ...(itemsMoved
-          ? {
-              items: lines.map((l) => ({
-                elastic: l.elastic || undefined,
-                elasticName: l.elasticName,
-                description: l.description,
-                quantity: Number(l.quantity) || 0,
-                rate: Number(l.rate) || 0,
-              })),
-            }
-          : {}),
-      },
-      {
-        onSuccess: () => {
-          toast(
-            itemsMoved ? "Challan updated — stock adjusted" : "Challan updated",
-            "success"
-          );
-          onClose();
-        },
-        onError: (e) =>
-          toast(e instanceof ApiError ? e.message : "Update failed", "error"),
-      }
-    );
+    send({
+      id: dc._id,
+      auditReason: auditReason.trim(),
+      ...(loadedVersion === undefined ? {} : { expectedVersion: loadedVersion }),
+      customerName,
+      dispatchDate,
+      vehicleNo,
+      driverName,
+      transporter,
+      lrNumber,
+      remarks,
+      // Only when they changed — see `linesChanged`.
+      ...(itemsMoved
+        ? {
+            items: lines.map((l) => ({
+              elastic: l.elastic || undefined,
+              elasticName: l.elasticName,
+              description: l.description,
+              quantity: Number(l.quantity) || 0,
+              rate: Number(l.rate) || 0,
+            })),
+          }
+        : {}),
+    });
   };
+
+  const send = (body: DcUpdateBody) =>
+    update.mutate(body, {
+      onSuccess: () => {
+        setStockShort(null);
+        toast(
+          body.items ? "Challan updated — stock adjusted" : "Challan updated",
+          "success"
+        );
+        onClose();
+      },
+      onError: (e) => {
+        const short = stockShortFrom(e);
+        if (short && !body.stockShortfallReason) {
+          setStockShort({ body, short });
+          return;
+        }
+        setStockShort(null);
+        toast(e instanceof ApiError ? e.message : "Update failed", "error");
+      },
+    });
 
   return (
     <FormScreen open={open} onClose={onClose} title={`Edit ${dc.dcNumber}`} width="max-w-2xl">
@@ -312,6 +327,16 @@ export function DcEditModal({
           <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>
         </div>
       </div>
+
+      <StockShortDialog
+        open={!!stockShort}
+        short={stockShort?.short ?? null}
+        loading={update.isPending}
+        onClose={() => setStockShort(null)}
+        onConfirm={(reason) =>
+          stockShort && send({ ...stockShort.body, stockShortfallReason: reason })
+        }
+      />
     </FormScreen>
   );
 }

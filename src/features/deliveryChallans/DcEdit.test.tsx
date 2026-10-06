@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DcEditModal, linesChanged, linesFromDc } from "./DcEditModal";
 import { DeliveryChallan } from "./types";
+import { ApiError } from "@/core/http/httpClient";
 
 // ══════════════════════════════════════════════════════════════════
 //  EDITING A CHALLAN THAT HAS ALREADY BEEN RAISED
@@ -160,6 +161,68 @@ describe("what the edit form refuses to send", () => {
       expect.stringMatching(/moves no stock/i),
       "error"
     );
+  });
+});
+
+describe("an edit that ships more than is in stock", () => {
+  const refused = new ApiError(
+    "Not enough in stock for this challan — 20mm Woven: shipping 900, 600 in stock.",
+    409, undefined, "DC_STOCK_SHORT",
+    {
+      code: "DC_STOCK_SHORT",
+      details: {
+        shortfalls: [{ elastic: "e1", name: "20mm Woven", shipping: 900, onHand: 600, short: 300 }],
+        minReasonLength: 8,
+      },
+    }
+  );
+
+  it("asks why, then resends the same edit with the reason", async () => {
+    const user = userEvent.setup();
+    updateMutate.mockImplementationOnce((_b, opts) => opts.onError(refused));
+    setup();
+
+    const qty = screen.getByLabelText(/^quantity$/i);
+    await user.clear(qty);
+    await user.type(qty, "900");
+    await giveReason(user);
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    // No toast for the refusal: the prompt is the answer to it.
+    expect(toast).not.toHaveBeenCalled();
+    expect(screen.getByText("Shipping 900 · In stock 600 · Short 300")).toBeInTheDocument();
+
+    // Too short a reason is not sent.
+    await user.type(screen.getByLabelText(/reason for sending more/i), "short");
+    await user.click(screen.getByRole("button", { name: /send anyway/i }));
+    expect(updateMutate).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/reason for sending more/i), " box packed today");
+    await user.click(screen.getByRole("button", { name: /send anyway/i }));
+
+    expect(updateMutate).toHaveBeenCalledTimes(2);
+    const [first, second] = updateMutate.mock.calls.map((c) => c[0]);
+    expect(first).not.toHaveProperty("stockShortfallReason");
+    expect(second).toEqual({ ...first, stockShortfallReason: "short box packed today" });
+  });
+
+  it("shows a refusal that comes back even with a reason as an error", async () => {
+    const user = userEvent.setup();
+    updateMutate
+      .mockImplementationOnce((_b, opts) => opts.onError(refused))
+      .mockImplementationOnce((_b, opts) => opts.onError(refused));
+    setup();
+
+    await user.clear(screen.getByLabelText(/^quantity$/i));
+    await user.type(screen.getByLabelText(/^quantity$/i), "900");
+    await giveReason(user);
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    await user.type(screen.getByLabelText(/reason for sending more/i), "box packed today");
+    await user.click(screen.getByRole("button", { name: /send anyway/i }));
+
+    expect(updateMutate).toHaveBeenCalledTimes(2);
+    expect(toast).toHaveBeenCalledWith(expect.stringMatching(/not enough in stock/i), "error");
   });
 });
 
