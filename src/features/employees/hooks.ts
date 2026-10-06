@@ -43,7 +43,7 @@ export function useEmployeeMutations() {
     onSuccess: invalidate,
   });
   const update = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: Partial<EmployeeFormValues> & { skill?: number } }) =>
+    mutationFn: ({ id, body }: { id: string; body: Partial<EmployeeFormValues> & { skill?: number; expectedVersion?: number } }) =>
       employeeService.update(id, body),
     onSuccess: invalidate,
   });

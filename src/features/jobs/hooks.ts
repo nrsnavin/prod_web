@@ -112,11 +112,13 @@ export function useJobMutations() {
       jobId,
       elastics,
       auditReason,
+      expectedVersion,
     }: {
       jobId: string;
       elastics: Array<{ elastic: string; quantity: number }>;
       auditReason: string;
-    }) => jobService.updateElastics(jobId, elastics, auditReason),
+      expectedVersion?: number;
+    }) => jobService.updateElastics(jobId, elastics, auditReason, expectedVersion),
     onSuccess: invalidate,
   });
   const updateStatus = useMutation({

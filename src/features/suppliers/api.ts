@@ -112,13 +112,15 @@ export const poService = {
       // Why this line went over what was ordered. Per row, because two
       // materials can be over for entirely different reasons.
       excessReason?: string;
-    }>
+    }>,
+    /** See core/hooks/useRequestId: the server receives each id once. */
+    requestId?: string
   ): Promise<{ message: string; poStatus: PoStatus }> {
     const res = await httpClient.post<{
       success: boolean;
       message: string;
       poStatus: PoStatus;
-    }>("/supplier/inward-stock", { poId, items });
+    }>("/supplier/inward-stock", { poId, items, ...(requestId ? { requestId } : {}) });
     return res;
   },
 

@@ -31,7 +31,8 @@ export const packingService = {
     return res.employees;
   },
 
-  create: (body: PackingFormValues) => httpClient.post("/packing/create-packing", body),
+  // requestId: see core/hooks/useRequestId; the server packs each id once.
+  create: (body: PackingFormValues & { requestId?: string }) => httpClient.post("/packing/create-packing", body),
   update: (id: string, body: { meter: number; auditReason: string }) =>
     httpClient.put(`/packing/${id}`, body),
   remove: (id: string, auditReason: string) =>

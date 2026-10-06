@@ -41,6 +41,7 @@ vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast }) }));
 
 const job = {
   id: "j1",
+  __v: 7,
   jobNo: "J-1042",
   status: "preparatory",
   warping: { status: "open" },
@@ -85,6 +86,8 @@ describe("when the window is open", () => {
     expect(updateMutate.mock.calls[0][0]).toEqual({
       jobId: "j1",
       auditReason: "Customer cut the order",
+      // The version the form opened on: another planner's save since is a 409.
+      expectedVersion: 7,
       elastics: [
         { elastic: "e1", quantity: 300 },
         { elastic: "e2", quantity: 250 },

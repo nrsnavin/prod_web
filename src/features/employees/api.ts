@@ -26,7 +26,7 @@ export const employeeService = {
     return res.employee;
   },
 
-  async update(id: string, body: Partial<EmployeeFormValues> & { skill?: number }): Promise<Employee> {
+  async update(id: string, body: Partial<EmployeeFormValues> & { skill?: number; expectedVersion?: number }): Promise<Employee> {
     const res = await httpClient.put<{ success: boolean; employee: Employee }>(
       `/employee/update?id=${encodeURIComponent(id)}`,
       body

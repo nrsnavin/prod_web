@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { packingService } from "./api";
 import { PackingFormValues } from "./types";
+import { useRequestId } from "@/core/hooks/useRequestId";
 
 const KEY = "packing";
 
@@ -34,9 +35,14 @@ export function usePackingMutations() {
     qc.invalidateQueries({ queryKey: [KEY] });
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };
+  // A resend of the same packing is the same packing, not a second one.
+  const ids = useRequestId();
   const create = useMutation({
-    mutationFn: (body: PackingFormValues) => packingService.create(body),
-    onSuccess: invalidate,
+    mutationFn: (body: PackingFormValues) => packingService.create({ ...body, requestId: ids.for(body) }),
+    onSuccess: () => {
+      ids.done();
+      invalidate();
+    },
   });
   const update = useMutation({
     mutationFn: ({ id, body }: { id: string; body: { meter: number; auditReason: string } }) =>

@@ -79,6 +79,10 @@ export function DcEditModal({
   const { toast } = useToast();
   const { update } = useDcMutations();
   const isElastic = dc.type === "elastic";
+  // The version this form's values were taken from (both are captured
+  // when it mounts). A save after someone else changed the challan is a
+  // 409 that asks for a reload, instead of quietly replacing their edit.
+  const [loadedVersion] = useState(dc.__v);
 
   const original = useMemo(() => linesFromDc(dc), [dc]);
   const [lines, setLines] = useState<EditLine[]>(original);
@@ -160,6 +164,7 @@ export function DcEditModal({
       {
         id: dc._id,
         auditReason: auditReason.trim(),
+        ...(loadedVersion === undefined ? {} : { expectedVersion: loadedVersion }),
         customerName,
         dispatchDate,
         vehicleNo,

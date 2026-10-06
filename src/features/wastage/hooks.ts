@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { wastageService } from "./api";
 import { WastageFormValues } from "./types";
+import { useRequestId } from "@/core/hooks/useRequestId";
 
 const KEY = "wastage";
 
@@ -56,9 +57,14 @@ export function useWastageMutations() {
     qc.invalidateQueries({ queryKey: [KEY] });
     qc.invalidateQueries({ queryKey: ["jobs"] });
   };
+  // A resend of the same wastage entry is recorded once.
+  const ids = useRequestId();
   const add = useMutation({
-    mutationFn: (body: WastageFormValues) => wastageService.add(body),
-    onSuccess: invalidate,
+    mutationFn: (body: WastageFormValues) => wastageService.add({ ...body, requestId: ids.for(body) }),
+    onSuccess: () => {
+      ids.done();
+      invalidate();
+    },
   });
   const update = useMutation({
     mutationFn: ({ id, body }: { id: string; body: { quantity?: number; penalty?: number; reason?: string; auditReason: string } }) =>

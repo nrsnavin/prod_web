@@ -45,7 +45,8 @@ export const dcService = {
     return httpClient.getBlob(`/dc/${id}/pdf`);
   },
 
-  async create(body: DcFormValues): Promise<DeliveryChallan> {
+  // requestId: see core/hooks/useRequestId; the server ships each id once.
+  async create(body: DcFormValues & { requestId?: string }): Promise<DeliveryChallan> {
     const res = await httpClient.post<{ success: boolean; dc: DeliveryChallan }>(
       "/dc/create",
       body

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { poService, supplierService } from "./api";
 import { PoFormValues, PoStatus, SupplierFormValues } from "./types";
+import { useRequestId } from "@/core/hooks/useRequestId";
 
 const SUPPLIER_KEY = "suppliers";
 const PO_KEY = "purchase-orders";
@@ -69,6 +70,9 @@ export function usePoMutations() {
     mutationFn: (id: string) => poService.clone(id),
     onSuccess: invalidate,
   });
+  // A resend of the same receipt (a timeout that actually landed) is
+  // received once: the server credits each id one time.
+  const inwardIds = useRequestId();
   const inward = useMutation({
     mutationFn: ({
       poId,
@@ -83,8 +87,11 @@ export function usePoMutations() {
         shade?: string;
         excessReason?: string;
       }>;
-    }) => poService.inwardStock(poId, items),
-    onSuccess: invalidate,
+    }) => poService.inwardStock(poId, items, inwardIds.for({ poId, items })),
+    onSuccess: () => {
+      inwardIds.done();
+      invalidate();
+    },
   });
   const update = useMutation({
     mutationFn: ({

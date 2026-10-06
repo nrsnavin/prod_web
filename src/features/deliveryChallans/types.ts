@@ -14,6 +14,8 @@ export interface DcItem {
 
 export interface DeliveryChallan {
   _id: string;
+  /** Document version; sent back as `expectedVersion` so a stale edit is a 409, not an overwrite. */
+  __v?: number;
   dcNumber: string;
   type: DcType;
   status: DcStatus;
@@ -65,6 +67,8 @@ export interface DcFormItem {
 export interface DcUpdateBody {
   id: string;
   auditReason: string;
+  /** The version the edit form loaded (see DeliveryChallan.__v). */
+  expectedVersion?: number;
   items?: DcFormItem[];
   customerName?: string;
   dispatchDate?: string;

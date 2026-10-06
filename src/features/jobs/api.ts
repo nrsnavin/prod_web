@@ -116,12 +116,15 @@ export const jobService = {
   updateElastics: (
     jobId: string,
     elastics: Array<{ elastic: string; quantity: number }>,
-    auditReason: string
+    auditReason: string,
+    /** The job's version when the form opened: a stale edit is a 409. */
+    expectedVersion?: number
   ) =>
     httpClient.post<UpdateElasticsResult>("/job/update-elastics", {
       jobId,
       elastics,
       auditReason,
+      ...(expectedVersion === undefined ? {} : { expectedVersion }),
     }),
 
   updateStatus: (jobId: string, nextStatus: JobStatus) =>

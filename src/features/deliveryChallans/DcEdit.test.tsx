@@ -49,6 +49,7 @@ vi.mock("@/features/elastics/api", () => ({
 
 const dc = {
   _id: "dc1",
+  __v: 4,
   dcNumber: "DC/25-26/0007",
   type: "elastic",
   status: "draft",
@@ -87,6 +88,9 @@ describe("what the edit form sends", () => {
     expect(body.vehicleNo).toBe("TN 38 ZZ 9999");
     // The load-bearing assertion: absent, not empty.
     expect(body).not.toHaveProperty("items");
+    // And the version the form was opened on: a save after someone else
+    // changed the challan is refused (409) instead of replacing theirs.
+    expect(body.expectedVersion).toBe(4);
   });
 
   it("sends items when a quantity changed, carrying the elastic id", async () => {

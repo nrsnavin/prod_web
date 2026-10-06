@@ -47,6 +47,10 @@ export function EmployeeDetailPage() {
   const { data: emp, isLoading, isError, error } = useEmployee(id);
   const { update, setPerformance } = useEmployeeMutations();
   const [editOpen, setEditOpen] = useState(false);
+  // The version the edit form opened on, captured then rather than read
+  // at save time: a background refetch would otherwise hand the save a
+  // newer version than the one the person was looking at.
+  const [editVersion, setEditVersion] = useState<number | undefined>(undefined);
   const [perf, setPerf] = useState<number | null>(null);
   const { user } = useAuth();
   // Giving a worker a login is an admin's, through the Users permission.
@@ -79,7 +83,7 @@ export function EmployeeDetailPage() {
         title={emp.name}
         subtitle={`${emp.department}${emp.role ? ` · ${emp.role}` : ""}`}
         actions={
-          <Button variant="secondary" onClick={() => setEditOpen(true)}>
+          <Button variant="secondary" onClick={() => { setEditVersion(emp.__v); setEditOpen(true); }}>
             <Pencil className="h-4 w-4" /> Edit
           </Button>
         }
@@ -190,7 +194,7 @@ export function EmployeeDetailPage() {
           onCancel={() => setEditOpen(false)}
           onSubmit={(values) =>
             update.mutate(
-              { id: emp.id, body: values },
+              { id: emp.id, body: { ...values, ...(editVersion === undefined ? {} : { expectedVersion: editVersion }) } },
               {
                 onSuccess: () => {
                   setEditOpen(false);

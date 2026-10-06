@@ -71,6 +71,8 @@ export interface EmployeeShiftRow {
 
 export interface EmployeeDetail {
   id: string;
+  /** Document version; sent back as `expectedVersion` so a stale edit is a 409, not an overwrite. */
+  __v?: number;
   name: string;
   phoneNumber?: string;
   department: string;

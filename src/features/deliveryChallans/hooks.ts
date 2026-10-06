@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dcService } from "./api";
 import { DcFormValues, DcStatus, DcType, DcUpdateBody } from "./types";
+import { useRequestId } from "@/core/hooks/useRequestId";
 
 const KEY = "delivery-challans";
 
@@ -40,9 +41,14 @@ export function useDcMutations() {
     qc.invalidateQueries({ queryKey: ["elastics"] }); // DC_OUT reduces elastic stock
   };
 
+  // A resend of the same challan is the same challan: stock leaves once.
+  const ids = useRequestId();
   const create = useMutation({
-    mutationFn: (body: DcFormValues) => dcService.create(body),
-    onSuccess: invalidate,
+    mutationFn: (body: DcFormValues) => dcService.create({ ...body, requestId: ids.for(body) }),
+    onSuccess: () => {
+      ids.done();
+      invalidate();
+    },
   });
   const update = useMutation({
     mutationFn: (body: DcUpdateBody) => dcService.update(body),

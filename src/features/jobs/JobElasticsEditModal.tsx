@@ -52,6 +52,9 @@ export function JobElasticsEditModal({
 }) {
   const { toast } = useToast();
   const { updateElastics } = useJobMutations();
+  // The job's version when the form opened, not at save time: a refetch
+  // while the form is open must not hand the save a newer version.
+  const [openedVersion] = useState(job.__v);
   // Set from the server's 409 JOB_EXCESS_WOULD_CHANGE — a refusal with a
   // reason worth reading, not a toast that scrolls away.
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -103,6 +106,8 @@ export function JobElasticsEditModal({
           quantity: Number(l.quantity),
         })),
         auditReason: auditReason.trim(),
+        // As it was when this form opened (the modal mounts per edit).
+        expectedVersion: openedVersion,
       },
       {
         onSuccess: (res) => {

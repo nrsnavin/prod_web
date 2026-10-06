@@ -87,6 +87,8 @@ export interface JobShiftSummary {
 
 export interface JobDetail {
   id: string;
+  /** Document version; sent back as `expectedVersion` so a stale edit is a 409, not an overwrite. */
+  __v?: number;
   jobOrderNo: number;
   jobNo: string;
   date?: string;

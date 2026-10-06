@@ -55,7 +55,8 @@ export const wastageService = {
     return httpClient.get<WastageRootCause>("/wastage/root-cause", { days });
   },
 
-  add: (body: WastageFormValues) => httpClient.post("/wastage/add-wastage", body),
+  // requestId: see core/hooks/useRequestId; the server records each id once.
+  add: (body: WastageFormValues & { requestId?: string }) => httpClient.post("/wastage/add-wastage", body),
 
   update: (id: string, body: { quantity?: number; penalty?: number; reason?: string; auditReason: string }) =>
     httpClient.put(`/wastage/${id}`, body),
