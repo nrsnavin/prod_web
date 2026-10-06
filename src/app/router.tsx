@@ -85,6 +85,8 @@ const ShiftPlansPage = lazyPage(() => import("@/features/shifts/ShiftPlansPage")
 const ShiftPlanDetailPage = lazyPage(() => import("@/features/shifts/ShiftPlanDetailPage"), "ShiftPlanDetailPage");
 const ShiftVerificationPage = lazyPage(() => import("@/features/shifts/ShiftVerificationPage"), "ShiftVerificationPage");
 const ProductionViewPage = lazyPage(() => import("@/features/shifts/ProductionViewPage"), "ProductionViewPage");
+const SlipsPage = lazyPage(() => import("@/features/slips/SlipsPage"), "SlipsPage");
+const SlipDetailPage = lazyPage(() => import("@/features/slips/SlipDetailPage"), "SlipDetailPage");
 const WastagePage = lazyPage(() => import("@/features/wastage/WastagePage"), "WastagePage");
 const AttendancePage = lazyPage(() => import("@/features/hr/AttendancePage"), "AttendancePage");
 const PayrollPage = lazyPage(() => import("@/features/hr/PayrollPage"), "PayrollPage");
@@ -146,6 +148,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/shift-plans": withSuspense(<ShiftPlansPage />),
   "/shift-verification": withSuspense(<ShiftVerificationPage />),
   "/production": withSuspense(<ProductionViewPage />),
+  "/production-slips": withSuspense(<SlipsPage />),
   "/wastage": withSuspense(<WastagePage />),
   "/attendance": withSuspense(<AttendancePage />),
   "/payroll": withSuspense(<PayrollPage />),
@@ -194,6 +197,7 @@ export const detailRoutes = [
   { path: "/warping/:id", element: withSuspense(<WarpingDetailPage />) },
   { path: "/covering/:id", element: withSuspense(<CoveringDetailPage />) },
   { path: "/shift-plans/:id", element: withSuspense(<ShiftPlanDetailPage />) },
+  { path: "/production-slips/:id", element: withSuspense(<SlipDetailPage />) },
 ];
 
 // A path that detailRoutes already handles must NOT also get a

@@ -13,6 +13,7 @@ import {
   Package,
   CalendarClock,
   ShieldCheck,
+  MessageSquareText,
   Factory,
   Trash2,
   Users,
@@ -134,6 +135,10 @@ export const navSections: NavSection[] = [
       { label: "Complaints", path: "/complaints", icon: PackageX, departments: ["admin", "packing", "production"] },
       { label: "Shift Plans", path: "/shift-plans", icon: CalendarClock, departments: ["admin", "production"] },
       { label: "Shift Verification", path: "/shift-verification", icon: ShieldCheck, departments: ["admin", "production"] },
+      // Part of verification, not a permission of its own: slips read from
+      // a photo are submissions that land on Shift Verification, and the
+      // server gates /api/v2/slips on the same key.
+      { label: "Production Slips", path: "/production-slips", icon: MessageSquareText, departments: ["admin", "production"], featureKey: "/shift-verification" },
       { label: "Production View", path: "/production", icon: Factory, departments: ["admin", "production"] },
       { label: "Wastage", path: "/wastage", icon: Trash2, departments: ["admin", "production"] },
     ],
