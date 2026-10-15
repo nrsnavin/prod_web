@@ -4,7 +4,7 @@ import { ElasticCreateBody, ElasticFormValues } from "./types";
 
 const KEY = "elastics";
 
-export function useElastics(params: { page: number; search: string; showInactive?: boolean }) {
+export function useElastics(params: { page: number; search: string; showInactive?: boolean; lowStock?: boolean }) {
   return useQuery({
     queryKey: [KEY, params],
     queryFn: () =>
@@ -13,6 +13,7 @@ export function useElastics(params: { page: number; search: string; showInactive
         search: params.search,
         limit: 20,
         ...(params.showInactive ? { includeArchived: "true" } : {}),
+        ...(params.lowStock ? { lowStock: "true" } : {}),
       }),
     placeholderData: (prev) => prev,
   });
@@ -106,5 +107,18 @@ export function useElasticMutations() {
     mutationFn: ({ ids, minStock }: { ids: string[]; minStock: number }) => elasticService.bulkMinStock(ids, minStock),
     onSuccess: invalidate,
   });
-  return { create, update, recalculate, setArchived, remove, saveTemplate, bulkArchive, bulkCosting, bulkMinStock };
+  const bulkCopyTemplate = useMutation({
+    mutationFn: ({ sourceId, ids, replace }: { sourceId: string; ids: string[]; replace: boolean }) =>
+      elasticService.bulkCopyTemplate(sourceId, ids, replace),
+    onSuccess: invalidate,
+  });
+  const bulkTesting = useMutation({
+    mutationFn: ({ ids, params }: { ids: string[]; params: Parameters<typeof elasticService.bulkTesting>[1] }) =>
+      elasticService.bulkTesting(ids, params),
+    onSuccess: invalidate,
+  });
+  return {
+    create, update, recalculate, setArchived, remove, saveTemplate,
+    bulkArchive, bulkCosting, bulkMinStock, bulkCopyTemplate, bulkTesting,
+  };
 }

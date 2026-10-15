@@ -25,7 +25,11 @@ export interface BulkResult {
 }
 
 export const elasticService = {
-  async list(params: { page?: number; limit?: number; search?: string; includeArchived?: string }) {
+  async list(params: {
+    page?: number; limit?: number; search?: string; includeArchived?: string; lowStock?: string;
+    /** Comma-separated: just these elastics. */
+    ids?: string;
+  }) {
     const res = await httpClient.get<{
       success: boolean;
       elastics: Elastic[];
@@ -83,6 +87,18 @@ export const elasticService = {
   },
   bulkMinStock(ids: string[], minStock: number) {
     return httpClient.post<BulkResult>("/elastic/bulk/min-stock", { ids, minStock });
+  },
+  bulkCopyTemplate(sourceId: string, ids: string[], replace: boolean) {
+    return httpClient.post<BulkResult>("/elastic/bulk/copy-template", { sourceId, ids, replace });
+  },
+  bulkTesting(ids: string[], params: { width?: number; elongation?: number; recovery?: number; strech?: string }) {
+    return httpClient.post<BulkResult>("/elastic/bulk/testing", { ids, ...params });
+  },
+  specSheetPdf(ids: string[]): Promise<Blob> {
+    return httpClient.postBlob("/elastic/bulk/spec-sheet", { ids });
+  },
+  priceListPdf(ids: string[], opts: { marginPercent: number; customerName?: string; gstPercent?: number | null; validDays?: number }): Promise<Blob> {
+    return httpClient.postBlob("/elastic/bulk/price-list", { ids, ...opts });
   },
 
   async recalculateCost(elasticId: string): Promise<void> {

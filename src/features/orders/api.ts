@@ -41,6 +41,14 @@ export const orderService = {
     return res.data;
   },
 
+  /** An Open order for the house customer, to make these for stock. */
+  restock(lines: Array<{ elastic: string; quantity: number }>) {
+    return httpClient.post<{ orderId: string; orderNo?: number }>("/order/restock", { lines });
+  },
+  /** The selected orders' status reports as one PDF. */
+  statusReportsPdf(ids: string[]): Promise<Blob> {
+    return httpClient.postBlob("/order/bulk/status-report.pdf", { ids });
+  },
   async create(body: OrderFormValues): Promise<string> {
     const res = await httpClient.post<{ success: boolean; orderId: string }>(
       "/order/create-order",

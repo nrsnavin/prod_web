@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UnsavedChangesGuard } from "@/components/ui/UnsavedChangesGuard";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, RotateCcw, UserPlus, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -10,6 +10,9 @@ import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { customerService } from "@/features/customers/api";
+import { elasticService } from "@/features/elastics/api";
+import { PrefillState } from "@/features/elastics/prefill";
+import { productFromElastic } from "./fromElastic";
 import { useQuoteMutations } from "./hooks";
 import {
   MaterialRow,
@@ -35,6 +38,36 @@ export function QuoteCreatePage() {
   const { create } = useQuoteMutations();
 
   const [products, setProducts] = useState<ProductLine[]>(() => [newProduct()]);
+
+  // Sent here from the elastic list's selection: one product per elastic,
+  // costed from its recipe. Loaded once, then the router state is cleared
+  // so a refresh starts a blank quotation.
+  const location = useLocation();
+  const sent = (location.state as PrefillState | null)?.prefillElastics;
+  const [loadingElastics, setLoadingElastics] = useState(false);
+  // Unmounted, not "sent changed": clearing the state below changes `sent`
+  // while the load is still running, and that load must still land.
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true; // again after StrictMode's test unmount
+    return () => { mounted.current = false; };
+  }, []);
+  useEffect(() => {
+    if (!sent?.length) return;
+    navigate(location.pathname, { replace: true, state: null });
+    setLoadingElastics(true);
+    Promise.allSettled(sent.map((e) => elasticService.getById(e._id)))
+      .then((results) => {
+        if (!mounted.current) return;
+        const found = results.flatMap((r) => (r.status === "fulfilled" ? [productFromElastic(r.value)] : []));
+        if (found.length) setProducts(found);
+        const missed = results.length - found.length;
+        if (missed) toast(`${missed} of the elastics could not be loaded — add them by hand`, "error");
+      })
+      .finally(() => mounted.current && setLoadingElastics(false));
+    // Once per arrival: `sent` is gone after the replace above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sent]);
   const [gstPercent, setGstPercent] = useState("5");
   const [saved, setSaved] = useState(false);
 
@@ -155,6 +188,7 @@ export function QuoteCreatePage() {
         lines: products.map((p) => ({
           productName: p.productName.trim(),
           productSpec: p.productSpec.trim(),
+          ...(p.elastic ? { elastic: p.elastic } : {}),
           conversionCost: num(p.conversionCost),
           marginPercent: num(p.marginPercent),
           quantityMetres: num(p.quantityMetres),
@@ -248,6 +282,9 @@ export function QuoteCreatePage() {
           </Card>
 
           {/* ── Products ─────────────────────────────────────── */}
+          {loadingElastics && (
+            <Card className="p-5 text-sm text-ink-400">Loading the elastics' recipes…</Card>
+          )}
           {products.map((p, pi) => {
             const priced = costing.lines.find((l) => l.key === p.key);
             return (

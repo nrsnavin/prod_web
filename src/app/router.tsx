@@ -59,6 +59,7 @@ const StockCountListPage = lazyPage(() => import("@/features/stockCounts/StockCo
 const StockCountDetailPage = lazyPage(() => import("@/features/stockCounts/StockCountDetailPage"), "StockCountDetailPage");
 const ElasticListPage = lazyPage(() => import("@/features/elastics/ElasticListPage"), "ElasticListPage");
 const ElasticDetailPage = lazyPage(() => import("@/features/elastics/ElasticDetailPage"), "ElasticDetailPage");
+const ElasticComparePage = lazyPage(() => import("@/features/elastics/ElasticComparePage"), "ElasticComparePage");
 const ElasticGroupsPage = lazyPage(() => import("@/features/elasticGroups/ElasticGroupsPage"), "ElasticGroupsPage");
 const ElasticGroupDetailPage = lazyPage(() => import("@/features/elasticGroups/ElasticGroupDetailPage"), "ElasticGroupDetailPage");
 const MachineListPage = lazyPage(() => import("@/features/machines/MachineListPage"), "MachineListPage");
@@ -184,6 +185,8 @@ export const detailRoutes = [
   { path: "/materials/groups", element: withSuspense(<MaterialGroupsPage />) },
   { path: "/materials/:id", element: withSuspense(<MaterialDetailPage />) },
   { path: "/stock-counts/:id", element: withSuspense(<StockCountDetailPage />) },
+  // Before the :id route, or "compare" is read as an elastic id.
+  { path: "/elastics/compare", element: withSuspense(<ElasticComparePage />) },
   { path: "/elastics/:id", element: withSuspense(<ElasticDetailPage />) },
   { path: "/elastic-groups/:id", element: withSuspense(<ElasticGroupDetailPage />) },
   { path: "/machines/:id", element: withSuspense(<MachineDetailPage />) },

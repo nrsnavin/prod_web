@@ -28,4 +28,11 @@ export const elasticGroupService = {
     return res.group;
   },
   remove: (id: string) => httpClient.delete(`/elastic-group/${id}`),
+  /** Add elastics to a group, keeping what it has; returns how many were new. */
+  addElastics(id: string, elastics: string[]) {
+    return httpClient.post<{ added: number; alreadyThere: number; group: ElasticGroup }>(
+      `/elastic-group/${id}/add-elastics`,
+      { elastics }
+    );
+  },
 };
