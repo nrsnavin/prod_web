@@ -81,6 +81,28 @@ export function formToTemplate(beams: TemplateBeamValues[] | undefined) {
   return cleaned.length ? { beams: cleaned } : undefined;
 }
 
+/**
+ * The yarns a template section may use: the elastic's own warp yarns.
+ *
+ * The warp yarn list is what the elastic is costed and issued on, so a
+ * beam on any other yarn builds a different product (the server refuses
+ * it too). A yarn the template already holds that is no longer on the
+ * list stays visible, marked, so it can be changed rather than silently
+ * blanked.
+ */
+export function templateYarnOptions(
+  elasticWarps: MaterialRef[],
+  usedIds: string[],
+  nameOf: (id: string) => string | undefined = () => undefined
+): Array<{ value: string; label: string }> {
+  const allowed = new Set(elasticWarps.map((m) => m._id));
+  const options = elasticWarps.map((m) => ({ value: m._id, label: m.name }));
+  for (const id of new Set(usedIds.filter((v) => v && !allowed.has(v)))) {
+    options.push({ value: id, label: `${nameOf(id) ?? "Unknown yarn"} — not on this elastic` });
+  }
+  return options;
+}
+
 function BeamSections({
   control,
   register,
@@ -158,15 +180,22 @@ function BeamSections({
 export function WarpingTemplateEditor({
   control,
   register,
-  warpMaterials,
+  elasticWarps,
+  nameOf,
 }: {
   control: Control<WithTemplate>;
   register: UseFormRegister<WithTemplate>;
   errors?: FieldErrors<WithTemplate>;
-  warpMaterials?: MaterialRef[];
+  /** The elastic's own warp yarns — the only ones a section may use. */
+  elasticWarps: MaterialRef[];
+  /** A yarn's name by id, for one the template holds that is not on the list. */
+  nameOf?: (id: string) => string | undefined;
 }) {
   const { fields, append, remove } = useFieldArray({ control, name: "warpingPlanTemplate.beams" });
-  const warpOptions = (warpMaterials ?? []).map((m) => ({ value: m._id, label: m.name }));
+  const beams = useWatch({ control, name: "warpingPlanTemplate.beams" });
+  const usedIds = (beams ?? []).flatMap((b) => (b?.sections ?? []).map((sec) => String(sec?.warpYarn ?? "")));
+  const warpOptions = templateYarnOptions(elasticWarps, usedIds, nameOf);
+  const stray = warpOptions.length > elasticWarps.length;
 
   return (
     <div>
@@ -180,6 +209,18 @@ export function WarpingTemplateEditor({
           </p>
         </div>
       </div>
+
+      {elasticWarps.length === 0 ? (
+        <p className="mt-3 rounded-lg bg-status-warningBg px-3 py-2 text-xs text-status-warning">
+          This elastic has no warp yarns yet. Add them first — a template can only use the
+          elastic&apos;s own warp yarns.
+        </p>
+      ) : stray ? (
+        <p className="mt-3 rounded-lg bg-status-warningBg px-3 py-2 text-xs text-status-warning">
+          A section uses a yarn that is not one of this elastic&apos;s warp yarns. Change it to one
+          of them before saving.
+        </p>
+      ) : null}
 
       {fields.length === 0 ? (
         <div className="mt-3 rounded-lg border border-dashed border-ink-200 px-4 py-6 text-center">

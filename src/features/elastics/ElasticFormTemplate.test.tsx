@@ -12,7 +12,7 @@ const onSubmit = vi.fn();
 vi.mock("./hooks", () => ({
   useMaterialsByCategory: () => ({
     data: {
-      warp: [{ _id: "y1", name: "Nylon 70D" }],
+      warp: [{ _id: "y1", name: "Nylon 70D" }, { _id: "y2", name: "Poly 150D" }],
       weft: [{ _id: "w1", name: "Weft A" }],
       rubber: [{ _id: "r1", name: "Rubber 22" }],
       covering: [{ _id: "c1", name: "Covering X" }],
@@ -90,5 +90,18 @@ describe("the warping template on the create form", () => {
     // An absent template must not arrive as an empty beam list — that
     // would store a template nobody meant to create.
     expect(onSubmit.mock.calls[0][0].warpingPlanTemplate).toBeUndefined();
+  });
+});
+
+describe("the template's yarns follow the warp yarns chosen above", () => {
+  it("offers nothing until a warp yarn is chosen, then only that one", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    expect(screen.getByText(/has no warp yarns yet/i)).toBeInTheDocument();
+
+    await pick(user, /select warp yarn/i, /Poly 150D/);
+    await user.click(screen.getByRole("button", { name: /add beam/i }));
+    await user.click(screen.getByRole("button", { name: /warp yarn for beam 1 section 1/i }));
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["Poly 150D"]);
   });
 });

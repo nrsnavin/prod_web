@@ -37,6 +37,18 @@ export function ElasticWarpingTemplate({ elastic }: { elastic: Elastic }) {
   const materials = useMaterialsByCategory();
   const [open, setOpen] = useState(false);
 
+  // The elastic's own warp yarns, named from the elastic when it came
+  // populated and from the material list when it did not.
+  const allWarp = materials.data?.warp ?? [];
+  const nameOf = (id: string) => allWarp.find((m) => m._id === id)?.name;
+  const elasticWarps = (elastic.warpYarn ?? [])
+    .map((w) => {
+      const id = typeof w.id === "object" && w.id ? w.id._id : String(w.id ?? "");
+      const name = (typeof w.id === "object" && w.id?.name) || nameOf(id) || "Unknown yarn";
+      return id ? { _id: id, name } : null;
+    })
+    .filter((m): m is { _id: string; name: string } => !!m);
+
   const beams = elastic.warpingPlanTemplate?.beams ?? [];
   const has = beams.length > 0;
 
@@ -154,7 +166,8 @@ export function ElasticWarpingTemplate({ elastic }: { elastic: Elastic }) {
           <WarpingTemplateEditor
             control={control}
             register={register}
-            warpMaterials={materials.data?.warp}
+            elasticWarps={elasticWarps}
+            nameOf={nameOf}
           />
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

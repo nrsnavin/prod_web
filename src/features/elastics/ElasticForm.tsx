@@ -1,4 +1,4 @@
-import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
@@ -107,6 +107,12 @@ export function ElasticForm({
   const { fields, append, remove } = useFieldArray({ control, name: "warpYarn" });
 
   const m = materials.data;
+  // The template's yarns come from the warp yarns chosen above, as they
+  // stand right now in this form.
+  const chosenWarp = useWatch({ control, name: "warpYarn" });
+  const nameOf = (id: string) => m?.warp.find((x) => x._id === id)?.name;
+  const elasticWarps = [...new Set((chosenWarp ?? []).map((w) => w?.id).filter(Boolean))]
+    .map((id) => ({ _id: id, name: nameOf(id) ?? "Unknown yarn" }));
 
   return (
     <form
@@ -219,7 +225,8 @@ export function ElasticForm({
         <WarpingTemplateEditor
           control={control as unknown as import("react-hook-form").Control<WithTemplate>}
           register={register as unknown as import("react-hook-form").UseFormRegister<WithTemplate>}
-          warpMaterials={m?.warp}
+          elasticWarps={elasticWarps}
+          nameOf={nameOf}
         />
       </div>
 

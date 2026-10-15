@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { ElasticWarpingTemplate } from "./ElasticWarpingTemplate";
-import { formToTemplate, templateToForm } from "./WarpingTemplateEditor";
+import { formToTemplate, templateToForm, templateYarnOptions } from "./WarpingTemplateEditor";
 import { Elastic } from "./types";
 
 // An elastic is warped the same way every time it runs. Recording that
@@ -19,13 +19,23 @@ const saveMutate = vi.fn(
 vi.mock("./hooks", () => ({
   useElasticMutations: () => ({ saveTemplate: { mutate: saveMutate, isPending: false } }),
   useMaterialsByCategory: () => ({
-    data: { warp: [{ _id: "y1", name: "Nylon 70D" }, { _id: "y2", name: "Poly 150D" }] },
+    data: {
+      warp: [
+        { _id: "y1", name: "Nylon 70D" },
+        { _id: "y2", name: "Poly 150D" },
+        { _id: "y3", name: "Cotton 40s" }, // a warp yarn this elastic does not use
+      ],
+    },
   }),
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast }) }));
 
-const elastic = (tpl?: Elastic["warpingPlanTemplate"]): Elastic =>
-  ({ _id: "e1", name: "20mm", warpingPlanTemplate: tpl }) as Elastic;
+// Its warp yarns: one populated, one a bare id, as the API can send either.
+const elastic = (tpl?: Elastic["warpingPlanTemplate"], warpYarn: Elastic["warpYarn"] = [
+  { id: { _id: "y1", name: "Nylon 70D" }, weight: 1 },
+  { id: "y2", weight: 1 },
+]): Elastic =>
+  ({ _id: "e1", name: "20mm", warpingPlanTemplate: tpl, warpYarn }) as Elastic;
 
 const withTemplate = elastic({
   noOfBeams: 1,
@@ -129,6 +139,46 @@ describe("the template on the elastic detail page", () => {
     const beamTwo = screen.getByRole("group", { name: "Beam 2" });
     await user.click(within(beamTwo).getByRole("button", { name: /add section/i }));
     expect(screen.getByLabelText(/ends for beam 2 section 2/i)).toBeInTheDocument();
+  });
+});
+
+describe("which yarns a section may use", () => {
+  it("offers only the elastic's own warp yarns", async () => {
+    const user = userEvent.setup();
+    renderCard(elastic());
+    await user.click(screen.getByRole("button", { name: /create template/i }));
+    await user.click(screen.getByRole("button", { name: /warp yarn for beam 1 section 1/i }));
+    const offered = screen.getAllByRole("option").map((o) => o.textContent);
+    expect(offered).toEqual(["Nylon 70D", "Poly 150D"]);
+    expect(offered).not.toContain("Cotton 40s");
+  });
+
+  it("keeps a yarn the template already holds that is off the list visible, and says so", async () => {
+    const user = userEvent.setup();
+    renderCard(elastic(withTemplate.warpingPlanTemplate, [{ id: { _id: "y1", name: "Nylon 70D" }, weight: 1 }]));
+    await user.click(screen.getByRole("button", { name: /edit template/i }));
+    expect(screen.getByRole("button", { name: /warp yarn for beam 1 section 2/i }))
+      .toHaveTextContent("Poly 150D — not on this elastic");
+    expect(screen.getByText(/uses a yarn that is not one of this elastic/i)).toBeInTheDocument();
+  });
+
+  it("says to add warp yarns first when the elastic has none", async () => {
+    const user = userEvent.setup();
+    renderCard(elastic(undefined, []));
+    await user.click(screen.getByRole("button", { name: /create template/i }));
+    expect(screen.getByText(/has no warp yarns yet/i)).toBeInTheDocument();
+  });
+
+  it("templateYarnOptions: the list, then any stray in use, named", () => {
+    const opts = templateYarnOptions(
+      [{ _id: "a", name: "A" }],
+      ["a", "b", "", "b"],
+      (id) => (id === "b" ? "B" : undefined)
+    );
+    expect(opts).toEqual([
+      { value: "a", label: "A" },
+      { value: "b", label: "B — not on this elastic" },
+    ]);
   });
 });
 
