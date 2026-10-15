@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,10 +12,53 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { usePlanContext, useWarpingMutations } from "./hooks";
 import { combineBeams, separateBeam, totalEnds } from "./beamCombine";
-import { TemplateBeam, YarnLotStock } from "./types";
+import { TemplateBeam, WarpingPlan, YarnLotStock } from "./types";
 
 const emptySection = () => ({ warpYarn: "", ends: 0, maxMeters: 0, yarnLot: "" });
 const emptyBeams = () => [{ sections: [emptySection()] }];
+
+const idOf = (v: { _id: string } | string | null | undefined) => (v && typeof v === "object" ? v._id : v ?? "");
+
+/** A saved plan as this form's beams, to edit. */
+export function planToBeams(plan: WarpingPlan) {
+  return plan.beams.map((b, i) => ({
+    beamNo: b.beamNo ?? i + 1,
+    elastic: idOf(b.elastic) || null,
+    tapeNo: b.tapeNo ?? null,
+    pairedBeamNo: b.pairedBeamNo ?? null,
+    sections: b.sections.map((sec) => ({
+      warpYarn: idOf(sec.warpYarn),
+      ends: sec.ends,
+      maxMeters: sec.maxMeters ?? 0,
+      yarnLot: idOf(sec.yarnLot),
+    })),
+  }));
+}
+
+/**
+ * What a saved plan already names that today's pickers may not offer: a
+ * yarn since dropped from the elastic, a lot since drawn down or closed.
+ * Editing must keep them as they are unless someone changes them, so they
+ * are offered alongside, labelled from the plan itself.
+ */
+function planKnown(plan: WarpingPlan | undefined) {
+  const yarns = new Map<string, string>();
+  const lots = new Map<string, { yarn: string; label: string }>();
+  const elastics = new Map<string, string>();
+  for (const b of plan?.beams ?? []) {
+    if (b.elastic && typeof b.elastic === "object") elastics.set(b.elastic._id, b.elastic.name);
+    for (const sec of b.sections) {
+      const yarn = idOf(sec.warpYarn);
+      if (sec.warpYarn && typeof sec.warpYarn === "object") yarns.set(yarn, sec.warpYarn.name);
+      const lot = idOf(sec.yarnLot);
+      if (lot) {
+        const lotNo = sec.lotNo || (typeof sec.yarnLot === "object" && sec.yarnLot ? sec.yarnLot.lotNo : "") || "lot";
+        lots.set(lot, { yarn, label: `${lotNo}${sec.shade ? ` · ${sec.shade}` : ""} — on the plan` });
+      }
+    }
+  }
+  return { yarns, lots, elastics };
+}
 
 /**
  * The elastics' templates, as beams this form can edit, repeated once
@@ -129,6 +172,8 @@ const sectionSchema = z.object({
 });
 const schema = z.object({
   remarks: z.string().optional(),
+  /** Only asked for when editing: every change to a saved plan is audited. */
+  reason: z.string().optional(),
   beams: z
     .array(
       z.object({
@@ -152,18 +197,23 @@ type PlanValues = z.infer<typeof schema>;
 export function WarpingPlanForm({
   warpingId,
   jobId,
+  plan,
   onDone,
   onCancel,
 }: {
   warpingId: string;
   jobId: string | undefined;
+  /** A saved plan to edit; without it the form creates one. */
+  plan?: WarpingPlan;
   onDone: () => void;
   onCancel: () => void;
 }) {
   const { toast } = useToast();
   const context = usePlanContext(jobId);
   const yarns = { data: context.data?.warpYarns };
-  const { createPlan } = useWarpingMutations();
+  const { createPlan, updatePlan } = useWarpingMutations();
+  const editing = !!plan;
+  const known = useMemo(() => planKnown(plan), [plan]);
 
   const {
     register,
@@ -176,8 +226,9 @@ export function WarpingPlanForm({
   } = useForm<PlanValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      remarks: "",
-      beams: emptyBeams(),
+      remarks: plan?.remarks ?? "",
+      reason: "",
+      beams: plan ? planToBeams(plan) : emptyBeams(),
     },
   });
   const beams = useFieldArray({ control, name: "beams" });
@@ -190,7 +241,8 @@ export function WarpingPlanForm({
   const templateBeams = context.data?.templateBeams ?? [];
   const hasTemplate = templateBeams.length > 0;
   const [filledFromTemplate, setFilledFromTemplate] = useState(false);
-  const prefilled = useRef(false);
+  // An edit starts from the saved plan, never from the template.
+  const prefilled = useRef(editing);
 
   // How many times the template's build is repeated. Changing it rebuilds
   // the beams, which is only safe while they still ARE the template —
@@ -291,7 +343,12 @@ export function WarpingPlanForm({
     maxMeters: uniformLength ? Number(uniformValue) || 0 : 0,
   });
 
-  const yarnOptions = (yarns.data ?? []).map((y) => ({ value: y.id, label: y.name }));
+  const yarnOptions = [
+    ...(yarns.data ?? []).map((y) => ({ value: y.id, label: y.name })),
+    ...[...known.yarns]
+      .filter(([id]) => !(yarns.data ?? []).some((y) => y.id === id))
+      .map(([id, name]) => ({ value: id, label: `${name} — on the plan` })),
+  ];
 
   // ── Combine mode ────────────────────────────────────────────────
   // Pick two beams and they are run together: both end up carrying every
@@ -358,6 +415,8 @@ export function WarpingPlanForm({
         const forYarn = lotStock.find((l) => l.warpYarnId === yarnId);
         const lots = forYarn?.lots ?? [];
         const current = section?.yarnLot ?? "";
+        // The lot a saved plan already names stays, while its yarn does.
+        if (current && known.lots.get(current)?.yarn === yarnId) return;
         // Valid only if it is one of THIS yarn's lots.
         if (current && lots.some((l) => l.id === current)) return;
         if (lots.length === 0) {
@@ -380,35 +439,59 @@ export function WarpingPlanForm({
     // mutates it in place, so a dependency on it never changes and the
     // effect runs exactly once — which looked like working code, because
     // the first fill was right and only a later yarn change was not.
-  }, [lotKey, lotStock, setValue]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lotKey, lotStock, setValue, known]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const beamsOut = (values: PlanValues) =>
+    // Number every beam on the way out, not just the combined ones,
+    // so the saved plan is self-describing.
+    values.beams.map((b, i) => ({
+      ...b,
+      beamNo: b.beamNo ?? i + 1,
+      pairedBeamNo: b.pairedBeamNo ?? null,
+      elastic: b.elastic ?? null,
+      tapeNo: b.tapeNo ?? null,
+    }));
+
+  const reason = (watch("reason") ?? "").trim();
+
+  const submit = (values: PlanValues) => {
+    if (plan) {
+      if (reason.length < 3) {
+        toast("Say why the plan is changing (at least 3 characters)", "error");
+        return;
+      }
+      updatePlan.mutate(
+        {
+          planId: plan._id,
+          body: { beams: beamsOut(values), remarks: values.remarks ?? "", auditReason: reason, expectedVersion: plan.__v },
+        },
+        {
+          onSuccess: () => {
+            toast("Warping plan saved", "success");
+            onDone();
+          },
+          onError: (e) =>
+            toast(e instanceof ApiError ? e.message : "Failed to save the plan", "error"),
+        }
+      );
+      return;
+    }
+    createPlan.mutate(
+      { warpingId, beams: beamsOut(values), remarks: values.remarks },
+      {
+        onSuccess: () => {
+          toast("Warping plan created", "success");
+          onDone();
+        },
+        onError: (e) =>
+          toast(e instanceof ApiError ? e.message : "Failed to create plan", "error"),
+      }
+    );
+  };
 
   return (
     <form
-      onSubmit={handleSubmit((values) =>
-        createPlan.mutate(
-          {
-            warpingId,
-            // Number every beam on the way out, not just the combined ones,
-            // so the saved plan is self-describing.
-            beams: values.beams.map((b, i) => ({
-              ...b,
-              beamNo: b.beamNo ?? i + 1,
-              pairedBeamNo: b.pairedBeamNo ?? null,
-              elastic: b.elastic ?? null,
-              tapeNo: b.tapeNo ?? null,
-            })),
-            remarks: values.remarks,
-          },
-          {
-            onSuccess: () => {
-              toast("Warping plan created", "success");
-              onDone();
-            },
-            onError: (e) =>
-              toast(e instanceof ApiError ? e.message : "Failed to create plan", "error"),
-          }
-        )
-      )}
+      onSubmit={handleSubmit(submit)}
       className="space-y-4"
       noValidate
     >
@@ -433,7 +516,14 @@ export function WarpingPlanForm({
 
       <LotStockPanel stock={lotStock} />
 
-      {hasTemplate && (
+      {editing && (
+        <p className="rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info">
+          Editing the saved plan. It can change only while the warping is open and before any
+          batch is raised against its beams.
+        </p>
+      )}
+
+      {hasTemplate && !editing && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info">
           <Layers className="h-4 w-4 shrink-0" />
           <span className="flex-1">
@@ -520,8 +610,9 @@ export function WarpingPlanForm({
           lotStock={lotStock}
           elasticName={
             templateBeams.find((t) => t.elasticId && t.elasticId === watched?.[bi]?.elastic)
-              ?.elasticName ?? ""
+              ?.elasticName ?? known.elastics.get(watched?.[bi]?.elastic ?? "") ?? ""
           }
+          knownLots={known.lots}
           tapeNo={watched?.[bi]?.tapeNo ?? null}
           lengthLocked={uniformLength}
           newSection={newSection}
@@ -559,9 +650,22 @@ export function WarpingPlanForm({
 
       <Input label="Remarks" {...register("remarks")} />
 
+      {editing && (
+        <Input
+          label="Reason for the change *"
+          placeholder="e.g. more ends on beam 2 for the wider tape"
+          hint="Recorded on the job's history."
+          {...register("reason")}
+        />
+      )}
+
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button type="submit" loading={createPlan.isPending}>Create plan</Button>
+        {editing ? (
+          <Button type="submit" loading={updatePlan.isPending} disabled={reason.length < 3}>Save plan</Button>
+        ) : (
+          <Button type="submit" loading={createPlan.isPending}>Create plan</Button>
+        )}
       </div>
     </form>
   );
@@ -573,6 +677,7 @@ import { Control, UseFormRegister, FieldErrors } from "react-hook-form";
 
 function BeamFields({
   index,
+  knownLots,
   elasticName,
   tapeNo,
   onDuplicate,
@@ -593,6 +698,8 @@ function BeamFields({
   onUnpair,
 }: {
   index: number;
+  /** Lots the saved plan names, offered even when no longer open. */
+  knownLots?: Map<string, { yarn: string; label: string }>;
   /** Empty unless this beam came from a template. */
   elasticName?: string;
   /** Null for a beam added by hand, which belongs to no tape. */
@@ -692,6 +799,10 @@ function BeamFields({
           // offering it here would be inviting the mistake.
           const chosenYarn = watchedSections?.[si]?.warpYarn ?? "";
           const forYarn = lotStock.find((l) => l.warpYarnId === chosenYarn);
+          const keptLots = [...(knownLots ?? [])]
+            .filter(([id, k]) => k.yarn === chosenYarn && !(forYarn?.lots ?? []).some((l) => l.id === id))
+            .map(([id, k]) => ({ value: id, label: k.label }));
+          const lotCount = (forYarn?.lots.length ?? 0) + keptLots.length;
           return (
             <div key={s.id} className="grid grid-cols-[1fr_1fr_80px_80px_32px] gap-2 items-start">
               <Select aria-label="Warp yarn"
@@ -704,12 +815,12 @@ function BeamFields({
                 placeholder={
                   !chosenYarn
                     ? "Pick a yarn first"
-                    : (forYarn?.lots.length ?? 0) === 0
+                    : lotCount === 0
                       ? "No open lots"
                       : "Any lot"
                 }
-                disabled={!chosenYarn || (forYarn?.lots.length ?? 0) === 0}
-                options={(forYarn?.lots ?? []).map((l) => ({
+                disabled={!chosenYarn || lotCount === 0}
+                options={[...keptLots, ...(forYarn?.lots ?? []).map((l) => ({
                   value: l.id,
                   // Mark the biggest, so the pre-filled choice reads as
                   // a default the form made rather than one the operator
@@ -719,7 +830,7 @@ function BeamFields({
                     (forYarn && l.balance === forYarn.largestLot && (forYarn.lots.length ?? 0) > 1
                       ? " · most stock"
                       : ""),
-                }))}
+                }))]}
                 {...register(`beams.${index}.sections.${si}.yarnLot`)}
               />
               <Input aria-label="Ends"

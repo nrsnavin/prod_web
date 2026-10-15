@@ -65,7 +65,12 @@ export function useWarpingMutations() {
       warpingService.deletePlan(planId, auditReason),
     onSuccess: invalidate,
   });
-  return { start, complete, cancel, createPlan, deletePlan };
+  const updatePlan = useMutation({
+    mutationFn: ({ planId, body }: { planId: string; body: Parameters<typeof warpingService.updatePlan>[1] }) =>
+      warpingService.updatePlan(planId, body),
+    onSuccess: invalidate,
+  });
+  return { start, complete, cancel, createPlan, deletePlan, updatePlan };
 }
 
 export function useWarpingBatches(warpingId: string | undefined) {

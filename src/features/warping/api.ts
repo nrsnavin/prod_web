@@ -81,8 +81,20 @@ export const warpingService = {
     remarks?: string;
   }) => httpClient.post("/warping/warpingPlan/create", body),
 
-  updatePlan: (planId: string, body: { remarks?: string; auditReason: string }) =>
-    httpClient.put(`/warping/warpingPlan/${planId}`, body),
+  // Beams are replaced whole when sent; refused (409) once a batch is
+  // raised against them, or when someone saved the plan since it loaded.
+  updatePlan: (planId: string, body: {
+    remarks?: string;
+    auditReason: string;
+    expectedVersion?: number;
+    beams?: Array<{
+      beamNo?: number;
+      pairedBeamNo?: number | null;
+      elastic?: string | null;
+      tapeNo?: number | null;
+      sections: Array<{ warpYarn: string; ends: number; maxMeters?: number; yarnLot?: string }>;
+    }>;
+  }) => httpClient.put(`/warping/warpingPlan/${planId}`, body),
   deletePlan: (planId: string, auditReason: string) =>
     httpClient.delete(`/warping/warpingPlan/${planId}`, { auditReason }),
 

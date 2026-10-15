@@ -47,6 +47,8 @@ export interface WarpingPlanBeam {
 
 export interface WarpingPlan {
   _id: string;
+  /** Sent back as expectedVersion on an edit, so a stale form is refused. */
+  __v?: number;
   noOfBeams: number;
   beams: WarpingPlanBeam[];
   remarks?: string;

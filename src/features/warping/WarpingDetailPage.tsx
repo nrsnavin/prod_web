@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Play, CheckCircle2, XCircle, Plus, Printer, Tags, Trash2, Wand2, Loader2 } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle2, XCircle, Plus, Printer, Tags, Trash2, Wand2, Loader2, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -33,6 +33,7 @@ export function WarpingDetailPage() {
   const plan = useWarpingPlan(id);
   const { start, complete, cancel, deletePlan } = useWarpingMutations();
   const [planOpen, setPlanOpen] = useState(false);
+  const [editPlanOpen, setEditPlanOpen] = useState(false);
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [delPlanOpen, setDelPlanOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState<null | "sheet" | "labels">(null);
@@ -122,6 +123,11 @@ export function WarpingDetailPage() {
             )}
             {warping.status === "open" && hasPlan && (
               <>
+                {plan.data?.plan && (
+                  <Button variant="secondary" onClick={() => setEditPlanOpen(true)}>
+                    <Pencil className="h-4 w-4" /> Edit plan
+                  </Button>
+                )}
                 <Button variant="secondary" onClick={() => setDelPlanOpen(true)}>
                   <Trash2 className="h-4 w-4" /> Delete plan
                 </Button>
@@ -377,6 +383,22 @@ export function WarpingDetailPage() {
           onCancel={() => setPlanOpen(false)}
         />
       </FormScreen>
+
+      {/* Mounted only while open, so it starts from the plan as it is now. */}
+      {editPlanOpen && plan.data?.plan && (
+        <FormScreen open onClose={() => setEditPlanOpen(false)} title="Edit warping plan" width="max-w-2xl">
+          <WarpingPlanForm
+            warpingId={warping._id}
+            jobId={warping.job?._id}
+            plan={plan.data.plan}
+            onDone={() => {
+              setEditPlanOpen(false);
+              plan.refetch();
+            }}
+            onCancel={() => setEditPlanOpen(false)}
+          />
+        </FormScreen>
+      )}
 
       {optimizeOpen && (
         <OptimizeLayoutModal
