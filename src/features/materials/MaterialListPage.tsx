@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, TriangleAlert, ClipboardList, TrendingDown, IndianRupee, Layers } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -19,6 +19,7 @@ import { useMaterialGroups } from "../materialGroups/hooks";
 import { useMaterialCategories } from "./hooks";
 import { MaterialForm } from "./MaterialForm";
 import { ReorderSuggestions, StockTakeModal, BulkPriceUpdateModal } from "./StockOps";
+import { MaterialBulkActions } from "./MaterialBulkActions";
 
 const columns: Column<RawMaterial>[] = [
   {
@@ -146,6 +147,28 @@ export function MaterialListPage() {
   });
   const { create } = useMaterialMutations();
 
+  // Ticked materials, kept with their rows so a selection survives a
+  // change of filter (and the bar knows suppliers and archived state).
+  const [picked, setPicked] = useState<Map<string, RawMaterial>>(new Map());
+  const pickedIds = useMemo(() => new Set(picked.keys()), [picked]);
+  // What the bar sees: the latest copy of each ticked row that is on
+  // screen, so a bulk change (inactivated, re-priced) shows at once.
+  const selectedRows = useMemo(() => {
+    const shown = new Map((data ?? []).map((r) => [r._id, r]));
+    return [...picked.values()].map((r) => shown.get(r._id) ?? r);
+  }, [picked, data]);
+  const onPick = (next: Set<string>) => {
+    const shown = new Map((data ?? []).map((m) => [m._id, m]));
+    setPicked((prev) => {
+      const m = new Map<string, RawMaterial>();
+      for (const id of next) {
+        const row = shown.get(id) ?? prev.get(id);
+        if (row) m.set(id, row);
+      }
+      return m;
+    });
+  };
+
   const stockValue = (data ?? []).reduce(
     (s, m) => s + m.stock * (m.avgCost || m.price || 0),
     0
@@ -247,8 +270,13 @@ export function MaterialListPage() {
 
       {isError && <ErrorBanner message={(error as Error).message} />}
 
+      {picked.size > 0 && (
+        <MaterialBulkActions selected={selectedRows} onClear={() => setPicked(new Map())} />
+      )}
+
       <Card>
         <DataTable
+          selection={{ selected: pickedIds, onChange: onPick, label: (m) => `Select ${m.name}` }}
           columns={columns}
           rows={data ?? []}
           rowKey={(m) => m._id}

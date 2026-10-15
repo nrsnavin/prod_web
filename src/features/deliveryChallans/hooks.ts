@@ -63,5 +63,10 @@ export function useDcMutations() {
     mutationFn: (id: string) => dcService.remove(id),
     onSuccess: invalidate,
   });
-  return { create, update, updateStatus, remove };
+  const bulkStatus = useMutation({
+    mutationFn: ({ ids, status }: { ids: string[]; status: "dispatched" | "delivered" }) =>
+      dcService.bulkStatus(ids, status),
+    onSuccess: invalidate,
+  });
+  return { create, update, updateStatus, remove, bulkStatus };
 }

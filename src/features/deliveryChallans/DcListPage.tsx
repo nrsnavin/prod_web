@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { usePrefillElastics } from "@/features/elastics/prefill";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -18,6 +18,7 @@ import { useDcs, useDcMutations } from "./hooks";
 import { DcFormValues, DcStatus, DcType, DeliveryChallan } from "./types";
 import { DcForm } from "./DcForm";
 import { StockShortDialog, stockShortFrom } from "./StockShortDialog";
+import { DcBulkActions } from "./DcBulkActions";
 import { formatDate } from "@/core/format/date";
 
 export const dcStatusTone: Record<DcStatus, ChipTone> = {
@@ -76,6 +77,28 @@ export function DcListPage() {
 
   const { data, isLoading, isError, error } = useDcs({ page, type, status, search });
   const { create } = useDcMutations();
+
+  // Ticked challans, kept with their rows so a selection survives paging
+  // and filtering. Status changes refetch the list; the rows here are
+  // refreshed from it as they come back on screen.
+  const [picked, setPicked] = useState<Map<string, DeliveryChallan>>(new Map());
+  const pickedIds = useMemo(() => new Set(picked.keys()), [picked]);
+  const onPick = (next: Set<string>) => {
+    const onPage = new Map((data?.dcs ?? []).map((d) => [d._id, d]));
+    setPicked((prev) => {
+      const m = new Map<string, DeliveryChallan>();
+      for (const id of next) {
+        const row = onPage.get(id) ?? prev.get(id);
+        if (row) m.set(id, row);
+      }
+      return m;
+    });
+  };
+  // What the bar sees: the latest copy of each ticked row that is on screen.
+  const selectedRows = useMemo(() => {
+    const onPage = new Map((data?.dcs ?? []).map((d) => [d._id, d]));
+    return [...picked.values()].map((d) => onPage.get(d._id) ?? d);
+  }, [picked, data]);
   // A challan refused for shipping more than is in stock, held while the
   // user says why; confirming resends the same values with the reason.
   const [stockShort, setStockShort] = useState<{
@@ -156,8 +179,11 @@ export function DcListPage() {
 
       {isError && <ErrorBanner message={(error as Error).message} />}
 
+      {picked.size > 0 && <DcBulkActions selected={selectedRows} onClear={() => setPicked(new Map())} />}
+
       <Card>
         <DataTable
+          selection={{ selected: pickedIds, onChange: onPick, label: (d) => `Select ${d.dcNumber}` }}
           columns={columns}
           rows={data?.dcs ?? []}
           rowKey={(d) => d._id}

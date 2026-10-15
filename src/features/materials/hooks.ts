@@ -209,5 +209,14 @@ export function useMaterialMutations() {
       qc.invalidateQueries({ queryKey: [LOT_KEY] });
     },
   });
-  return { create, update, remove, setArchived, adjustStock };
+  const bulkUpdate = useMutation({
+    mutationFn: ({ ids, change }: { ids: string[]; change: { supplier?: string; minStock?: number; group?: string | null } }) =>
+      materialService.bulkUpdate(ids, change),
+    onSuccess: invalidate,
+  });
+  const bulkArchive = useMutation({
+    mutationFn: ({ ids, archived }: { ids: string[]; archived: boolean }) => materialService.bulkArchive(ids, archived),
+    onSuccess: invalidate,
+  });
+  return { create, update, remove, setArchived, adjustStock, bulkUpdate, bulkArchive };
 }

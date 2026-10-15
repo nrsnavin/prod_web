@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { usePrefillElastics } from "@/features/elastics/prefill";
 import { useNavigate } from "react-router-dom";
 import { Plus, FileUp } from "lucide-react";
@@ -17,6 +17,7 @@ import { ORDER_FILTERS, OrderFilter, OrderListItem } from "./types";
 import { orderStatusTone, orderStatusLabel, orderFilterLabel } from "./orderStatus";
 import { OrderForm } from "./OrderForm";
 import { PoIntakeModal } from "./PoIntakeModal";
+import { OrderBulkActions } from "./OrderBulkActions";
 import { formatDate } from "@/core/format/date";
 
 const columns: Column<OrderListItem>[] = [
@@ -58,6 +59,26 @@ export function OrderListPage() {
   } = useOrders(status);
   const { create } = useOrderMutations();
 
+  // Ticked orders, kept with their rows so a selection survives a change
+  // of filter; the bar sees the latest copy of each row on screen.
+  const [picked, setPicked] = useState<Map<string, OrderListItem>>(new Map());
+  const pickedIds = useMemo(() => new Set(picked.keys()), [picked]);
+  const onPick = (next: Set<string>) => {
+    const shown = new Map(orders.map((o) => [o._id, o]));
+    setPicked((prev) => {
+      const m = new Map<string, OrderListItem>();
+      for (const id of next) {
+        const row = shown.get(id) ?? prev.get(id);
+        if (row) m.set(id, row);
+      }
+      return m;
+    });
+  };
+  const selectedRows = useMemo(() => {
+    const shown = new Map(orders.map((o) => [o._id, o]));
+    return [...picked.values()].map((o) => shown.get(o._id) ?? o);
+  }, [picked, orders]);
+
   const scope = status === "All" ? "" : `${orderFilterLabel[status].toLowerCase()} `;
 
   return (
@@ -97,8 +118,11 @@ export function OrderListPage() {
 
       {isError && <ErrorBanner message={(error as Error).message} />}
 
+      {picked.size > 0 && <OrderBulkActions selected={selectedRows} onClear={() => setPicked(new Map())} />}
+
       <Card>
         <DataTable
+          selection={{ selected: pickedIds, onChange: onPick, label: (o) => `Select order ${o.orderNo}` }}
           columns={columns}
           rows={orders}
           rowKey={(o) => o._id}

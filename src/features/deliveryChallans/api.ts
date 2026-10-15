@@ -1,3 +1,4 @@
+import type { BulkResult } from "@/features/elastics/api";
 import { httpClient } from "@/core/http/httpClient";
 import {
   DcFormValues,
@@ -69,4 +70,11 @@ export const dcService = {
     httpClient.patch("/dc/update-status", { id, status }),
 
   remove: (id: string) => httpClient.delete("/dc/delete", { id }),
+
+  // Several at once, from the list's selection. Each challan moves on its
+  // own; one that cannot (already delivered, cancelled) says why.
+  bulkStatus: (ids: string[], status: "dispatched" | "delivered") =>
+    httpClient.post<BulkResult>("/dc/bulk/status", { ids, status }),
+  /** One PDF with every challan in it, in the order given. */
+  bulkPdf: (ids: string[]): Promise<Blob> => httpClient.postBlob("/dc/bulk/pdf", { ids }),
 };

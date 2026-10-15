@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Archive, ArchiveRestore, Columns3, Copy, Download, FileSpreadsheet, FileText, FlaskConical,
-  IndianRupee, Layers, PackagePlus, Pencil, Plus, Printer, ShoppingCart, Truck, Warehouse, X,
+  IndianRupee, Layers, PackagePlus, Pencil, Plus, Printer, ShoppingCart, Truck, Warehouse,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { SelectionBar } from "@/components/ui/SelectionBar";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
@@ -54,7 +55,8 @@ export const freeStock = (e: Elastic) => Math.max(0, (e.stock ?? 0) - (e.reserve
 /** What it takes to bring free stock back up to the reorder level. */
 export const restockShortfall = (e: Elastic) => Math.max(0, Math.ceil((e.minStock ?? 0) - freeStock(e)));
 
-function saveBlob(blob: Blob, filename: string) {
+/** Hand a downloaded file to the browser to save. */
+export function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -69,7 +71,8 @@ type Dialog =
   | null | "price" | "minStock" | "archive" | "restore" | "group" | "restock"
   | "priceList" | "copyTemplate" | "testing";
 
-function ResultDialog({ title, result, onClose }: { title: string; result: BulkResult; onClose: () => void }) {
+/** "n done, m not done" with the reason for each one refused. Shared by the list action bars. */
+export function ResultDialog({ title, result, onClose }: { title: string; result: BulkResult; onClose: () => void }) {
   const refused = result.results.filter((r) => !r.ok);
   const costed = result.results.filter((r) => r.ok && r.after);
   return (
@@ -479,16 +482,7 @@ export function ElasticBulkActions({ selected, onClear }: { selected: Elastic[];
 
   return (
     <>
-      <div
-        role="toolbar"
-        aria-label="Actions on the selected elastics"
-        className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-2 rounded-card border border-brand-500/30 bg-brand-50 px-3 py-2"
-      >
-        <span className="text-sm font-semibold tabular-nums">{n} selected</span>
-        <button type="button" onClick={onClear} className="inline-flex items-center gap-1 text-xs text-ink-600 hover:text-ink-900">
-          <X className="h-3.5 w-3.5" /> Clear
-        </button>
-        <span className="mx-1 hidden h-5 w-px bg-ink-200 sm:block" />
+      <SelectionBar count={n} label="Actions on the selected elastics" onClear={onClear}>
         <ActionMenu label="Create" icon={<Plus className="h-4 w-4" />} items={create} />
         <ActionMenu label="Change" icon={<Pencil className="h-4 w-4" />} items={change} />
         <ActionMenu label="Print" icon={<Printer className="h-4 w-4" />} items={print} />
@@ -510,7 +504,7 @@ export function ElasticBulkActions({ selected, onClear }: { selected: Elastic[];
         >
           <Download className="h-4 w-4" />
         </Button>
-      </div>
+      </SelectionBar>
 
       {dialog === "price" && (
         <PriceDialog count={n} loading={bulkCosting.isPending} onClose={() => setDialog(null)}

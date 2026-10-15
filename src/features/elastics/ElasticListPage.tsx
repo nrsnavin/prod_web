@@ -84,6 +84,12 @@ export function ElasticListPage() {
   // and searching (and the bar can say which are inactive).
   const [picked, setPicked] = useState<Map<string, Elastic>>(new Map());
   const pickedIds = useMemo(() => new Set(picked.keys()), [picked]);
+  // What the bar sees: the latest copy of each ticked row that is on
+  // screen, so a bulk change (inactivated, re-priced) shows at once.
+  const selectedRows = useMemo(() => {
+    const shown = new Map((data?.elastics ?? []).map((r) => [r._id, r]));
+    return [...picked.values()].map((r) => shown.get(r._id) ?? r);
+  }, [picked, data]);
   const onPick = (next: Set<string>) => {
     const onPage = new Map((data?.elastics ?? []).map((e) => [e._id, e]));
     setPicked((prev) => {
@@ -190,7 +196,7 @@ export function ElasticListPage() {
       {isError && <ErrorBanner message={(error as Error).message} />}
 
       {picked.size > 0 && (
-        <ElasticBulkActions selected={[...picked.values()]} onClear={() => setPicked(new Map())} />
+        <ElasticBulkActions selected={selectedRows} onClear={() => setPicked(new Map())} />
       )}
 
       <Card>

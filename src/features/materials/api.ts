@@ -1,3 +1,4 @@
+import type { BulkResult } from "@/features/elastics/api";
 import { httpClient } from "@/core/http/httpClient";
 import { config } from "@/app/config";
 import {
@@ -166,6 +167,15 @@ export const materialService = {
         },
       ],
     });
+  },
+
+  // Several at once, from the list's selection; one result per material,
+  // and one that cannot be changed says why without stopping the rest.
+  bulkUpdate(ids: string[], change: { supplier?: string; minStock?: number; group?: string | null }) {
+    return httpClient.post<BulkResult>("/materials/bulk/update", { ids, ...change });
+  },
+  bulkArchive(ids: string[], archived: boolean) {
+    return httpClient.post<BulkResult>("/materials/bulk/archive", { ids, archived });
   },
 
   async bulkUpdatePrices(
