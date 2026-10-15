@@ -12,8 +12,9 @@ import { attendanceService } from "./api";
 import { payrollService } from "./api";
 
 // HH:MM:SS elapsed since a start timestamp.
-function elapsed(fromISO: string, now: number): string {
-  const secs = Math.max(0, Math.floor((now - new Date(fromISO).getTime()) / 1000));
+/** Time on the shift so far: the running stint plus any clocked out of earlier. */
+export function elapsed(fromISO: string, now: number, priorMinutes = 0): string {
+  const secs = Math.max(0, Math.floor((now - new Date(fromISO).getTime()) / 1000)) + Math.max(0, priorMinutes) * 60;
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
@@ -116,7 +117,7 @@ export function ShiftTimerPanel({ date }: { date: string }) {
               </div>
               <StatusChip tone="neutral">{r.shift}</StatusChip>
               <span className="font-mono tabular-nums text-sm text-ink-900">
-                {r.clockInAt ? elapsed(r.clockInAt, now) : "—"}
+                {r.clockInAt ? elapsed(r.clockInAt, now, r.priorMinutes ?? 0) : "—"}
               </span>
               <Button
                 variant="secondary"

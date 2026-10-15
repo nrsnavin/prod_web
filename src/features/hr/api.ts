@@ -14,6 +14,8 @@ export interface AttendanceRecord {
   clockInAt?: string | null;
   clockOutAt?: string | null;
   workedMinutes?: number;
+  /** Minutes from earlier stints this shift, before the running clock-in. */
+  priorMinutes?: number;
   lateMinutes?: number;
   overtimeMinutes?: number;
   leaveType?: string;
