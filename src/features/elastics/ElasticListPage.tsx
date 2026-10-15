@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -15,6 +15,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useElastics, useElasticMutations } from "./hooks";
 import { Elastic } from "./types";
 import { ElasticForm } from "./ElasticForm";
+import { ElasticBulkActions } from "./ElasticBulkActions";
 
 const columns: Column<Elastic>[] = [
   {
@@ -68,6 +69,22 @@ export function ElasticListPage() {
   const { data, isLoading, isError, error } = useElastics({ page, search, showInactive });
   const { create } = useElasticMutations();
 
+  // Ticked elastics, kept with their rows so a selection survives paging
+  // and searching (and the bar can say which are inactive).
+  const [picked, setPicked] = useState<Map<string, Elastic>>(new Map());
+  const pickedIds = useMemo(() => new Set(picked.keys()), [picked]);
+  const onPick = (next: Set<string>) => {
+    const onPage = new Map((data?.elastics ?? []).map((e) => [e._id, e]));
+    setPicked((prev) => {
+      const m = new Map<string, Elastic>();
+      for (const id of next) {
+        const row = onPage.get(id) ?? prev.get(id);
+        if (row) m.set(id, row);
+      }
+      return m;
+    });
+  };
+
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 20)) : 1;
 
   return (
@@ -108,8 +125,13 @@ export function ElasticListPage() {
 
       {isError && <ErrorBanner message={(error as Error).message} />}
 
+      {picked.size > 0 && (
+        <ElasticBulkActions selected={[...picked.values()]} onClear={() => setPicked(new Map())} />
+      )}
+
       <Card>
         <DataTable
+          selection={{ selected: pickedIds, onChange: onPick, label: (e) => `Select ${e.name}` }}
           columns={columns}
           rows={data?.elastics ?? []}
           rowKey={(e) => e._id}

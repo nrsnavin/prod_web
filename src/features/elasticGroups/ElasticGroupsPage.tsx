@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePrefillElastics } from "@/features/elastics/prefill";
 import { useNavigate } from "react-router-dom";
 import { Plus, Layers, Pencil, Trash2, Building2, Globe } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -23,6 +24,9 @@ export function ElasticGroupsPage() {
   const { create, update, remove } = useElasticGroupMutations();
   const [editing, setEditing] = useState<ElasticGroup | null>(null);
   const [creating, setCreating] = useState(false);
+  // Arrived from the elastic list with a selection: open New group with it.
+  const { prefill, clear: clearPrefill } = usePrefillElastics(() => setCreating(true));
+  const closeCreate = () => { setCreating(false); clearPrefill(); };
   const [deleting, setDeleting] = useState<ElasticGroup | null>(null);
 
   return (
@@ -111,14 +115,15 @@ export function ElasticGroupsPage() {
         </div>
       )}
 
-      <FormScreen open={creating} onClose={() => setCreating(false)} title="New elastic group" width="max-w-2xl">
+      <FormScreen open={creating} onClose={closeCreate} title="New elastic group" width="max-w-2xl">
         <ElasticGroupForm
+          prefillElastics={prefill}
           submitting={create.isPending}
-          onCancel={() => setCreating(false)}
+          onCancel={() => closeCreate()}
           onSubmit={(values) =>
             create.mutate(values, {
               onSuccess: () => {
-                setCreating(false);
+                closeCreate();
                 toast("Group created", "success");
               },
               onError: (e) => toast(e instanceof ApiError ? e.message : "Failed to create group", "error"),

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePrefillElastics } from "@/features/elastics/prefill";
 import { useNavigate } from "react-router-dom";
 import { Plus, FileUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -44,6 +45,9 @@ const columns: Column<OrderListItem>[] = [
 export function OrderListPage() {
   const [status, setStatus] = useState<OrderFilter>("All");
   const [createOpen, setCreateOpen] = useState(false);
+  // Arrived from the elastic list with a selection: open New order with it.
+  const { prefill, clear: clearPrefill } = usePrefillElastics(() => setCreateOpen(true));
+  const closeCreate = () => { setCreateOpen(false); clearPrefill(); };
   const [intakeOpen, setIntakeOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -117,14 +121,15 @@ export function OrderListPage() {
 
       {intakeOpen && <PoIntakeModal onClose={() => setIntakeOpen(false)} />}
 
-      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New order" width="max-w-2xl">
+      <FormScreen open={createOpen} onClose={closeCreate} title="New order" width="max-w-2xl">
         <OrderForm
+          prefillElastics={prefill}
           submitting={create.isPending}
-          onCancel={() => setCreateOpen(false)}
+          onCancel={() => closeCreate()}
           onSubmit={(values) =>
             create.mutate(values, {
               onSuccess: (orderId) => {
-                setCreateOpen(false);
+                closeCreate();
                 toast("Order created", "success");
                 navigate(`/orders/${orderId}`);
               },

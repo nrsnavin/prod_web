@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Pencil, Trash2, Scale, Archive, ArchiveRestore } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Scale, Archive, ArchiveRestore, Copy } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -141,8 +141,9 @@ export function MaterialDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: material, isLoading, isError, error } = useMaterial(id);
-  const { update, remove, setArchived, adjustStock } = useMaterialMutations();
+  const { create, update, remove, setArchived, adjustStock } = useMaterialMutations();
   const [editOpen, setEditOpen] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
   // The version this record had when the edit form OPENED, sent back as
   // expectedVersion. Captured here rather than read at save time: the
   // page refetches every 10 s, and reading it later would hand a stale
@@ -188,6 +189,9 @@ export function MaterialDetailPage() {
             </Button>
             <Button variant="secondary" onClick={() => { setEditVersion(material.__v); setEditOpen(true); }}>
               <Pencil className="h-4 w-4" /> Edit
+            </Button>
+            <Button variant="secondary" onClick={() => setCloneOpen(true)}>
+              <Copy className="h-4 w-4" /> Clone
             </Button>
             {/*
               The deliberate version of what Remove falls back to. Worth
@@ -313,6 +317,27 @@ export function MaterialDetailPage() {
                   toast(e instanceof ApiError ? e.message : "Update failed", "error"),
               }
             )
+          }
+        />
+      </FormScreen>
+
+      {/* A clone opens the ADD form filled from this material's
+          specification; its stock and name are not copied. */}
+      <FormScreen open={cloneOpen} onClose={() => setCloneOpen(false)} title={`Clone of ${material.name}`}>
+        <MaterialForm
+          cloneFrom={material}
+          submitting={create.isPending}
+          onCancel={() => setCloneOpen(false)}
+          onSubmit={(values) =>
+            create.mutate(values, {
+              onSuccess: (created) => {
+                setCloneOpen(false);
+                toast("Material added", "success");
+                if (created?._id) navigate(`/materials/${created._id}`);
+              },
+              onError: (e) =>
+                toast(e instanceof ApiError ? e.message : "Could not clone the material", "error"),
+            })
           }
         />
       </FormScreen>

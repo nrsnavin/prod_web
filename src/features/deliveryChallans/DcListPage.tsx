@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePrefillElastics } from "@/features/elastics/prefill";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -67,6 +68,9 @@ export function DcListPage() {
   const [status, setStatus] = useState<DcStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  // Arrived from the elastic list with a selection: open New DC with it.
+  const { prefill, clear: clearPrefill } = usePrefillElastics(() => setCreateOpen(true));
+  const closeCreate = () => { setCreateOpen(false); clearPrefill(); };
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -83,7 +87,7 @@ export function DcListPage() {
     create.mutate(values, {
       onSuccess: (dc) => {
         setStockShort(null);
-        setCreateOpen(false);
+        closeCreate();
         toast(`DC ${dc.dcNumber} created`, "success");
         navigate(`/delivery-challans/${dc._id}`);
       },
@@ -164,10 +168,11 @@ export function DcListPage() {
         <Pagination page={page} totalPages={totalPages} total={data?.total} onChange={setPage} />
       </Card>
 
-      <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New delivery challan" width="max-w-3xl">
+      <FormScreen open={createOpen} onClose={closeCreate} title="New delivery challan" width="max-w-3xl">
         <DcForm
+          prefillElastics={prefill}
           submitting={create.isPending}
-          onCancel={() => setCreateOpen(false)}
+          onCancel={() => closeCreate()}
           onSubmit={(values) => submit(values)}
         />
       </FormScreen>

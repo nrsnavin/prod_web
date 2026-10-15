@@ -28,6 +28,7 @@ vi.mock("./hooks", () => ({
   useMaterialLedger: () => ({ data: undefined, isLoading: false, error: null, refetch: () => {} }),
   useMaterial: () => ({ data: material, isLoading: false, isError: false }),
   useMaterialMutations: () => ({
+    create: { mutate: vi.fn(), isPending: false },
     update: { mutate: vi.fn(), isPending: false },
     remove: { mutate: vi.fn(), isPending: false },
     setArchived: { mutate: vi.fn(), isPending: false },

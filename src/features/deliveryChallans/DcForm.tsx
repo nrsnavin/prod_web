@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import type { PrefillElastic } from "@/features/elastics/prefill";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -63,10 +64,13 @@ export function DcForm({
   submitting,
   onSubmit,
   onCancel,
+  prefillElastics,
 }: {
   submitting: boolean;
   onSubmit: (v: DcFormValues) => void;
   onCancel: () => void;
+  /** Start with these elastics as lines (from the elastic list's selection). */
+  prefillElastics?: PrefillElastic[] | null;
 }) {
   // Order link is optional — Approved/InProgress orders can prefill
   // customer + items (and let the backend consume reservations).
@@ -88,7 +92,9 @@ export function DcForm({
       type: "elastic",
       customerName: "",
       dispatchDate: new Date().toISOString().slice(0, 10),
-      items: [{ elastic: "", elasticName: "", quantity: 0, rate: 0 }],
+      items: prefillElastics?.length
+        ? prefillElastics.map((e) => ({ elastic: e._id, elasticName: e.name, quantity: 0, rate: 0 }))
+        : [{ elastic: "", elasticName: "", quantity: 0, rate: 0 }],
     },
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: "items" });
@@ -114,10 +120,13 @@ export function DcForm({
   }, []);
   // Rows prefilled from the linked order show their name before any
   // search has run.
-  const elasticSeed = (orderInfo.data?.elastics ?? []).map((e) => ({
-    value: e.elasticId,
-    label: e.elasticName,
-  }));
+  const elasticSeed = [
+    ...(prefillElastics ?? []).map((e) => ({ value: e._id, label: e.name })),
+    ...(orderInfo.data?.elastics ?? []).map((e) => ({
+      value: e.elasticId,
+      label: e.elasticName,
+    })),
+  ];
 
   // Prefill from the selected order.
   useEffect(() => {

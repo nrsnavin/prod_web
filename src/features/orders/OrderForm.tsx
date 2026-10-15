@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import type { PrefillElastic } from "@/features/elastics/prefill";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,10 +35,13 @@ export function OrderForm({
   submitting,
   onSubmit,
   onCancel,
+  prefillElastics,
 }: {
   submitting: boolean;
   onSubmit: (v: OrderFormValues) => void;
   onCancel: () => void;
+  /** Start with these elastics on the order (from the elastic list's selection). */
+  prefillElastics?: PrefillElastic[] | null;
 }) {
   // Server-searched dropdowns: type to query the full masters, not just a
   // preloaded page (customer/elastic lists can exceed the API's page cap).
@@ -71,7 +75,9 @@ export function OrderForm({
       customer: "",
       supplyDate: "",
       description: "",
-      elasticOrdered: [{ elastic: "", quantity: 0 }],
+      elasticOrdered: prefillElastics?.length
+        ? prefillElastics.map((e) => ({ elastic: e._id, quantity: 0 }))
+        : [{ elastic: "", quantity: 0 }],
     },
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: "elasticOrdered" });
@@ -101,11 +107,13 @@ export function OrderForm({
   // Labels for elastics pulled in via a group, so those lines show a name
   // even though they were never searched for individually.
   const elasticSeed = useMemo(
-    () =>
-      (groups.data ?? []).flatMap((g) =>
+    () => [
+      ...(prefillElastics ?? []).map((e) => ({ value: e._id, label: e.name })),
+      ...(groups.data ?? []).flatMap((g) =>
         g.items.map((it) => ({ value: itemElasticId(it), label: itemElasticName(it) }))
       ),
-    [groups.data]
+    ],
+    [groups.data, prefillElastics]
   );
 
   return (

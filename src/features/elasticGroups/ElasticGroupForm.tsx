@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import type { PrefillElastic } from "@/features/elastics/prefill";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,12 +27,15 @@ const schema = z.object({
 export function ElasticGroupForm({
   initial,
   fixedCustomerId,
+  prefillElastics,
   submitting,
   onSubmit,
   onCancel,
 }: {
   initial?: ElasticGroup;
   fixedCustomerId?: string;
+  /** Start a new group with these elastics (from the elastic list's selection). */
+  prefillElastics?: PrefillElastic[] | null;
   submitting: boolean;
   onSubmit: (v: ElasticGroupFormValues) => void;
   onCancel: () => void;
@@ -65,7 +69,9 @@ export function ElasticGroupForm({
       customer: fixedCustomerId ?? initial?.customer?._id ?? "",
       items:
         initial?.items?.map((it) => ({ elastic: itemElasticId(it), defaultQuantity: it.defaultQuantity })) ??
-        [{ elastic: "", defaultQuantity: 0 }],
+        (prefillElastics?.length
+          ? prefillElastics.map((e) => ({ elastic: e._id, defaultQuantity: 0 }))
+          : [{ elastic: "", defaultQuantity: 0 }]),
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -73,9 +79,11 @@ export function ElasticGroupForm({
   // Labels for elastics already on the group (edit mode) so their lines
   // render a name before any search runs.
   const elasticSeed = useMemo(
-    () =>
-      (initial?.items ?? []).map((it) => ({ value: itemElasticId(it), label: itemElasticName(it) })),
-    [initial]
+    () => [
+      ...(initial?.items ?? []).map((it) => ({ value: itemElasticId(it), label: itemElasticName(it) })),
+      ...(prefillElastics ?? []).map((e) => ({ value: e._id, label: e.name })),
+    ],
+    [initial, prefillElastics]
   );
 
   return (

@@ -39,15 +39,26 @@ const schema = z.object({
 
 export function MaterialForm({
   initial,
+  cloneFrom,
   submitting,
   onSubmit,
   onCancel,
 }: {
+  /** Editing this material. */
   initial?: RawMaterial;
+  /**
+   * Creating a new material from this one's specification: category,
+   * group, supplier, unit, price, min stock. Never its name (the person
+   * cloning names it; a required blank field stops an unnamed copy) and
+   * never its stock, which belongs to the material that received it — a
+   * copied figure would be stock no ledger accounts for.
+   */
+  cloneFrom?: RawMaterial;
   submitting: boolean;
   onSubmit: (values: MaterialFormValues) => void;
   onCancel: () => void;
 }) {
+  const source = initial ?? cloneFrom;
   const suppliers = useSupplierOptions();
   const groups = useMaterialGroups();
   const categories = useMaterialCategories();
@@ -63,9 +74,9 @@ export function MaterialForm({
   // but it reads as wrong, which is the point: saving the form is the
   // moment it gets corrected.
   const legacyCategory =
-    initial?.category &&
-    !(categories.data?.categories ?? []).includes(initial.category)
-      ? [{ value: initial.category, label: `${initial.category} — not a category` }]
+    source?.category &&
+    !(categories.data?.categories ?? []).includes(source.category)
+      ? [{ value: source.category, label: `${source.category} — not a category` }]
       : [];
 
   const groupOptions = [
@@ -80,25 +91,31 @@ export function MaterialForm({
     resolver: zodResolver(schema),
     defaultValues: {
       name: initial?.name ?? "",
-      category: initial?.category ?? "",
+      category: source?.category ?? "",
       group:
-        initial?.group && typeof initial.group === "object"
-          ? initial.group._id
-          : ((initial?.group as string) ?? ""),
-      unit: initial?.unit ?? "kg",
+        source?.group && typeof source.group === "object"
+          ? source.group._id
+          : ((source?.group as string) ?? ""),
+      unit: source?.unit ?? "kg",
       supplier:
-        initial?.supplier && typeof initial.supplier === "object"
-          ? initial.supplier._id
-          : (initial?.supplier as string) ?? "",
+        source?.supplier && typeof source.supplier === "object"
+          ? source.supplier._id
+          : (source?.supplier as string) ?? "",
       stock: initial?.stock ?? 0,
-      minStock: initial?.minStock ?? 0,
-      price: initial?.price ?? 0,
+      minStock: source?.minStock ?? 0,
+      price: source?.price ?? 0,
     },
   });
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      <Input label="Material name *" error={errors.name?.message} {...register("name")} />
+      <Input
+        label="Material name *"
+        error={errors.name?.message}
+        placeholder={cloneFrom ? `e.g. ${cloneFrom.name} (new shade)` : undefined}
+        autoFocus={!!cloneFrom}
+        {...register("name")}
+      />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Select

@@ -31,6 +31,7 @@ vi.mock("./hooks", () => ({
   useMaterial: () => ({ data: material, isLoading: false, isError: false }),
   useYarnLots: () => ({ data: [], isLoading: false }),
   useMaterialMutations: () => ({
+    create:      { mutate: vi.fn(), isPending: false },
     update:      { mutate: vi.fn(), isPending: false },
     remove:      { mutate: removeMutate, isPending: false },
     setArchived: { mutate: archiveMutate, isPending: false },

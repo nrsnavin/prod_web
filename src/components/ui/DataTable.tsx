@@ -59,6 +59,59 @@ export interface DataTableProps<T> {
   phoneLayout?: "cards" | "table";
   /** One-line empty state, for a table that is a section of a detail page. */
   compactEmpty?: boolean;
+  /**
+   * Rows can be ticked, for an action on several at once. The page owns
+   * the set (so a selection can outlive a page of results); the table
+   * draws a box per row and one in the header for every row it shows.
+   */
+  selection?: RowSelection<T>;
+}
+
+export interface RowSelection<T> {
+  selected: ReadonlySet<string>;
+  onChange: (next: Set<string>) => void;
+  /** The row's name for its checkbox, e.g. "Select 20mm Knitted". */
+  label?: (row: T) => string;
+}
+
+/** A checkbox that can show "some" (indeterminate), and never opens the row. */
+function SelectBox({
+  checked,
+  indeterminate = false,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      aria-label={label}
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      className="h-4 w-4 cursor-pointer rounded border-ink-300 accent-brand-500"
+    />
+  );
+}
+
+/** Tick or untick some rows in a selection, leaving the rest as they were. */
+function withRows(selected: ReadonlySet<string>, ids: string[], on: boolean): Set<string> {
+  const next = new Set(selected);
+  for (const id of ids) {
+    if (on) next.add(id);
+    else next.delete(id);
+  }
+  return next;
 }
 
 const alignClass = {
@@ -82,6 +135,7 @@ export function DataTable<T>({
   defaultSortDir,
   phoneLayout = "cards",
   compactEmpty = false,
+  selection,
 }: DataTableProps<T>) {
   const isPhone = useIsPhone();
   // Never crash on a missing/undefined rows prop — render empty instead.
@@ -105,6 +159,15 @@ export function DataTable<T>({
 
   const { limit, more, sentinel } = useIncrementalRows(sorted.length);
   const visible = sorted.length > limit ? sorted.slice(0, limit) : sorted;
+
+  // The header box covers the rows this table is showing, not every row
+  // the page may have selected elsewhere.
+  const visibleIds = visible.map(rowKey);
+  const ticked = selection ? visibleIds.filter((id) => selection.selected.has(id)).length : 0;
+  const allTicked = visibleIds.length > 0 && ticked === visibleIds.length;
+  const tickAll = (on: boolean) => selection?.onChange(withRows(selection.selected, visibleIds, on));
+  const tickRow = (row: T, on: boolean) => selection?.onChange(withRows(selection.selected, [rowKey(row)], on));
+  const rowLabel = (row: T) => selection?.label?.(row) ?? "Select row";
 
   const toggleSort = (key: string) => {
     if (sortKey === key) setSortDir((d) => (d === 1 ? -1 : 1));
@@ -146,6 +209,14 @@ export function DataTable<T>({
         rows={visible}
         rowKey={rowKey}
         onRowClick={onRowClick}
+        selection={selection && {
+          isSelected: (row) => selection.selected.has(rowKey(row)),
+          toggle: tickRow,
+          label: rowLabel,
+          all: allTicked,
+          some: ticked > 0 && !allTicked,
+          toggleAll: tickAll,
+        }}
         sortKey={sortKey}
         sortDir={sortDir}
         onSort={(key, dir) => {
@@ -162,6 +233,16 @@ export function DataTable<T>({
       <table className="w-full">
         <thead className="border-b border-ink-100">
           <tr>
+            {selection && (
+              <th className="w-10 px-4 py-2.5">
+                <SelectBox
+                  label="Select all shown"
+                  checked={allTicked}
+                  indeterminate={ticked > 0 && !allTicked}
+                  onChange={tickAll}
+                />
+              </th>
+            )}
             {columns.map((c) => (
               <th
                 key={c.key}
@@ -222,9 +303,19 @@ export function DataTable<T>({
               className={cn(
                 "transition-colors",
                 onRowClick &&
-                  "cursor-pointer hover:bg-ink-100/40 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500"
+                  "cursor-pointer hover:bg-ink-100/40 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500",
+                selection?.selected.has(rowKey(row)) && "bg-brand-50/60"
               )}
             >
+              {selection && (
+                <td className="w-10 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <SelectBox
+                    label={rowLabel(row)}
+                    checked={selection.selected.has(rowKey(row))}
+                    onChange={(on) => tickRow(row, on)}
+                  />
+                </td>
+              )}
               {columns.map((c) => (
                 <td
                   key={c.key}
@@ -335,6 +426,15 @@ export function phoneRoles<T>(columns: Column<T>[]): PhoneRole[] {
   });
 }
 
+interface PhoneSelection<T> {
+  isSelected: (row: T) => boolean;
+  toggle: (row: T, on: boolean) => void;
+  label: (row: T) => string;
+  all: boolean;
+  some: boolean;
+  toggleAll: (on: boolean) => void;
+}
+
 function PhoneCards<T>({
   columns,
   rows,
@@ -343,6 +443,7 @@ function PhoneCards<T>({
   sortKey,
   sortDir,
   onSort,
+  selection,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -351,6 +452,7 @@ function PhoneCards<T>({
   sortKey: string | null;
   sortDir: 1 | -1;
   onSort: (key: string, dir: 1 | -1) => void;
+  selection?: PhoneSelection<T>;
 }) {
   const roles = phoneRoles(columns);
   const title = columns[roles.indexOf("title")];
@@ -361,6 +463,12 @@ function PhoneCards<T>({
 
   return (
     <div>
+      {selection && (
+        <label className="flex items-center gap-2 border-b border-ink-100 px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-400">
+          <SelectBox label="Select all shown" checked={selection.all} indeterminate={selection.some} onChange={selection.toggleAll} />
+          Select all shown
+        </label>
+      )}
       {sortable.length > 0 && (
         <div className="flex items-center gap-2 border-b border-ink-100 px-4 py-2">
           <label htmlFor={sortId} className="text-xs font-medium uppercase tracking-wide text-ink-400">
@@ -408,7 +516,16 @@ function PhoneCards<T>({
               )}
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 text-[15px] font-semibold leading-snug text-ink-900 break-words">
+                {selection && (
+                  <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                    <SelectBox
+                      label={selection.label(row)}
+                      checked={selection.isSelected(row)}
+                      onChange={(on) => selection.toggle(row, on)}
+                    />
+                  </div>
+                )}
+                <div className={cn("min-w-0 text-[15px] font-semibold leading-snug text-ink-900 break-words", selection && "flex-1")}>
                   {title?.render(row)}
                 </div>
                 {badge && <div className="shrink-0">{badge.render(row)}</div>}

@@ -9,6 +9,21 @@ import {
   MaterialsByCategory,
 } from "./types";
 
+export interface BulkItemResult {
+  id: string;
+  name?: string;
+  ok: boolean;
+  reason?: string;
+  unchanged?: boolean;
+  before?: { conversionCost: number; totalCost: number | null };
+  after?: { conversionCost: number; totalCost: number };
+}
+export interface BulkResult {
+  done: number;
+  refused: number;
+  results: BulkItemResult[];
+}
+
 export const elasticService = {
   async list(params: { page?: number; limit?: number; search?: string; includeArchived?: string }) {
     const res = await httpClient.get<{
@@ -56,6 +71,18 @@ export const elasticService = {
       { elasticId, template: template ?? null }
     );
     return res.elastic;
+  },
+
+  // Several at once, from the list's selection. Each comes back with its
+  // own result: one refused (stock reserved) does not stop the others.
+  bulkArchive(ids: string[], archived: boolean) {
+    return httpClient.post<BulkResult>("/elastic/bulk/archive", { ids, archived });
+  },
+  bulkCosting(ids: string[], change: { conversionCost?: number; changePercent?: number }) {
+    return httpClient.post<BulkResult>("/elastic/bulk/costing", { ids, ...change });
+  },
+  bulkMinStock(ids: string[], minStock: number) {
+    return httpClient.post<BulkResult>("/elastic/bulk/min-stock", { ids, minStock });
   },
 
   async recalculateCost(elasticId: string): Promise<void> {

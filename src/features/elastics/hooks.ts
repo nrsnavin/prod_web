@@ -93,5 +93,18 @@ export function useElasticMutations() {
       elasticService.saveWarpingTemplate(id, template),
     onSuccess: invalidate,
   });
-  return { create, update, recalculate, setArchived, remove, saveTemplate };
+  const bulkArchive = useMutation({
+    mutationFn: ({ ids, archived }: { ids: string[]; archived: boolean }) => elasticService.bulkArchive(ids, archived),
+    onSuccess: invalidate,
+  });
+  const bulkCosting = useMutation({
+    mutationFn: ({ ids, change }: { ids: string[]; change: { conversionCost?: number; changePercent?: number } }) =>
+      elasticService.bulkCosting(ids, change),
+    onSuccess: invalidate,
+  });
+  const bulkMinStock = useMutation({
+    mutationFn: ({ ids, minStock }: { ids: string[]; minStock: number }) => elasticService.bulkMinStock(ids, minStock),
+    onSuccess: invalidate,
+  });
+  return { create, update, recalculate, setArchived, remove, saveTemplate, bulkArchive, bulkCosting, bulkMinStock };
 }
