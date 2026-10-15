@@ -24,6 +24,8 @@ import { OutsourcingPanel } from "./OutsourcingPanel";
 import { JobYarnLots } from "./JobYarnLots";
 import { JobShiftSummary } from "./JobShiftSummary";
 import { useTrackRecent } from "@/core/ui/uiStore";
+import { useAuth } from "@/core/auth/useAuth";
+import { canAccessPath } from "@/app/navigation";
 
 function Pipeline({ status }: { status: string }) {
   const activeIdx = JOB_PIPELINE.indexOf(status as (typeof JOB_PIPELINE)[number]);
@@ -100,6 +102,27 @@ const shiftColumns: Column<JobShiftDetail>[] = [
   },
   { key: "status", header: "Status", render: (s) => <StatusChip tone="neutral">{s.status}</StatusChip> },
 ];
+
+/**
+ * The job's warping or covering: its status, as a link to that record's
+ * own page — where it is planned and completed — for anyone who can open it.
+ */
+function StageLink({ stage, path, name }: {
+  stage?: { _id?: string; status: string } | null; path: string; name: string;
+}) {
+  const { user } = useAuth();
+  if (!stage) return <span className="text-ink-400">None</span>;
+  if (!stage._id || !canAccessPath(path, user)) return <>{stage.status}</>;
+  return (
+    <Link
+      to={`${path}/${stage._id}`}
+      aria-label={`Open the ${name} (${stage.status})`}
+      className="inline-flex items-center gap-1 font-medium text-brand-600 hover:underline"
+    >
+      {stage.status} <ArrowRight className="h-3.5 w-3.5" />
+    </Link>
+  );
+}
 
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -236,8 +259,8 @@ export function JobDetailPage() {
                   ? `${job.machine.machineName} · ${job.machine.machineNoOfHead} heads`
                   : "Not assigned",
               },
-              { label: "Warping", value: job.warping?.status },
-              { label: "Covering", value: job.covering?.status },
+              { label: "Warping", value: <StageLink stage={job.warping} path="/warping" name="warping" /> },
+              { label: "Covering", value: <StageLink stage={job.covering} path="/covering" name="covering" /> },
             ]}
           />
         </div>

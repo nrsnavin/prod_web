@@ -111,8 +111,8 @@ export interface JobDetail {
   producedElastics: ElasticQty[];
   packedElastics: ElasticQty[];
   wastageElastics: ElasticQty[];
-  warping?: { status: string; date?: string | null } | null;
-  covering?: { status: string; date?: string | null } | null;
+  warping?: { _id?: string; status: string; date?: string | null } | null;
+  covering?: { _id?: string; status: string; date?: string | null } | null;
   shiftDetails: JobShiftDetail[];
   shiftSummary?: JobShiftSummary;
   wastages: Array<{
