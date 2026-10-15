@@ -93,7 +93,7 @@ describe("changing them", () => {
     setup();
     await u.click(screen.getByRole("button", { name: /^Inactivate$/ }));
     // The dialog's confirm (the last one), not the toolbar button that opened it.
-    await u.click(screen.getAllByRole("button", { name: "Inactivate" }).at(-1)!);
+    await u.click(screen.getAllByRole("button", { name: "Inactivate" }).slice(-1)[0]);
     expect(archiveMutate.mock.calls[0][0]).toEqual({ ids: ["a"], archived: true });
     expect(screen.getByText(/300 m reserved against approved orders/)).toBeInTheDocument();
   });
@@ -102,7 +102,7 @@ describe("changing them", () => {
     const u = userEvent.setup();
     setup();
     await u.click(screen.getByRole("button", { name: /Reactivate/ }));
-    await u.click(screen.getAllByRole("button", { name: "Reactivate" }).at(-1)!);
+    await u.click(screen.getAllByRole("button", { name: "Reactivate" }).slice(-1)[0]);
     expect(archiveMutate.mock.calls[0][0]).toEqual({ ids: ["b"], archived: false });
   });
 
