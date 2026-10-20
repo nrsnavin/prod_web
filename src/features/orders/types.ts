@@ -512,6 +512,8 @@ export interface PoIntakeResult {
   model?: string;
   draft?: {
     customerName: string | null;
+    /** The customer's number as read — letterhead, signature, or a chat's header / message box. */
+    customerPhone?: string | null;
     poNumber: string | null;
     poDate: string | null;
     deliveryDate: string | null;
@@ -524,6 +526,8 @@ export interface PoIntakeResult {
       customerName: string | null;
       candidates: PoMatchCandidate[];
       confident: boolean;
+      /** What the match rests on: the phone number, the name, or nothing. */
+      matchedBy?: "phone" | "name" | null;
     };
   };
   summary: { lines: number; matched: number; needsAttention: number; customerMatched: boolean };

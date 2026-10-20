@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
-  FileUp, Loader2, AlertTriangle, CheckCircle2, Ban, ChevronDown,
+  FileUp, Loader2, AlertTriangle, CheckCircle2, Ban, ChevronDown, Phone,
 } from "lucide-react";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Button } from "@/components/ui/Button";
@@ -124,11 +124,28 @@ function Result({ result }: { result: PoIntakeResult }) {
           <div>
             <p className="text-xs uppercase tracking-wide text-ink-400">Customer</p>
             {d.customer.confident ? (
-              <p className="mt-0.5 font-medium">{d.customer.customerName}</p>
+              <p className="mt-0.5 font-medium">
+                {d.customer.customerName}
+                {d.customer.matchedBy === "phone" && (
+                  <span className="ml-2 text-xs font-normal text-ink-400">matched by phone number</span>
+                )}
+              </p>
             ) : (
               <p className="mt-0.5 text-status-warning">
                 {d.customerName ? `"${d.customerName}" — no match, pick one` : "Not read"}
               </p>
+            )}
+            {/* The number read, matched or not — for an enquiry from someone
+                not yet on the books it is the way to reach them back. */}
+            {d.customerPhone ? (
+              <p className="mt-1 inline-flex items-center gap-1.5 text-sm">
+                <Phone className="h-3.5 w-3.5 text-ink-400" aria-hidden />
+                <a href={`tel:${d.customerPhone.replace(/[^\d+]/g, "")}`} className="tabular-nums text-brand-600 hover:underline">
+                  {d.customerPhone}
+                </a>
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-ink-400">No phone number on it</p>
             )}
             {!d.customer.confident && d.customer.candidates.length > 0 && (
               <ul className="mt-1 space-y-0.5 text-sm text-ink-500">
@@ -209,7 +226,8 @@ export function PoIntakeModal({ onClose }: { onClose: () => void }) {
           />
           <FileUp className="mx-auto h-8 w-8 text-ink-300" />
           <p className="mt-2 text-sm text-ink-500">
-            A photo or PDF of the customer's purchase order.
+            A photo or PDF of the customer's purchase order or enquiry — a WhatsApp
+            screenshot works too.
           </p>
           <Button
             variant="secondary"

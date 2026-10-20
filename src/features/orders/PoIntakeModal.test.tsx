@@ -210,4 +210,29 @@ describe("PoIntakeModal", () => {
 
     expect(screen.queryByText(/Line 1/)).not.toBeInTheDocument();
   });
+
+  it("shows the customer's phone number read from an enquiry, and says when it found them by it", async () => {
+    const r = result();
+    r.draft = {
+      ...r.draft!,
+      customerName: "Fellows Fashion Va...",
+      customerPhone: "+91 97874 98412",
+      customer: { customerId: "c9", customerName: "Fellows Fashion Ventures", candidates: [], confident: true, matchedBy: "phone" },
+    };
+    intakePo.mockResolvedValue(r);
+    renderModal();
+    await upload();
+
+    const link = await screen.findByRole("link", { name: "+91 97874 98412" });
+    expect(link).toHaveAttribute("href", "tel:+919787498412");
+    expect(screen.getByText("Fellows Fashion Ventures")).toBeInTheDocument();
+    expect(screen.getByText(/matched by phone number/)).toBeInTheDocument();
+  });
+
+  it("says when the document carried no phone number", async () => {
+    intakePo.mockResolvedValue(result());
+    renderModal();
+    await upload();
+    expect(await screen.findByText("No phone number on it")).toBeInTheDocument();
+  });
 });
