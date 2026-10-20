@@ -512,8 +512,18 @@ export interface PoIntakeResult {
   model?: string;
   draft?: {
     customerName: string | null;
-    /** The customer's number as read — letterhead, signature, or a chat's header / message box. */
-    customerPhone?: string | null;
+    /** A customer's document, or a WhatsApp chat screenshot. */
+    sourceType?: "whatsapp_chat" | "document";
+    /**
+     * The customer's number, as read. In a chat screenshot it is the one
+     * typed into the message box. Mobile and WhatsApp are the same number.
+     */
+    customerMobile?: string | null;
+    customerWhatsapp?: string | null;
+    /** Where the number was found. */
+    phoneSource?: "message_box" | "chat_header" | "chat_message" | "document" | null;
+    /** What the chat's message box said, verbatim — to check the number against. */
+    messageBoxText?: string | null;
     poNumber: string | null;
     poDate: string | null;
     deliveryDate: string | null;

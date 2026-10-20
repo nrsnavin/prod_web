@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@/components/ui/Toast";
-import { PoIntakeModal } from "./PoIntakeModal";
+import { PoIntakeModal, waDigits } from "./PoIntakeModal";
 import type { PoIntakeResult, PoIntakeLine } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
@@ -216,15 +216,21 @@ describe("PoIntakeModal", () => {
     r.draft = {
       ...r.draft!,
       customerName: "Fellows Fashion Va...",
-      customerPhone: "+91 97874 98412",
+      sourceType: "whatsapp_chat",
+      customerMobile: "+91 97874 98412",
+      customerWhatsapp: "+91 97874 98412",
+      phoneSource: "message_box",
       customer: { customerId: "c9", customerName: "Fellows Fashion Ventures", candidates: [], confident: true, matchedBy: "phone" },
     };
     intakePo.mockResolvedValue(r);
     renderModal();
     await upload();
 
-    const link = await screen.findByRole("link", { name: "+91 97874 98412" });
-    expect(link).toHaveAttribute("href", "tel:+919787498412");
+    const [call, wa] = await screen.findAllByRole("link", { name: "+91 97874 98412" });
+    // One number, as the mobile and the WhatsApp number both.
+    expect(call).toHaveAttribute("href", "tel:+919787498412");
+    expect(wa).toHaveAttribute("href", "https://wa.me/919787498412");
+    expect(screen.getByText("from the message box")).toBeInTheDocument();
     expect(screen.getByText("Fellows Fashion Ventures")).toBeInTheDocument();
     expect(screen.getByText(/matched by phone number/)).toBeInTheDocument();
   });
@@ -235,4 +241,19 @@ describe("PoIntakeModal", () => {
     await upload();
     expect(await screen.findByText("No phone number on it")).toBeInTheDocument();
   });
+
+  it("asks for the number to be typed in the box when a chat screenshot has none", async () => {
+    const r = result();
+    r.draft = { ...r.draft!, sourceType: "whatsapp_chat", customerMobile: null, customerWhatsapp: null, phoneSource: null };
+    intakePo.mockResolvedValue(r);
+    renderModal();
+    await upload();
+    expect(await screen.findByText(/No number in the message box/)).toBeInTheDocument();
+  });
+});
+
+it("dials an Indian number however it was written", () => {
+  expect(waDigits("+91 97874 98412")).toBe("919787498412");
+  expect(waDigits("097874 98412")).toBe("919787498412");
+  expect(waDigits("9787498412")).toBe("919787498412");
 });

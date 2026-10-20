@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
-  FileUp, Loader2, AlertTriangle, CheckCircle2, Ban, ChevronDown, Phone,
+  FileUp, Loader2, AlertTriangle, CheckCircle2, Ban, ChevronDown, Phone, MessageCircle,
 } from "lucide-react";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Button } from "@/components/ui/Button";
@@ -115,6 +115,49 @@ function LineRow({ line, index }: { line: PoIntakeLine; index: number }) {
   );
 }
 
+const PHONE_SOURCE: Record<string, string> = {
+  message_box: "from the message box",
+  chat_header: "from the chat header",
+  chat_message: "from a message in the chat",
+  document: "from the document",
+};
+
+/** Digits for a link: "+91 97874 98412" → "919787498412"; a bare 10-digit number gets India's 91. */
+export function waDigits(n: string): string {
+  const digits = n.replace(/\D/g, "").replace(/^0+/, "");
+  return digits.length === 10 ? `91${digits}` : digits;
+}
+
+function ContactNumbers({ d }: { d: NonNullable<PoIntakeResult["draft"]> }) {
+  const mobile = d.customerMobile;
+  if (!mobile) {
+    return d.sourceType === "whatsapp_chat" ? (
+      <p className="mt-1 text-xs text-status-warning">
+        No number in the message box — type the customer&apos;s number there before taking the screenshot.
+      </p>
+    ) : (
+      <p className="mt-1 text-xs text-ink-400">No phone number on it</p>
+    );
+  }
+  const whatsapp = d.customerWhatsapp || mobile;
+  return (
+    <div className="mt-1 space-y-0.5 text-sm">
+      <p className="flex items-center gap-1.5">
+        <Phone className="h-3.5 w-3.5 text-ink-400" aria-hidden />
+        <span className="w-20 text-xs text-ink-400">Mobile</span>
+        <a href={`tel:+${waDigits(mobile)}`} className="tabular-nums text-brand-600 hover:underline">{mobile}</a>
+      </p>
+      <p className="flex items-center gap-1.5">
+        <MessageCircle className="h-3.5 w-3.5 text-ink-400" aria-hidden />
+        <span className="w-20 text-xs text-ink-400">WhatsApp</span>
+        <a href={`https://wa.me/${waDigits(whatsapp)}`} target="_blank" rel="noreferrer"
+          className="tabular-nums text-brand-600 hover:underline">{whatsapp}</a>
+      </p>
+      {d.phoneSource && <p className="text-xs text-ink-400">{PHONE_SOURCE[d.phoneSource]}</p>}
+    </div>
+  );
+}
+
 function Result({ result }: { result: PoIntakeResult }) {
   const d = result.draft!;
   return (
@@ -137,16 +180,7 @@ function Result({ result }: { result: PoIntakeResult }) {
             )}
             {/* The number read, matched or not — for an enquiry from someone
                 not yet on the books it is the way to reach them back. */}
-            {d.customerPhone ? (
-              <p className="mt-1 inline-flex items-center gap-1.5 text-sm">
-                <Phone className="h-3.5 w-3.5 text-ink-400" aria-hidden />
-                <a href={`tel:${d.customerPhone.replace(/[^\d+]/g, "")}`} className="tabular-nums text-brand-600 hover:underline">
-                  {d.customerPhone}
-                </a>
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-ink-400">No phone number on it</p>
-            )}
+            <ContactNumbers d={d} />
             {!d.customer.confident && d.customer.candidates.length > 0 && (
               <ul className="mt-1 space-y-0.5 text-sm text-ink-500">
                 {d.customer.candidates.map((c) => (
