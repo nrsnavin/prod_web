@@ -257,3 +257,30 @@ it("dials an Indian number however it was written", () => {
   expect(waDigits("097874 98412")).toBe("919787498412");
   expect(waDigits("9787498412")).toBe("919787498412");
 });
+
+it("shows a visiting card's contact, email and other numbers", async () => {
+  const r = result();
+  r.draft = {
+    ...r.draft!,
+    sourceType: "visiting_card",
+    lines: [],
+    contactPerson: "Mohan Raj",
+    customerEmail: "mohan@fellowsfashion.in",
+    customerMobile: "+91 97874 98412",
+    customerWhatsapp: "+91 97874 98412",
+    phoneSource: "visiting_card",
+    phoneNumbers: [{ number: "0421-2345678", label: "Off" }, { number: "+91 97874 98412", label: "Mob" }],
+    customer: { customerId: "c9", customerName: "Fellows Fashion Ventures", candidates: [], confident: true, matchedBy: "email" },
+  };
+  r.summary = { lines: 0, matched: 0, needsAttention: 0, customerMatched: true };
+  intakePo.mockResolvedValue(r);
+  renderModal();
+  await upload();
+
+  expect(await screen.findByText("Visiting card")).toBeInTheDocument();
+  expect(screen.getByText("Mohan Raj")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "mohan@fellowsfashion.in" })).toHaveAttribute("href", "mailto:mohan@fellowsfashion.in");
+  expect(screen.getByText("from the visiting card")).toBeInTheDocument();
+  expect(screen.getByText("Also: 0421-2345678 (Off)")).toBeInTheDocument();
+  expect(screen.getByText(/matched by email/)).toBeInTheDocument();
+});

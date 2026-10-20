@@ -512,8 +512,13 @@ export interface PoIntakeResult {
   model?: string;
   draft?: {
     customerName: string | null;
-    /** A customer's document, or a WhatsApp chat screenshot. */
-    sourceType?: "whatsapp_chat" | "document";
+    /** What was uploaded: a WhatsApp chat or email screenshot, a visiting card, or a document. */
+    sourceType?: "whatsapp_chat" | "email" | "visiting_card" | "document";
+    /** The person — the email's sender or the name on the card. */
+    contactPerson?: string | null;
+    customerEmail?: string | null;
+    /** Every number shown (a card often has several), labelled as printed. */
+    phoneNumbers?: Array<{ number: string; label: string | null }>;
     /**
      * The customer's number, as read. In a chat screenshot it is the one
      * typed into the message box. Mobile and WhatsApp are the same number.
@@ -521,7 +526,7 @@ export interface PoIntakeResult {
     customerMobile?: string | null;
     customerWhatsapp?: string | null;
     /** Where the number was found. */
-    phoneSource?: "message_box" | "chat_header" | "chat_message" | "document" | null;
+    phoneSource?: "message_box" | "chat_header" | "chat_message" | "email" | "visiting_card" | "document" | null;
     /** What the chat's message box said, verbatim — to check the number against. */
     messageBoxText?: string | null;
     poNumber: string | null;
@@ -537,7 +542,7 @@ export interface PoIntakeResult {
       candidates: PoMatchCandidate[];
       confident: boolean;
       /** What the match rests on: the phone number, the name, or nothing. */
-      matchedBy?: "phone" | "name" | null;
+      matchedBy?: "phone" | "email" | "name" | null;
     };
   };
   summary: { lines: number; matched: number; needsAttention: number; customerMatched: boolean };

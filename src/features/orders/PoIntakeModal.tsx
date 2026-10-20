@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
-  FileUp, Loader2, AlertTriangle, CheckCircle2, Ban, ChevronDown, Phone, MessageCircle,
+  FileUp, Loader2, AlertTriangle, CheckCircle2, Ban, ChevronDown, Phone, MessageCircle, Mail, User,
 } from "lucide-react";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Button } from "@/components/ui/Button";
@@ -119,7 +119,16 @@ const PHONE_SOURCE: Record<string, string> = {
   message_box: "from the message box",
   chat_header: "from the chat header",
   chat_message: "from a message in the chat",
+  email: "from the email",
+  visiting_card: "from the visiting card",
   document: "from the document",
+};
+
+const SOURCE_LABEL: Record<string, string> = {
+  whatsapp_chat: "WhatsApp chat",
+  email: "Email",
+  visiting_card: "Visiting card",
+  document: "Document",
 };
 
 /** Digits for a link: "+91 97874 98412" → "919787498412"; a bare 10-digit number gets India's 91. */
@@ -140,6 +149,8 @@ function ContactNumbers({ d }: { d: NonNullable<PoIntakeResult["draft"]> }) {
     );
   }
   const whatsapp = d.customerWhatsapp || mobile;
+  // The card's (or signature's) other numbers — an office line, a second mobile.
+  const others = (d.phoneNumbers ?? []).filter((p) => waDigits(p.number) !== waDigits(mobile));
   return (
     <div className="mt-1 space-y-0.5 text-sm">
       <p className="flex items-center gap-1.5">
@@ -154,6 +165,34 @@ function ContactNumbers({ d }: { d: NonNullable<PoIntakeResult["draft"]> }) {
           className="tabular-nums text-brand-600 hover:underline">{whatsapp}</a>
       </p>
       {d.phoneSource && <p className="text-xs text-ink-400">{PHONE_SOURCE[d.phoneSource]}</p>}
+      {others.length > 0 && (
+        <p className="text-xs text-ink-400">
+          Also: {others.map((p) => `${p.number}${p.label ? ` (${p.label})` : ""}`).join(", ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Who sent it — the person and their email — when the upload names them. */
+function ContactPerson({ d }: { d: NonNullable<PoIntakeResult["draft"]> }) {
+  if (!d.contactPerson && !d.customerEmail) return null;
+  return (
+    <div className="mt-1 space-y-0.5 text-sm">
+      {d.contactPerson && (
+        <p className="flex items-center gap-1.5">
+          <User className="h-3.5 w-3.5 text-ink-400" aria-hidden />
+          <span className="w-20 text-xs text-ink-400">Contact</span>
+          <span>{d.contactPerson}</span>
+        </p>
+      )}
+      {d.customerEmail && (
+        <p className="flex items-center gap-1.5">
+          <Mail className="h-3.5 w-3.5 text-ink-400" aria-hidden />
+          <span className="w-20 text-xs text-ink-400">Email</span>
+          <a href={`mailto:${d.customerEmail}`} className="text-brand-600 hover:underline">{d.customerEmail}</a>
+        </p>
+      )}
     </div>
   );
 }
@@ -165,12 +204,19 @@ function Result({ result }: { result: PoIntakeResult }) {
       <Card className="p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <p className="text-xs uppercase tracking-wide text-ink-400">Customer</p>
+            <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-ink-400">
+              Customer
+              {d.sourceType && (
+                <StatusChip tone="neutral">{SOURCE_LABEL[d.sourceType] ?? d.sourceType}</StatusChip>
+              )}
+            </p>
             {d.customer.confident ? (
               <p className="mt-0.5 font-medium">
                 {d.customer.customerName}
-                {d.customer.matchedBy === "phone" && (
-                  <span className="ml-2 text-xs font-normal text-ink-400">matched by phone number</span>
+                {(d.customer.matchedBy === "phone" || d.customer.matchedBy === "email") && (
+                  <span className="ml-2 text-xs font-normal text-ink-400">
+                    matched by {d.customer.matchedBy === "phone" ? "phone number" : "email"}
+                  </span>
                 )}
               </p>
             ) : (
@@ -181,6 +227,7 @@ function Result({ result }: { result: PoIntakeResult }) {
             {/* The number read, matched or not — for an enquiry from someone
                 not yet on the books it is the way to reach them back. */}
             <ContactNumbers d={d} />
+            <ContactPerson d={d} />
             {!d.customer.confident && d.customer.candidates.length > 0 && (
               <ul className="mt-1 space-y-0.5 text-sm text-ink-500">
                 {d.customer.candidates.map((c) => (
@@ -260,8 +307,8 @@ export function PoIntakeModal({ onClose }: { onClose: () => void }) {
           />
           <FileUp className="mx-auto h-8 w-8 text-ink-300" />
           <p className="mt-2 text-sm text-ink-500">
-            A photo or PDF of the customer's purchase order or enquiry — a WhatsApp
-            screenshot works too.
+            The customer's purchase order or enquiry — a PDF or photo, a WhatsApp or email
+            screenshot, or their visiting card.
           </p>
           <Button
             variant="secondary"
