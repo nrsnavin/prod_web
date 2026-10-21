@@ -40,6 +40,7 @@ import {
   Bot,
   SlidersHorizontal,
   LucideIcon,
+  PackageCheck,
 } from "lucide-react";
 
 // Departments drive who sees what. `admin` sees everything; the four
@@ -47,7 +48,7 @@ import {
 // with utils/roles.js on the backend.
 // Preparatory + weaving were merged into a single "production" department
 // (they always shared the production role). Packing stays separate.
-export const DEPARTMENTS = ["admin", "production", "packing", "finance"] as const;
+export const DEPARTMENTS = ["admin", "production", "packing", "finance", "marketing"] as const;
 export type Department = (typeof DEPARTMENTS)[number];
 
 export const DEPARTMENT_LABELS: Record<string, string> = {
@@ -55,6 +56,7 @@ export const DEPARTMENT_LABELS: Record<string, string> = {
   production: "Production (Warping, Weaving & Covering)",
   packing: "Packing & Checking",
   finance: "Finance",
+  marketing: "Marketing",
 };
 
 export interface NavItem {
@@ -116,6 +118,10 @@ export const navSections: NavSection[] = [
       // Raised by sales, worked by production — both write to the log,
       // so both departments carry it. Mirrors /samples in utils/features.js.
       { label: "Sample Requests", path: "/samples", icon: FlaskConical, departments: ["admin", "finance", "production"] },
+      // Packed jobs and finished samples, in delivery-urgency order.
+      // Marketing sets the urgency, finance raises the challan, packing
+      // sends it. Mirrors /dispatch in utils/features.js.
+      { label: "Dispatch", path: "/dispatch", icon: PackageCheck, departments: ["admin", "finance", "packing", "marketing"] },
     ],
   },
   {
@@ -278,6 +284,7 @@ export function effectiveDepartment(
   if (user.role === "admin") return "admin";
   if (user.role === "accounts") return "finance";
   if (user.role === "production") return "production";
+  if (user.role === "marketing") return "marketing";
   return undefined; // legacy stores/sales → unrestricted items until reassigned
 }
 

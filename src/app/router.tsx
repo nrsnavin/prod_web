@@ -40,6 +40,7 @@ const StockMovementsReportPage = lazyPage(() => import("@/features/reports/Stock
 const OrderPnlPage = lazyPage(() => import("@/features/pnl/OrderPnlPage"), "OrderPnlPage");
 const OrderPnlDetailPage = lazyPage(() => import("@/features/pnl/OrderPnlDetailPage"), "OrderPnlDetailPage");
 const SampleListPage = lazyPage(() => import("@/features/samples/SampleListPage"), "SampleListPage");
+const DispatchQueuePage = lazyPage(() => import("@/features/dispatch/DispatchQueuePage"), "DispatchQueuePage");
 const SampleDetailPage = lazyPage(() => import("@/features/samples/SampleDetailPage"), "SampleDetailPage");
 const CustomerListPage = lazyPage(() => import("@/features/customers/CustomerListPage"), "CustomerListPage");
 const CustomerDetailPage = lazyPage(() => import("@/features/customers/CustomerDetailPage"), "CustomerDetailPage");
@@ -139,6 +140,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/jobs": withSuspense(<JobListPage />),
   "/delivery-challans": withSuspense(<DcListPage />),
   "/samples": withSuspense(<SampleListPage />),
+  "/dispatch": withSuspense(<DispatchQueuePage />),
   "/warping": withSuspense(<WarpingListPage />),
   "/covering": withSuspense(<CoveringListPage />),
   "/packing": withSuspense(<PackingPage />),

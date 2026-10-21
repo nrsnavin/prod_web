@@ -206,3 +206,31 @@ describe("nav items whose server route borrows another feature's key", () => {
     expect(canAccessPath("/stock-counts", user)).toBe(false);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════
+//  DISPATCH — packed jobs and finished samples, by delivery urgency.
+//  Marketing sets the urgency, finance raises the challan, packing sends
+//  it. The backfill for existing accounts is migrations/20261021000001.
+// ══════════════════════════════════════════════════════════════════
+describe("Dispatch is reachable by the departments that work it", () => {
+  it("is in the admin, finance, packing and marketing defaults, not production's", () => {
+    for (const dept of ["admin", "finance", "packing", "marketing"]) {
+      expect(featuresForDepartment(dept)).toContain("/dispatch");
+    }
+    expect(featuresForDepartment("production")).not.toContain("/dispatch");
+  });
+
+  it("appears on the Users screen, so an existing account can be granted it by hand", () => {
+    expect(ALL_FEATURE_KEYS).toContain("/dispatch");
+  });
+
+  it("a marketing account holding the key can open it; one without cannot", () => {
+    expect(canAccessPath("/dispatch", { role: "marketing", department: "marketing", features: ["/", "/dispatch"] })).toBe(true);
+    expect(canAccessPath("/dispatch", { role: "production", department: "production", features: ["/", "/jobs"] })).toBe(false);
+  });
+
+  it("a legacy marketing login with no list falls back to its department", () => {
+    expect(canAccess(item("/dispatch"), { role: "marketing" })).toBe(true);
+    expect(canAccess(item("/orders"), { role: "marketing" })).toBe(false);
+  });
+});
