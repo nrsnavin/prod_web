@@ -37,8 +37,9 @@ export function MachineHeadMapEditModal({
   // Options come from the running job's planned elastics; fall back to
   // whatever is already threaded so current values stay selectable.
   const options = useMemo(() => {
+    // A frozen line (changed mid-run) is complete and takes nothing more.
     const fromJob = (job.data?.plannedElastics ?? [])
-      .filter((e) => e.elasticId)
+      .filter((e) => e.elasticId && !e.frozen)
       .map((e) => ({ value: e.elasticId as string, label: e.elasticName }));
     if (fromJob.length) return fromJob;
     const seen = new Map<string, string>();

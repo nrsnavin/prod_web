@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { jobService } from "./api";
+import { jobService, ChangeElasticBody } from "./api";
 import { JobStatus } from "./types";
 
 const KEY = "jobs";
@@ -17,6 +17,15 @@ export function useJob(id: string | undefined) {
     queryKey: [KEY, "detail", id],
     queryFn: () => jobService.getById(id!),
     enabled: !!id,
+  });
+}
+
+/** The order's elastics as candidates for a mid-run change; fetched only while the dialog is open. */
+export function useJobOrderElastics(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: [KEY, "order-elastics", id],
+    queryFn: () => jobService.orderElastics(id!),
+    enabled: !!id && enabled,
   });
 }
 
@@ -123,6 +132,16 @@ export function useJobMutations() {
     }) => jobService.updateElastics(jobId, elastics, auditReason, expectedVersion),
     onSuccess: invalidate,
   });
+  const changeElastic = useMutation({
+    mutationFn: ({ jobId, body }: { jobId: string; body: ChangeElasticBody }) => jobService.changeElastic(jobId, body),
+    onSuccess: () => {
+      invalidate();
+      // The loom's head map and its open shifts follow the change.
+      qc.invalidateQueries({ queryKey: ["machines"] });
+      qc.invalidateQueries({ queryKey: ["shifts"] });
+      qc.invalidateQueries({ queryKey: ["orders"] });
+    },
+  });
   const updateStatus = useMutation({
     mutationFn: ({ jobId, nextStatus }: { jobId: string; nextStatus: JobStatus }) =>
       jobService.updateStatus(jobId, nextStatus),
@@ -145,5 +164,5 @@ export function useJobMutations() {
     }) => jobService.setProductionMode(jobId, mode, vendor),
     onSuccess: invalidate,
   });
-  return { create, planWeaving, updateElastics, updateStatus, cancel, setProductionMode };
+  return { create, planWeaving, updateElastics, changeElastic, updateStatus, cancel, setProductionMode };
 }

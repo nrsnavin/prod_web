@@ -19,6 +19,7 @@ import { JOB_PIPELINE, JobShiftDetail, JobSummaryRow } from "./types";
 import { nextJobStatus } from "./jobStatus";
 import { MachineAssignModal } from "./MachineAssignModal";
 import { JobElasticsEditModal, canEditElastics, editableReason } from "./JobElasticsEditModal";
+import { JobChangeElasticModal } from "./JobChangeElasticModal";
 import { QcPanel } from "./QcPanel";
 import { OutsourcingPanel } from "./OutsourcingPanel";
 import { JobYarnLots } from "./JobYarnLots";
@@ -59,8 +60,34 @@ function Pipeline({ status }: { status: string }) {
 }
 
 const summaryColumns: Column<JobSummaryRow>[] = [
-  { key: "name", header: "Elastic", render: (r) => <span className="font-medium">{r.elasticName}</span> },
-  { key: "planned", header: "Planned", align: "right", render: (r) => r.planned.toLocaleString("en-IN") },
+  {
+    key: "name",
+    header: "Elastic",
+    render: (r) => (
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        <span className="font-medium">{r.elasticName}</span>
+        {/* Changed mid-run: a frozen line is complete as it stands and
+            takes nothing more; an added one came in with a reason. */}
+        {r.frozen && <StatusChip tone="neutral">Frozen</StatusChip>}
+        {r.addedMidRun && <StatusChip tone="info">Added mid-run</StatusChip>}
+      </span>
+    ),
+  },
+  {
+    key: "planned",
+    header: "Planned",
+    align: "right",
+    render: (r) => (
+      <span className="tabular-nums">
+        {r.planned.toLocaleString("en-IN")}
+        {r.frozen && r.plannedBeforeFreeze != null && (
+          <span className="block text-xs text-ink-400" title="Planned before it was frozen at what was woven">
+            was {r.plannedBeforeFreeze.toLocaleString("en-IN")}
+          </span>
+        )}
+      </span>
+    ),
+  },
   { key: "produced", header: "Produced", align: "right", render: (r) => r.produced.toLocaleString("en-IN") },
   { key: "packed", header: "Packed", align: "right", render: (r) => r.packed.toLocaleString("en-IN") },
   {
@@ -139,6 +166,7 @@ export function JobDetailPage() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [qtyOpen, setQtyOpen] = useState(false);
+  const [changeOpen, setChangeOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   // Set from the server's 409 WEAVING_NOT_READY. Holding the blockers in
@@ -198,6 +226,13 @@ export function JobDetailPage() {
                 onClick={() => setQtyOpen(true)}
               >
                 <Pencil className="h-4 w-4" /> Edit quantities
+              </Button>
+            )}
+            {/* The exceptional case: the loom goes on to another of
+                the order's elastics mid-run, with a reason. */}
+            {job.status === "weaving" && (
+              <Button variant="secondary" onClick={() => setChangeOpen(true)}>
+                <Pencil className="h-4 w-4" /> Change elastic
               </Button>
             )}
             {/* Weaving too, not just preparatory: a machine can break
@@ -374,6 +409,15 @@ export function JobDetailPage() {
       {/* Keyed on the job's own figures so reopening after a save starts
           from what was stored, not the state it was left in. */}
       <JobQrPrint job={job} open={qrOpen} onClose={() => setQrOpen(false)} />
+
+      {changeOpen && (
+        <JobChangeElasticModal
+          key={`${job.__v}:${job.plannedElastics.map((e) => e.elasticId).join("|")}`}
+          job={job}
+          open={changeOpen}
+          onClose={() => setChangeOpen(false)}
+        />
+      )}
 
       {qtyOpen && (
         <JobElasticsEditModal

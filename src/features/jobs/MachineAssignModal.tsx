@@ -151,8 +151,10 @@ export function MachineAssignModal({
     );
   const headCount = Math.min(headsToRun, selected?.NoOfHead ?? 0);
 
+  // Not a frozen line: it is complete as it stands, and would take
+  // nothing more (services/jobMidRun.js).
   const elasticOptions = job.plannedElastics
-    .filter((e) => e.elasticId)
+    .filter((e) => e.elasticId && !e.frozen)
     .map((e) => ({ value: e.elasticId!, label: e.elasticName }));
 
   // Spread the job's planned elastics across the given number of heads,

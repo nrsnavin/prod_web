@@ -41,6 +41,23 @@ export interface ElasticQty {
   elasticId: string | null;
   elasticName: string;
   quantity: number;
+  /** Changed mid-run: a frozen line is complete as it stands; an added one came in with a reason. */
+  frozen?: boolean;
+  plannedBeforeFreeze?: number | null;
+  addedMidRun?: boolean;
+  reason?: string;
+}
+
+/** One of the order's elastics, as a candidate to put on a running job. */
+export interface OrderElasticCandidate {
+  elasticId: string;
+  elasticName: string;
+  ordered: number;
+  planned: number;
+  /** Ordered minus what every live job has planned — the most this job may take. */
+  pending: number;
+  onJob: boolean;
+  frozen: boolean;
 }
 
 export interface JobShiftDetail {
@@ -100,6 +117,7 @@ export interface JobDetail {
   outsourcing?: OutsourcingRecord | null;
   customerName: string;
   orderNo?: number | string;
+  orderId?: string | null;
   machine?: {
     machineId: string;
     machineName: string;
@@ -152,6 +170,9 @@ export interface JobSummaryRow {
   wasted: number;
   remaining: number;
   packingPct: number;
+  frozen?: boolean;
+  plannedBeforeFreeze?: number | null;
+  addedMidRun?: boolean;
 }
 
 export interface MrpData {

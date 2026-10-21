@@ -31,7 +31,24 @@ import {
   MrpData,
   RaisePoResult,
   WeavingReadiness,
+  OrderElasticCandidate,
 } from "./types";
+
+export interface ChangeElasticBody {
+  elastic: string;
+  quantity: number;
+  auditReason: string;
+  freeze: string[];
+  heads: "frozen" | "all" | "none";
+  confirmHooks?: boolean;
+  expectedVersion?: number;
+}
+export interface ChangeElasticResult {
+  success: boolean;
+  message: string;
+  frozen: Array<{ elastic: string; plannedBefore: number; frozenAt: number }>;
+  headsChanged: number;
+}
 
 export const jobService = {
   async list(params: {
@@ -130,6 +147,19 @@ export const jobService = {
       auditReason,
       ...(expectedVersion === undefined ? {} : { expectedVersion }),
     }),
+
+  /** The order's elastics as candidates for a mid-run change. */
+  orderElastics: (jobId: string) =>
+    httpClient.get<{ orderNo: number | string; elastics: OrderElasticCandidate[] }>(`/job/${jobId}/order-elastics`),
+
+  /**
+   * The exceptional case: the loom goes on to another of the order's
+   * elastics mid-run. The lines named in `freeze` are frozen at what was
+   * woven; the new one takes their heads ('frozen'), every running head
+   * ('all') or none. A reason is required.
+   */
+  changeElastic: (jobId: string, body: ChangeElasticBody) =>
+    httpClient.post<ChangeElasticResult>(`/job/${jobId}/change-elastic`, body),
 
   updateStatus: (jobId: string, nextStatus: JobStatus) =>
     httpClient.post("/job/update-status", { jobId, nextStatus }),
