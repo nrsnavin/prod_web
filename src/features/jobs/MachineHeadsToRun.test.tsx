@@ -63,7 +63,8 @@ describe("heads to run", () => {
     const heads = screen.getByLabelText("Heads to run");
     expect(heads).toHaveValue("8");
     await user.selectOptions(heads, "6");
-    expect(screen.getByText(/Heads 7–8 stay empty. Production is counted on 6 heads./)).toBeInTheDocument();
+    expect(screen.getByText(/Heads 7–8 stay empty/)).toBeInTheDocument();
+    expect(screen.getByText(/6 running/)).toBeInTheDocument();
     expect(screen.getAllByRole("combobox", { name: /Elastic on head/ })).toHaveLength(6);
 
     await user.click(screen.getByRole("button", { name: /^assign machine$/i }));
@@ -72,17 +73,42 @@ describe("heads to run", () => {
     expect(Object.values(sent.headElasticMap).every((v) => v === "e1")).toBe(true);
   });
 
+  it("a head can be marked Free anywhere; it goes as null and is not counted", async () => {
+    const user = userEvent.setup();
+    renderModal(job());
+    await user.click(await screen.findByRole("button", { name: /select machine/i }));
+    await user.click(await screen.findByRole("option", { name: /M-2/ }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Elastic on head 3" }), "");
+    expect(screen.getByText(/7 running · 1 free/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^assign machine$/i }));
+    const map = mutate.mock.calls[0][0].headElasticMap;
+    expect(map["2"]).toBeNull();
+    expect(Object.values(map).filter(Boolean)).toHaveLength(7);
+  });
+
+  it("will not save a plan with every head free", async () => {
+    const user = userEvent.setup();
+    renderModal(job());
+    await user.click(await screen.findByRole("button", { name: /select machine/i }));
+    await user.click(await screen.findByRole("option", { name: /M-2/ }));
+    await user.selectOptions(screen.getByLabelText("Heads to run"), "1");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Elastic on head 1" }), "");
+    expect(screen.getByRole("button", { name: /^assign machine$/i })).toBeDisabled();
+  });
+
   it("offers the job's own machine, starting from its current plan, to re-plan in place", async () => {
     const user = userEvent.setup();
     renderModal(job({
       machine: {
         machineId: "m1", machineName: "M-1", machineNoOfHead: 8, manufacturer: "Comez",
-        headsInUse: 6, headPlan: [1, 2, 3, 4, 5, 6].map((head) => ({ head, elastic: "e1" })),
+        headsInUse: 5, headPlan: [1, 2, 3, 4, 5, 6].map((head) => ({ head, elastic: head === 3 ? null : "e1" })),
       },
     }));
     await user.click(await screen.findByRole("button", { name: /select machine/i }));
     await user.click(await screen.findByRole("option", { name: /M-1 .*\(current\)/ }));
     expect(screen.getByLabelText("Heads to run")).toHaveValue("6");
+    // Head 3 was free in the plan, and still is.
+    expect(screen.getByRole("combobox", { name: "Elastic on head 3" })).toHaveValue("");
     await user.selectOptions(screen.getByLabelText("Heads to run"), "4");
     await user.click(screen.getByRole("button", { name: /save head plan/i }));
     expect(mutate.mock.calls[0][0]).toMatchObject({ machineId: "m1" });

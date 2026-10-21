@@ -90,9 +90,10 @@ export function MachineAssignModal({
       {
         jobId: job.id,
         machineId,
-        // Only the heads being run: head 1 up to the number chosen.
+        // Head 1 up to the number chosen; a head marked Free goes as null
+        // — on the plan, not running, nothing counted for it.
         headElasticMap: Object.fromEntries(
-          [...Array(headsToRun)].map((_, h) => [String(h), headMap[h]])
+          [...Array(headsToRun)].map((_, h) => [String(h), headMap[h] || null])
         ),
         confirmHooks,
       },
@@ -161,10 +162,10 @@ export function MachineAssignModal({
     const all = m?.NoOfHead ?? 0;
     const plan = id === current?._id ? job.machine?.headPlan ?? [] : [];
     if (plan.length) {
-      // The job's plan as it stands, to adjust.
-      setHeadsToRun(Math.min(plan.length, all));
+      // The job's plan as it stands, free heads included, to adjust.
+      setHeadsToRun(Math.min(Math.max(...plan.map((p) => p.head)), all));
       const next = spreadAcrossHeads(all);
-      for (const p of plan) next[p.head - 1] = p.elastic;
+      for (const p of plan) next[p.head - 1] = p.elastic ?? "";
       setHeadMap(next);
     } else {
       setHeadsToRun(all);
@@ -172,7 +173,9 @@ export function MachineAssignModal({
     }
   };
 
-  const allMapped = headCount > 0 && [...Array(headCount)].every((_, h) => headMap[h]);
+  // Heads left Free are fine; at least one has to run.
+  const running = [...Array(headCount)].filter((_, h) => headMap[h]).length;
+  const allMapped = headCount > 0 && running > 0;
 
   return (
     <FormScreen
@@ -216,8 +219,9 @@ export function MachineAssignModal({
             />
             <p className="pb-2 text-xs text-ink-400">
               {headsToRun < selected.NoOfHead
-                ? `Heads ${headsToRun + 1}–${selected.NoOfHead} stay empty. Production is counted on ${headsToRun} heads.`
-                : "Every head runs."}
+                ? `Heads ${headsToRun + 1}–${selected.NoOfHead} stay empty. `
+                : ""}
+              Mark any head Free below if it is not running. Production is counted on the heads that run.
             </p>
           </div>
         )}
@@ -226,7 +230,7 @@ export function MachineAssignModal({
           <div>
             <div className="mb-1.5 flex items-center justify-between">
               <p className="text-sm font-medium text-ink-600">
-                Head → elastic mapping ({headCount} heads)
+                Head → elastic mapping ({running} running{headCount - running ? ` · ${headCount - running} free` : ""})
               </p>
               {elasticOptions.length > 1 && (
                 <button
@@ -245,8 +249,8 @@ export function MachineAssignModal({
                     H{h + 1}
                   </span>
                   <Select
-                    aria-label={`Elastic on head ${h}`}
-                    options={elasticOptions}
+                    aria-label={`Elastic on head ${h + 1}`}
+                    options={[{ value: "", label: "Free" }, ...elasticOptions]}
                     value={headMap[h] ?? ""}
                     onChange={(e) => setHeadMap((m) => ({ ...m, [h]: e.target.value }))}
                     className="h-9"

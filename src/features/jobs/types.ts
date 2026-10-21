@@ -106,8 +106,8 @@ export interface JobDetail {
     machineNoOfHead: number;
     /** Heads this job's plan runs — may be fewer than the loom has. */
     headsInUse?: number;
-    /** Which elastic sits on each running head. */
-    headPlan?: Array<{ head: number; elastic: string }>;
+    /** What is on each head of the plan; null for a head marked free. */
+    headPlan?: Array<{ head: number; elastic: string | null }>;
     manufacturer?: string;
     status?: string;
   } | null;

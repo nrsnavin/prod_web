@@ -11,6 +11,9 @@ import { MachineHeadElastic } from "./types";
 
 // Edit which of the running job's elastics is threaded on each head.
 // Heads are 1-based to match how plan-weaving stores them.
+//
+// A head can be marked FREE: it is not running, and nothing is counted
+// for it — production is per head × the heads that run.
 export function MachineHeadMapEditModal({
   machineId,
   heads,
@@ -54,6 +57,8 @@ export function MachineHeadMapEditModal({
     machineHooks: number;
     elastics: Array<{ name: string; noOfHook: number }>;
   } | null>(null);
+
+  const running = Array.from({ length: heads }, (_, i) => headMap[i + 1]).filter(Boolean).length;
 
   const spread = () => {
     const next: Record<number, string> = {};
@@ -107,21 +112,38 @@ export function MachineHeadMapEditModal({
     <FormScreen open onClose={onClose} title="Edit head → elastic map" width="max-w-xl">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-ink-600">{heads} heads</p>
-          {options.length > 1 && (
-            <button
-              type="button"
-              onClick={spread}
-              className="text-xs font-medium text-brand-600 hover:underline"
-            >
-              Spread elastics evenly
-            </button>
-          )}
+          <p className="text-sm font-medium text-ink-600 tabular-nums">
+            {running} running · {heads - running} free
+          </p>
+          <div className="flex gap-3">
+            {options.length > 1 && (
+              <button
+                type="button"
+                onClick={spread}
+                className="text-xs font-medium text-brand-600 hover:underline"
+              >
+                Spread elastics evenly
+              </button>
+            )}
+            {running > 0 && (
+              <button
+                type="button"
+                onClick={() => setHeadMap({})}
+                className="text-xs font-medium text-brand-600 hover:underline"
+              >
+                Mark all free
+              </button>
+            )}
+          </div>
         </div>
+
+        <p className="text-xs text-ink-400">
+          A free head is not running: no production is counted for it.
+        </p>
 
         {options.length === 0 ? (
           <p className="text-sm text-ink-400">
-            No elastics available to assign{jobId ? "" : " — no job is running on this machine"}.
+            No elastics available to assign{jobId ? "" : " — no job is running on this machine"}; every head is free.
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
@@ -132,7 +154,7 @@ export function MachineHeadMapEditModal({
                   <span className="w-9 shrink-0 text-xs font-semibold text-ink-400 text-right">H{h}</span>
                   <Select
                     aria-label={`Elastic on head ${h}`}
-                    options={[{ value: "", label: "— none —" }, ...options]}
+                    options={[{ value: "", label: "Free" }, ...options]}
                     value={headMap[h] ?? ""}
                     onChange={(e) => setHeadMap((m) => ({ ...m, [h]: e.target.value }))}
                     className="h-9"
@@ -151,7 +173,6 @@ export function MachineHeadMapEditModal({
               first press. */}
           <Button
             loading={updateElasticMap.isPending}
-            disabled={options.length === 0}
             onClick={() => save(false)}
           >
             Save map

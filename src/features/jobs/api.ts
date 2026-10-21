@@ -96,7 +96,8 @@ export const jobService = {
   planWeaving: (
     jobId: string,
     machineId: string,
-    headElasticMap: Record<string, string>,
+    /** Head index → elastic id, or null for a head marked free. */
+    headElasticMap: Record<string, string | null>,
     confirmHooks = false
   ) =>
     httpClient.post<MachineAssignResult>("/job/plan-weaving", {

@@ -101,7 +101,7 @@ export function useJobMutations() {
     }: {
       jobId: string;
       machineId: string;
-      headElasticMap: Record<string, string>;
+      headElasticMap: Record<string, string | null>;
       /** Go ahead despite an elastic needing more hooks than the machine has. */
       confirmHooks?: boolean;
     }) => jobService.planWeaving(jobId, machineId, headElasticMap, confirmHooks),

@@ -67,6 +67,28 @@ describe("MachineHeadMapEditModal", () => {
     );
   });
 
+  it("marks a head Free: saved as null, and the count says so", async () => {
+    const user = userEvent.setup();
+    render(<MachineHeadMapEditModal machineId="m1" heads={3} current={current} jobId="j1" onClose={() => {}} />);
+    expect(screen.getByText("2 running · 1 free")).toBeInTheDocument();
+    await user.selectOptions(screen.getByRole("combobox", { name: "Elastic on head 2" }), "");
+    expect(screen.getByText("1 running · 2 free")).toBeInTheDocument();
+    expect(screen.getByText(/no production is counted for it/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /save map/i }));
+    expect(updateMutate.mock.calls[0][0]).toMatchObject({
+      elastics: [{ head: 1, elastic: "e1" }, { head: 2, elastic: null }, { head: 3, elastic: null }],
+    });
+  });
+
+  it("can mark every head free", async () => {
+    const user = userEvent.setup();
+    render(<MachineHeadMapEditModal machineId="m1" heads={2} current={current} jobId="j1" onClose={() => {}} />);
+    await user.click(screen.getByRole("button", { name: /mark all free/i }));
+    expect(screen.getByText("0 running · 2 free")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /save map/i }));
+    expect((updateMutate.mock.calls[0][0] as { elastics: Array<{ elastic: unknown }> }).elastics.every((h: { elastic: unknown }) => h.elastic === null)).toBe(true);
+  });
+
   it("spreads the job's elastics round-robin across heads", async () => {
     const user = userEvent.setup();
     render(

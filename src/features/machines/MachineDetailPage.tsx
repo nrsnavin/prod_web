@@ -112,7 +112,8 @@ const headElasticColumns: Column<MachineHeadElastic>[] = [
       h.elastic?.name ? (
         h.elastic.name
       ) : (
-        <span className="text-ink-400">— unassigned —</span>
+        // Not running: nothing is counted for this head.
+        <StatusChip tone="neutral">Free</StatusChip>
       ),
   },
 ];
