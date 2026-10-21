@@ -70,6 +70,23 @@ export const sheetService = {
     URL.revokeObjectURL(url);
   },
 
+  /**
+   * The floor sheet: a production sheet for a shift with no plan — every
+   * machine, its job or FREE, and blank Operator / Timer / Production /
+   * Supervisor-signature columns. A photo of it filled in can create the plan.
+   */
+  async downloadFloor(dateKey: string, shift: "DAY" | "NIGHT"): Promise<void> {
+    const blob = await httpClient.getBlob("/shift/floor-sheet.pdf", { date: dateKey, shift });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `floor-sheet-${dateKey}-${shift}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+
   async ingest(planId: string, file: File): Promise<IngestResult> {
     const form = new FormData();
     form.append("file", file);

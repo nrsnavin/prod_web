@@ -17,6 +17,7 @@ import { Slip } from "./types";
 const toast = vi.fn();
 const applyMutate = vi.fn();
 const discardMutate = vi.fn();
+const createPlanMutate = vi.fn();
 let current: Slip;
 
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast }) }));
@@ -28,7 +29,11 @@ vi.mock("./hooks", () => ({
     apply: { mutate: applyMutate, isPending: false },
     discard: { mutate: discardMutate, isPending: false },
     setShift: { mutate: vi.fn(), isPending: false },
+    createPlan: { mutate: createPlanMutate, isPending: false },
   }),
+}));
+vi.mock("@/features/shifts/hooks", () => ({
+  useWeavingEmployees: () => ({ data: [{ _id: "e1", name: "Ravi Kumar" }, { _id: "e2", name: "Murugan" }] }),
 }));
 
 const baseRow = {
@@ -144,5 +149,64 @@ describe("other states", () => {
     current = slip({ status: "reading", rows: [], photos: [] });
     setup();
     expect(screen.getByText(/Reading the photo/)).toBeInTheDocument();
+  });
+});
+
+describe("a floor sheet for a shift with no plan", () => {
+  const draftRow = {
+    jobNo: null, match: null, production: null, timer: null, notes: [] as string[],
+  } as const;
+  const needsPlan = () =>
+    slip({
+      status: "needs_plan", format: "floor", dateFrom: "sheet", rows: [], unmatched: [],
+      problem: "There is no day shift plan for 6 Oct 2026 yet. Check the operators read from the sheet and create the plan from it.",
+      counts: { rows: 0, ready: 0, check: 0, skip: 0, applied: 0, unmatched: 0 },
+      planDraft: [
+        { ...draftRow, index: 0, machine: "m1", machineID: "M-1", machineRead: "M-1", jobNo: "J-12", operatorRead: "ravi kumar",
+          employee: "e1", employeeName: "Ravi Kumar", match: "exact", production: 1200, timer: "7:30:00" },
+        { ...draftRow, index: 1, machine: "m2", machineID: "M-2", machineRead: "M-2", operatorRead: "Kannan",
+          employee: null, employeeName: null, production: 900, notes: ["No employee called “Kannan”"] },
+        { ...draftRow, index: 2, machine: null, machineID: null, machineRead: "M-7", operatorRead: null,
+          employee: null, employeeName: null, notes: ["No machine with this number", "No operator written"] },
+      ],
+    });
+
+  it("shows each machine with who was read against it; only the matched one comes ticked", () => {
+    current = needsPlan();
+    setup();
+    expect(screen.getByText(/There is no day shift plan for 6 Oct 2026 yet/)).toBeInTheDocument();
+    expect(screen.getByText(/from the sheet number/)).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Plan M-1" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Plan M-2" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Plan M-7" })).toBeDisabled();
+    expect(screen.getByText("No employee called “Kannan”")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Create plan for 1 machine$/ })).toBeEnabled();
+  });
+
+  it("choosing the operator ticks the machine; what is sent is the ticked rows and the version shown", async () => {
+    current = needsPlan();
+    setup();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Operator for M-2" }), "e2");
+    expect(screen.getByRole("checkbox", { name: "Plan M-2" })).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: /Create plan for 2 machines/ }));
+    expect(createPlanMutate).toHaveBeenCalledWith(
+      {
+        id: "slip1", version: 3,
+        rows: [
+          { index: 0, include: true, employee: "e1" },
+          { index: 1, include: true, employee: "e2" },
+          { index: 2, include: false, employee: null },
+        ],
+      },
+      expect.anything()
+    );
+  });
+
+  it("will not create a plan with a ticked machine nobody runs", async () => {
+    current = needsPlan();
+    setup();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Plan M-2" }));
+    expect(screen.getByText("Choose the operator for M-2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Create plan for 2 machines/ })).toBeDisabled();
   });
 });

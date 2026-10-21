@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageCircle, Upload } from "lucide-react";
+import { MessageCircle, Printer, Upload } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +14,7 @@ import { SlipFilter } from "./api";
 import { Slip } from "./types";
 import { countsSummary, shiftTitle, statusLabel, statusTone } from "./slipText";
 import { SlipUploadModal } from "./SlipUploadModal";
+import { FloorSheetDialog } from "@/features/shifts/FloorSheetDialog";
 
 // ══════════════════════════════════════════════════════════════════
 //  PRODUCTION SLIPS
@@ -63,6 +64,7 @@ export function SlipsPage() {
   const [status, setStatus] = useState<SlipFilter>("open");
   const [page, setPage] = useState(1);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [floorOpen, setFloorOpen] = useState(false);
   const { data, isLoading, isError, error } = useSlips(status, page);
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
@@ -72,9 +74,14 @@ export function SlipsPage() {
         title="Production slips"
         subtitle="Shift production read from a photo, waiting to be confirmed"
         actions={
-          <Button onClick={() => setUploadOpen(true)}>
-            <Upload className="h-4 w-4" /> Upload photo
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => setFloorOpen(true)}>
+              <Printer className="h-4 w-4" /> Floor sheet
+            </Button>
+            <Button onClick={() => setUploadOpen(true)}>
+              <Upload className="h-4 w-4" /> Upload photo
+            </Button>
+          </>
         }
       />
 
@@ -84,7 +91,9 @@ export function SlipsPage() {
           Send a photo of the slip to the factory WhatsApp number. If the slip doesn&apos;t show
           the date and shift, add a caption like <span className="font-medium">DAY 06-10</span>.
           The reply says what was read; answer <span className="font-medium">OK</span> with the
-          slip number to save the clear rows, and check the rest here.
+          slip number to save the clear rows, and check the rest here. No plan for the shift yet?
+          Print the <span className="font-medium">Floor sheet</span>, fill it on the floor and send
+          its photo: the plan is created from it.
         </p>
       </div>
 
@@ -121,6 +130,7 @@ export function SlipsPage() {
           navigate(`/production-slips/${slip.id}`);
         }}
       />
+      {floorOpen && <FloorSheetDialog onClose={() => setFloorOpen(false)} />}
     </>
   );
 }

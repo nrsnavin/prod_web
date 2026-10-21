@@ -1,5 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
-import { Shift, Slip, SlipEdit } from "./types";
+import { PlanDraftEdit, Shift, Slip, SlipEdit } from "./types";
 
 export type SlipFilter = "open" | "applied" | "discarded" | "all";
 
@@ -37,6 +37,13 @@ export const slipService = {
           remarks: r.remarks,
         })),
       }
+    );
+  },
+  /** A sheet for a shift with no plan: create the plan from the ticked machines. */
+  createPlan(id: string, rows: PlanDraftEdit[], expectedVersion: number) {
+    return httpClient.post<{ created: boolean; planned: number; slip: Slip }>(
+      `/slips/${encodeURIComponent(id)}/create-plan`,
+      { expectedVersion, rows: rows.map((r) => ({ index: r.index, include: r.include, employee: r.employee })) }
     );
   },
   async discard(id: string): Promise<Slip> {

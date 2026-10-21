@@ -1,4 +1,4 @@
-export type SlipStatus = "received" | "reading" | "ready" | "failed" | "applied" | "discarded";
+export type SlipStatus = "received" | "reading" | "ready" | "failed" | "needs_plan" | "applied" | "discarded";
 export type SlipRowState = "ready" | "check" | "skip";
 export type Shift = "DAY" | "NIGHT";
 
@@ -48,7 +48,7 @@ export interface Slip {
   caption: string;
   status: SlipStatus;
   problem: string | null;
-  format: "sheet" | "slip" | null;
+  format: "sheet" | "floor" | "slip" | null;
   dateKey: string | null;
   shift: Shift | null;
   dateFrom: string | null;
@@ -59,7 +59,31 @@ export interface Slip {
   counts: SlipCounts;
   rows?: SlipRow[];
   unmatched?: SlipUnmatched[];
+  /** needs_plan: the plan the sheet proposes. */
+  planDraft?: PlanDraftRow[];
   photos?: { page: number; contentType: string; size: number }[];
+}
+
+/** One machine of the plan a sheet proposes when its shift has none. */
+export interface PlanDraftRow {
+  index: number;
+  machine: string | null;
+  machineID: string | null;
+  machineRead: string | null;
+  jobNo: string | null;
+  operatorRead: string | null;
+  employee: string | null;
+  employeeName: string | null;
+  match: "exact" | "close" | null;
+  production: number | null;
+  timer: string | null;
+  notes: string[];
+}
+
+export interface PlanDraftEdit {
+  index: number;
+  include: boolean;
+  employee: string | null;
 }
 
 export interface SlipEdit {

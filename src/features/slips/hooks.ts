@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { slipService, SlipFilter } from "./api";
-import { Shift, Slip, SlipEdit } from "./types";
+import { PlanDraftEdit, Shift, Slip, SlipEdit } from "./types";
 
 const KEY = "production-slips";
 
@@ -50,9 +50,19 @@ export function useSlipMutations() {
       qc.invalidateQueries({ queryKey: ["shifts"] });
     },
   });
+  const createPlan = useMutation({
+    mutationFn: (v: { id: string; rows: PlanDraftEdit[]; version: number }) => slipService.createPlan(v.id, v.rows, v.version),
+    onSuccess: (out) => {
+      settle(out.slip);
+      // A new plan for the day: the shift screens show it.
+      qc.invalidateQueries({ queryKey: ["shifts"] });
+      qc.invalidateQueries({ queryKey: ["production"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
   const discard = useMutation({
     mutationFn: (id: string) => slipService.discard(id),
     onSuccess: (slip) => settle(slip),
   });
-  return { upload, setShift, apply, discard };
+  return { upload, setShift, apply, createPlan, discard };
 }

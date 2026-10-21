@@ -1,5 +1,5 @@
 import { ChipTone } from "@/components/ui/StatusChip";
-import { Slip, SlipCounts, SlipEdit, SlipRow, SlipStatus } from "./types";
+import { PlanDraftEdit, PlanDraftRow, Slip, SlipCounts, SlipEdit, SlipRow, SlipStatus } from "./types";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -21,6 +21,7 @@ export const statusLabel: Record<SlipStatus, string> = {
   reading: "Reading…",
   ready: "To confirm",
   failed: "Needs attention",
+  needs_plan: "Plan to create",
   applied: "Saved",
   discarded: "Dropped",
 };
@@ -30,6 +31,7 @@ export const statusTone: Record<SlipStatus, ChipTone> = {
   reading: "info",
   ready: "warning",
   failed: "danger",
+  needs_plan: "warning",
   applied: "success",
   discarded: "neutral",
 };
@@ -48,6 +50,7 @@ export function countsSummary(c: SlipCounts): string {
 
 export const DATE_FROM: Record<string, string> = {
   plan: "from the sheet's plan number",
+  sheet: "from the sheet number",
   codes: "from the sheet's row codes",
   caption: "from the message caption",
   slip: "as written on the slip",
@@ -77,3 +80,30 @@ export function editProblem(e: SlipEdit): string | null {
 
 /** Rows that can still be ticked: not saved, not skipped. */
 export const editable = (r: SlipRow) => !r.applied && r.state !== "skip";
+
+/**
+ * The plan-from-sheet form: a machine is ticked when it is a real
+ * machine, someone was matched to it and it is not on the sheet twice.
+ */
+export function initialPlanEdits(rows: PlanDraftRow[]): PlanDraftEdit[] {
+  return rows.map((r) => ({
+    index: r.index,
+    include: !!(r.machine && r.employee && !r.notes.includes("Same machine twice on the sheet")),
+    employee: r.employee,
+  }));
+}
+
+/** Why the ticked rows cannot make a plan yet, or null. */
+export function planProblem(rows: PlanDraftRow[], edits: PlanDraftEdit[]): string | null {
+  const chosen = edits.filter((e) => e.include);
+  if (!chosen.length) return "Tick at least one machine";
+  const seen = new Set<string>();
+  for (const e of chosen) {
+    const r = rows[e.index];
+    if (!r?.machine) return `“${r?.machineRead ?? "?"}” is not a machine`;
+    if (!e.employee) return `Choose the operator for ${r.machineID}`;
+    if (seen.has(r.machine)) return `${r.machineID} is ticked twice`;
+    seen.add(r.machine);
+  }
+  return null;
+}

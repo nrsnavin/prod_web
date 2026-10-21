@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Sun, Moon, ArrowRight, CalendarDays } from "lucide-react";
+import { Plus, Sun, Moon, ArrowRight, CalendarDays, Printer } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StaffingForecast } from "@/features/hr/StaffingForecast";
 import { Card } from "@/components/ui/Card";
@@ -13,6 +13,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useShiftDay, useShiftMutations } from "./hooks";
 import { TodayShiftSummary } from "./types";
 import { toISODate } from "@/features/analytics/components/FilterBar";
+import { FloorSheetDialog } from "./FloorSheetDialog";
 
 function ShiftCard({
   summary,
@@ -79,6 +80,7 @@ type Tab = "today" | "by-date";
 
 export function ShiftPlansPage() {
   const [createOpen, setCreateOpen] = useState(false);
+  const [floorOpen, setFloorOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("today");
   const [date, setDate] = useState(toISODate(new Date()));
   const navigate = useNavigate();
@@ -101,9 +103,14 @@ export function ShiftPlansPage() {
         title="Shift plans"
         subtitle="Assign machines and operators to day & night shifts."
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> New shift plan
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => setFloorOpen(true)}>
+              <Printer className="h-4 w-4" /> Floor sheet
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> New shift plan
+            </Button>
+          </>
         }
       />
 
@@ -191,6 +198,7 @@ export function ShiftPlansPage() {
           }
         />
       </FormScreen>
+      {floorOpen && <FloorSheetDialog onClose={() => setFloorOpen(false)} />}
     </>
   );
 }

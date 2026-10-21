@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, Check, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ClipboardList, Loader2, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,9 +16,11 @@ import { cn } from "@/components/ui/cn";
 import { ApiError } from "@/core/http/httpClient";
 import { slipService } from "./api";
 import { isReading, useSlip, useSlipMutations } from "./hooks";
-import { Shift, Slip, SlipEdit, SlipRow } from "./types";
+import { useWeavingEmployees } from "@/features/shifts/hooks";
+import { PlanDraftEdit, Shift, Slip, SlipEdit, SlipRow } from "./types";
 import {
-  DATE_FROM, countsSummary, editProblem, editable, initialEdits, shiftTitle, statusLabel, statusTone,
+  DATE_FROM, countsSummary, editProblem, editable, initialEdits, initialPlanEdits, planProblem, shiftTitle,
+  statusLabel, statusTone,
 } from "./slipText";
 
 // ══════════════════════════════════════════════════════════════════
@@ -248,6 +250,127 @@ function RowsTable({ slip, edits, setEdit }: {
   );
 }
 
+/**
+ * A sheet for a shift with no plan: each machine read from it, who was
+ * written against it (matched to an employee by name), and a tick to put
+ * it in the plan. Creating the plan matches the slip to it; the metres
+ * written then wait below, to be saved like any slip.
+ */
+function PlanDraftCard({ slip }: { slip: Slip }) {
+  const { toast } = useToast();
+  const { createPlan } = useSlipMutations();
+  const { data: weavers = [] } = useWeavingEmployees();
+  const rows = useMemo(() => slip.planDraft ?? [], [slip.planDraft]);
+  // Keyed by the slip's version, so a fresh draft starts a fresh form and
+  // a refetch does not wipe choices half made.
+  const [edits, setEdits] = useState<PlanDraftEdit[]>(() => initialPlanEdits(rows));
+
+  // The weavers, plus anyone the sheet was matched to who is not one.
+  const people = useMemo(() => {
+    const list = weavers.map((w) => ({ value: w._id, label: w.name }));
+    for (const r of rows) {
+      if (r.employee && !list.some((p) => p.value === r.employee)) {
+        list.push({ value: r.employee, label: r.employeeName ?? "?" });
+      }
+    }
+    return list.sort((a, b) => a.label.localeCompare(b.label));
+  }, [weavers, rows]);
+
+  const set = (index: number, patch: Partial<PlanDraftEdit>) =>
+    setEdits((all) => all.map((e) => (e.index === index ? { ...e, ...patch } : e)));
+  const chosen = edits.filter((e) => e.include).length;
+  const problem = planProblem(rows, edits);
+
+  const create = () =>
+    createPlan.mutate(
+      { id: slip.id, rows: edits, version: slip.version },
+      {
+        onSuccess: (out) =>
+          toast(
+            out.created
+              ? `Plan created for ${out.planned} machine${out.planned === 1 ? "" : "s"} (a draft; confirm it under Shift Plans). Now check the metres.`
+              : "A plan for this shift already existed; the slip is matched to it.",
+            "success"
+          ),
+        onError: (e) => toast(e instanceof ApiError ? e.message : "Could not create the plan", "error"),
+      }
+    );
+
+  return (
+    <Card className="p-4">
+      <div className="mb-1 flex items-center gap-2">
+        <ClipboardList className="h-4 w-4 text-ink-400" />
+        <h2 className="text-sm font-semibold">Create the plan from this sheet</h2>
+      </div>
+      <p className="mb-3 text-xs text-ink-400">
+        Each machine written on, with the operator read from the sheet. Check who ran each one,
+        untick any that did not run, then create the plan.
+      </p>
+      <TableScroll>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-ink-200 text-left text-xs font-semibold uppercase tracking-wide text-ink-400">
+              <th className="py-2 pr-2">Plan</th>
+              <th className="py-2 pr-2">Machine</th>
+              <th className="py-2 pr-2">Operator</th>
+              <th className="py-2 pr-2 text-right">Written</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const e = edits[r.index];
+              return (
+                <tr key={r.index} className={cn("border-b border-ink-100 align-top", !r.machine && "text-ink-400")}>
+                  <td className="py-2 pr-2">
+                    <input
+                      type="checkbox"
+                      aria-label={`Plan ${r.machineID ?? r.machineRead ?? "row"}`}
+                      checked={!!e?.include}
+                      disabled={!r.machine}
+                      onChange={(ev) => set(r.index, { include: ev.target.checked })}
+                      className="h-4 w-4"
+                    />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <p className="font-medium">{r.machineID ?? `“${r.machineRead ?? "?"}”`}</p>
+                    <p className="text-xs text-ink-400">{r.jobNo ?? "Free"}</p>
+                  </td>
+                  <td className="py-2 pr-2">
+                    {r.machine ? (
+                      <Select
+                        aria-label={`Operator for ${r.machineID}`}
+                        value={e?.employee ?? ""}
+                        placeholder="Choose"
+                        onChange={(ev) => set(r.index, { employee: ev.target.value || null, include: !!ev.target.value || !!e?.include })}
+                        options={people}
+                        className="min-w-40"
+                      />
+                    ) : null}
+                    {r.operatorRead && <p className="mt-0.5 text-xs text-ink-400">written “{r.operatorRead}”</p>}
+                    {r.notes.map((n) => (
+                      <p key={n} className={cn("text-xs", r.match === "close" && n.startsWith("Taken as") ? "text-status-warning" : "text-ink-600")}>{n}</p>
+                    ))}
+                  </td>
+                  <td className="py-2 pr-2 text-right tabular-nums">
+                    {r.production != null ? `${r.production} m` : "—"}
+                    {r.timer && <p className="text-xs text-ink-400">{r.timer}</p>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </TableScroll>
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
+        {problem && chosen > 0 && <span className="text-xs text-status-danger">{problem}</span>}
+        <Button loading={createPlan.isPending} disabled={!!problem} onClick={create}>
+          <Check className="h-4 w-4" /> Create plan for {chosen} machine{chosen === 1 ? "" : "s"}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 export function SlipDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -283,7 +406,7 @@ export function SlipDetailPage() {
   }
 
   const anySaved = (slip.rows ?? []).some((r) => r.applied);
-  const canDrop = ["received", "reading", "ready", "failed"].includes(slip.status) && !anySaved;
+  const canDrop = ["received", "reading", "ready", "failed", "needs_plan"].includes(slip.status) && !anySaved;
 
   const save = () =>
     apply.mutate(
@@ -329,6 +452,11 @@ export function SlipDetailPage() {
           <Loader2 className="h-4 w-4 animate-spin" /> Reading the photo. This usually takes under a minute.
         </p>
       )}
+      {slip.status === "needs_plan" && slip.problem && (
+        <p className="mb-4 flex items-start gap-2 rounded-lg bg-status-warningBg px-3 py-2 text-sm text-status-warning">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {slip.problem}
+        </p>
+      )}
       {slip.status === "failed" && slip.problem && (
         <p className="mb-4 flex items-start gap-2 rounded-lg bg-status-dangerBg px-3 py-2 text-sm text-status-danger">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> {slip.problem}
@@ -341,11 +469,16 @@ export function SlipDetailPage() {
         </Card>
 
         <div className="space-y-4">
-          {(slip.status === "failed" || (slip.status === "ready" && !anySaved)) && (slip.rows?.length || slip.status === "failed") ? (
+          {(slip.status === "failed" || slip.status === "needs_plan" || (slip.status === "ready" && !anySaved))
+            && (slip.rows?.length || slip.status !== "ready") ? (
             <Card className="p-4">
               <ShiftPicker key={`${slip.id}-${slip.version}`} slip={slip} prominent={slip.status === "failed"} />
             </Card>
           ) : null}
+
+          {slip.status === "needs_plan" && (slip.planDraft?.length ?? 0) > 0 && (
+            <PlanDraftCard key={`${slip.id}-${slip.version}`} slip={slip} />
+          )}
 
           {(slip.rows?.length ?? 0) > 0 && (
             <Card className="p-4">
