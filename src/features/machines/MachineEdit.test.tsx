@@ -31,7 +31,8 @@ vi.mock("./hooks", () => ({
   useServiceAnalytics: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
   useProductionSeries: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
   useMachineSpend: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
-  useMachineMutations: () => ({ updateDetails: { mutate, isPending: false } }),
+  useMachineMutations: () => ({
+    setLoading: { mutate: vi.fn(), isPending: false }, updateDetails: { mutate, isPending: false } }),
 }));
 const toast = vi.fn();
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast }) }));

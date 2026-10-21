@@ -30,6 +30,7 @@ vi.mock("./hooks", () => ({
   useMachineSpend: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
   useMachines: () => ({ data: machines, isLoading: false, isError: false, error: null }),
   useMachineMutations: () => ({
+    setLoading: { mutate: vi.fn(), isPending: false },
     create: { mutate: vi.fn(), isPending: false },
     setStatus: { mutate: vi.fn(), isPending: false },
   }),

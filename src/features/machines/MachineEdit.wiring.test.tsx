@@ -29,6 +29,7 @@ vi.mock("./hooks", () => ({
   useMachine: () => ({ data: machine, isLoading: false, isError: false, error: null }),
   useServiceBills: () => ({ data: [], isLoading: false }),
   useMachineMutations: () => ({
+    setLoading: { mutate: vi.fn(), isPending: false },
     setStatus: { mutate: vi.fn(), isPending: false },
     addServiceLog: { mutate: vi.fn(), isPending: false },
     updateHeads: { mutate: vi.fn(), isPending: false },

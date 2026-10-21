@@ -8,6 +8,8 @@ export interface Machine {
   NoOfHooks: number;
   DateOfPurchase?: string;
   status: MachineStatus;
+  /** Being loaded for its job: nothing produced or counted until marked running. */
+  loading?: boolean;
   /**
    * The job this machine is on, populated by the list and detail
    * routes. `string` is the unpopulated shape — kept in the union
@@ -67,7 +69,8 @@ export interface ServiceBillUpload {
   notes?: string;
 }
 
-export type ShiftDetailStatus = "open" | "running" | "pending_verification" | "closed";
+/** loading: the machine was being loaded that shift — no production, not counted. */
+export type ShiftDetailStatus = "open" | "running" | "pending_verification" | "closed" | "loading";
 
 export interface MachineShiftRow {
   id: string;
@@ -97,6 +100,9 @@ export interface MachineDetail {
   __v?: number;
   id: string; // Machine.ID (display code)
   status: MachineStatus;
+  /** Being loaded for its job; when it started. */
+  loading?: boolean;
+  loadingSince?: string | null;
   manufacturer: string;
   heads: number;
   hooks: number;

@@ -115,4 +115,6 @@ export interface RunningMachineOption {
   machineCode?: string;
   manufacturer?: string;
   jobOrderNo?: string | number;
+  /** Being loaded for its job: its shift will be a loading shift. */
+  loading?: boolean;
 }

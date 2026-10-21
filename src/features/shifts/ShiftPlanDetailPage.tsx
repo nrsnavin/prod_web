@@ -50,7 +50,7 @@ const columns: Column<ShiftPlanMachineRow>[] = [
     header: "Status",
     render: (m) => (
       <StatusChip
-        tone={m.status === "closed" ? "success" : m.status === "running" ? "info" : "neutral"}
+        tone={m.status === "closed" ? "success" : m.status === "running" || m.status === "loading" ? "info" : "neutral"}
       >
         {m.status}
       </StatusChip>
@@ -164,6 +164,10 @@ export function ShiftPlanDetailPage() {
     align: "right",
     render: (m) => {
       if (m.status === "closed") return null;
+      // The loom was being loaded: nothing to enter, nothing counted.
+      if (m.status === "loading") {
+        return <span className="text-xs text-ink-400">Loading — no production</span>;
+      }
       // Past finishing the job is off the loom and the server refuses the
       // entry, so show why instead of a button that 409s on click.
       if (isProductionLocked(m.jobStatus)) {

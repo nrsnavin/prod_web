@@ -7,24 +7,17 @@ import { MachineDetailPage } from "./MachineDetailPage";
 import { MachineDetail } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
-//  WHO IS ALLOWED TO CHANGE THE HEAD COUNT, AND WHEN
+//  WHO IS ALLOWED TO CHANGE THE HEAD COUNT, AND WHEN — AND LOADING
 //
-//  The server permits this only while the loom is FREE, and for a good
-//  reason: the planner derives a weaving rate from head count, the ETA
-//  posterior is keyed on it, and the head→elastic map is indexed by it.
-//  Changing it under a running job re-prices work already in progress.
-//
-//  The screen has to AGREE with that rule rather than discover it.
-//  Offering an edit that the server will refuse is a worse version of
-//  the same conversation — the user types a number, commits to it, and
-//  is then told no. So on a busy loom the control is not there at all,
-//  and the reason is on the row in its place.
-//
-//  A component test cannot prove any of this: the modal itself is
-//  perfectly happy to open on a running machine. Only the page decides.
+//  The head count is how many heads the loom HAS. Production is counted
+//  by the heads the job's plan RUNS, so the count can change while the
+//  loom is running, down to the heads that plan uses; the server holds
+//  that line. A loom just given a job can be LOADING: nothing counted
+//  until it is marked running, from this page.
 // ══════════════════════════════════════════════════════════════════
 
 const toast = vi.fn();
+const setLoadingMutate = vi.fn();
 let machine: MachineDetail;
 
 vi.mock("./hooks", () => ({
@@ -35,6 +28,7 @@ vi.mock("./hooks", () => ({
   useMachine: () => ({ data: machine, isLoading: false, isError: false, error: null }),
   useServiceBills: () => ({ data: [], isLoading: false }),
   useMachineMutations: () => ({
+    setLoading: { mutate: setLoadingMutate, isPending: false },
     setStatus: { mutate: vi.fn(), isPending: false },
     addServiceLog: { mutate: vi.fn(), isPending: false },
     updateHeads: { mutate: vi.fn(), isPending: false },
@@ -106,5 +100,24 @@ describe("editing the head count from the machine page", () => {
     // The number is a fact about the machine. Only changing it is gated.
     renderPage(detail({ status: "running", heads: 12 }));
     expect(screen.getByText("12")).toBeInTheDocument();
+  });
+});
+
+describe("a loom being loaded for its job", () => {
+  it("says so, and offers Mark as running", async () => {
+    setLoadingMutate.mockClear();
+    renderPage(detail({ status: "running", loading: true, loadingSince: "2026-10-21T04:30:00Z" }));
+    expect(screen.getByText(/no production is entered or counted/)).toBeInTheDocument();
+    expect(screen.getByText("loading")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /mark as running/i }));
+    expect(setLoadingMutate.mock.calls[0][0]).toEqual({ id: "abc123", loading: false });
+  });
+
+  it("a running loom can be put back to loading", async () => {
+    setLoadingMutate.mockClear();
+    renderPage(detail({ status: "running", loading: false }));
+    expect(screen.queryByRole("button", { name: /mark as running/i })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /mark as loading/i }));
+    expect(setLoadingMutate.mock.calls[0][0]).toEqual({ id: "abc123", loading: true });
   });
 });

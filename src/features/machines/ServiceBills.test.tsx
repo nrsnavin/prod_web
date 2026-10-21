@@ -21,6 +21,7 @@ vi.mock("./hooks", () => ({
   useProductionSeries: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
   useMachineSpend: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
   useMachineMutations: () => ({
+    setLoading: { mutate: vi.fn(), isPending: false },
     uploadServiceBill: { mutate: uploadMutate, isPending: false },
     deleteServiceBill: { mutate: deleteMutate, isPending: false },
   }),

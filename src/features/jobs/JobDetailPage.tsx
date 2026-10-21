@@ -260,9 +260,13 @@ export function JobDetailPage() {
               { label: "Date", value: job.date },
               {
                 label: "Machine",
-                value: job.machine
-                  ? `${job.machine.machineName} · ${headsLabel(job.machine.headsInUse, job.machine.machineNoOfHead)}`
-                  : "Not assigned",
+                value: job.machine ? (
+                  // The machine page is where a loading loom is marked running.
+                  <Link to={`/machines/${job.machine.machineId}`} className="text-brand-600 hover:underline">
+                    {job.machine.machineName} · {headsLabel(job.machine.headsInUse, job.machine.machineNoOfHead)}
+                    {job.machine.loading ? " · loading" : ""}
+                  </Link>
+                ) : "Not assigned",
               },
               { label: "Warping", value: <StageLink stage={job.warping} path="/warping" name="warping" /> },
               { label: "Covering", value: <StageLink stage={job.covering} path="/covering" name="covering" /> },

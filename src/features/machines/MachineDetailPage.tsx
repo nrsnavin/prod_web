@@ -52,6 +52,7 @@ const shiftStatusTone: Record<MachineShiftRow["status"], ChipTone> = {
   pending_verification: "warning",
   running: "info",
   open: "neutral",
+  loading: "info",
 };
 
 const shiftStatusLabel: Record<MachineShiftRow["status"], string> = {
@@ -59,6 +60,7 @@ const shiftStatusLabel: Record<MachineShiftRow["status"], string> = {
   pending_verification: "to verify",
   running: "running",
   open: "open",
+  loading: "loading",
 };
 
 const shiftColumns: Column<MachineShiftRow>[] = [
@@ -210,7 +212,7 @@ export function MachineDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { data: machine, isLoading, isError, error } = useMachine(id);
-  const { setStatus, addServiceLog } = useMachineMutations();
+  const { setStatus, addServiceLog, setLoading } = useMachineMutations();
   // One query for the whole machine, grouped per log below.
   const { data: bills, isLoading: billsLoading } = useServiceBills(id);
   const [logOpen, setLogOpen] = useState(false);
@@ -237,6 +239,15 @@ export function MachineDetailPage() {
 
   // Heads carrying an elastic: what production is counted on.
   const running = (machine.elastics ?? []).filter((h) => h.elastic).length;
+
+  const markLoading = (loading: boolean) =>
+    setLoading.mutate(
+      { id: id!, loading },
+      {
+        onSuccess: (r) => toast(r.message, "success"),
+        onError: (e) => toast(e instanceof ApiError ? e.message : "Could not change it", "error"),
+      }
+    );
 
   const toggleStatus = (next: "free" | "maintenance") =>
     setStatus.mutate(
@@ -274,13 +285,35 @@ export function MachineDetailPage() {
                 <Play className="h-4 w-4" /> Mark free
               </Button>
             )}
+            {machine.status === "running" && !machine.loading && (
+              <Button variant="secondary" loading={setLoading.isPending} onClick={() => markLoading(true)}>
+                Mark as loading
+              </Button>
+            )}
           </>
         }
       />
 
+      {/* A loom being loaded for its job weaves nothing: its shifts are
+          kept out of production and efficiency until it is marked running. */}
+      {machine.status === "running" && machine.loading && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-status-infoBg px-4 py-3 text-sm text-status-info">
+          <p>
+            <span className="font-semibold">Loading</span>
+            {machine.loadingSince ? ` since ${new Date(machine.loadingSince).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}
+            {" "}— no production is entered or counted, and efficiency leaves it out, until it is marked running.
+          </p>
+          <Button loading={setLoading.isPending} onClick={() => markLoading(false)}>
+            <Play className="h-4 w-4" /> Mark as running
+          </Button>
+        </div>
+      )}
+
       <Card className="p-6">
         <div className="mb-4">
-          <StatusChip tone={statusTone[machine.status]}>{machine.status}</StatusChip>
+          <StatusChip tone={machine.status === "running" && machine.loading ? "info" : statusTone[machine.status]}>
+            {machine.status === "running" && machine.loading ? "loading" : machine.status}
+          </StatusChip>
         </div>
         <DescriptionList
           columns={3}

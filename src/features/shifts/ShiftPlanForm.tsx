@@ -55,7 +55,7 @@ export function ShiftPlanForm({
 
   const machineOptions = (machines.data ?? []).map((m) => ({
     value: m.machineId,
-    label: `${m.ID}${m.jobOrderNo ? ` · J-${m.jobOrderNo}` : ""}`,
+    label: `${m.ID}${m.jobOrderNo ? ` · J-${m.jobOrderNo}` : ""}${m.loading ? " · loading" : ""}`,
   }));
   const operatorOptions = (operators.data ?? []).map((e) => ({ value: e._id, label: e.name }));
 

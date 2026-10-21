@@ -78,6 +78,11 @@ describe("the floor board", () => {
       .not.toBeInTheDocument();
   });
 
+  it("shows a running loom that is still loading as Loading", () => {
+    board([machine({ ID: "LOOM-9", status: "running", loading: true, orderRunning: { jobOrderNo: 12 } })]);
+    expect(screen.getByText("Loading")).toBeInTheDocument();
+  });
+
   it("never carries a status in colour alone", () => {
     // A green tile and an amber tile are the same tile to a
     // colour-blind reader.
@@ -162,6 +167,7 @@ const analytics = vi.fn();
 vi.mock("./hooks", () => ({
   useServiceAnalytics: () => analytics(),
   useMachineMutations: () => ({
+    setLoading: { mutate: vi.fn(), isPending: false },
     dismissFinding: { mutateAsync: vi.fn(), isPending: false },
   }),
 }));

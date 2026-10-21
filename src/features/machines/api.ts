@@ -118,6 +118,13 @@ export const machineService = {
    * is worth showing verbatim rather than flattening — "it is running"
    * is the whole answer, and the caller cannot work it out otherwise.
    */
+  /** Loading (nothing counted) or loaded and running (production counts from this shift). */
+  setLoading(id: string, loading: boolean) {
+    return httpClient.patch<{ message: string; data: { loading: boolean; shiftsChanged: number } }>(
+      "/machine/loading", { id, loading }
+    );
+  },
+
   async updateHeads(machineId: string, noOfHead: number): Promise<{
     success: boolean; message: string;
     data: { machineId: string; machineID: string; noOfHead: number };

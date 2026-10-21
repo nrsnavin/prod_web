@@ -116,6 +116,37 @@ describe("heads to run", () => {
   });
 });
 
+describe("loading", () => {
+  it("a new machine starts loading; unticking it sends loading: false", async () => {
+    const user = userEvent.setup();
+    renderModal(job());
+    await user.click(await screen.findByRole("button", { name: /select machine/i }));
+    await user.click(await screen.findByRole("option", { name: /M-2/ }));
+    const box = screen.getByRole("checkbox", { name: /Loading/ });
+    expect(box).toBeChecked();
+    await user.click(screen.getByRole("button", { name: /^assign machine$/i }));
+    expect(mutate.mock.calls[0][0].loading).toBe(true);
+
+    mutate.mockClear();
+    await user.click(box);
+    await user.click(screen.getByRole("button", { name: /^assign machine$/i }));
+    expect(mutate.mock.calls[0][0].loading).toBe(false);
+  });
+
+  it("re-planning the job's own machine keeps whether it is loading", async () => {
+    const user = userEvent.setup();
+    renderModal(job({
+      machine: {
+        machineId: "m1", machineName: "M-1", machineNoOfHead: 2, manufacturer: "Comez", loading: false,
+        headsInUse: 2, headPlan: [{ head: 1, elastic: "e1" }, { head: 2, elastic: "e1" }],
+      },
+    }));
+    await user.click(await screen.findByRole("button", { name: /select machine/i }));
+    await user.click(await screen.findByRole("option", { name: /\(current\)/ }));
+    expect(screen.getByRole("checkbox", { name: /Loading/ })).not.toBeChecked();
+  });
+});
+
 describe("the job page's machine line", () => {
   it("says 6 of 8 heads only when fewer run", () => {
     expect(headsLabel(6, 8)).toBe("6 of 8 heads");

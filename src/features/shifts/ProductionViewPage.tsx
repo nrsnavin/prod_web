@@ -24,6 +24,7 @@ import { OutsourcedMark } from "./OutsourcedTag";
 
 const sliceTone: Record<string, ChipTone> = {
   closed: "success",
+  loading: "info",
   running: "info",
   open: "warning",
   none: "neutral",
@@ -161,7 +162,8 @@ function ShiftDetailModal({ shiftPlanId, onClose }: { shiftPlanId: string; onClo
 
   const finalized = data?.finalized ?? false;
   const allVerified =
-    (data?.details.length ?? 0) > 0 && (data?.details ?? []).every((d) => d.status === "closed");
+    // A loading shift has nothing to verify; it is done as it stands.
+    (data?.details.length ?? 0) > 0 && (data?.details ?? []).every((d) => d.status === "closed" || d.status === "loading");
 
   const invalidateDetail = () => {
     qc.invalidateQueries({ queryKey: ["production"] });

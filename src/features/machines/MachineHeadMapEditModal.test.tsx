@@ -13,6 +13,7 @@ vi.mock("./hooks", () => ({
   useProductionSeries: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
   useMachineSpend: () => ({ data: undefined, isLoading: true, isError: false, error: null, refetch: () => {} }),
   useMachineMutations: () => ({
+    setLoading: { mutate: vi.fn(), isPending: false },
     updateElasticMap: { mutate: updateMutate, isPending: false },
   }),
 }));

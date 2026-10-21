@@ -98,11 +98,14 @@ export const jobService = {
     machineId: string,
     /** Head index → elastic id, or null for a head marked free. */
     headElasticMap: Record<string, string | null>,
-    confirmHooks = false
+    confirmHooks = false,
+    /** Start (or keep) the machine loading: nothing counted until marked running. */
+    loading?: boolean
   ) =>
     httpClient.post<MachineAssignResult>("/job/plan-weaving", {
       jobId, machineId, headElasticMap,
       ...(confirmHooks ? { confirmHooks: true } : {}),
+      ...(loading === undefined ? {} : { loading }),
     }),
 
   /**

@@ -52,8 +52,11 @@ export function runningJobOf(m: Machine): string | null {
   return job.jobOrderNo == null ? null : String(job.jobOrderNo);
 }
 
+/** A running loom still being loaded for its job: nothing counted yet. */
+const LOADING_TONE = { tile: "border-status-info/40 bg-status-infoBg", dot: "text-status-info", label: "Loading" };
+
 function Tile({ machine }: { machine: Machine }) {
-  const tone = TONE[machine.status] ?? TONE.free;
+  const tone = machine.status === "running" && machine.loading ? LOADING_TONE : TONE[machine.status] ?? TONE.free;
   const Icon = ICON[machine.status] ?? CircleDot;
   const job = runningJobOf(machine);
 

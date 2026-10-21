@@ -52,6 +52,12 @@ export function MachineAssignModal({
   /** How many of the loom's heads this job runs, from head 1 up. */
   const [headsToRun, setHeadsToRun] = useState(0);
   /**
+   * Start in loading: the loom is the job's but weaves nothing yet, and
+   * its shifts stay out of production and efficiency until it is marked
+   * running on the machine page.
+   */
+  const [loading, setLoading] = useState(true);
+  /**
    * Set when the server refuses because an elastic needs more hooks
    * than the machine has. Holds what it said, so the dialog can name
    * the products rather than asking "are you sure?" about nothing.
@@ -90,6 +96,7 @@ export function MachineAssignModal({
       {
         jobId: job.id,
         machineId,
+        loading,
         // Head 1 up to the number chosen; a head marked Free goes as null
         // — on the plan, not running, nothing counted for it.
         headElasticMap: Object.fromEntries(
@@ -112,7 +119,11 @@ export function MachineAssignModal({
           } else if (onCurrent) {
             toast(`${job.jobNo} now runs ${headsToRun} head${headsToRun === 1 ? "" : "s"} on ${selected?.ID ?? "the machine"}`, "success");
           } else {
-            toast(`Machine assigned — ${job.jobNo} is now weaving`, "success");
+            toast(
+              `Machine assigned — ${job.jobNo} is now weaving` +
+                (loading ? `. ${selected?.ID ?? "The machine"} is loading: mark it running on the machine page when it weaves.` : ""),
+              "success"
+            );
           }
           onClose();
         },
@@ -161,6 +172,8 @@ export function MachineAssignModal({
     const m = options.find((x) => x._id === id);
     const all = m?.NoOfHead ?? 0;
     const plan = id === current?._id ? job.machine?.headPlan ?? [] : [];
+    // A new machine starts loading; the job's own keeps what it is.
+    setLoading(id === current?._id ? !!job.machine?.loading : true);
     if (plan.length) {
       // The job's plan as it stands, free heads included, to adjust.
       setHeadsToRun(Math.min(Math.max(...plan.map((p) => p.head)), all));
@@ -224,6 +237,24 @@ export function MachineAssignModal({
               Mark any head Free below if it is not running. Production is counted on the heads that run.
             </p>
           </div>
+        )}
+
+        {selected && (
+          <label className="flex items-start gap-2 rounded-lg border border-ink-200 px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              checked={loading}
+              onChange={(e) => setLoading(e.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span>
+              <span className="font-medium">Loading</span>
+              <span className="block text-xs text-ink-400">
+                The loom is being loaded for this job. No production is entered or counted, and
+                floor efficiency leaves it out, until you mark it running on the machine.
+              </span>
+            </span>
+          </label>
         )}
 
         {selected && (

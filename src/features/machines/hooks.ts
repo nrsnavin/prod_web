@@ -164,6 +164,16 @@ export function useMachineMutations() {
     onSuccess: invalidate,
     onError: refetchIfGone,
   });
+  const setLoading = useMutation({
+    mutationFn: ({ id, loading }: { id: string; loading: boolean }) => machineService.setLoading(id, loading),
+    onSuccess: () => {
+      invalidate();
+      // Its shifts change status with it.
+      qc.invalidateQueries({ queryKey: ["shifts"] });
+      qc.invalidateQueries({ queryKey: ["production"] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
   const updateHeads = useMutation({
     mutationFn: ({ id, noOfHead }: { id: string; noOfHead: number }) =>
       machineService.updateHeads(id, noOfHead),
@@ -204,6 +214,7 @@ export function useMachineMutations() {
     addServiceLog,
     updateElasticMap,
     updateHeads,
+    setLoading,
     updateDetails,
     dismissFinding,
     uploadServiceBill,
