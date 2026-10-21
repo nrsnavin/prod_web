@@ -124,6 +124,11 @@ function StageLink({ stage, path, name }: {
   );
 }
 
+/** "8 heads", or "6 of 8 heads" when the job runs fewer than the loom has. */
+export function headsLabel(inUse: number | undefined, total: number): string {
+  return inUse != null && inUse > 0 && inUse < total ? `${inUse} of ${total} heads` : `${total} heads`;
+}
+
 export function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -256,7 +261,7 @@ export function JobDetailPage() {
               {
                 label: "Machine",
                 value: job.machine
-                  ? `${job.machine.machineName} · ${job.machine.machineNoOfHead} heads`
+                  ? `${job.machine.machineName} · ${headsLabel(job.machine.headsInUse, job.machine.machineNoOfHead)}`
                   : "Not assigned",
               },
               { label: "Warping", value: <StageLink stage={job.warping} path="/warping" name="warping" /> },

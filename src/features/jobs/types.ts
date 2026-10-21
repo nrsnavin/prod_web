@@ -104,6 +104,10 @@ export interface JobDetail {
     machineId: string;
     machineName: string;
     machineNoOfHead: number;
+    /** Heads this job's plan runs — may be fewer than the loom has. */
+    headsInUse?: number;
+    /** Which elastic sits on each running head. */
+    headPlan?: Array<{ head: number; elastic: string }>;
     manufacturer?: string;
     status?: string;
   } | null;

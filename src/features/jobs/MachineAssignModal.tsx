@@ -30,6 +30,11 @@ function useFreeMachines(enabled: boolean) {
 // Also used to MOVE a job that is already weaving — a machine can break
 // down mid-run. The machine it was on is freed server-side, inside the
 // same transaction as the new claim, so the job is never on neither.
+//
+// And to change how many heads the job runs on the machine it is already
+// on: a wide elastic may fit on only 6 heads of an 8-head loom. Only the
+// heads chosen are planned; production is counted per head × those heads,
+// and the shifts not yet verified follow the change.
 export function MachineAssignModal({
   job,
   open,
@@ -44,6 +49,8 @@ export function MachineAssignModal({
   const machines = useFreeMachines(open);
   const [machineId, setMachineId] = useState("");
   const [headMap, setHeadMap] = useState<Record<number, string>>({});
+  /** How many of the loom's heads this job runs, from head 1 up. */
+  const [headsToRun, setHeadsToRun] = useState(0);
   /**
    * Set when the server refuses because an elastic needs more hooks
    * than the machine has. Holds what it said, so the dialog can name
@@ -55,10 +62,23 @@ export function MachineAssignModal({
     elastics: Array<{ name: string; noOfHook: number }>;
   } | null>(null);
 
-  const selected = useMemo(
-    () => (machines.data ?? []).find((m) => m._id === machineId),
-    [machines.data, machineId]
+  // The machine the job is on is not free, so it is not in that list —
+  // offered too, so its heads can be re-planned without moving the job.
+  const current = useMemo(
+    () => (job.machine
+      ? { _id: job.machine.machineId, ID: job.machine.machineName, manufacturer: job.machine.manufacturer ?? "", NoOfHead: job.machine.machineNoOfHead }
+      : null),
+    [job.machine]
   );
+  const options = useMemo(
+    () => [
+      ...(current ? [current] : []),
+      ...(machines.data ?? []).filter((m) => m._id !== current?._id),
+    ],
+    [machines.data, current]
+  );
+  const selected = useMemo(() => options.find((m) => m._id === machineId), [options, machineId]);
+  const onCurrent = !!current && machineId === current._id;
 
   /**
    * Send the head map. `confirmHooks` is the second attempt, after the
@@ -70,8 +90,9 @@ export function MachineAssignModal({
       {
         jobId: job.id,
         machineId,
+        // Only the heads being run: head 1 up to the number chosen.
         headElasticMap: Object.fromEntries(
-          Object.entries(headMap).map(([k, v]) => [String(k), v])
+          [...Array(headsToRun)].map((_, h) => [String(h), headMap[h]])
         ),
         confirmHooks,
       },
@@ -87,6 +108,8 @@ export function MachineAssignModal({
               `Machine assigned. ${job.jobNo} stays in preparatory — ${res.weavingHeld.blockers.join("; ")}.`,
               "info"
             );
+          } else if (onCurrent) {
+            toast(`${job.jobNo} now runs ${headsToRun} head${headsToRun === 1 ? "" : "s"} on ${selected?.ID ?? "the machine"}`, "success");
           } else {
             toast(`Machine assigned — ${job.jobNo} is now weaving`, "success");
           }
@@ -114,7 +137,7 @@ export function MachineAssignModal({
         },
       }
     );
-  const headCount = selected?.NoOfHead ?? 0;
+  const headCount = Math.min(headsToRun, selected?.NoOfHead ?? 0);
 
   const elasticOptions = job.plannedElastics
     .filter((e) => e.elasticId)
@@ -134,8 +157,19 @@ export function MachineAssignModal({
 
   const pickMachine = (id: string) => {
     setMachineId(id);
-    const m = (machines.data ?? []).find((x) => x._id === id);
-    setHeadMap(spreadAcrossHeads(m?.NoOfHead ?? 0));
+    const m = options.find((x) => x._id === id);
+    const all = m?.NoOfHead ?? 0;
+    const plan = id === current?._id ? job.machine?.headPlan ?? [] : [];
+    if (plan.length) {
+      // The job's plan as it stands, to adjust.
+      setHeadsToRun(Math.min(plan.length, all));
+      const next = spreadAcrossHeads(all);
+      for (const p of plan) next[p.head - 1] = p.elastic;
+      setHeadMap(next);
+    } else {
+      setHeadsToRun(all);
+      setHeadMap(spreadAcrossHeads(all));
+    }
   };
 
   const allMapped = headCount > 0 && [...Array(headCount)].every((_, h) => headMap[h]);
@@ -158,15 +192,35 @@ export function MachineAssignModal({
       )}
       <div className="space-y-4">
         <Combobox
-          label="Free machine *"
+          label="Machine *"
           placeholder={machines.isLoading ? "Loading…" : "Select machine"}
-          options={(machines.data ?? []).map((m) => ({
+          options={options.map((m) => ({
             value: m._id,
-            label: `${m.ID} · ${m.manufacturer} · ${m.NoOfHead} heads`,
+            label: `${m.ID} · ${m.manufacturer} · ${m.NoOfHead} heads${m._id === current?._id ? " (current)" : ""}`,
           }))}
           value={machineId}
           onChange={pickMachine}
         />
+
+        {selected && (
+          <div className="flex flex-wrap items-end gap-3">
+            <Select
+              label="Heads to run"
+              value={String(headsToRun)}
+              onChange={(e) => setHeadsToRun(Number(e.target.value))}
+              options={[...Array(selected.NoOfHead)].map((_, i) => ({
+                value: String(selected.NoOfHead - i),
+                label: `${selected.NoOfHead - i} of ${selected.NoOfHead}`,
+              }))}
+              className="w-32"
+            />
+            <p className="pb-2 text-xs text-ink-400">
+              {headsToRun < selected.NoOfHead
+                ? `Heads ${headsToRun + 1}–${selected.NoOfHead} stay empty. Production is counted on ${headsToRun} heads.`
+                : "Every head runs."}
+            </p>
+          </div>
+        )}
 
         {selected && (
           <div>
@@ -210,7 +264,7 @@ export function MachineAssignModal({
             loading={planWeaving.isPending}
             onClick={() => submit(false)}
           >
-            {job.machine ? "Move to this machine" : "Assign machine"}
+            {onCurrent ? "Save head plan" : job.machine ? "Move to this machine" : "Assign machine"}
           </Button>
         </div>
       </div>

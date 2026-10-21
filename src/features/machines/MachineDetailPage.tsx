@@ -234,6 +234,9 @@ export function MachineDetailPage() {
     );
   }
 
+  // Heads carrying an elastic: what production is counted on.
+  const running = (machine.elastics ?? []).filter((h) => h.elastic).length;
+
   const toggleStatus = (next: "free" | "maintenance") =>
     setStatus.mutate(
       { id: id!, status: next },
@@ -284,30 +287,22 @@ export function MachineDetailPage() {
             { label: "Manufacturer", value: machine.manufacturer },
             {
               label: "Heads",
-              // Editable only while the loom is free — the same rule the
-              // server enforces, said before the attempt rather than
-              // after it. Head count feeds the rate estimate and the
-              // head→elastic map, so changing it under a running job
-              // would re-price work already in progress.
+              // Editable while running too: production is counted by the
+              // heads the job's plan runs, not by this number, so it can
+              // change as long as it still covers that plan (the server
+              // says so if it does not).
               value: (
                 <span className="flex items-center gap-2">
-                  <span className="tabular-nums">{machine.heads}</span>
-                  {machine.status === "free" ? (
-                    <button
-                      type="button"
-                      onClick={() => setHeadsOpen(true)}
-                      className="rounded px-1.5 py-0.5 text-xs font-medium text-brand-600 hover:bg-ink-100"
-                    >
-                      Edit
-                    </button>
-                  ) : (
-                    <span
-                      className="text-xs text-ink-400"
-                      title={`The loom is ${machine.status}. Head count can only be changed while it is free.`}
-                    >
-                      locked while {machine.status}
-                    </span>
-                  )}
+                  <span className="tabular-nums">
+                    {running > 0 && running < machine.heads ? `${running} running of ${machine.heads}` : machine.heads}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setHeadsOpen(true)}
+                    className="rounded px-1.5 py-0.5 text-xs font-medium text-brand-600 hover:bg-ink-100"
+                  >
+                    Edit
+                  </button>
                 </span>
               ),
             },
@@ -348,7 +343,7 @@ export function MachineDetailPage() {
           <div className="flex items-baseline gap-3">
             <h3 className="font-semibold">Head → elastic map</h3>
             <span className="text-xs text-ink-400">
-              {(machine.elastics ?? []).filter((h) => h.elastic).length} of {machine.heads} heads threaded
+              {running} of {machine.heads} heads running · production is counted on these
             </span>
           </div>
           <Button size="sm" variant="secondary" onClick={() => setMapEditOpen(true)}>

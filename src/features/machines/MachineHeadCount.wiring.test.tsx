@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -61,11 +62,13 @@ const detail = (over: Partial<MachineDetail> = {}): MachineDetail => ({
 function renderPage(m: MachineDetail) {
   machine = m;
   render(
-    <MemoryRouter initialEntries={["/machines/abc123"]}>
-      <Routes>
-        <Route path="/machines/:id" element={<MachineDetailPage />} />
-      </Routes>
-    </MemoryRouter>
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, enabled: false } } })}>
+      <MemoryRouter initialEntries={["/machines/abc123"]}>
+        <Routes>
+          <Route path="/machines/:id" element={<MachineDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -85,17 +88,18 @@ describe("editing the head count from the machine page", () => {
       .toHaveValue(8);
   });
 
-  it("does not offer it on a running loom, and says why", () => {
-    // The rule stated before the attempt, not after it.
+  it("is offered on a running loom too: production is counted by the job's head plan", () => {
     renderPage(detail({ status: "running" }));
-    expect(screen.queryByRole("button", { name: /^edit$/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/locked while running/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^edit$/i })).toBeInTheDocument();
   });
 
-  it("nor on one in maintenance", () => {
-    renderPage(detail({ status: "maintenance" }));
-    expect(screen.queryByRole("button", { name: /^edit$/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/locked while maintenance/i)).toBeInTheDocument();
+  it("says how many heads are running when the plan uses fewer than the loom has", () => {
+    renderPage(detail({
+      status: "running", heads: 8,
+      elastics: [1, 2, 3, 4, 5, 6].map((head) => ({ head, elastic: { _id: `e${head}`, name: "50mm Wide" } })),
+    }));
+    expect(screen.getByText("6 running of 8")).toBeInTheDocument();
+    expect(screen.getByText(/6 of 8 heads running/)).toBeInTheDocument();
   });
 
   it("still shows the count whatever the status", () => {

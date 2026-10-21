@@ -12,16 +12,12 @@ import { useMachineMutations } from "./hooks";
 //  Matches the worker app, which has had this since the head-count
 //  sheet went digital — the same PATCH, the same rule.
 //
-//  ── The rule is the server's, and it is a good one ───────────────
-//  Head count can only change while the machine is FREE. It is not a
-//  cosmetic field: the planner divides metres by a rate derived from
-//  head count, the ETA posterior is keyed on it, and the head→elastic
-//  map is indexed by it. Changing it under a running job would silently
-//  re-price work already in progress.
-//
-//  So the screen does not offer the edit at all while a job is on the
-//  loom, and says why. Letting somebody type a number, press Save and
-//  be refused is a worse version of the same conversation.
+//  ── What it is, and what it is not ──────────────────────────────
+//  This is how many heads the loom HAS. How many a job RUNS is its head
+//  plan (Change machine on the job, or Edit map below): a wide elastic
+//  may run on 6 of 8. Production is counted by the plan, so this can
+//  change while the loom is running — down to the heads the plan uses,
+//  and no lower; the server says so if it would be.
 //
 //  ── The refusal is shown where it happened ───────────────────────
 //  If the machine starts running between opening this and saving it,
@@ -100,8 +96,8 @@ export function MachineHeadCountModal({
     <FormScreen open onClose={onClose} title={`Head count — ${machineID}`} width="max-w-md">
       <div className="space-y-4">
         <p className="text-sm text-ink-500">
-          How many heads this loom runs. Used to estimate how fast it weaves, so it
-          should match the machine as it actually stands.
+          How many heads this loom has. To run a job on fewer of them, change the
+          job&apos;s head plan instead — production is counted on the heads that run.
         </p>
 
         <div className="flex items-center justify-center gap-4">
