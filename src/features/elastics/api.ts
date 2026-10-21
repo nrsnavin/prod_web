@@ -18,6 +18,16 @@ export interface BulkItemResult {
   before?: { conversionCost: number; totalCost: number | null };
   after?: { conversionCost: number; totalCost: number };
 }
+export interface BulkUploadResult {
+  added: number;
+  updated: number;
+  /** "Elastics row 4 "X": a new elastic needs pick" — one per row not saved. */
+  skipped: string[];
+  /** Saved, but something to know (e.g. its cost could not be worked out). */
+  warnings: string[];
+  message: string;
+}
+
 export interface RecostResult {
   costing: { materialCost: number; conversionCost: number; totalCost: number };
   before: { materialCost: number | null; conversionCost: number | null; totalCost: number | null } | null;
@@ -154,6 +164,17 @@ export const elasticService = {
     return httpClient.delete<ElasticRemoveResult>(
       `/elastic/delete-elastic?id=${encodeURIComponent(id)}`
     );
+  },
+
+  /** The Excel workbook to fill for a bulk upload; with a worked example row if asked. */
+  bulkTemplate(withExample = false): Promise<Blob> {
+    return httpClient.getBlob("/elastic/bulk/template", withExample ? { example: "1" } : undefined);
+  },
+  /** Upload the filled workbook. Rows that could not be saved come back with the reason. */
+  bulkUpload(file: File): Promise<BulkUploadResult> {
+    const form = new FormData();
+    form.append("file", file);
+    return httpClient.post<BulkUploadResult>("/elastic/bulk/upload", form);
   },
 
   async materialsByCategory(): Promise<MaterialsByCategory> {

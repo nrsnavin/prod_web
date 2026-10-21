@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { FileSpreadsheet, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +20,8 @@ import { elasticService } from "./api";
 import { Elastic } from "./types";
 import { ElasticForm } from "./ElasticForm";
 import { ElasticBulkActions, freeStock } from "./ElasticBulkActions";
+import { ElasticBulkUpload } from "./ElasticBulkUpload";
+import { useAuth } from "@/core/auth/useAuth";
 
 const columns: Column<Elastic>[] = [
   {
@@ -74,6 +76,10 @@ export function ElasticListPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [lowStock, setLowStock] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const { user } = useAuth();
+  // Same people who can create one (server: admin / accounts).
+  const canUpload = user?.role === "admin" || user?.role === "accounts";
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -136,9 +142,16 @@ export function ElasticListPage() {
         title="Elastic products"
         subtitle={data ? `${data.total} products` : undefined}
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> New elastic
-          </Button>
+          <>
+            {canUpload && (
+              <Button variant="secondary" onClick={() => setUploadOpen(true)}>
+                <FileSpreadsheet className="h-4 w-4" /> Bulk upload
+              </Button>
+            )}
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> New elastic
+            </Button>
+          </>
         }
       />
 
@@ -216,6 +229,8 @@ export function ElasticListPage() {
         />
         <Pagination page={page} totalPages={totalPages} total={data?.total} onChange={setPage} />
       </Card>
+
+      {uploadOpen && <ElasticBulkUpload onClose={() => setUploadOpen(false)} />}
 
       <FormScreen open={createOpen} onClose={() => setCreateOpen(false)} title="New elastic" width="max-w-2xl">
         <ElasticForm
