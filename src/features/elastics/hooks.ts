@@ -55,11 +55,26 @@ export function useElasticJobs(id: string | undefined, page: number, limit = 10)
   });
 }
 
+/**
+ * The materials the elastic form offers, by recipe slot.
+ *
+ * Under the "materials" key on purpose: every write to a material (add,
+ * edit, clone, archive, bulk update, price update, a group renamed)
+ * already invalidates ["materials"], so a material added a moment ago is
+ * in the picker the next time it opens. This used to be its own
+ * "materials-by-category" key that nothing invalidated, cached for five
+ * minutes — a new material was missing from the elastic form until then.
+ *
+ * Re-fetched whenever a form using it opens, so a material someone else
+ * added is there too; not polled while it stays open.
+ */
 export function useMaterialsByCategory() {
   return useQuery({
-    queryKey: ["materials-by-category"],
+    queryKey: ["materials", "by-category"],
     queryFn: elasticService.materialsByCategory,
     staleTime: 5 * 60_000,
+    refetchOnMount: "always",
+    refetchInterval: false,
   });
 }
 

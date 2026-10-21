@@ -40,7 +40,7 @@ const STATIC: ReadonlySet<string> = new Set([
   "customers", "elastics", "elastic-groups", "material-groups",
   "suppliers", "supplier", "supplier-options", "users", "me", "session",
   "document-settings", "notify-settings", "pdf-template", "pdf-doc-types",
-  "materials-by-category", "employees-by-dept",
+  "employees-by-dept",
   // search runs when the user types, never on a timer
   "global-search",
   // monthly figures, recomputed on demand
