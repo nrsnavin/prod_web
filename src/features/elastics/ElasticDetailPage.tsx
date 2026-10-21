@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useElastic, useElasticMutations } from "./hooks";
 import { MaterialWeight } from "./types";
+import { recostMessage } from "./api";
 import { cloneInitial, cloneBody } from "./elasticClone";
 import { ElasticForm } from "./ElasticForm";
 import { ElasticStockCard } from "./ElasticStockCard";
@@ -87,7 +88,9 @@ export function ElasticDetailPage() {
               loading={recalculate.isPending}
               onClick={() =>
                 recalculate.mutate(elastic._id, {
-                  onSuccess: () => toast("Cost recalculated with current prices", "success"),
+                  // Today's material prices, the grammages as edited, the
+                  // conversion cost as last set — and what that came to.
+                  onSuccess: (r) => toast(recostMessage(r), "success"),
                   onError: (e) =>
                     toast(e instanceof ApiError ? e.message : "Recalculation failed", "error"),
                 })
@@ -242,9 +245,10 @@ export function ElasticDetailPage() {
             update.mutate(
               { id: elastic._id, body: values, expectedVersion: editVersion },
               {
-                onSuccess: () => {
+                onSuccess: (saved) => {
                   setEditOpen(false);
-                  toast("Elastic updated — costing recalculated", "success");
+                  if (saved.costingWarning) toast(saved.costingWarning, "error");
+                  else toast("Elastic updated — costing recalculated", "success");
                 },
                 onError: (e) =>
                   toast(e instanceof ApiError ? e.message : "Update failed", "error"),

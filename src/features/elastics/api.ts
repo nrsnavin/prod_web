@@ -18,6 +18,21 @@ export interface BulkItemResult {
   before?: { conversionCost: number; totalCost: number | null };
   after?: { conversionCost: number; totalCost: number };
 }
+export interface RecostResult {
+  costing: { materialCost: number; conversionCost: number; totalCost: number };
+  before: { materialCost: number | null; conversionCost: number | null; totalCost: number | null } | null;
+}
+
+/** "Cost recalculated: ₹2.28 → ₹2.34 a metre", or that nothing moved. */
+export function recostMessage(r: RecostResult): string {
+  const rupees = (n: number) => `₹${n.toFixed(2)}`;
+  const after = r.costing.totalCost;
+  const before = r.before?.totalCost;
+  if (before == null) return `Cost recalculated: ${rupees(after)} a metre`;
+  if (Math.abs(after - before) < 0.005) return `Cost unchanged at ${rupees(after)} a metre`;
+  return `Cost recalculated: ${rupees(before)} → ${rupees(after)} a metre`;
+}
+
 export interface BulkResult {
   done: number;
   refused: number;
@@ -55,12 +70,16 @@ export const elasticService = {
     return res.elastic;
   },
 
-  async update(id: string, body: ElasticFormValues, expectedVersion?: number): Promise<Elastic> {
-    const res = await httpClient.put<{ success: boolean; elastic: Elastic }>(
+  async update(
+    id: string, body: ElasticFormValues, expectedVersion?: number
+  ): Promise<Elastic & { costingWarning?: string }> {
+    const res = await httpClient.put<{ success: boolean; elastic: Elastic; costingWarning?: string }>(
       "/elastic/update-elastic",
       { _id: id, ...body, ...(expectedVersion === undefined ? {} : { expectedVersion }) }
     );
-    return res.elastic;
+    // Saved, but the cost sheet could not be recalculated (a material that
+    // cannot be priced, say) — the cost sheet is left as it was.
+    return res.costingWarning ? { ...res.elastic, costingWarning: res.costingWarning } : res.elastic;
   },
 
   // Saving the template on its own, so the detail page can edit it
@@ -101,8 +120,13 @@ export const elasticService = {
     return httpClient.postBlob("/elastic/bulk/price-list", { ids, ...opts });
   },
 
-  async recalculateCost(elasticId: string): Promise<void> {
-    await httpClient.post("/elastic/recalculate-elastic-cost", { elasticId });
+  /**
+   * Re-cost at today's material prices, the grammages as last edited and
+   * the conversion cost as last set. Comes back with what it was before,
+   * so the screen can say what changed.
+   */
+  async recalculateCost(elasticId: string): Promise<RecostResult> {
+    return httpClient.post<RecostResult>("/elastic/recalculate-elastic-cost", { elasticId });
   },
 
   /** Mark inactive (archived: true) or reactivate (archived: false).

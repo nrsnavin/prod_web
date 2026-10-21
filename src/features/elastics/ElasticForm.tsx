@@ -100,7 +100,9 @@ export function ElasticForm({
       pick: initial?.pick ?? 0,
       noOfHook: initial?.noOfHook ?? 0,
       weight: initial?.weight ?? 0,
-      conversionCost: initial?.conversionCost ?? initial?.costing?.conversionCost ?? 0,
+      // The cost sheet's figure; with no cost sheet yet, the same 1.25 the
+      // server starts one at. Never a 0 nobody chose: the edit saves it.
+      conversionCost: initial?.conversionCost ?? initial?.costing?.conversionCost ?? 1.25,
       warpingPlanTemplate: { beams: templateToForm(initial?.warpingPlanTemplate) },
     },
   });
