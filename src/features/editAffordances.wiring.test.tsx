@@ -293,8 +293,13 @@ describe("job", () => {
     await waitFor(() => expect(qtyButton()).toBeDisabled());
   });
 
-  it("withdraws it entirely once the job is weaving", async () => {
-    show({ status: "weaving" });
+  it("keeps it while the job is running — the figures can move, not below what was woven", async () => {
+    show({ status: "weaving", warping: { status: "completed" } });
+    await waitFor(() => expect(qtyButton()).toBeEnabled());
+  });
+
+  it("withdraws it entirely once the job reaches packing", async () => {
+    show({ status: "packing" });
     await screen.findByText(/Sri Textiles/);
     expect(qtyButton()).not.toBeInTheDocument();
   });

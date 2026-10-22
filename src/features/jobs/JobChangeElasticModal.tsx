@@ -27,6 +27,8 @@ import { JobDetail } from "./types";
 
 const MIN_REASON = 8;
 type Heads = "frozen" | "all" | "none";
+/** The select's value when nothing comes in: the frozen lines just close. */
+const NONE = "__none__";
 
 export function JobChangeElasticModal({ job, open, onClose }: { job: JobDetail; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
@@ -62,12 +64,14 @@ export function JobChangeElasticModal({ job, open, onClose }: { job: JobDetail; 
   };
 
   const qty = Number(quantity);
+  const freezeOnly = elasticId === NONE;
   const problem =
-    !elasticId ? "Choose the elastic to put on"
-      : !(qty > 0) ? "Quantity must be greater than 0"
-        : chosen && qty > chosen.pending ? `The order has only ${chosen.pending.toLocaleString("en-IN")} m of it not yet planned`
-          : reason.trim().length < MIN_REASON ? `Give the reason (at least ${MIN_REASON} characters)`
-            : null;
+    !elasticId ? "Choose the elastic to put on, or that nothing comes in"
+      : freezeOnly && freeze.size === 0 ? "Tick at least one line to freeze"
+        : !freezeOnly && !(qty > 0) ? "Quantity must be greater than 0"
+          : !freezeOnly && chosen && qty > chosen.pending ? `The order has only ${chosen.pending.toLocaleString("en-IN")} m of it not yet planned`
+            : reason.trim().length < MIN_REASON ? `Give the reason (at least ${MIN_REASON} characters)`
+              : null;
 
   const submit = (confirmHooks = false) => {
     setRefusal(null);
@@ -75,7 +79,7 @@ export function JobChangeElasticModal({ job, open, onClose }: { job: JobDetail; 
       {
         jobId: job.id,
         body: {
-          elastic: elasticId, quantity: qty, auditReason: reason.trim(),
+          elastic: freezeOnly ? null : elasticId, quantity: freezeOnly ? 0 : qty, auditReason: reason.trim(),
           freeze: [...freeze], heads, confirmHooks, expectedVersion: openedVersion,
         },
       },
@@ -124,23 +128,29 @@ export function JobChangeElasticModal({ job, open, onClose }: { job: JobDetail; 
           label="Elastic to put on *"
           value={elasticId}
           onChange={(e) => pick(e.target.value)}
-          placeholder={candidates.isLoading ? "Loading the order…" : options.length ? "Choose from the order" : "Every elastic of the order is on this job already"}
-          disabled={!options.length}
-          options={options.map((o) => ({
-            value: o.elasticId,
-            label: `${o.elasticName} · ${o.pending.toLocaleString("en-IN")} m not yet planned of ${o.ordered.toLocaleString("en-IN")}`,
-          }))}
+          placeholder={candidates.isLoading ? "Loading the order…" : "Choose"}
+          options={[
+            // The beam ran out and nothing replaces it: the ticked lines
+            // close and the job carries on with the rest.
+            { value: NONE, label: "Nothing — just freeze the ticked lines" },
+            ...options.map((o) => ({
+              value: o.elasticId,
+              label: `${o.elasticName} · ${o.pending.toLocaleString("en-IN")} m not yet planned of ${o.ordered.toLocaleString("en-IN")}`,
+            })),
+          ]}
         />
 
-        <Input
-          label="Quantity to plan (m) *"
-          type="number"
-          inputMode="decimal"
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          disabled={!chosen}
-          error={chosen && qty > chosen.pending ? `At most ${chosen.pending.toLocaleString("en-IN")} m` : undefined}
-        />
+        {!freezeOnly && (
+          <Input
+            label="Quantity to plan (m) *"
+            type="number"
+            inputMode="decimal"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            disabled={!chosen}
+            error={chosen && qty > chosen.pending ? `At most ${chosen.pending.toLocaleString("en-IN")} m` : undefined}
+          />
+        )}
 
         {liveLines.length > 0 && (
           <fieldset>
@@ -176,8 +186,8 @@ export function JobChangeElasticModal({ job, open, onClose }: { job: JobDetail; 
             <legend className="mb-1.5 text-sm font-medium text-ink-600">On {job.machine.machineName}</legend>
             <div className="space-y-1">
               {([
-                ["frozen", "Put it on the heads the frozen elastic is on"],
-                ["all", "Put it on every running head"],
+                ["frozen", freezeOnly ? "Free the heads the frozen elastic is on" : "Put it on the heads the frozen elastic is on"],
+                ["all", freezeOnly ? "Free every running head" : "Put it on every running head"],
                 ["none", "Leave the head map; I'll set it on the machine"],
               ] as Array<[Heads, string]>).map(([v, label]) => (
                 <label key={v} className="flex items-center gap-2">
@@ -205,7 +215,7 @@ export function JobChangeElasticModal({ job, open, onClose }: { job: JobDetail; 
           {problem && elasticId && <span className="text-xs text-status-danger">{problem}</span>}
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="button" loading={changeElastic.isPending} disabled={!!problem} onClick={() => submit(false)}>
-            Change elastic
+            {freezeOnly ? "Freeze" : "Change elastic"}
           </Button>
         </div>
       </div>

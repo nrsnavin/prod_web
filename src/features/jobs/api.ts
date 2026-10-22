@@ -35,7 +35,8 @@ import {
 } from "./types";
 
 export interface ChangeElasticBody {
-  elastic: string;
+  /** null: nothing comes in — the frozen lines just close. */
+  elastic: string | null;
   quantity: number;
   auditReason: string;
   freeze: string[];

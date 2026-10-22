@@ -97,3 +97,16 @@ describe("the mid-run change dialog", () => {
     expect(screen.getByRole("button", { name: /^change elastic$/i })).toBeDisabled();
   });
 });
+
+describe("nothing coming in", () => {
+  it("just freezes the ticked lines, freeing their heads", async () => {
+    const user = userEvent.setup();
+    renderModal();
+    await user.selectOptions(screen.getByLabelText(/Elastic to put on/), "__none__");
+    expect(screen.queryByLabelText(/Quantity to plan/)).not.toBeInTheDocument();
+    expect(screen.getByText("Free the heads the frozen elastic is on")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Reason for the change"), "Beam ran out; nothing else for this loom");
+    await user.click(screen.getByRole("button", { name: /^freeze$/i }));
+    expect(mutate.mock.calls[0][0].body).toMatchObject({ elastic: null, quantity: 0, freeze: ["a"], heads: "frozen" });
+  });
+});

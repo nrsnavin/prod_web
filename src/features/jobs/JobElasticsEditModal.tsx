@@ -7,13 +7,18 @@ import { ApiError } from "@/core/http/httpClient";
 import { useJobMutations } from "./hooks";
 import { JobDetail } from "./types";
 
+/** A running job: the figures move, the lines do not, and nothing made is touched. */
+export const RUNNING = ["weaving", "finishing", "checking"];
+export const isRunning = (job: Pick<JobDetail, "status">) => RUNNING.includes(job.status);
+
 /**
  * May this job's planned quantities still be changed?
  *
- * Only while nothing has been committed to them. Past that point yarn
- * has been drawn against these figures and a beam may be on the rack:
- * changing the numbers would leave the floor working to a sheet the
- * paperwork no longer shows.
+ * While preparatory, only while nothing has been committed to them:
+ * past that point yarn has been drawn against these figures and a beam
+ * may be on the rack. Once the job is running, each line can be set to
+ * no less than what was woven — the beam came up short, or the loom was
+ * set for a rounder number — until the job reaches packing.
  *
  * The server holds the same rule and refuses regardless — this is here
  * so the button is not offered and then taken away, and so the reason
@@ -23,8 +28,9 @@ import { JobDetail } from "./types";
  * refused, and the refusal is shown as it comes back.
  */
 export function editableReason(job: JobDetail): string | null {
+  if (isRunning(job)) return null;
   if (job.status !== "preparatory") {
-    return `Quantities can only be changed while the job is preparatory (it is ${job.status}).`;
+    return `Quantities can be changed until the job reaches packing (it is ${job.status}).`;
   }
   if (job.warping && job.warping.status !== "open") {
     return `Warping has started (${job.warping.status}) — the yarn is committed.`;
@@ -39,7 +45,7 @@ export function canEditElastics(job: JobDetail): boolean {
   return editableReason(job) === null;
 }
 
-type Line = { elasticId: string; elasticName: string; quantity: string };
+type Line = { elasticId: string; elasticName: string; quantity: string; frozen: boolean; min: number };
 
 export function JobElasticsEditModal({
   job,
@@ -59,14 +65,24 @@ export function JobElasticsEditModal({
   // reason worth reading, not a toast that scrolls away.
   const [refusal, setRefusal] = useState<string | null>(null);
 
+  const running = isRunning(job);
+  const madeOf = (id: string | null) =>
+    Math.max(
+      job.producedElastics.find((p) => p.elasticId === id)?.quantity ?? 0,
+      job.packedElastics.find((p) => p.elasticId === id)?.quantity ?? 0
+    );
   const original = useMemo<Line[]>(
     () =>
       (job.plannedElastics ?? []).map((e) => ({
         elasticId: e.elasticId ?? "",
         elasticName: e.elasticName,
         quantity: String(e.quantity ?? ""),
+        frozen: !!e.frozen,
+        // Running: no less than what was woven or packed of it.
+        min: running ? madeOf(e.elasticId) : 0,
       })),
-    [job.plannedElastics]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [job.plannedElastics, job.producedElastics, job.packedElastics, running]
   );
   const [lines, setLines] = useState<Line[]>(original);
   const [auditReason, setAuditReason] = useState("");
@@ -95,6 +111,11 @@ export function JobElasticsEditModal({
     }
     if (lines.some((l) => !(Number(l.quantity) > 0))) {
       toast("Every quantity must be greater than 0", "error");
+      return;
+    }
+    const below = lines.find((l) => Number(l.quantity) < l.min);
+    if (below) {
+      toast(`${below.elasticName}: ${below.min.toLocaleString("en-IN")} m is already woven or packed; the plan cannot be below that`, "error");
       return;
     }
 
@@ -140,8 +161,9 @@ export function JobElasticsEditModal({
     <FormScreen open={open} onClose={onClose} title={`Edit ${job.jobNo} quantities`} width="max-w-xl">
       <div className="space-y-4">
         <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">
-          The warping order, the covering plan, the order&apos;s pending quantity
-          and its material requirement are all recalculated from these figures.
+          {running
+            ? "The job is running: each line can be set to no less than what was woven. Nothing made is touched; the order's pending quantity and material requirement follow. To bring an elastic in or close one out, use Change elastic."
+            : "The warping order, the covering plan, the order's pending quantity and its material requirement are all recalculated from these figures."}
         </p>
 
         {refusal && (
@@ -158,12 +180,20 @@ export function JobElasticsEditModal({
           <div className="space-y-2">
             {lines.map((l, i) => (
               <div key={l.elasticId || i} className="grid grid-cols-[1fr_120px] items-center gap-2">
-                <span className="truncate text-sm text-ink-900">{l.elasticName}</span>
+                <span className="truncate text-sm text-ink-900">
+                  {l.elasticName}
+                  {l.frozen && <span className="ml-1.5 text-xs text-ink-400">frozen</span>}
+                  {!l.frozen && l.min > 0 && (
+                    <span className="block text-xs text-ink-400 tabular-nums">at least {l.min.toLocaleString("en-IN")} m made</span>
+                  )}
+                </span>
                 <Input
                   type="number"
                   step="0.01"
+                  min={l.min || undefined}
                   aria-label={`Planned quantity for ${l.elasticName}`}
                   value={l.quantity}
+                  disabled={l.frozen}
                   onChange={(e) => setQty(i, e.target.value)}
                 />
               </div>

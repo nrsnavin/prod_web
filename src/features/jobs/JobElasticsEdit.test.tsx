@@ -98,10 +98,15 @@ describe("when the window is open", () => {
 
 describe("when the window has closed", () => {
   it("names the status that closed it", () => {
-    const weaving = { ...job, status: "weaving" } as unknown as JobDetail;
-    expect(canEditElastics(weaving)).toBe(false);
-    expect(editableReason(weaving)).toMatch(/preparatory/i);
-    expect(editableReason(weaving)).toMatch(/weaving/i);
+    const packing = { ...job, status: "packing" } as unknown as JobDetail;
+    expect(canEditElastics(packing)).toBe(false);
+    expect(editableReason(packing)).toMatch(/reaches packing/i);
+    expect(editableReason(packing)).toMatch(/packing/i);
+  });
+
+  it("stays open while the job is running, whatever the programmes say", () => {
+    const weaving = { ...job, status: "weaving", warping: { status: "completed" } } as unknown as JobDetail;
+    expect(canEditElastics(weaving)).toBe(true);
   });
 
   it("closes once warping has started, even while preparatory", () => {

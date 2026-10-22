@@ -218,7 +218,7 @@ export function JobDetailPage() {
             {/* Only while nothing is committed to these figures. The
                 reason is on the button's title rather than hidden, so
                 somebody who expected it can see why it has gone. */}
-            {job.status === "preparatory" && (
+            {["preparatory", "weaving", "finishing", "checking"].includes(job.status) && (
               <Button
                 variant="secondary"
                 disabled={!canEditElastics(job)}
@@ -230,7 +230,7 @@ export function JobDetailPage() {
             )}
             {/* The exceptional case: the loom goes on to another of
                 the order's elastics mid-run, with a reason. */}
-            {job.status === "weaving" && (
+            {["weaving", "finishing", "checking"].includes(job.status) && (
               <Button variant="secondary" onClick={() => setChangeOpen(true)}>
                 <Pencil className="h-4 w-4" /> Change elastic
               </Button>
