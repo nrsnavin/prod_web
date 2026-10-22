@@ -22,6 +22,8 @@ import { useOrder, useOrderMutations } from "./hooks";
 import { orderService } from "./api";
 import { pnlService } from "@/features/pnl/api";
 import { OrderExcessPlanning } from "./OrderExcessPlanning";
+import { OrderAmendments } from "./OrderAmendments";
+import { OrderAddElasticModal } from "./OrderAddElasticModal";
 import { OrderMaterialPo } from "./OrderMaterialPo";
 import { OrderYarnLots } from "./OrderYarnLots";
 import { OrderLotAssign } from "./OrderLotAssign";
@@ -47,7 +49,17 @@ import { formatDate } from "@/core/format/date";
 import { Section, SectionNav } from "@/components/layout/SectionNav";
 
 const elasticColumns: Column<OrderElasticProgress>[] = [
-  { key: "name", header: "Elastic", render: (e) => <span className="font-medium">{e.name}</span> },
+  {
+    key: "name",
+    header: "Elastic",
+    render: (e) => (
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        <span className="font-medium">{e.name}</span>
+        {/* Added after approval: its yarn was drawn then, with a reason. */}
+        {e.addedLater && <StatusChip tone="info">Added later</StatusChip>}
+      </span>
+    ),
+  },
   { key: "ordered", header: "Ordered", align: "right", render: (e) => e.ordered.toLocaleString("en-IN") },
   {
     key: "produced",
@@ -324,6 +336,7 @@ export function OrderDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const [addElasticOpen, setAddElasticOpen] = useState(false);
   useTrackRecent("Order", `/orders/${id}`, order ? `Order #${order.orderNo} · ${order.customer?.name ?? ""}` : undefined);
 
   if (isLoading) {
@@ -464,9 +477,16 @@ export function OrderDetailPage() {
               </Button>
             )}
             {(order.status === "Approved" || order.status === "InProgress") && (
-              <Button onClick={() => setJobOpen(true)}>
-                <Plus className="h-4 w-4" /> Create job
-              </Button>
+              <>
+                {/* The rare case: an elastic the order never had, added
+                    after its yarn was drawn — with a reason, drawing its own. */}
+                <Button variant="secondary" onClick={() => setAddElasticOpen(true)}>
+                  <Plus className="h-4 w-4" /> Add elastic
+                </Button>
+                <Button onClick={() => setJobOpen(true)}>
+                  <Plus className="h-4 w-4" /> Create job
+                </Button>
+              </>
             )}
             {order.status === "Open" && (
               <>
@@ -632,6 +652,7 @@ export function OrderDetailPage() {
           this card already answers. Renders nothing when there is no
           excess. */}
       <Section id="material">
+      <OrderAmendments rows={order.amendments ?? []} />
       <OrderExcessPlanning rows={order.excessPlanning ?? []} />
 
       {/* Replaces the old read-only requirement table: same figures, but
@@ -661,6 +682,15 @@ export function OrderDetailPage() {
           loading={confirmMeta[confirm].loading}
           onCancel={() => setConfirm(null)}
           onConfirm={confirmMeta[confirm].run}
+        />
+      )}
+
+      {addElasticOpen && (
+        <OrderAddElasticModal
+          key={`add-${order.__v ?? 0}`}
+          order={order}
+          open={addElasticOpen}
+          onClose={() => setAddElasticOpen(false)}
         />
       )}
 

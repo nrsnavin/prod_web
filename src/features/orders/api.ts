@@ -12,8 +12,7 @@ import {
   OrderPurchaseOrder,
   OrderYarnLots,
   RaisePoResult,
-  AssignableLotsResponse,
-} from "./types";
+  AssignableLotsResponse, AddElasticBody, AddElasticResult } from "./types";
 
 export const orderService = {
   // Read-only staging. The server creates nothing; this returns a draft
@@ -66,6 +65,14 @@ export const orderService = {
   // (force omitted) 400s with code INSUFFICIENT_STOCK when a raw material
   // is short; re-calling with force + a reason (>= 8 chars) deducts what
   // is available and records the override in the audit trail.
+  /**
+   * Add an elastic to an approved order — the rare case, with a reason.
+   * Its yarn is drawn now; a shortfall comes back as INSUFFICIENT_STOCK
+   * and is re-sent with `force` and a `forceReason` to draw what there is.
+   */
+  addElastic: (orderId: string, body: AddElasticBody) =>
+    httpClient.post<AddElasticResult>(`/order/${orderId}/add-elastic`, body),
+
   approve: (orderId: string, force?: boolean, forceReason?: string) =>
     httpClient.post("/order/approve", { orderId, force, forceReason }),
   cancel: (orderId: string) => httpClient.post("/order/cancel", { orderId }),

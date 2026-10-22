@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { orderService } from "./api";
-import { OrderFilter, OrderFormValues } from "./types";
+import { OrderFilter, OrderFormValues, AddElasticBody } from "./types";
 
 const KEY = "orders";
 
@@ -93,7 +93,11 @@ export function useOrderMutations() {
       orderService.remove(id, auditReason),
     onSuccess: invalidate,
   });
-  return { create, approve, cancel, startProduction, complete, update, remove };
+  const addElastic = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: AddElasticBody }) => orderService.addElastic(id, body),
+    onSuccess: invalidate, // draws stock, reserves the elastic
+  });
+  return { create, approve, cancel, startProduction, complete, update, remove, addElastic };
 }
 
 

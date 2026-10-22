@@ -66,6 +66,8 @@ export interface OrderElasticProgress {
   pendingDelivery: number;
   /** @deprecated Legacy alias for `notAssigned`. Prefer the named ones. */
   pending: number;
+  /** Added after approval, with its own yarn draw. */
+  addedLater?: boolean;
 }
 
 // A populated JobOrder as returned by `get-orderDetail` (which does
@@ -201,6 +203,44 @@ export interface OrderDetail {
   rawMaterialRequired: RawMaterialRequirement[];
   /** Jobs planned past what this order asked for. Empty when none. */
   excessPlanning: ExcessPlanningRow[];
+  /** Elastics added after approval, each with the yarn it drew. Empty when none. */
+  amendments: OrderAmendmentRow[];
+}
+
+/**
+ * An elastic added to the order after approval — rare, with a reason.
+ * Its own yarn was drawn then; `forced` means it was drawn through a
+ * shortfall, and `materialsDrawn` says what each material actually gave.
+ */
+export interface OrderAmendmentRow {
+  elastic: string;
+  name: string;
+  quantity: number;
+  rate: number;
+  reason: string;
+  forced: boolean;
+  forceReason: string;
+  shortfalls: Array<{ rawMaterial: string; name: string; required: number; available: number; short: number }>;
+  materialsDrawn: Array<{ rawMaterial: string; name: string; requested: number; applied: number }>;
+  recordedAt: string | null;
+}
+
+export interface AddElasticBody {
+  elastic: string;
+  quantity: number;
+  rate?: number;
+  auditReason: string;
+  force?: boolean;
+  forceReason?: string;
+  expectedVersion?: number;
+}
+
+export interface AddElasticResult {
+  success: boolean;
+  message: string;
+  materialsDrawn: Array<{ rawMaterial: string; name: string; requested: number; applied: number }>;
+  shortfalls: Array<{ name: string; required: number; available: number; short: number }>;
+  forced: boolean;
 }
 
 /**
