@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Plus, Wrench, AlertTriangle } from "lucide-react";
+import { Plus, Wrench, AlertTriangle, QrCode } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useMachines, useMachineMutations, useMaintenanceDue } from "./hooks";
+import { machineService } from "./api";
 import { MachineHealthBanner } from "./MachineHealth";
 import { FloorBoard } from "./FloorBoard";
 import { ServiceAnalyticsPanel } from "./ServiceAnalyticsPanel";
@@ -181,6 +182,19 @@ export function MachineListPage() {
   const { data, isLoading, isError, error } = useMachines(status);
   const due = useMaintenanceDue(14);
   const { create } = useMachineMutations();
+  const [labelsBusy, setLabelsBusy] = useState(false);
+
+  // One QR label a loom, to stick on it, for the floor-entry screen to scan.
+  const downloadLabels = async () => {
+    setLabelsBusy(true);
+    try {
+      await machineService.downloadQrLabels();
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Could not download the labels", "error");
+    } finally {
+      setLabelsBusy(false);
+    }
+  };
 
   return (
     <>
@@ -188,9 +202,14 @@ export function MachineListPage() {
         title="Machines"
         subtitle={data ? `${data.length} machines` : undefined}
         actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> Add machine
-          </Button>
+          <>
+            <Button variant="secondary" onClick={downloadLabels} loading={labelsBusy} title="A printable sheet of QR labels, one a machine, for the floor-entry screen">
+              <QrCode className="h-4 w-4" /> QR labels
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> Add machine
+            </Button>
+          </>
         }
       />
 

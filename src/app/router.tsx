@@ -105,6 +105,7 @@ const DataIoPage = lazyPage(() => import("@/features/comms/DataIoPage"), "DataIo
 const SettingsPage = lazyPage(() => import("@/features/settings/SettingsPage"), "SettingsPage");
 const AiHealthPage = lazyPage(() => import("@/features/aiHealth/AiHealthPage"), "AiHealthPage");
 const ProfilePage = lazyPage(() => import("@/features/profile/ProfilePage"), "ProfilePage");
+const FloorPage = lazyPage(() => import("@/features/floor/FloorPage"), "FloorPage");
 
 function PageFallback() {
   return (
@@ -244,6 +245,9 @@ const router = createBrowserRouter([
   { path: "/login", element: <LoginPage />, errorElement: <RouteError /> },
   { path: "/forgot-password", element: <ForgotPasswordPage />, errorElement: <RouteError /> },
   { path: "/reset-password", element: <ResetPasswordPage />, errorElement: <RouteError /> },
+  // The floor-entry screen: opened with a shift PIN, not a login, on the
+  // floor tablet. Outside RequireAuth and the shell on purpose.
+  { path: "/floor", element: withSuspense(<FloorPage />), errorElement: <RouteError /> },
   {
     path: "/",
     element: (

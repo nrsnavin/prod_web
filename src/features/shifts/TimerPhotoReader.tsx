@@ -27,7 +27,19 @@ interface OcrResponse {
   photoId?: string | null;
 }
 
-export const timerOcrService = {
+/**
+ * Where the photo goes. The signed-in screens use the OCR route below;
+ * the floor-entry screen, opened with a shift PIN, passes its own
+ * (features/floor/floorClient.ts), which keeps the photo with the entry
+ * the same way.
+ */
+export interface TimerOcrService {
+  read(photo: Blob, shiftId?: string): Promise<OcrResponse>;
+  used(photoId: string, runTime: string): Promise<unknown>;
+  settle?(id: string, runTime: string): Promise<unknown>;
+}
+
+export const timerOcrService: TimerOcrService = {
   read(photo: Blob, shiftId?: string): Promise<OcrResponse> {
     const form = new FormData();
     if (shiftId) form.append("shiftId", shiftId); // before the file, so it is read first
@@ -86,11 +98,14 @@ export function TimerPhotoReader({
   onUse,
   shiftHours = 12,
   shiftId,
+  service = timerOcrService,
 }: {
   onUse: (runTime: string) => void;
   shiftHours?: number;
   /** Keeps the photo with this shift for verification. */
   shiftId?: string;
+  /** Where the photo is sent; the signed-in OCR route unless told otherwise. */
+  service?: TimerOcrService;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ phase: "idle" });
@@ -108,7 +123,7 @@ export function TimerPhotoReader({
     setState({ phase: "reading" });
     setTyped("");
     try {
-      const { reading, suggestionId, photoId = null } = await timerOcrService.read(await shrinkPhoto(file), shiftId);
+      const { reading, suggestionId, photoId = null } = await service.read(await shrinkPhoto(file), shiftId);
       setState({ phase: "steps", reading, suggestionId, photoId, answers: {} });
     } catch (e) {
       setState({ phase: "failed", message: errorMessage(e, "the photo"), kept: !!keptPhotoId(e) });
@@ -124,8 +139,8 @@ export function TimerPhotoReader({
   };
 
   const use = (runTime: string) => {
-    if (state.phase === "steps" && state.photoId) void timerOcrService.used(state.photoId, runTime);
-    else if (state.phase === "steps" && state.suggestionId) void timerOcrService.settle(state.suggestionId, runTime);
+    if (state.phase === "steps" && state.photoId) void service.used(state.photoId, runTime);
+    else if (state.phase === "steps" && state.suggestionId && service.settle) void service.settle(state.suggestionId, runTime);
     onUse(runTime);
     setState({ phase: "used", runTime, kept: state.phase === "steps" && !!state.photoId });
   };

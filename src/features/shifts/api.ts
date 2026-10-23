@@ -9,7 +9,28 @@ import {
   ShiftDaySummary,
 } from "./types";
 
+/** The floor PIN for one shift: what the supervisor types on the floor tablet. */
+export interface FloorPin {
+  dateKey: string;
+  shift: "DAY" | "NIGHT";
+  pin: string;
+  generation: number;
+  createdAt?: string;
+  rotatedAt?: string | null;
+  opens: { at: string; name: string }[];
+  failedAttempts: number;
+}
+
 export const shiftService = {
+  /** The shift's floor PIN, made the first time it is asked for. */
+  async floorPin(date: string, shift: "DAY" | "NIGHT"): Promise<FloorPin> {
+    return httpClient.get<FloorPin>("/shift/floor-pin", { date, shift });
+  },
+  /** A new PIN; every floor session opened with the old one ends. */
+  async rotateFloorPin(date: string, shift: "DAY" | "NIGHT"): Promise<FloorPin> {
+    return httpClient.post<FloorPin>("/shift/floor-pin/rotate", { date, shift });
+  },
+
   // Day/night summary for a date. Omit `dateIso` for today, which is what
   // the dashboard wants; the shift-plans page passes a date to browse.
   async today(dateIso?: string): Promise<ShiftDaySummary> {

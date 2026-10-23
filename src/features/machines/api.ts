@@ -41,6 +41,22 @@ export const machineService = {
     return res.machine;
   },
 
+  /**
+   * QR labels to stick on the looms, one a machine, for the floor-entry
+   * screen to scan. Every machine when no ids are given.
+   */
+  async downloadQrLabels(ids?: string[]): Promise<void> {
+    const blob = await httpClient.getBlob("/machine/qr-labels.pdf", ids?.length ? { ids: ids.join(",") } : undefined);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = ids?.length === 1 ? `machine-qr-label.pdf` : "machine-qr-labels.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
+
   async setStatus(id: string, status: "free" | "maintenance"): Promise<void> {
     await httpClient.patch("/machine/status", { id, status });
   },

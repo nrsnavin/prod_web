@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Sun, Moon, ArrowRight, CalendarDays, Printer } from "lucide-react";
+import { Plus, Sun, Moon, ArrowRight, CalendarDays, Printer, ScanLine } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StaffingForecast } from "@/features/hr/StaffingForecast";
 import { Card } from "@/components/ui/Card";
@@ -14,17 +14,23 @@ import { useShiftDay, useShiftMutations } from "./hooks";
 import { TodayShiftSummary } from "./types";
 import { toISODate } from "@/features/analytics/components/FilterBar";
 import { FloorSheetDialog } from "./FloorSheetDialog";
+import { FloorPinCard } from "./FloorPinCard";
 
 function ShiftCard({
   summary,
   icon,
   label,
   onOpen,
+  dateKey,
+  shift,
 }: {
   summary?: TodayShiftSummary;
   icon: React.ReactNode;
   label: string;
   onOpen?: (id: string) => void;
+  /** The floor PIN is per date and shift, plan or no plan. */
+  dateKey: string;
+  shift: "DAY" | "NIGHT";
 }) {
   const created = summary && summary.status !== "not_created" && summary.id;
   return (
@@ -72,6 +78,9 @@ function ShiftCard({
       ) : (
         <p className="mt-4 text-sm text-ink-400">No plan yet for this shift.</p>
       )}
+      {/* With or without a plan: the floor screen makes the plan itself
+          when there is none, so the PIN is wanted either way. */}
+      <FloorPinCard dateKey={dateKey} shift={shift} />
     </Card>
   );
 }
@@ -94,6 +103,9 @@ export function ShiftPlansPage() {
 
   const view = tab === "today" ? today : onDate;
   const isToday = date === toISODate(new Date());
+  // The date the cards are about: the one picked, or the one the server
+  // resolved for "today" (a night shift after midnight is yesterday's).
+  const cardDate = tab === "today" ? (view.data?.date ? String(view.data.date).slice(0, 10) : toISODate(new Date())) : date;
 
   const openPlan = (id: string) => navigate(`/shift-plans/${id}`);
 
@@ -106,6 +118,9 @@ export function ShiftPlansPage() {
           <>
             <Button variant="secondary" onClick={() => setFloorOpen(true)}>
               <Printer className="h-4 w-4" /> Floor sheet
+            </Button>
+            <Button variant="secondary" onClick={() => window.open("/floor", "_blank", "noopener")}>
+              <ScanLine className="h-4 w-4" /> Floor entry
             </Button>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" /> New shift plan
@@ -172,12 +187,16 @@ export function ShiftPlansPage() {
             icon={<Sun className="h-4 w-4" />}
             label="Day shift"
             onOpen={openPlan}
+            dateKey={cardDate}
+            shift="DAY"
           />
           <ShiftCard
             summary={view.data?.nightShift}
             icon={<Moon className="h-4 w-4" />}
             label="Night shift"
             onOpen={openPlan}
+            dateKey={cardDate}
+            shift="NIGHT"
           />
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Plus, Wrench, Play } from "lucide-react";
+import { ArrowLeft, Plus, Wrench, Play, QrCode } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +11,8 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { DescriptionList } from "@/components/ui/DescriptionList";
+import { QrImg } from "@/components/print/QrImg";
+import { machineService } from "./api";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -219,6 +221,7 @@ export function MachineDetailPage() {
   const [mapEditOpen, setMapEditOpen] = useState(false);
   const [headsOpen, setHeadsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [labelBusy, setLabelBusy] = useState(false);
   useTrackRecent("Machine", `/machines/${id}`, machine ? `Machine ${machine.id}` : undefined);
 
   if (isLoading) {
@@ -275,6 +278,19 @@ export function MachineDetailPage() {
             <Button variant="secondary" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" /> Edit details
             </Button>
+            <Button
+              variant="secondary"
+              loading={labelBusy}
+              title="The label to stick on this loom, for the floor-entry screen to scan"
+              onClick={async () => {
+                setLabelBusy(true);
+                try { await machineService.downloadQrLabels([id!]); }
+                catch (e) { toast(e instanceof ApiError ? e.message : "Could not download the label", "error"); }
+                finally { setLabelBusy(false); }
+              }}
+            >
+              <QrCode className="h-4 w-4" /> QR label
+            </Button>
             {machine.status !== "maintenance" && machine.status !== "running" && (
               <Button variant="secondary" loading={setStatus.isPending} onClick={() => toggleStatus("maintenance")}>
                 <Wrench className="h-4 w-4" /> Send to maintenance
@@ -310,10 +326,15 @@ export function MachineDetailPage() {
       )}
 
       <Card className="p-6">
-        <div className="mb-4">
+        <div className="mb-4 flex items-start justify-between gap-4">
           <StatusChip tone={machine.status === "running" && machine.loading ? "info" : statusTone[machine.status]}>
             {machine.status === "running" && machine.loading ? "loading" : machine.status}
           </StatusChip>
+          {/* The same code the printed label carries, so a phone can
+              scan it off the screen in a pinch. */}
+          <div className="shrink-0 rounded-lg border border-ink-200 bg-surface p-1.5" title={`Scan on the floor screen: ${machine.id}`}>
+            <QrImg value={`MACHINE|${id}|${machine.id}`} size={72} margin={1} />
+          </div>
         </div>
         <DescriptionList
           columns={3}
