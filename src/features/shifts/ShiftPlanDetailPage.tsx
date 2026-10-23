@@ -21,6 +21,7 @@ import { isProductionLocked, productionLockReason } from "@/features/jobs/produc
 import { sheetService } from "./sheet";
 import { SheetUploadModal } from "./SheetUploadModal";
 import { formatDate } from "@/core/format/date";
+import { DEFAULT_CM_PER_MIN, perHeadText } from "./productionRate";
 
 const columns: Column<ShiftPlanMachineRow>[] = [
   { key: "machine", header: "Machine", render: (m) => <span className="font-medium">{m.machineName}</span> },
@@ -75,6 +76,17 @@ export function EnterProductionModal({
   const [meters, setMeters] = useState(row.production ? String(row.production) : "");
   const [timer, setTimer] = useState(row.timer ?? "");
   const [note, setNote] = useState("");
+  // The metres the run time filled in last: refilled while the field
+  // still shows it, left alone once a figure has been typed.
+  const [filled, setFilled] = useState<string | null>(null);
+  const changeRunTime = (next: string) => {
+    setTimer(next);
+    const auto = perHeadText(next);
+    if (auto && (meters === "" || meters === filled)) {
+      setMeters(auto);
+      setFilled(auto);
+    }
+  };
 
   return (
     <FormScreen open onClose={onClose} title="Enter shift production" width="max-w-md">
@@ -96,12 +108,18 @@ export function EnterProductionModal({
             autoFocus
             value={meters}
             onChange={(e) => setMeters(e.target.value)}
+            hint={meters !== "" && meters === filled ? `Filled from the run time at ${DEFAULT_CM_PER_MIN} cm/min — change it if the counter says otherwise.` : undefined}
           />
           <ExpectedOutput shiftId={row.id} runTime={timer} entered={meters} />
         </div>
         <div className="space-y-2">
-          <Input label="Runtime (HH:MM:SS)" value={timer} onChange={(e) => setTimer(e.target.value)} />
-          <TimerPhotoReader onUse={setTimer} shiftId={row.id} />
+          <Input
+            label="Runtime (HH:MM:SS)"
+            value={timer}
+            onChange={(e) => changeRunTime(e.target.value)}
+            hint={`Fills the metres a head at ${DEFAULT_CM_PER_MIN} cm a minute.`}
+          />
+          <TimerPhotoReader onUse={changeRunTime} shiftId={row.id} />
         </div>
         <Input
           label="Note"

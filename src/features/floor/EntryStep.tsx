@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { ApiError } from "@/core/http/httpClient";
 import { TimerPhotoReader } from "@/features/shifts/TimerPhotoReader";
+import { DEFAULT_CM_PER_MIN, perHeadText } from "@/features/shifts/productionRate";
 import { floorService } from "./floorClient";
 import { canEnter, tidyRunTime } from "./floorRules";
 import { EntryChip, HeadMap } from "./LoomCard";
@@ -39,7 +40,20 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost }: {
   const [operator, setOperator] = useState(machine.detail?.operator?.id ?? "");
   const [timer, setTimer] = useState(prior?.timer ?? "");
   const [production, setProduction] = useState(prior?.production != null ? String(prior.production) : "");
+  // The metres the run time filled in last. While the field still shows
+  // that, a new run time fills it again; once the supervisor has typed
+  // their own figure, it is theirs and stays.
+  const [filled, setFilled] = useState<string | null>(null);
   const [feedback, setFeedback] = useState(prior?.feedback ?? "");
+
+  const changeRunTime = (next: string) => {
+    setTimer(next);
+    const auto = perHeadText(next);
+    if (auto && (production === "" || production === filled)) {
+      setProduction(auto);
+      setFilled(auto);
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,11 +145,11 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost }: {
               inputMode="decimal"
               placeholder="7:30 or 7.30"
               value={timer}
-              onChange={(e) => setTimer(e.target.value)}
-              onBlur={() => setTimer(tidyRunTime(timer))}
-              hint="Hours and minutes the loom ran this shift."
+              onChange={(e) => changeRunTime(e.target.value)}
+              onBlur={() => changeRunTime(tidyRunTime(timer))}
+              hint={`Hours and minutes the loom ran this shift. Fills the metres a head at ${DEFAULT_CM_PER_MIN} cm a minute.`}
             />
-            <TimerPhotoReader onUse={setTimer} shiftId={machine.detail?.id} service={timerService} />
+            <TimerPhotoReader onUse={changeRunTime} shiftId={machine.detail?.id} service={timerService} />
           </div>
 
           <Input
@@ -145,7 +159,11 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost }: {
             min={0}
             value={production}
             onChange={(e) => setProduction(e.target.value)}
-            hint={total != null ? `× ${machine.headsRunning} heads running = ${total.toLocaleString("en-IN")} m` : `Counted on the ${machine.headsRunning} heads running.`}
+            hint={
+              total != null
+                ? `${production === filled ? `Filled from the run time at ${DEFAULT_CM_PER_MIN} cm/min — change it if the counter says otherwise. ` : ""}× ${machine.headsRunning} heads running = ${total.toLocaleString("en-IN")} m`
+                : `Counted on the ${machine.headsRunning} heads running.`
+            }
           />
 
           <label className="block">

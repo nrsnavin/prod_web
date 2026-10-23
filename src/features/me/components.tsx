@@ -12,6 +12,7 @@ import { formatDate } from "@/core/format/date";
 import { useSubmitProduction } from "./hooks";
 import { TimerPhotoReader } from "@/features/shifts/TimerPhotoReader";
 import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
+import { DEFAULT_CM_PER_MIN, perHeadText } from "@/features/shifts/productionRate";
 import { MyShift } from "./types";
 
 const sameDay = (a: Date, b: Date) =>
@@ -98,9 +99,21 @@ export function EnterProductionScreen({ shift, onClose }: { shift: MyShift | nul
   const [timer, setTimer] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // The metres the run time filled in last: refilled while the field
+  // still shows it, left alone once the worker has typed a figure.
+  const [filled, setFilled] = useState<string | null>(null);
+  const changeRunTime = (next: string) => {
+    setTimer(next);
+    const auto = perHeadText(next);
+    if (auto && (metres === "" || metres === filled)) {
+      setMetres(auto);
+      setFilled(auto);
+    }
+  };
 
   useEffect(() => {
     if (!shift) return;
+    setFilled(null);
     setMetres(shift.submitted?.production != null ? String(shift.submitted.production) : "");
     const t = shift.submitted?.timer;
     setTimer(t && t !== "00:00:00" ? t : "");
@@ -143,19 +156,20 @@ export function EnterProductionScreen({ shift, onClose }: { shift: MyShift | nul
           value={metres}
           onChange={(e) => setMetres(e.target.value)}
           error={error && /metres/i.test(error) ? error : undefined}
+          hint={metres !== "" && metres === filled ? `Filled from the run time at ${DEFAULT_CM_PER_MIN} cm/min — change it if the counter says otherwise.` : undefined}
           autoFocus
         />
         <ExpectedOutput shiftId={shift.id} runTime={timer} entered={metres} mine />
         <Input
           label="Run time"
-          hint="Hours and minutes the loom ran, like 7:30 or 7.30"
+          hint={`Hours and minutes the loom ran, like 7:30 or 7.30. Fills the metres a head at ${DEFAULT_CM_PER_MIN} cm a minute.`}
           inputMode="decimal"
           placeholder="7:30"
           value={timer}
-          onChange={(e) => setTimer(e.target.value)}
+          onChange={(e) => changeRunTime(e.target.value)}
           error={error && /run time/i.test(error) ? error : undefined}
         />
-        <TimerPhotoReader onUse={setTimer} shiftId={shift.id} />
+        <TimerPhotoReader onUse={changeRunTime} shiftId={shift.id} />
         <div className="space-y-1.5">
           <label htmlFor="shift-note" className="block text-sm font-medium text-ink-600">
             Note for the supervisor

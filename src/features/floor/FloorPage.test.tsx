@@ -194,6 +194,32 @@ describe("scanning and entering", () => {
     expect(screen.getByText(/every loom on this shift is entered/i)).toBeInTheDocument();
   });
 
+  it("fills the metres a head from the run time at 30 cm a minute, and leaves a typed figure alone", async () => {
+    await start();
+    svc.machine.mockResolvedValue(ready);
+    await userEvent.type(screen.getByLabelText(/type the machine ID/i), "L1");
+    await userEvent.click(screen.getByRole("button", { name: /find/i }));
+    const metres = await screen.findByLabelText(/production per head/i);
+
+    await userEvent.type(screen.getByLabelText("Run time"), "7:30");
+    expect(metres).toHaveValue(135);
+    expect(screen.getByText(/filled from the run time at 30 cm\/min/i)).toBeInTheDocument();
+    expect(screen.getByText(/× 2 heads running = 270 m/)).toBeInTheDocument();
+
+    // A longer run time refills it, since nobody has typed over it.
+    await userEvent.clear(screen.getByLabelText("Run time"));
+    await userEvent.type(screen.getByLabelText("Run time"), "8:00");
+    expect(metres).toHaveValue(144);
+
+    // Typed over: the figure is the supervisor's now, whatever the run time does.
+    await userEvent.clear(metres);
+    await userEvent.type(metres, "150");
+    await userEvent.clear(screen.getByLabelText("Run time"));
+    await userEvent.type(screen.getByLabelText("Run time"), "9:00");
+    expect(metres).toHaveValue(150);
+    expect(screen.queryByText(/filled from the run time/i)).not.toBeInTheDocument();
+  });
+
   it("refuses a job label before asking the server, and shows the server's words for an unknown one", async () => {
     await start();
     await userEvent.type(screen.getByLabelText(/type the machine ID/i), "J-12");
