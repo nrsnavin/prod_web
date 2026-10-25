@@ -184,7 +184,10 @@ export interface MrpData {
   status: string;
   productionMode: "in_house" | "outsource";
   outsourceVendor?: string;
-  elastics: Array<{ name: string; quantity: number }>;
+  /** id is the elastic, so the sheet can open it to correct the recipe. */
+  elastics: Array<{ id?: string | null; name: string; quantity: number }>;
+  /** When the requirement was worked out, from the recipes as they stood. */
+  computedAt?: string;
   materials: Array<{
     id?: string;
     // The RawMaterial reference, as utils/materialRequirement.js names it.

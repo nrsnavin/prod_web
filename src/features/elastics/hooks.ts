@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { elasticService } from "./api";
+import { CostSheetSave, elasticService } from "./api";
 import { ElasticCreateBody, ElasticFormValues } from "./types";
 
 const KEY = "elastics";
@@ -78,9 +78,24 @@ export function useMaterialsByCategory() {
   });
 }
 
+/** The elastic's cost sheet: each material, today's price, its cost a metre. */
+export function useCostSheet(id: string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "cost-sheet", id],
+    queryFn: () => elasticService.costSheet(id!),
+    enabled: !!id,
+  });
+}
+
 export function useElasticMutations() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: [KEY] });
+  // A recipe change moves every MRP sheet that has the elastic on it;
+  // an open one re-reads instead of showing the old requirement.
+  const invalidateRecipe = () => {
+    void qc.invalidateQueries({ queryKey: [KEY] });
+    void qc.invalidateQueries({ queryKey: ["jobs", "mrp"] });
+  };
 
   const create = useMutation({
     mutationFn: (body: ElasticCreateBody) => elasticService.create(body),
@@ -89,11 +104,21 @@ export function useElasticMutations() {
   const update = useMutation({
     mutationFn: ({ id, body, expectedVersion }: { id: string; body: ElasticFormValues; expectedVersion?: number }) =>
       elasticService.update(id, body, expectedVersion),
-    onSuccess: invalidate,
+    onSuccess: invalidateRecipe,
   });
   const recalculate = useMutation({
     mutationFn: (id: string) => elasticService.recalculateCost(id),
     onSuccess: invalidate,
+  });
+  // Material prices move for every elastic that uses them, and the
+  // materials screens show them too.
+  const saveCostSheet = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: CostSheetSave }) => elasticService.saveCostSheet(id, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [KEY] });
+      void qc.invalidateQueries({ queryKey: ["materials"] });
+      void qc.invalidateQueries({ queryKey: ["jobs", "mrp"] });
+    },
   });
   const setArchived = useMutation({
     mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
@@ -133,7 +158,7 @@ export function useElasticMutations() {
     onSuccess: invalidate,
   });
   return {
-    create, update, recalculate, setArchived, remove, saveTemplate,
+    create, update, recalculate, saveCostSheet, setArchived, remove, saveTemplate,
     bulkArchive, bulkCosting, bulkMinStock, bulkCopyTemplate, bulkTesting,
   };
 }

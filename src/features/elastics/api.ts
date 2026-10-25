@@ -49,6 +49,50 @@ export interface BulkResult {
   results: BulkItemResult[];
 }
 
+/** One line of an elastic's cost sheet (GET /elastic/:id/cost-sheet). */
+export interface CostSheetLine {
+  role: string;
+  material: { id: string; name: string; category: string; unit: string };
+  /** False when the recipe names a material that no longer exists. */
+  found: boolean;
+  /** Grams in a metre. */
+  grams: number;
+  /** Today's price, ₹ a kg; null when the material is missing. */
+  price: number | null;
+  /** ₹ a metre at today's price. */
+  cost: number | null;
+  /** The price the last costing used, ₹ a kg. */
+  costedRate: number | null;
+  priceChanged: boolean;
+  /** Other elastics in use whose recipe has this material. */
+  sharedWith: number;
+}
+
+export interface CostSheet {
+  elasticId: string;
+  name: string;
+  lines: CostSheetLine[];
+  now: { materialCost: number; conversionCost: number; totalCost: number };
+  costed: { materialCost: number | null; conversionCost: number | null; totalCost: number | null; at: string | null } | null;
+  missing: number;
+  /** The cost the elastic carries differs from today's prices. */
+  stale: boolean;
+}
+
+export interface CostSheetSave {
+  prices: { material: string; price: number }[];
+  conversionCost?: number;
+  reason?: string;
+  recostOthers?: boolean;
+}
+
+export interface CostSheetSaved {
+  changed: { id: string; name: string; oldPrice: number; newPrice: number }[];
+  costing: { materialCost: number; conversionCost: number; totalCost: number };
+  others: { recosted: number; failed: { id: string; name: string; reason: string }[] };
+  sheet: CostSheet;
+}
+
 export const elasticService = {
   async list(params: {
     page?: number; limit?: number; search?: string; includeArchived?: string; lowStock?: string;
@@ -137,6 +181,17 @@ export const elasticService = {
    */
   async recalculateCost(elasticId: string): Promise<RecostResult> {
     return httpClient.post<RecostResult>("/elastic/recalculate-elastic-cost", { elasticId });
+  },
+
+  /** Every material with today's price and its cost a metre. */
+  async costSheet(elasticId: string): Promise<CostSheet> {
+    const res = await httpClient.get<{ success: boolean; sheet: CostSheet }>(`/elastic/${encodeURIComponent(elasticId)}/cost-sheet`);
+    return res.sheet;
+  },
+
+  /** New material prices and conversion cost, then the cost recalculated. */
+  async saveCostSheet(elasticId: string, body: CostSheetSave): Promise<CostSheetSaved> {
+    return httpClient.post<CostSheetSaved>(`/elastic/${encodeURIComponent(elasticId)}/cost-sheet`, body);
   },
 
   /** Mark inactive (archived: true) or reactivate (archived: false).

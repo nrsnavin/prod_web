@@ -131,6 +131,8 @@ const { create, update, navigate } = vi.hoisted(() => ({
   navigate: vi.fn(),
 }));
 
+// The cost sheet reads on its own and is covered in ElasticCostSheet.test.tsx.
+vi.mock("./ElasticCostSheet", () => ({ ElasticCostSheet: () => null }));
 vi.mock("./hooks", () => ({
   useElastic: () => ({ data: source, isLoading: false, isError: false, error: null }),
   useElasticMutations: () => ({

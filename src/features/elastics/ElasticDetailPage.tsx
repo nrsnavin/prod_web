@@ -17,6 +17,7 @@ import { recostMessage } from "./api";
 import { cloneInitial, cloneBody } from "./elasticClone";
 import { ElasticForm } from "./ElasticForm";
 import { ElasticStockCard } from "./ElasticStockCard";
+import { ElasticCostSheet } from "./ElasticCostSheet";
 import { ElasticWarpingTemplate } from "./ElasticWarpingTemplate";
 import { ElasticHistory } from "./ElasticHistory";
 import { formatDate } from "@/core/format/date";
@@ -226,6 +227,10 @@ export function ElasticDetailPage() {
           </div>
         </Card>
       </div>
+
+      {/* Each material's price and its cost a metre, under the totals
+          they make up. */}
+      <ElasticCostSheet elasticId={elastic._id} />
 
       <ElasticWarpingTemplate elastic={elastic} />
 

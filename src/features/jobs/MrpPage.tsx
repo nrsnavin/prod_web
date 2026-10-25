@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Printer, Download } from "lucide-react";
+import { ArrowLeft, Printer, Download, Pencil, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
+import { MrpElasticEdit } from "./MrpElasticEdit";
 import { useMrp } from "./hooks";
 import { jobService } from "./api";
 import { MrpData } from "./types";
@@ -167,9 +170,22 @@ export const materialColumns: Column<MrpMaterial>[] = [
   },
 ];
 
+/** "10:42 am": when the sheet was last worked out. */
+const clock = (t: number | string) =>
+  new Date(t).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+
 export function MrpPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, isLoading, isError, error } = useMrp(id);
+  const { data, isLoading, isError, error, refetch, isFetching, dataUpdatedAt } = useMrp(id);
+  const { toast } = useToast();
+  const [editing, setEditing] = useState<string | null>(null);
+
+  // Worked out again from every elastic's recipe as it stands now.
+  const update = async (said?: string) => {
+    const r = await refetch();
+    if (r.isError) toast(r.error instanceof Error ? r.error.message : "Could not update the MRP", "error");
+    else toast(said ?? "MRP updated from the current recipes", "success");
+  };
 
   if (isLoading) {
     return (
@@ -201,6 +217,9 @@ export function MrpPage() {
           subtitle={`${data.customerName}${data.orderNo ? ` · Order #${data.orderNo}` : ""} · ${data.dateLabel}`}
           actions={
             <>
+              <Button variant="secondary" onClick={() => void update()} loading={isFetching} title="Work the requirement out again from each elastic's recipe as it is now">
+                <RefreshCw className="h-4 w-4" /> Update MRP
+              </Button>
               <a href={jobService.mrpPdfUrl(id!)} target="_blank" rel="noreferrer">
                 <Button variant="secondary">
                   <Download className="h-4 w-4" /> Download PDF
@@ -251,12 +270,26 @@ export function MrpPage() {
             />
           </div>
 
-          <h3 className="font-semibold mt-4">Elastics on this job</h3>
+          <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="font-semibold">Elastics on this job</h3>
+            <span className="text-xs text-ink-400">
+              From the recipes as at {clock(data.computedAt ?? dataUpdatedAt)}
+            </span>
+          </div>
           <ul className="mt-2 divide-y divide-ink-100">
             {data.elastics.map((e, i) => (
-              <li key={i} className="flex justify-between py-2 text-sm">
-                <span className="font-medium">{e.name}</span>
-                <span className="tabular-nums">{e.quantity.toLocaleString("en-IN")} m</span>
+              <li key={e.id ?? i} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="min-w-0 truncate font-medium">
+                  {e.id ? <Link to={`/elastics/${e.id}`} className="hover:underline">{e.name}</Link> : e.name}
+                </span>
+                <span className="flex shrink-0 items-center gap-3">
+                  <span className="tabular-nums">{e.quantity.toLocaleString("en-IN")} m</span>
+                  {e.id && (
+                    <Button variant="ghost" size="sm" onClick={() => setEditing(e.id!)} aria-label={`Edit the recipe of ${e.name}`}>
+                      <Pencil className="h-3.5 w-3.5" /> Edit
+                    </Button>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
@@ -272,6 +305,17 @@ export function MrpPage() {
           />
         </Card>
       </div>
+
+      {editing && (
+        <MrpElasticEdit
+          elasticId={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(name) => {
+            setEditing(null);
+            void update(`${name} saved — MRP updated from the new recipe`);
+          }}
+        />
+      )}
     </>
   );
 }
