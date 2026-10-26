@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { JobCreateForm } from "./JobCreateForm";
+import { JobCreateForm, asShortfalls } from "./JobCreateForm";
+import { ApiError } from "@/core/http/httpClient";
 import type { OrderDetail, OrderElasticProgress } from "@/features/orders/types";
 
 // The form's 20% rule has to agree with services/excessPlanning.js on
@@ -133,5 +134,59 @@ describe("a line other jobs have already planned", () => {
     }));
     expect(screen.getByText("Woven Elastic 25mm")).toBeInTheDocument();
     expect(screen.getByLabelText("Qty (m)")).toBeInTheDocument();
+  });
+});
+
+// ── Yarn short on paper ──────────────────────────────────────────────
+// Stock that was never entered reads as short. The refusal offers to
+// create the job anyway, with a reason; what is in stock is drawn.
+describe("when the excess yarn is short", () => {
+  const refuse = () =>
+    create.mockImplementationOnce((_body, opts) =>
+      opts.onError(new ApiError(
+        "Not enough raw material for the excess quantity — Nylon 70D short by 0.3 kg",
+        409, undefined, "INSUFFICIENT_STOCK_FOR_EXCESS",
+        { details: { shortfalls: [{ rawMaterial: "m1", name: "Nylon 70D", required: 0.8, inStock: 0.5, short: 0.3 }] } }
+      )));
+
+  it("lists what is short and creates the job anyway with the reason", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await setQty(user, "1100");
+    refuse();
+    await user.click(screen.getByRole("button", { name: /create job/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /not enough yarn/i });
+    expect(within(dialog).getByText("Nylon 70D")).toBeInTheDocument();
+    expect(within(dialog).getByText(/Need 0\.80 kg · Available 0\.50 kg · Short 0\.30 kg/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/has not been entered yet/)).toBeInTheDocument();
+
+    await user.type(within(dialog).getByRole("textbox"), "Stock not entered yet");
+    await user.click(within(dialog).getByRole("button", { name: /create job anyway/i }));
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(create.mock.calls[1][0]).toMatchObject({
+      elastics: [{ elastic: "e1", quantity: 1100 }],
+      force: true,
+      forceReason: "Stock not entered yet",
+    });
+  });
+
+  it("asks for a reason of at least 8 characters before trying again", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await setQty(user, "1100");
+    refuse();
+    await user.click(screen.getByRole("button", { name: /create job/i }));
+    const dialog = await screen.findByRole("dialog", { name: /not enough yarn/i });
+    await user.type(within(dialog).getByRole("textbox"), "short");
+    await user.click(within(dialog).getByRole("button", { name: /create job anyway/i }));
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(within(dialog).getByText(/at least 8 characters/)).toBeInTheDocument();
+  });
+
+  it("maps the server's shortfalls to the dialog's", () => {
+    expect(asShortfalls({ shortfalls: [{ rawMaterial: "m1", name: "Nylon", required: 1, inStock: 0, short: 1 }] }))
+      .toEqual([{ materialId: "m1", materialName: "Nylon", required: 1, available: 0, short: 1 }]);
+    expect(asShortfalls(undefined)).toEqual([]);
   });
 });

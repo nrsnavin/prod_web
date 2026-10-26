@@ -15,6 +15,14 @@ export interface ForceApprovalDialogProps {
   onClose: () => void;
   /** Called with the trimmed reason (>= 8 chars) when the admin confirms. */
   onConfirm: (reason: string) => void;
+  /** Several short materials at once (a job's excess draw), shown in place of `shortfall`. */
+  shortfalls?: StockShortfall[];
+  /** Replaces the note above the reason, for a use other than approval. */
+  note?: string;
+  /** Replaces "Force approve". */
+  confirmLabel?: string;
+  /** Replaces "Insufficient stock". */
+  title?: string;
 }
 
 function fmt(v: number): string {
@@ -33,6 +41,10 @@ export function ForceApprovalDialog({
   loading,
   onClose,
   onConfirm,
+  shortfalls,
+  note,
+  confirmLabel = "Force approve",
+  title = "Insufficient stock",
 }: ForceApprovalDialogProps) {
   const [reason, setReason] = useState("");
   const [touched, setTouched] = useState(false);
@@ -48,7 +60,7 @@ export function ForceApprovalDialog({
   const short = shortfall?.short ?? required - available;
 
   return (
-    <Modal open={open} onClose={onClose} title="Insufficient stock" width="max-w-md">
+    <Modal open={open} onClose={onClose} title={title} width="max-w-md">
       <div className="space-y-4">
         <div className="flex items-start gap-2 rounded-lg bg-status-dangerBg p-3 text-sm text-status-danger">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -57,7 +69,20 @@ export function ForceApprovalDialog({
           </span>
         </div>
 
-        {shortfall && (
+        {shortfalls && shortfalls.length > 0 && (
+          <ul className="space-y-2">
+            {shortfalls.map((s) => (
+              <li key={s.materialId || s.materialName} className="rounded-lg border border-status-warning/40 bg-status-warningBg p-3">
+                <p className="text-sm font-semibold text-ink-900">{s.materialName}</p>
+                <p className="mt-1 text-xs font-medium text-ink-600">
+                  Need {fmt(s.required)} kg · Available {fmt(s.available)} kg · Short {fmt(s.short)} kg
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {!shortfalls?.length && shortfall && (
           <div className="rounded-lg border border-status-warning/40 bg-status-warningBg p-3">
             <p className="text-sm font-semibold text-ink-900">{shortfall.materialName}</p>
             <p className="mt-1 text-xs font-medium text-ink-600">
@@ -67,9 +92,8 @@ export function ForceApprovalDialog({
         )}
 
         <p className="text-xs text-ink-400">
-          Forcing approval will deduct what is available (remaining clamped at 0)
-          and record the override in the order audit trail. Provide a reason so the
-          next reviewer can understand the call.
+          {note ??
+            "Forcing approval will deduct what is available (remaining clamped at 0) and record the override in the order audit trail. Provide a reason so the next reviewer can understand the call."}
         </p>
 
         <div>
@@ -106,7 +130,7 @@ export function ForceApprovalDialog({
               onConfirm(reason.trim());
             }}
           >
-            <Zap className="h-4 w-4" /> Force approve
+            <Zap className="h-4 w-4" /> {confirmLabel}
           </Button>
         </div>
       </div>

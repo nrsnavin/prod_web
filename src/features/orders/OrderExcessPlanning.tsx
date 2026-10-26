@@ -65,8 +65,19 @@ export function OrderExcessPlanning({ rows }: { rows: ExcessPlanningRow[] }) {
                       <p className="mt-0.5 text-xs text-ink-400">
                         Yarn drawn:{" "}
                         {r.materialsDrawn
-                          .map((m) => `${m.name} ${fmt(m.quantity)} kg`)
+                          .map((m) =>
+                            m.requested != null && m.requested !== m.quantity
+                              ? `${m.name} ${fmt(m.quantity)} of ${fmt(m.requested)} kg`
+                              : `${m.name} ${fmt(m.quantity)} kg`
+                          )
                           .join(", ")}
+                      </p>
+                    )}
+                    {/* Created though the yarn was short — the reason
+                        said here, where the draw that fell short is. */}
+                    {r.forced && (
+                      <p className="mt-1 text-xs text-status-warning">
+                        Created with short yarn{r.forceReason ? `: ${r.forceReason}` : ""}
                       </p>
                     )}
                   </td>

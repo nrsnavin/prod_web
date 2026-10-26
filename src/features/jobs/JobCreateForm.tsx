@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { OrderDetail } from "@/features/orders/types";
+import { OrderDetail, StockShortfall } from "@/features/orders/types";
+import { ForceApprovalDialog } from "@/features/orders/ForceApprovalDialog";
 import { useJobMutations } from "./hooks";
 
 // Creates a job from an order: pick quantities per elastic.
@@ -17,7 +18,22 @@ import { useJobMutations } from "./hooks";
 // Excess is not free: the order's approval drew yarn for the ordered
 // quantity only, so the server draws the difference at this point and
 // refuses the job if the stock is not there. The warnings below say so
-// before the button is pressed.
+// before the button is pressed. Stock is often short on paper only —
+// not entered yet — so the refusal offers to create the job anyway,
+// with a reason: what is in stock is drawn and the rest recorded short.
+
+/** The server's shortfalls (excessPlanning.stockShortfalls) in the dialog's shape. */
+export function asShortfalls(details: unknown): StockShortfall[] {
+  const list = (details as { shortfalls?: unknown } | undefined)?.shortfalls;
+  if (!Array.isArray(list)) return [];
+  return list.map((s: { rawMaterial?: string; name?: string; required?: number; inStock?: number; short?: number }) => ({
+    materialId: String(s.rawMaterial ?? s.name ?? ""),
+    materialName: s.name ?? "Material",
+    required: Number(s.required) || 0,
+    available: Number(s.inStock) || 0,
+    short: Number(s.short) || 0,
+  }));
+}
 
 /** Mirrors FREE_EXCESS_PCT in services/excessPlanning.js. */
 export const FREE_EXCESS_PCT = 20;
@@ -41,6 +57,7 @@ export function JobCreateForm({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [qty, setQty] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
+  const [short, setShort] = useState<{ message: string; shortfalls: StockShortfall[] } | null>(null);
 
   // Every ordered line, not only the ones with something unassigned: a
   // fully-planned line can still take excess, and hiding it would make
@@ -63,6 +80,35 @@ export function JobCreateForm({
   const withExcess = assessed.filter((r) => r.entered > 0 && r.excess > 0);
   const needsReason = withExcess.some((r) => r.excessPct > FREE_EXCESS_PCT);
   const reasonOk = reason.trim().length >= MIN_REASON;
+
+  const submit = (force?: { reason: string }) =>
+    create.mutate(
+      {
+        orderId: order._id,
+        date,
+        elastics: rows,
+        ...(needsReason ? { excessReason: reason.trim() } : {}),
+        ...(force ? { force: true, forceReason: force.reason } : {}),
+      },
+      {
+        onSuccess: (data) => {
+          setShort(null);
+          toast(
+            `Job J-${data.job.jobOrderNo} created (warping & covering programmes opened)`
+              + (force ? " — short yarn recorded" : ""),
+            "success"
+          );
+          onCreated(data.job._id);
+        },
+        onError: (e) => {
+          if (e instanceof ApiError && e.code === "INSUFFICIENT_STOCK_FOR_EXCESS" && !force) {
+            setShort({ message: e.message, shortfalls: asShortfalls(e.data?.details) });
+            return;
+          }
+          toast(e instanceof ApiError ? e.message : "Failed to create job", "error");
+        },
+      }
+    );
 
   if (lines.length === 0) {
     return <p className="text-sm text-ink-600">This order has no elastic lines.</p>;
@@ -122,7 +168,7 @@ export function JobCreateForm({
           <span>
             Planning {fmt(withExcess.reduce((s, r) => s + r.excess, 0))} m over this order.
             The extra yarn will be deducted from stock when the job is created — if it is
-            not there, the job is refused.
+            short, you can still create it with a reason.
           </span>
         </p>
       )}
@@ -155,31 +201,24 @@ export function JobCreateForm({
         <Button
           disabled={rows.length === 0 || (needsReason && !reasonOk)}
           loading={create.isPending}
-          onClick={() =>
-            create.mutate(
-              {
-                orderId: order._id,
-                date,
-                elastics: rows,
-                ...(needsReason ? { excessReason: reason.trim() } : {}),
-              },
-              {
-                onSuccess: (data) => {
-                  toast(
-                    `Job J-${data.job.jobOrderNo} created (warping & covering programmes opened)`,
-                    "success"
-                  );
-                  onCreated(data.job._id);
-                },
-                onError: (e) =>
-                  toast(e instanceof ApiError ? e.message : "Failed to create job", "error"),
-              }
-            )
-          }
+          onClick={() => submit()}
         >
           Create job
         </Button>
       </div>
+
+      <ForceApprovalDialog
+        open={!!short}
+        title="Not enough yarn for the excess"
+        shortfall={null}
+        shortfalls={short?.shortfalls}
+        originalMessage={short?.message}
+        note="Creating the job anyway draws what is in stock (a short material is left at 0) and records your reason on the job and the order. Use it when the stock simply has not been entered yet."
+        confirmLabel="Create job anyway"
+        loading={create.isPending}
+        onClose={() => setShort(null)}
+        onConfirm={(forceReason) => submit({ reason: forceReason })}
+      />
     </div>
   );
 }

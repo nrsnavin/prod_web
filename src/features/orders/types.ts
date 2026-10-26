@@ -264,7 +264,11 @@ export interface ExcessPlanningRow {
   excessQuantity: number;
   excessPct: number;
   reason: string;
-  materialsDrawn: Array<{ rawMaterial: string; name: string; quantity: number }>;
+  /** requested: what the excess asked for, when a forced job drew less. */
+  materialsDrawn: Array<{ rawMaterial: string; name: string; quantity: number; requested?: number }>;
+  /** The job was created though the yarn was short, with this reason. */
+  forced?: boolean;
+  forceReason?: string;
   recordedAt: string | null;
 }
 

@@ -89,6 +89,13 @@ export const jobService = {
      * same request with this filled in.
      */
     excessReason?: string;
+    /**
+     * Create the job though the excess yarn is short (409
+     * INSUFFICIENT_STOCK_FOR_EXCESS): what is in stock is drawn and the
+     * reason is kept on the job and the order. At least 8 characters.
+     */
+    force?: boolean;
+    forceReason?: string;
   }): Promise<{ job: { _id: string; jobOrderNo: number } }> {
     const res = await httpClient.post<{
       success: boolean;
