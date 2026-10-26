@@ -18,7 +18,7 @@ import { warpingService } from "./api";
 import { useWarping, useWarpingPlan, useWarpingMutations } from "./hooks";
 import { ProgrammeChip, ElasticLines } from "./programmeShared";
 import { WarpingPlanForm } from "./WarpingPlanForm";
-import { WarpingProgrammeSheet, BeamLabels } from "./WarpingPrints";
+import { BeamLabels } from "./WarpingPrints";
 import { WarpingBatches } from "./WarpingBatches";
 import { formatDate } from "@/core/format/date";
 
@@ -36,7 +36,7 @@ export function WarpingDetailPage() {
   const [editPlanOpen, setEditPlanOpen] = useState(false);
   const [optimizeOpen, setOptimizeOpen] = useState(false);
   const [delPlanOpen, setDelPlanOpen] = useState(false);
-  const [printOpen, setPrintOpen] = useState<null | "sheet" | "labels">(null);
+  const [printOpen, setPrintOpen] = useState<null | "labels">(null);
   // Set from the server's 409. Held rather than toasted: it names
   // something the operator can go and do.
   const [yarnBlocker, setYarnBlocker] = useState<string | null>(null);
@@ -117,9 +117,13 @@ export function WarpingDetailPage() {
         subtitle={warping.job?.customer?.name}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setPrintOpen("sheet")}>
-              <Printer className="h-4 w-4" /> Programme
-            </Button>
+            {/* A PDF drawn on the server: the same sheet downloaded or
+                printed, A4 with narrow margins, never a blank first page. */}
+            <a href={warpingService.programmePdfUrl(warping._id)} target="_blank" rel="noreferrer">
+              <Button variant="secondary">
+                <Printer className="h-4 w-4" /> Programme PDF
+              </Button>
+            </a>
             {hasPlan && (
               <Button variant="secondary" onClick={() => setPrintOpen("labels")}>
                 <Tags className="h-4 w-4" /> Beam labels
@@ -373,12 +377,6 @@ export function WarpingDetailPage() {
           .filter((e): e is { id: string; name: string } => e !== null)}
       />
 
-      <WarpingProgrammeSheet
-        open={printOpen === "sheet"}
-        onClose={() => setPrintOpen(null)}
-        warping={warping}
-        plan={plan.data?.plan}
-      />
       <BeamLabels
         open={printOpen === "labels"}
         onClose={() => setPrintOpen(null)}

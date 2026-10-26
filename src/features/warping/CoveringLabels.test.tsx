@@ -38,12 +38,13 @@ describe("CoveringLabels", () => {
   });
 
   it("gives each label its own Print button that solo-prints just that label", async () => {
-    const { container } = render(<CoveringLabels open covering={base} onClose={() => {}} />);
+    render(<CoveringLabels open covering={base} onClose={() => {}} />);
     // Capture how many labels are the solo target at the moment print fires
     // (the class is cleared immediately afterwards).
     let soloAtPrint = -1;
     const printSpy = vi.fn(() => {
-      soloAtPrint = container.querySelectorAll(".print-solo-target").length;
+      // The print dialog renders under <body> (PrintModal), not in the container.
+      soloAtPrint = document.body.querySelectorAll(".print-solo-target").length;
     });
     vi.stubGlobal("print", printSpy);
     const user = userEvent.setup();

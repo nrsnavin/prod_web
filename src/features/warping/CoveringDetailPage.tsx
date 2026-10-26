@@ -11,7 +11,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useCovering, useCoveringMutations } from "./hooks";
 import { ProgrammeChip, ElasticLines } from "./programmeShared";
 import { CoveringLabels } from "./CoveringLabels";
-import { CoveringProgrammeSheet } from "./CoveringProgrammeSheet";
+import { coveringService } from "./api";
 import { CoveringBeamEntries } from "./CoveringBeamEntries";
 import { formatDate } from "@/core/format/date";
 
@@ -21,7 +21,6 @@ export function CoveringDetailPage() {
   const { data: covering, isLoading, isError, error } = useCovering(id);
   const { start, complete, cancel } = useCoveringMutations();
   const [labelsOpen, setLabelsOpen] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -52,9 +51,12 @@ export function CoveringDetailPage() {
         subtitle={covering.job?.customer?.name}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setSheetOpen(true)}>
-              <Printer className="h-4 w-4" /> Programme
-            </Button>
+            {/* A PDF drawn on the server, like the warping programme. */}
+            <a href={coveringService.programmePdfUrl(covering._id)} target="_blank" rel="noreferrer">
+              <Button variant="secondary">
+                <Printer className="h-4 w-4" /> Programme PDF
+              </Button>
+            </a>
             <Button variant="secondary" onClick={() => setLabelsOpen(true)}>
               <Tags className="h-4 w-4" /> Labels
             </Button>
@@ -139,7 +141,6 @@ export function CoveringDetailPage() {
       <CoveringBeamEntries covering={covering} />
 
       <CoveringLabels open={labelsOpen} onClose={() => setLabelsOpen(false)} covering={covering} />
-      <CoveringProgrammeSheet open={sheetOpen} onClose={() => setSheetOpen(false)} covering={covering} />
     </>
   );
 }

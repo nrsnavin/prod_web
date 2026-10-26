@@ -196,14 +196,14 @@
 }
 
 /* Page margins for every printed document (MRP sheet, warping/covering
-   programme, DC, PO, packing slip, labels). A generous margin keeps text
-   off the paper edge and inside most printers' unprintable border.
+   programme, DC, PO, packing slip, labels). 10 mm keeps text clear of
+   most printers' unprintable border without wasting the sheet.
 
    The job label overrides this with its own `@page` while it is open —
    see JobQrPrint. */
 @page {
   size: A4;
-  margin: 14mm;
+  margin: 10mm;
 }
 
 /* Print: only the .print-area content is put on paper (DC, MRP sheet,
@@ -490,6 +490,29 @@ body {
   [role="dialog"] * {
     max-height: none !important;
     overflow: visible !important;
+  }
+  /* A print dialog (PrintModal) sits straight under <body>. Everything
+     else leaves the layout while it is open, so the sheet starts at the
+     top of page one instead of below the app's hidden height. */
+  body:has(> [data-print-page="sheet"]) > *:not([data-print-page="sheet"]) {
+    display: none !important;
+  }
+  [data-print-page="sheet"] .print-area {
+    position: static !important;
+    width: auto !important;
+  }
+  [data-print-page="sheet"] [role="dialog"] > div {
+    max-width: none !important;
+    width: 100% !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  [data-print-page="sheet"] [role="dialog"] > div > div:first-child:not(.print-area) {
+    display: none !important;
+  }
+  [data-print-page="sheet"] [role="dialog"] > div > div {
+    padding: 0 !important;
   }
   /* Labels & slips: never split one across pages */
   .print-label {

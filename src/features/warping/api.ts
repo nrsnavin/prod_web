@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { config } from "@/app/config";
 import {
   Covering,
   PlanContext,
@@ -11,6 +12,12 @@ import {
 } from "./types";
 
 export const warpingService = {
+  /**
+   * The printable warping programme, drawn on the server
+   * (utils/programmePdf.js) — the same sheet whether downloaded or printed.
+   */
+  programmePdfUrl: (id: string) => `${config.apiBaseUrl}/warping/${encodeURIComponent(id)}/programme.pdf`,
+
   async list(params: { status: ProgrammeStatus | "all"; search: string; page: number }) {
     const res = await httpClient.get<{
       success: boolean;
@@ -158,6 +165,9 @@ export interface OptimizedLayout {
 }
 
 export const coveringService = {
+  /** The printable covering programme, drawn on the server. */
+  programmePdfUrl: (id: string) => `${config.apiBaseUrl}/covering/${encodeURIComponent(id)}/programme.pdf`,
+
   async list(params: { status: ProgrammeStatus | "all"; search: string; page: number }) {
     const res = await httpClient.get<{
       success: boolean;
