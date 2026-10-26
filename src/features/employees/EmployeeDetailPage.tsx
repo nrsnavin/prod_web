@@ -1,7 +1,7 @@
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, RotateCcw, UserMinus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +13,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useEmployee, useEmployeeMutations } from "./hooks";
-import { EmployeeShiftRow } from "./types";
+import { EmployeeShiftRow, OFFBOARD_REASON_LABELS } from "./types";
+import { OffboardDialog } from "./OffboardDialog";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { EmployeeForm } from "./EmployeeForm";
 import { EmployeePayrollCard } from "./EmployeePayrollCard";
 import { EmployeeLeavePayCard } from "./EmployeeLeavePayCard";
@@ -45,8 +47,10 @@ export function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { data: emp, isLoading, isError, error } = useEmployee(id);
-  const { update, setPerformance } = useEmployeeMutations();
+  const { update, setPerformance, reinstate } = useEmployeeMutations();
   const [editOpen, setEditOpen] = useState(false);
+  const [offboardOpen, setOffboardOpen] = useState(false);
+  const [reinstateOpen, setReinstateOpen] = useState(false);
   // The version the edit form opened on, captured then rather than read
   // at save time: a background refetch would otherwise hand the save a
   // newer version than the one the person was looking at.
@@ -73,6 +77,9 @@ export function EmployeeDetailPage() {
   }
 
   const currentPerf = perf ?? emp.performance ?? 0;
+  const isAdmin = user?.role === "admin";
+  const left = emp.status === "offboarded";
+  const off = emp.offboarding;
 
   return (
     <>
@@ -83,11 +90,40 @@ export function EmployeeDetailPage() {
         title={emp.name}
         subtitle={`${emp.department}${emp.role ? ` · ${emp.role}` : ""}`}
         actions={
-          <Button variant="secondary" onClick={() => { setEditVersion(emp.__v); setEditOpen(true); }}>
-            <Pencil className="h-4 w-4" /> Edit
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => { setEditVersion(emp.__v); setEditOpen(true); }}>
+              <Pencil className="h-4 w-4" /> Edit
+            </Button>
+            {/* Offboarding and rehiring are the admin's, like registering. */}
+            {isAdmin && !left && (
+              <Button variant="secondary" onClick={() => setOffboardOpen(true)}>
+                <UserMinus className="h-4 w-4" /> Offboard
+              </Button>
+            )}
+            {isAdmin && left && (
+              <Button variant="secondary" onClick={() => setReinstateOpen(true)}>
+                <RotateCcw className="h-4 w-4" /> Reinstate
+              </Button>
+            )}
+          </>
         }
       />
+
+      {left && off && (
+        <div role="status" className="mb-4 rounded-lg border border-status-warning/40 bg-status-warningBg px-4 py-3 text-sm">
+          <p className="font-semibold text-status-warning">
+            {off.lastWorkingDay && new Date(off.lastWorkingDay).getTime() >= new Date(new Date().toDateString()).getTime()
+              ? `Leaving — last working day ${formatDate(off.lastWorkingDay)}`
+              : `Left — last working day ${formatDate(off.lastWorkingDay)}`}
+            {off.reason ? ` · ${OFFBOARD_REASON_LABELS[off.reason] ?? off.reason}` : ""}
+          </p>
+          {off.note && <p className="mt-1 text-ink-600">{off.note}</p>}
+          <p className="mt-1 text-xs text-ink-400">
+            Recorded{off.recordedByName ? ` by ${off.recordedByName}` : ""}{off.recordedAt ? ` on ${formatDate(off.recordedAt)}` : ""}.
+            Their records below are kept.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-6 lg:col-span-2">
@@ -144,7 +180,8 @@ export function EmployeeDetailPage() {
       </div>
 
       <ErrorBoundary variant="section" label="App access">
-        {canGrantAccess && <WorkerAccessCard empId={emp.id} />}
+        {/* Someone who has left has no sign-in to give; reinstate them first. */}
+        {canGrantAccess && !left && <WorkerAccessCard empId={emp.id} />}
       </ErrorBoundary>
 
       <ErrorBoundary variant="section" label="Skill profile">
@@ -167,6 +204,22 @@ export function EmployeeDetailPage() {
         <EmployeeLeavePayCard empId={emp.id} />
       </ErrorBoundary>
 
+      {(emp.pastOffboardings?.length ?? 0) > 0 && (
+        <Card className="mt-4 p-5">
+          <h3 className="font-semibold">Earlier spells</h3>
+          <ul className="mt-2 space-y-1 text-sm text-ink-600">
+            {emp.pastOffboardings!.map((p, i) => (
+              <li key={i}>
+                Left {formatDate(p.lastWorkingDay)}
+                {p.reason ? ` (${OFFBOARD_REASON_LABELS[p.reason] ?? p.reason})` : ""}
+                {p.reinstatedAt ? `, reinstated ${formatDate(p.reinstatedAt)}` : ""}
+                {p.note ? ` — ${p.note}` : ""}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Recent shifts</h3>
         <DataTable
@@ -176,6 +229,30 @@ export function EmployeeDetailPage() {
           emptyTitle="No shifts recorded"
         />
       </Card>
+
+      {offboardOpen && <OffboardDialog empId={emp.id} name={emp.name} onClose={() => setOffboardOpen(false)} />}
+
+      <ReasonDialog
+        open={reinstateOpen}
+        onClose={() => setReinstateOpen(false)}
+        title={`Reinstate ${emp.name}`}
+        description="They become active again and can be put on shifts. When and why they left is kept. Phone sign-in is not turned back on; set a new PIN for them."
+        tone="default"
+        confirmLabel="Reinstate"
+        loading={reinstate.isPending}
+        onConfirm={(note) =>
+          reinstate.mutate(
+            { id: emp.id, note },
+            {
+              onSuccess: () => {
+                setReinstateOpen(false);
+                toast(`${emp.name} reinstated`, "success");
+              },
+              onError: (e) => toast(e instanceof ApiError ? e.message : "Could not reinstate", "error"),
+            }
+          )
+        }
+      />
 
       <FormScreen open={editOpen} onClose={() => setEditOpen(false)} title="Edit employee">
         <EmployeeForm

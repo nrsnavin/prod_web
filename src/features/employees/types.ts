@@ -46,6 +46,55 @@ export interface SkillProfile {
   };
 }
 
+// ── Offboarding ────────────────────────────────────────────────────────
+export type OffboardReason = "resigned" | "terminated" | "absconded" | "retired" | "contract_ended" | "other";
+
+export const OFFBOARD_REASON_LABELS: Record<OffboardReason, string> = {
+  resigned: "Resigned",
+  terminated: "Terminated",
+  absconded: "Stopped coming (no notice)",
+  retired: "Retired",
+  contract_ended: "Contract ended",
+  other: "Other",
+};
+
+/** Who the list shows: still working here (default), gone, or everyone. */
+export type EmployeeStatusFilter = "active" | "left" | "all";
+
+export interface Offboarding {
+  lastWorkingDay: string | null;
+  reason: OffboardReason | null;
+  note?: string;
+  recordedByName?: string;
+  recordedAt?: string | null;
+}
+
+export interface PastOffboarding {
+  lastWorkingDay?: string;
+  reason?: OffboardReason;
+  note?: string;
+  recordedByName?: string;
+  recordedAt?: string;
+  reinstatedAt?: string;
+  reinstatedByName?: string;
+}
+
+export interface OffboardResult {
+  success: boolean;
+  employee: { id: string; name: string; status: "offboarded"; lastWorkingDay: string; reason: OffboardReason };
+  workerLoginClosed: boolean;
+  managerLogin: { id: string; email: string } | null;
+}
+
+/** A shift that keeps someone from leaving on the day asked (EMPLOYEE_HAS_LATER_SHIFTS). */
+export interface LaterShift {
+  id: string;
+  date: string;
+  shift: string | null;
+  status: string;
+  machine: string | null;
+}
+
 export interface Employee {
   _id: string;
   name: string;
@@ -57,6 +106,8 @@ export interface Employee {
   performance?: number;
   hourlyRate?: number;
   createdAt?: string;
+  status?: "active" | "offboarded";
+  offboarding?: { lastWorkingDay?: string; reason?: OffboardReason };
 }
 
 export interface EmployeeShiftRow {
@@ -82,6 +133,9 @@ export interface EmployeeDetail {
   skill?: number;
   hourlyRate?: number;
   skillProfile?: SkillProfile | null;
+  status?: "active" | "offboarded";
+  offboarding?: Offboarding | null;
+  pastOffboardings?: PastOffboarding[];
   totalShifts?: number;
   result: EmployeeShiftRow[];
 }

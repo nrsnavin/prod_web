@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { employeeService } from "./api";
-import { EmployeeFormValues } from "./types";
+import { EmployeeFormValues, EmployeeStatusFilter, OffboardReason } from "./types";
 
 const KEY = "employees";
 
-export function useEmployees(department: string) {
+export function useEmployees(department: string, status: EmployeeStatusFilter = "active") {
   return useQuery({
-    queryKey: [KEY, department],
-    queryFn: () => employeeService.list(department),
+    queryKey: [KEY, department, status],
+    queryFn: () => employeeService.list(department, status),
     placeholderData: (prev) => prev,
   });
 }
@@ -52,5 +52,18 @@ export function useEmployeeMutations() {
       employeeService.setPerformance(id, performance),
     onSuccess: invalidate,
   });
-  return { create, update, setPerformance };
+  const offboard = useMutation({
+    mutationFn: ({ id, ...body }: { id: string; lastWorkingDay: string; reason: OffboardReason; note?: string }) =>
+      employeeService.offboard(id, body),
+    onSuccess: () => {
+      invalidate();
+      // Their sign-in was closed with them.
+      qc.invalidateQueries({ queryKey: ["worker-access"] });
+    },
+  });
+  const reinstate = useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) => employeeService.reinstate(id, note),
+    onSuccess: invalidate,
+  });
+  return { create, update, setPerformance, offboard, reinstate };
 }

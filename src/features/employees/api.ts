@@ -1,13 +1,33 @@
 import { httpClient } from "@/core/http/httpClient";
-import { Employee, EmployeeDetail, EmployeeFormValues } from "./types";
+import {
+  Employee,
+  EmployeeDetail,
+  EmployeeFormValues,
+  EmployeeStatusFilter,
+  OffboardReason,
+  OffboardResult,
+} from "./types";
 
 export const employeeService = {
-  async list(department: string): Promise<Employee[]> {
+  async list(department: string, status: EmployeeStatusFilter = "active"): Promise<Employee[]> {
+    const params: Record<string, string> = {};
+    if (department && department !== "all") params.department = department;
+    if (status !== "active") params.status = status;
     const res = await httpClient.get<{ success: boolean; employees: Employee[] }>(
       "/employee/get-employees",
-      department && department !== "all" ? { department } : undefined
+      Object.keys(params).length ? params : undefined
     );
     return res.employees;
+  },
+
+  /** Someone leaves: their last working day and why. Their records stay. */
+  offboard(id: string, body: { lastWorkingDay: string; reason: OffboardReason; note?: string }) {
+    return httpClient.post<OffboardResult>(`/employee/${encodeURIComponent(id)}/offboard`, body);
+  },
+
+  /** Rehired: active again, with the record of having left kept. */
+  reinstate(id: string, note?: string) {
+    return httpClient.post<{ success: boolean }>(`/employee/${encodeURIComponent(id)}/reinstate`, { note });
   },
 
   async getById(id: string): Promise<EmployeeDetail> {

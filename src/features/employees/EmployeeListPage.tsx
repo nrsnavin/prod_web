@@ -13,8 +13,23 @@ import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useEmployees, useEmployeeMutations } from "./hooks";
-import { DEPARTMENTS, Employee } from "./types";
+import { DEPARTMENTS, Employee, EmployeeStatusFilter } from "./types";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { formatDate } from "@/core/format/date";
 import { EmployeeForm } from "./EmployeeForm";
+
+/** "Left 25 Oct 2026", or "Leaving 31 Oct 2026" while still serving notice. */
+function leftLabel(day?: string): string {
+  if (!day) return "Left";
+  const gone = new Date(day).getTime() < new Date(new Date().toDateString()).getTime();
+  return `${gone ? "Left" : "Leaving"} ${formatDate(day)}`;
+}
+
+const STATUS_OPTIONS: { value: EmployeeStatusFilter; label: string }[] = [
+  { value: "active", label: "Working" },
+  { value: "left", label: "Left" },
+  { value: "all", label: "Everyone" },
+];
 
 const columns: Column<Employee>[] = [
   {
@@ -26,7 +41,14 @@ const columns: Column<Employee>[] = [
           {e.name.charAt(0)}
         </span>
         <div>
-          <p className="font-medium">{e.name}</p>
+          <p className="font-medium">
+            {e.name}
+            {e.status === "offboarded" && (
+              <StatusChip tone="warning" className="ml-2 align-middle">
+                {leftLabel(e.offboarding?.lastWorkingDay)}
+              </StatusChip>
+            )}
+          </p>
           <p className="text-xs text-ink-400">{e.role || "—"}</p>
         </div>
       </div>
@@ -59,12 +81,13 @@ const columns: Column<Employee>[] = [
 
 export function EmployeeListPage() {
   const [department, setDepartment] = useState("all");
+  const [status, setStatus] = useState<EmployeeStatusFilter>("active");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const { data, isLoading, isError, error } = useEmployees(department);
+  const { data, isLoading, isError, error } = useEmployees(department, status);
   const { create } = useEmployeeMutations();
   // Registering a worker is the admin's alone; the server refuses anyone else.
   const { user } = useAuth();
@@ -108,6 +131,11 @@ export function EmployeeListPage() {
           value={department}
           onChange={setDepartment}
         />
+        <FilterChips
+          options={STATUS_OPTIONS}
+          value={status}
+          onChange={(v) => setStatus(v as EmployeeStatusFilter)}
+        />
       </div>
 
       {isError && <ErrorBanner message={(error as Error).message} />}
@@ -119,7 +147,7 @@ export function EmployeeListPage() {
           rowKey={(e) => e._id}
           onRowClick={(e) => navigate(`/employees/${e._id}`)}
           loading={isLoading}
-          emptyTitle="No employees found"
+          emptyTitle={status === "left" ? "Nobody has left" : "No employees found"}
         />
       </Card>
 
