@@ -6,6 +6,7 @@ import { cn } from "@/components/ui/cn";
 import { BeamEntry, Covering } from "./types";
 import { elasticLineName } from "./programmeShared";
 import { formatDate } from "@/core/format/date";
+import { coveringService } from "./api";
 
 function fmtKg(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
@@ -52,6 +53,19 @@ export function CoveringLabels({
   return (
     <PrintModal open={open} onClose={onClose} title="Covering beam labels">
       <div className="space-y-3" data-print-solo={soloId ? "" : undefined}>
+        {entries.length > 0 && (
+          <p className="print:hidden text-xs text-ink-500">
+            Or print them ten to an A4 sheet, cut on the lines:{" "}
+            <a
+              href={coveringService.beamLabelsPdfUrl(covering._id)}
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-brand-600 hover:underline"
+            >
+              Beam labels PDF
+            </a>
+          </p>
+        )}
         {entries.map((entry) => {
           const by = enteredByName(entry.enteredBy);
           return (

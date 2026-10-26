@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle2, ClipboardList, Eye, Play, Plus, Scale } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardList, Eye, Play, Plus, Printer, Scale, ScanText } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -12,6 +12,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useAuth } from "@/core/auth/useAuth";
 import { canAccessPath } from "@/app/navigation";
 import { useCoveringMutations, useWarpingMutations } from "@/features/warping/hooks";
+import { coveringService } from "@/features/warping/api";
 import type { JobDetail } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
@@ -219,11 +220,32 @@ function CoveringBlock({ stage, canOpen, jobClosed }: { stage: Job["covering"]; 
         </p>
       )}
 
-      {can && editable && (
+      {can && (editable || beams.length > 0) && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={() => setAdding(true)}>
-            <Plus className="h-4 w-4" aria-hidden /> Add covering beam
-          </Button>
+          {editable && (
+            <Button size="sm" onClick={() => setAdding(true)}>
+              <Plus className="h-4 w-4" aria-hidden /> Add covering beam
+            </Button>
+          )}
+          {/* The filled programme, photographed: read on the covering page. */}
+          {editable && (
+            <Link
+              to={`/covering/${id}?sheet=read`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-sm font-medium hover:border-ink-400"
+            >
+              <ScanText className="h-4 w-4" aria-hidden /> Read beam sheet
+            </Link>
+          )}
+          {beams.length > 0 && (
+            <a
+              href={coveringService.beamLabelsPdfUrl(id)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 px-3 py-1.5 text-sm font-medium hover:border-ink-400"
+            >
+              <Printer className="h-4 w-4" aria-hidden /> Beam labels
+            </a>
+          )}
         </div>
       )}
 

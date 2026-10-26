@@ -65,6 +65,45 @@ export interface BeamEntry {
   enteredBy?: { _id?: string; name?: string; role?: string } | string | null;
 }
 
+/** How a row read off the covering programme stands against what is recorded. */
+export type BeamSheetRowStatus = "new" | "recorded_same" | "recorded_different" | "duplicate" | "invalid";
+
+export interface BeamSheetRow {
+  sNo: number | null;
+  beamNo: number | null;
+  weight: number | null;
+  remarks: string;
+  printed: boolean;
+  confidence: number;
+  status: BeamSheetRowStatus;
+  recordedWeight: number | null;
+}
+
+export type BeamSheetReadResult =
+  | { success: boolean; available: false; message?: string }
+  | {
+      success: boolean;
+      available: true;
+      reading: {
+        jobOrderNo: number | null;
+        sheetRef: string | null;
+        totalWeight: number | null;
+        problem: string | null;
+        rows: BeamSheetRow[];
+      };
+      warnings: string[];
+      suggestionId: string | null;
+      covering: { _id: string; jobOrderNo: number | null; sheetRef: string; status: ProgrammeStatus };
+    };
+
+export interface BeamEntriesSaved {
+  success: boolean;
+  added: { _id: string; beamNo: number; weight: number; note: string }[];
+  skipped: number[];
+  producedWeight: number;
+  totalBeams: number;
+}
+
 export interface Covering {
   _id: string;
   status: ProgrammeStatus;

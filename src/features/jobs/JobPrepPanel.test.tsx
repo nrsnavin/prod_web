@@ -96,6 +96,9 @@ describe("the covering", () => {
     expect(within(covering()).getByText("In progress")).toBeInTheDocument();
     expect(within(covering()).getByText("2 beams weighed · 24.75 kg")).toBeInTheDocument();
     expect(within(covering()).getByText(/Beam 1: 12\.50 kg · Beam 2: 12\.25 kg/)).toBeInTheDocument();
+    expect(within(covering()).getByRole("link", { name: /read beam sheet/i })).toHaveAttribute("href", "/covering/c1?sheet=read");
+    expect(within(covering()).getByRole("link", { name: /beam labels/i }))
+      .toHaveAttribute("href", expect.stringMatching(/\/covering\/c1\/beam-labels\.pdf$/));
   });
 
   it("adds a covering beam from the job, numbered next", async () => {

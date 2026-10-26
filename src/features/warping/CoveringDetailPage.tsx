@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { ArrowLeft, Play, CheckCircle2, XCircle, Tags, Printer } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -21,6 +21,7 @@ export function CoveringDetailPage() {
   const { data: covering, isLoading, isError, error } = useCovering(id);
   const { start, complete, cancel } = useCoveringMutations();
   const [labelsOpen, setLabelsOpen] = useState(false);
+  const [params] = useSearchParams();
 
   if (isLoading) {
     return (
@@ -138,7 +139,7 @@ export function CoveringDetailPage() {
         </div>
       </Card>
 
-      <CoveringBeamEntries covering={covering} />
+      <CoveringBeamEntries covering={covering} openSheet={params.get("sheet") === "read"} />
 
       <CoveringLabels open={labelsOpen} onClose={() => setLabelsOpen(false)} covering={covering} />
     </>

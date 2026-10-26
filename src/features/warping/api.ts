@@ -1,6 +1,8 @@
 import { httpClient } from "@/core/http/httpClient";
 import { config } from "@/app/config";
 import {
+  BeamEntriesSaved,
+  BeamSheetReadResult,
   Covering,
   PlanContext,
   ProgrammeStatus,
@@ -193,4 +195,22 @@ export const coveringService = {
     httpClient.post("/covering/beam-entry", { id, beamNo, weight, note }),
   deleteBeamEntry: (coveringId: string, entryId: string) =>
     httpClient.delete("/covering/beam-entry", { coveringId, entryId }),
+
+  /** Photos (or a PDF) of the filled covering programme, read for checking — nothing is saved. */
+  readBeamSheet(id: string, files: File[]) {
+    const form = new FormData();
+    for (const f of files) form.append("photos", f);
+    return httpClient.post<BeamSheetReadResult>(`/covering/${encodeURIComponent(id)}/beam-sheet`, form);
+  },
+  /** The checked rows, saved together. */
+  saveBeamEntries(id: string, beams: { beamNo: number; weight: number; note?: string }[], suggestionId?: string | null) {
+    return httpClient.post<BeamEntriesSaved>(`/covering/${encodeURIComponent(id)}/beam-entries`, {
+      beams,
+      suggestionId: suggestionId ?? undefined,
+    });
+  },
+  /** One label a weighed beam, drawn on the server; just the beams listed, or all. */
+  beamLabelsPdfUrl: (id: string, beamNos?: number[]) =>
+    `${config.apiBaseUrl}/covering/${encodeURIComponent(id)}/beam-labels.pdf` +
+    (beamNos?.length ? `?beams=${beamNos.join(",")}` : ""),
 };

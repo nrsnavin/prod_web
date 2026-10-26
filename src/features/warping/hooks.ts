@@ -140,5 +140,17 @@ export function useCoveringMutations() {
       coveringService.deleteBeamEntry(coveringId, entryId),
     onSuccess: invalidate,
   });
-  return { start, complete, cancel, addBeam, deleteBeam };
+  // Reading the sheet saves nothing, so there is nothing to refresh.
+  const readSheet = useMutation({
+    mutationFn: ({ id, files }: { id: string; files: File[] }) => coveringService.readBeamSheet(id, files),
+  });
+  const saveBeams = useMutation({
+    mutationFn: ({ id, beams, suggestionId }: {
+      id: string;
+      beams: { beamNo: number; weight: number; note?: string }[];
+      suggestionId?: string | null;
+    }) => coveringService.saveBeamEntries(id, beams, suggestionId),
+    onSuccess: invalidate,
+  });
+  return { start, complete, cancel, addBeam, deleteBeam, readSheet, saveBeams };
 }

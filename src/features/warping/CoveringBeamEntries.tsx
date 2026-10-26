@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Printer, ScanText, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useCoveringMutations } from "./hooks";
+import { coveringService } from "./api";
+import { CoveringBeamSheet } from "./CoveringBeamSheet";
 import { BeamEntry, Covering } from "./types";
 import { formatDate } from "@/core/format/date";
 
@@ -22,15 +24,17 @@ function fmtKg(n: number): string {
 // recorded entries. Mirrors the Flutter covering beam-entry flow. Editing
 // is locked once the covering is completed/cancelled (backend enforces it
 // too).
-export function CoveringBeamEntries({ covering }: { covering: Covering }) {
+export function CoveringBeamEntries({ covering, openSheet = false }: { covering: Covering; openSheet?: boolean }) {
   const { toast } = useToast();
   const { addBeam, deleteBeam } = useCoveringMutations();
   const [beamNo, setBeamNo] = useState("");
   const [weight, setWeight] = useState("");
   const [note, setNote] = useState("");
+  const editable = covering.status === "open" || covering.status === "in_progress";
+  // The job page links here to read the sheet straight away.
+  const [sheetOpen, setSheetOpen] = useState(openSheet && editable);
 
   const entries = covering.beamEntries ?? [];
-  const editable = covering.status === "open" || covering.status === "in_progress";
   const total = covering.producedWeight ?? entries.reduce((s, e) => s + (e.weight || 0), 0);
 
   const submit = () => {
@@ -70,6 +74,24 @@ export function CoveringBeamEntries({ covering }: { covering: Covering }) {
           {entries.length > 0 && ` · ${entries.length} beam${entries.length > 1 ? "s" : ""}`}
         </span>
       </div>
+
+      {(editable || entries.length > 0) && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {/* The printed programme comes back with the weights written in. */}
+          {editable && (
+            <Button type="button" variant="secondary" size="sm" onClick={() => setSheetOpen(true)}>
+              <ScanText className="h-4 w-4" /> Read beam sheet
+            </Button>
+          )}
+          {entries.length > 0 && (
+            <a href={coveringService.beamLabelsPdfUrl(covering._id)} target="_blank" rel="noreferrer">
+              <Button type="button" variant="secondary" size="sm">
+                <Printer className="h-4 w-4" /> Beam labels PDF
+              </Button>
+            </a>
+          )}
+        </div>
+      )}
 
       {entries.length === 0 ? (
         <p className="mt-2 text-sm text-ink-400">No beams recorded yet.</p>
@@ -136,6 +158,9 @@ export function CoveringBeamEntries({ covering }: { covering: Covering }) {
           </div>
         </div>
       )}
+
+      {/* Mounted only while open: it reads and saves through its own mutations. */}
+      {sheetOpen && <CoveringBeamSheet open onClose={() => setSheetOpen(false)} covering={covering} />}
     </Card>
   );
 }
