@@ -135,8 +135,14 @@ export interface JobDetail {
   producedElastics: ElasticQty[];
   packedElastics: ElasticQty[];
   wastageElastics: ElasticQty[];
-  warping?: { _id?: string; status: string; date?: string | null } | null;
-  covering?: { _id?: string; status: string; date?: string | null } | null;
+  /** hasPlan / noOfBeams: whether the warping has its beam plan yet. */
+  warping?: { _id?: string; status: string; date?: string | null; hasPlan?: boolean; noOfBeams?: number } | null;
+  /** The beams weighed so far, so the job page can show and add them. */
+  covering?: {
+    _id?: string; status: string; date?: string | null;
+    beamEntries?: Array<{ _id: string; beamNo: number; weight: number; note?: string }>;
+    producedWeight?: number;
+  } | null;
   shiftDetails: JobShiftDetail[];
   shiftSummary?: JobShiftSummary;
   wastages: Array<{
