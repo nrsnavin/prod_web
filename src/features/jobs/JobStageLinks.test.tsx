@@ -22,6 +22,8 @@ vi.mock("./hooks", () => ({
   useJobSummary: () => ({ data: [], isLoading: false }),
 }));
 vi.mock("./JobYarnLots", () => ({ JobYarnLots: () => null }));
+// The warping/covering card has its own test (JobPrepPanel.test.tsx).
+vi.mock("./JobPrepPanel", () => ({ JobPrepPanel: () => null }));
 vi.mock("./QcPanel", () => ({ QcPanel: () => null }));
 vi.mock("./MrpShortfallPo", () => ({ MrpShortfallPo: () => null }));
 // Pulls the free-machine list over HTTP; irrelevant to this card.

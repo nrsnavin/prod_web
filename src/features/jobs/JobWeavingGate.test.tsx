@@ -34,6 +34,8 @@ vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast }) }));
 vi.mock("./MachineAssignModal", () => ({ MachineAssignModal: () => null }));
 vi.mock("./QcPanel", () => ({ QcPanel: () => null }));
 vi.mock("./JobYarnLots", () => ({ JobYarnLots: () => null }));
+// The warping/covering card has its own test (JobPrepPanel.test.tsx).
+vi.mock("./JobPrepPanel", () => ({ JobPrepPanel: () => null }));
 vi.mock("@/core/ui/uiStore", () => ({ useTrackRecent: () => {} }));
 
 const makeJob = (over: Partial<JobDetail> = {}): JobDetail =>

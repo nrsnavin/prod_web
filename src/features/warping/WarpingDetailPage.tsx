@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Play, CheckCircle2, XCircle, Plus, Printer, Tags, Trash2, Wand2, Loader2, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -41,6 +41,20 @@ export function WarpingDetailPage() {
   // something the operator can go and do.
   const [yarnBlocker, setYarnBlocker] = useState<string | null>(null);
   const [forceOpen, setForceOpen] = useState(false);
+
+  // Arriving from a job's page: "#plan" goes straight to the plan, and
+  // "?plan=create" opens the form to make one — once, on arrival.
+  const location = useLocation();
+  const arrived = useRef(false);
+  const planKnown = !!detail?.warping && !plan.isLoading;
+  useEffect(() => {
+    if (!planKnown || arrived.current) return;
+    const wantsCreate = new URLSearchParams(location.search).get("plan") === "create";
+    if (location.hash !== "#plan" && !wantsCreate) return;
+    arrived.current = true;
+    if (wantsCreate && detail?.warping.status === "open" && !plan.data?.exists) setPlanOpen(true);
+    document.getElementById("warping-plan")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [planKnown, location.hash, location.search, detail?.warping.status, plan.data?.exists]);
 
   if (isLoading) {
     return (
@@ -243,7 +257,7 @@ export function WarpingDetailPage() {
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className="p-5 scroll-mt-20" id="warping-plan">
           <h3 className="font-semibold">Warping plan</h3>
           {!hasPlan ? (
             <EmptyState compact

@@ -24,6 +24,7 @@ import { QcPanel } from "./QcPanel";
 import { OutsourcingPanel } from "./OutsourcingPanel";
 import { JobYarnLots } from "./JobYarnLots";
 import { JobShiftSummary } from "./JobShiftSummary";
+import { JobPrepPanel } from "./JobPrepPanel";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { useAuth } from "@/core/auth/useAuth";
 import { canAccessPath } from "@/app/navigation";
@@ -340,6 +341,11 @@ export function JobDetailPage() {
           </div>
         )}
       </Card>
+
+      {/* Where the warping and covering stand, with the way to each and
+          the warping's Start / Complete, so preparatory work is moved
+          on from the job itself. */}
+      <JobPrepPanel job={job} />
 
       <Card className="mt-4">
         <h3 className="font-semibold px-5 pt-5">Production summary</h3>
