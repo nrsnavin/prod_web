@@ -289,7 +289,7 @@ export function ShiftPlanDetailPage() {
           {plan.floor ? (
             <>
               <p className="font-semibold">
-                Every running loom entered{plan.floor.completedBy ? ` by ${plan.floor.completedBy}` : ""} at{" "}
+                Created on the floor{plan.floor.completedBy ? ` by ${plan.floor.completedBy}` : ""} at{" "}
                 {new Date(plan.floor.completedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                 {plan.status === "draft" ? " — ready to confirm." : "."}
               </p>
@@ -301,7 +301,7 @@ export function ShiftPlanDetailPage() {
             </>
           ) : (
             <p className="text-sm text-ink-600">
-              Being entered on the floor, loom by loom. It is complete once every running loom is in; the free looms are listed here then.
+              A draft being entered on the floor, loom by loom. The supervisor presses Create shift plan when every machine's production is in; the free looms are listed here then.
             </p>
           )}
         </Card>

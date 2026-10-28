@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import { config } from "@/app/config";
 import { toApiError } from "@/core/http/httpClient";
-import type { EntryInput, EntrySaved, FloorMachine, FloorSession, FloorState, Shift } from "./types";
+import type { CompleteResult, EntryInput, EntrySaved, FloorMachine, FloorSession, FloorState, Shift } from "./types";
 import type { TimerReading } from "@/features/shifts/timerReading";
 
 // ══════════════════════════════════════════════════════════════════
@@ -103,7 +103,13 @@ export const floorService = {
 
   async enter(input: EntryInput): Promise<EntrySaved> {
     const { data } = await http().post<EntrySaved>("/floor/entry", input);
-    return { machine: data.machine, plan: data.plan ?? null, shiftComplete: data.shiftComplete ?? null };
+    return { machine: data.machine, plan: data.plan ?? null };
+  },
+
+  /** Create shift plan: the looms noted become the plan. `force` with looms still to enter. */
+  async complete(force = false): Promise<CompleteResult> {
+    const { data } = await http().post<CompleteResult>("/floor/complete", force ? { force: true } : {});
+    return data;
   },
 
   // ── The timer photo, for TimerPhotoReader ───────────────────────

@@ -45,7 +45,7 @@ describe("a plan made from the floor", () => {
     open();
     expect(screen.getByText("Draft — not confirmed yet")).toBeInTheDocument();
     expect(screen.getByText("Made from the floor")).toBeInTheDocument();
-    expect(screen.getByText(/Being entered on the floor, loom by loom/)).toBeInTheDocument();
+    expect(screen.getByText(/A draft being entered on the floor, loom by loom/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /confirm plan/i }));
     expect(confirmMutate).toHaveBeenCalledWith("p1", expect.anything());
@@ -55,7 +55,7 @@ describe("a plan made from the floor", () => {
   it("once every loom is entered, names who finished it and the looms that were free", () => {
     plan = { ...base, floor: { completedAt: "2026-10-21T14:10:00.000Z", completedBy: "Kumar", freeMachines: [{ id: "m2", ID: "L2", why: "No job on this loom." }, { id: "m5", ID: "L5", why: "No job on this loom." }] } };
     open();
-    expect(screen.getByText(/Every running loom entered by Kumar at .* — ready to confirm\./)).toBeInTheDocument();
+    expect(screen.getByText(/Created on the floor by Kumar at .* — ready to confirm\./)).toBeInTheDocument();
     expect(screen.getByText("Free that shift: L2, L5.")).toBeInTheDocument();
   });
 

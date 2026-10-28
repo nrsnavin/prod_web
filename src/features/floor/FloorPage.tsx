@@ -18,9 +18,10 @@ import type { FloorMachine, FloorSession, FloorState } from "./types";
 //
 //  A supervisor on the floor tablet opens one shift with its PIN, scans
 //  each loom's label, says who ran it and enters what it made. Three
-//  steps, one screen, built for a phone held in one hand. Nobody plans
-//  the shift first: choosing the operator puts the loom on the shift,
-//  and the first loom entered makes the plan when nobody did.
+//  steps, one screen, built for a phone held in one hand. When nobody
+//  planned the shift, choosing the operator notes the loom on a draft
+//  the office can see, and Create shift plan — pressed when every
+//  machine's production is in — makes the draft the plan.
 //
 //    open  →  scan  ⇄  entry
 //
@@ -152,6 +153,12 @@ export function FloorPage() {
             refreshing={refreshing}
             onRefresh={() => void refresh()}
             onAuthLost={authLost}
+            onCompleted={(r) => {
+              const free = r.freeMachines.length;
+              toast(`Shift plan created — the office confirms it. ${free ? `${free} loom${free === 1 ? "" : "s"} free: ${r.freeMachines.map((f) => f.ID).join(", ")}.` : "No loom was free."}`, "success");
+              setState((s) => s ? { ...s, plan: r.plan } : s);
+              void refresh();
+            }}
             onMachine={(m) => {
               setPhase({ kind: "entry", machine: m });
               // A loom tapped in the list comes from the state as last
@@ -169,15 +176,11 @@ export function FloorPage() {
             onBack={() => setPhase({ kind: "scan" })}
             onAuthLost={authLost}
             onPlanMade={() => {
-              toast("Shift plan made from this loom — the office can confirm it", "info");
+              toast("Draft started with this loom — press Create shift plan when every machine is entered", "info");
               void refresh();
             }}
-            onSaved={({ machine: m, plan, shiftComplete }) => {
+            onSaved={({ machine: m, plan }) => {
               toast(`${m.ID} saved — ${m.detail?.submitted?.production ?? 0} m/head`, "success");
-              if (shiftComplete) {
-                const free = shiftComplete.freeMachines.length;
-                toast(`Every loom entered — plan drafted for the office. ${free ? `${free} loom${free === 1 ? "" : "s"} free: ${shiftComplete.freeMachines.map((f) => f.ID).join(", ")}.` : "No loom was free."}`, "info");
-              }
               setState((s) => s ? { ...s, plan: plan ?? s.plan, machines: s.machines.map((x) => (x.id === m.id ? m : x)) } : s);
               setPhase({ kind: "scan" });
               void refresh();

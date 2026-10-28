@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
-import { ClipboardList, Keyboard, RefreshCw, Search } from "lucide-react";
+import { ClipboardCheck, ClipboardList, Keyboard, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ApiError } from "@/core/http/httpClient";
 import { floorService } from "./floorClient";
 import { listOrder, readCode } from "./floorRules";
 import { LoomRow } from "./LoomCard";
 import { QrScanner } from "./QrScanner";
-import type { FloorMachine, FloorState } from "./types";
+import type { CompleteResult, FloorMachine, FloorState } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
 //  STEP 3 — SCAN THE LOOM
@@ -14,20 +15,48 @@ import type { FloorMachine, FloorState } from "./types";
 //  The camera reads the label; the loom's ID can be typed; or the loom
 //  is tapped in the list, which also shows how far the shift has got.
 //  All three end in the same place: the entry screen for that loom.
-//  A shift nobody planned is scanned the same way: the plan is made
-//  from the first loom entered.
+//  A shift nobody planned is scanned the same way: the looms entered
+//  are noted as a draft the office can see, and Create shift plan —
+//  pressed when every machine's production is in — makes them the plan.
 // ══════════════════════════════════════════════════════════════════
 
-export function ScanStep({ state, onMachine, onRefresh, onAuthLost, refreshing }: {
+export function ScanStep({ state, onMachine, onRefresh, onAuthLost, onCompleted, refreshing }: {
   state: FloorState;
   onMachine: (m: FloorMachine) => void;
   onRefresh: () => void;
   onAuthLost: () => void;
+  /** Create shift plan went through. */
+  onCompleted: (r: CompleteResult) => void;
   refreshing?: boolean;
 }) {
   const [typed, setTyped] = useState("");
   const [looking, setLooking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  // Looms still to enter, when the server held the plan back for them.
+  const [stillToEnter, setStillToEnter] = useState<{ id: string; ID: string }[] | null>(null);
+
+  // A draft from the floor, not yet made the plan.
+  const draft = !!state.plan?.fromFloor && !state.plan.floor;
+
+  const create = async (force: boolean) => {
+    setError(null);
+    setCreating(true);
+    try {
+      const r = await floorService.complete(force);
+      setStillToEnter(null);
+      onCompleted(r);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) { onAuthLost(); return; }
+      if (err instanceof ApiError && err.code === "FLOOR_LOOMS_TO_ENTER") {
+        setStillToEnter((err.data?.details as { looms?: { id: string; ID: string }[] } | undefined)?.looms ?? []);
+        return;
+      }
+      setError(err instanceof ApiError ? err.message : "Could not create the shift plan — try again.");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const sorted = useMemo(() => [...state.machines].sort(listOrder), [state.machines]);
   const toEnter = state.counts.toEnter;
@@ -52,17 +81,21 @@ export function ScanStep({ state, onMachine, onRefresh, onAuthLost, refreshing }
 
   return (
     <div className="space-y-4">
-      {!state.plan && (
+      {(!state.plan || draft) && (
         <p className="flex items-start gap-2 rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info" role="status">
           <ClipboardList className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          <span>No plan for this shift yet. Scan a loom and choose who ran it — the plan is made from the looms you enter.</span>
+          <span>
+            {state.plan
+              ? "No plan was made for this shift: what you enter is noted as a draft the office can see. Press Create shift plan when every machine's production is in."
+              : "No plan for this shift yet. Scan a loom and choose who ran it — what you enter is noted as a draft, and Create shift plan makes it the plan."}
+          </span>
         </p>
       )}
       {state.plan?.floor && (
         <p className="flex items-start gap-2 rounded-lg bg-status-successBg px-3 py-2 text-sm text-status-success" role="status">
-          <ClipboardList className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <ClipboardCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>
-            Every running loom is entered — the shift plan is drafted for the office to confirm.
+            Shift plan created — the office confirms it.
             {state.plan.floor.freeMachines.length > 0
               ? ` ${state.plan.floor.freeMachines.length} loom${state.plan.floor.freeMachines.length === 1 ? " was" : "s were"} free: ${state.plan.floor.freeMachines.map((m) => m.ID).join(", ")}.`
               : " No loom was free."}
@@ -81,6 +114,27 @@ export function ScanStep({ state, onMachine, onRefresh, onAuthLost, refreshing }
         </div>
         {toEnter === 0 && total > 0 && <p className="mt-2 text-xs text-status-success">Every loom on this shift is entered.</p>}
       </div>
+
+      {draft && (
+        <div className="rounded-xl border border-ink-200 bg-surface p-3">
+          <Button size="lg" className="w-full" onClick={() => void create(false)} loading={creating} disabled={done === 0}>
+            <ClipboardCheck className="h-4 w-4" aria-hidden /> Create shift plan
+          </Button>
+          <p className="mt-2 text-center text-xs text-ink-500">
+            Press when every machine's production is entered. The looms noted become the shift plan, for the office to confirm.
+          </p>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={stillToEnter !== null}
+        title="Create the shift plan now?"
+        message={`${stillToEnter?.length ?? 0} loom${(stillToEnter?.length ?? 0) === 1 ? " is" : "s are"} still to enter: ${(stillToEnter ?? []).map((m) => m.ID).join(", ")}. They stay on the shift to enter later.`}
+        confirmLabel="Create anyway"
+        loading={creating}
+        onCancel={() => setStillToEnter(null)}
+        onConfirm={() => void create(true)}
+      />
 
       <QrScanner onCode={(code) => void find(code)} paused={looking} />
 

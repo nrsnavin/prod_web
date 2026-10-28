@@ -64,7 +64,7 @@ export interface FreeMachine {
   why: string;
 }
 
-/** Every running loom entered on a plan made from the floor: the draft is complete. */
+/** The supervisor pressed Create shift plan: the looms noted became the plan. */
 export interface FloorCompletion {
   completedAt: string;
   completedBy: string;
@@ -92,11 +92,19 @@ export interface FloorState {
   counts: { total: number; toEnter: number; entered: number } & Partial<Record<EntryState, number>>;
 }
 
-/** What saving an entry gives back: the loom, the plan, and the completion when this was the last loom. */
+/** What saving an entry gives back: the loom, and the plan as it now stands. */
 export interface EntrySaved {
   machine: FloorMachine;
   plan: FloorPlan | null;
-  shiftComplete: (FloorCompletion & { entered: number }) | null;
+}
+
+/** What Create shift plan gives back. */
+export interface CompleteResult {
+  plan: FloorPlan;
+  entered: number;
+  /** Looms created without, when the supervisor said to go ahead anyway. */
+  toEnter: string[];
+  freeMachines: FreeMachine[];
 }
 
 export interface EntryInput {

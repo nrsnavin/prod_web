@@ -20,10 +20,10 @@ import type { EntrySaved, FloorMachine, FloorState } from "./types";
 //  corrected here.
 //
 //  A loom not on the shift yet goes on it the moment its operator is
-//  chosen (the first one makes the plan, when nobody did), so the timer
-//  photo taken next is kept with that entry for the office to see. On a
-//  plan the office made, the operator it put on the loom is shown and
-//  cannot be changed here.
+//  chosen (on a shift nobody planned, that starts the floor's draft), so
+//  the timer photo taken next is kept with that entry for the office to
+//  see. On a plan the office made, the operator it put on the loom is
+//  shown and cannot be changed here.
 // ══════════════════════════════════════════════════════════════════
 
 const timerService = {
