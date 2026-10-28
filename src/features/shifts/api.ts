@@ -58,6 +58,8 @@ export const shiftService = {
   },
 
   createPlan: (body: ShiftPlanFormValues) => httpClient.post("/shift/create-shift-plan", body),
+  /** A draft (the office's, or one made from the floor) becomes the shift's plan. */
+  confirmPlan: (id: string) => httpClient.post<{ success: boolean; status: string }>("/shift/confirm-shift-plan", { id }),
   deletePlan: (id: string) => httpClient.delete("/shift/deletePlan", { id }),
 
   async pendingVerification(): Promise<{ count: number; shifts: PendingShift[] }> {

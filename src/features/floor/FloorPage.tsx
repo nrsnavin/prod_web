@@ -172,9 +172,13 @@ export function FloorPage() {
               toast("Shift plan made from this loom — the office can confirm it", "info");
               void refresh();
             }}
-            onSaved={(m) => {
+            onSaved={({ machine: m, plan, shiftComplete }) => {
               toast(`${m.ID} saved — ${m.detail?.submitted?.production ?? 0} m/head`, "success");
-              setState((s) => s ? { ...s, machines: s.machines.map((x) => (x.id === m.id ? m : x)) } : s);
+              if (shiftComplete) {
+                const free = shiftComplete.freeMachines.length;
+                toast(`Every loom entered — plan drafted for the office. ${free ? `${free} loom${free === 1 ? "" : "s"} free: ${shiftComplete.freeMachines.map((f) => f.ID).join(", ")}.` : "No loom was free."}`, "info");
+              }
+              setState((s) => s ? { ...s, plan: plan ?? s.plan, machines: s.machines.map((x) => (x.id === m.id ? m : x)) } : s);
               setPhase({ kind: "scan" });
               void refresh();
             }}

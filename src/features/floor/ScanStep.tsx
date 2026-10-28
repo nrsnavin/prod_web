@@ -58,6 +58,17 @@ export function ScanStep({ state, onMachine, onRefresh, onAuthLost, refreshing }
           <span>No plan for this shift yet. Scan a loom and choose who ran it — the plan is made from the looms you enter.</span>
         </p>
       )}
+      {state.plan?.floor && (
+        <p className="flex items-start gap-2 rounded-lg bg-status-successBg px-3 py-2 text-sm text-status-success" role="status">
+          <ClipboardList className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>
+            Every running loom is entered — the shift plan is drafted for the office to confirm.
+            {state.plan.floor.freeMachines.length > 0
+              ? ` ${state.plan.floor.freeMachines.length} loom${state.plan.floor.freeMachines.length === 1 ? " was" : "s were"} free: ${state.plan.floor.freeMachines.map((m) => m.ID).join(", ")}.`
+              : " No loom was free."}
+          </span>
+        </p>
+      )}
       <div className="rounded-xl border border-ink-200 bg-surface p-3">
         <div className="flex items-center justify-between text-sm">
           <span className="font-semibold">{done} of {total} entered</span>

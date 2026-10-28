@@ -9,7 +9,7 @@ import { DEFAULT_CM_PER_MIN, perHeadText } from "@/features/shifts/productionRat
 import { floorService } from "./floorClient";
 import { canEnter, tidyRunTime } from "./floorRules";
 import { EntryChip, HeadMap } from "./LoomCard";
-import type { FloorMachine, FloorState } from "./types";
+import type { EntrySaved, FloorMachine, FloorState } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
 //  STEP 4 — THE LOOM'S PRODUCTION
@@ -21,7 +21,9 @@ import type { FloorMachine, FloorState } from "./types";
 //
 //  A loom not on the shift yet goes on it the moment its operator is
 //  chosen (the first one makes the plan, when nobody did), so the timer
-//  photo taken next is kept with that entry for the office to see.
+//  photo taken next is kept with that entry for the office to see. On a
+//  plan the office made, the operator it put on the loom is shown and
+//  cannot be changed here.
 // ══════════════════════════════════════════════════════════════════
 
 const timerService = {
@@ -35,7 +37,7 @@ const when = (iso: string | null) =>
 export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanMade }: {
   machine: FloorMachine;
   state: FloorState;
-  onSaved: (m: FloorMachine) => void;
+  onSaved: (saved: EntrySaved) => void;
   onBack: () => void;
   onAuthLost: () => void;
   /** The shift had no plan; this loom just made it. */
@@ -89,6 +91,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
   const metres = Number(production);
   const total = Number.isFinite(metres) && production !== "" ? metres * machine.headsRunning : null;
   const enterable = canEnter(machine) && !state.plan?.finalized;
+  const locked = !!machine.detail?.operatorLocked;
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +102,9 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
     setBusy(true);
     try {
       const saved = await floorService.enter({
-        detailId, production: metres, timer: runTime || null, feedback: feedback.trim(), operator: operator || null,
+        detailId, production: metres, timer: runTime || null, feedback: feedback.trim(),
+        // The office's operator is not the floor's to send back changed.
+        operator: locked ? null : operator || null,
       });
       onSaved(saved);
     } catch (err) {
@@ -157,14 +162,22 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
         </div>
       ) : (
         <form onSubmit={save} noValidate className="space-y-4">
-          <Select
-            label={detailId ? "Operator" : "Operator — puts this loom on the shift"}
-            value={operator}
-            onChange={(e) => void chooseOperator(e.target.value)}
-            options={options}
-            placeholder="Choose…"
-            disabled={placing}
-          />
+          {locked ? (
+            <div className="rounded-lg bg-surface-muted px-3 py-2 text-sm" aria-label="Operator">
+              <span className="text-ink-500">Operator </span>
+              <span className="font-semibold">{machine.detail?.operator?.name ?? "—"}</span>
+              <span className="block text-xs text-ink-400">Put on this loom by the office — ask them to change it.</span>
+            </div>
+          ) : (
+            <Select
+              label={detailId ? "Operator" : "Operator — puts this loom on the shift"}
+              value={operator}
+              onChange={(e) => void chooseOperator(e.target.value)}
+              options={options}
+              placeholder="Choose…"
+              disabled={placing}
+            />
+          )}
 
           <div className="space-y-2">
             <Input

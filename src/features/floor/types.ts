@@ -30,6 +30,8 @@ export interface FloorDetail {
   id: string;
   status: string;
   operator: { id: string; name: string | null } | null;
+  /** The office put this operator on the loom; the floor cannot change it. */
+  operatorLocked?: boolean;
   submitted: Submitted | null;
 }
 
@@ -55,15 +57,46 @@ export interface FloorOperator {
   department: string;
 }
 
+/** A loom that stood free the shift the floor finished entering. */
+export interface FreeMachine {
+  id: string;
+  ID: string;
+  why: string;
+}
+
+/** Every running loom entered on a plan made from the floor: the draft is complete. */
+export interface FloorCompletion {
+  completedAt: string;
+  completedBy: string;
+  freeMachines: FreeMachine[];
+}
+
+export interface FloorPlan {
+  id: string;
+  status: string;
+  finalized: boolean;
+  description: string;
+  /** Made from the floor (operators are the floor's to change), not in the office. */
+  fromFloor: boolean;
+  floor: FloorCompletion | null;
+}
+
 export interface FloorState {
   dateKey: string;
   shift: Shift;
   label: string;
   isCurrent: boolean;
-  plan: { id: string; status: string; finalized: boolean; description: string } | null;
+  plan: FloorPlan | null;
   machines: FloorMachine[];
   operators: FloorOperator[];
   counts: { total: number; toEnter: number; entered: number } & Partial<Record<EntryState, number>>;
+}
+
+/** What saving an entry gives back: the loom, the plan, and the completion when this was the last loom. */
+export interface EntrySaved {
+  machine: FloorMachine;
+  plan: FloorPlan | null;
+  shiftComplete: (FloorCompletion & { entered: number }) | null;
 }
 
 export interface EntryInput {

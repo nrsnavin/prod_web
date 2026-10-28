@@ -52,6 +52,13 @@ describe("ShiftPlansPage", () => {
     expect(useShiftDay).toHaveBeenCalledWith(undefined);
   });
 
+  it("marks a draft — one made from the floor, say — as waiting to be confirmed", () => {
+    days["today"] = { ...summary(820), dayShift: { ...summary(820).dayShift, status: "draft", source: "floor" } };
+    renderPage();
+    expect(screen.getByText("draft — confirm")).toBeInTheDocument();
+    expect(screen.queryByText("planned")).not.toBeInTheDocument();
+  });
+
   it("hides the date picker until the By date tab is chosen", async () => {
     renderPage();
     expect(screen.queryByLabelText("Date")).not.toBeInTheDocument();

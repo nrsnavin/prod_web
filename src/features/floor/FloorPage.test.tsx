@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApiError } from "@/core/http/httpClient";
 import { FloorPage } from "./FloorPage";
-import type { FloorMachine, FloorState } from "./types";
+import type { EntrySaved, FloorMachine, FloorPlan, FloorState } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
 //  The floor screen, end to end against a stubbed server: open with
@@ -51,7 +51,9 @@ const stateOf = (machines: FloorMachine[], plan: FloorState["plan"] = null, extr
   };
 };
 const session = { dateKey: "2026-10-21", shift: "DAY" as const, name: "Kumar" };
-const planned = { id: "p1", status: "confirmed", finalized: false, description: "" };
+const planned: FloorPlan = { id: "p1", status: "confirmed", finalized: false, description: "", fromFloor: false, floor: null };
+const fromFloor: FloorPlan = { ...planned, status: "draft", fromFloor: true };
+const saved = (machine: FloorMachine, plan: FloorPlan = planned, shiftComplete: EntrySaved["shiftComplete"] = null): EntrySaved => ({ machine, plan, shiftComplete });
 
 beforeEach(() => {
   for (const f of Object.values(svc)) f.mockReset();
@@ -126,7 +128,7 @@ describe("the plan, made from the floor", () => {
     await userEvent.upload(screen.getByTestId("timer-photo-input"), file);
     await waitFor(() => expect(svc.readTimerPhoto).toHaveBeenCalledWith(expect.anything(), "d1"));
 
-    svc.enter.mockResolvedValue({ ...unplanned, entry: "entered", detail: { id: "d1", status: "pending_verification", operator: { id: "o1", name: "Ravi" }, submitted: { production: 500, timer: null, feedback: "", at: null, byName: "Kumar" } } });
+    svc.enter.mockResolvedValue(saved({ ...unplanned, entry: "entered", detail: { id: "d1", status: "pending_verification", operator: { id: "o1", name: "Ravi" }, submitted: { production: 500, timer: null, feedback: "", at: null, byName: "Kumar" } } }, fromFloor));
     await userEvent.type(screen.getByLabelText(/production per head/i), "500");
     await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
     await waitFor(() => expect(svc.enter).toHaveBeenCalledWith(expect.objectContaining({ detailId: "d1", production: 500, operator: "o1" })));
@@ -161,7 +163,7 @@ describe("scanning and entering", () => {
     await start();
     svc.machine.mockResolvedValue(ready);
     const entered = { ...ready, entry: "entered" as const, detail: { ...ready.detail!, status: "pending_verification", submitted: { production: 820, timer: "7:30:00", feedback: "", at: "2026-10-21T10:00:00Z", byName: "Kumar" } } };
-    svc.enter.mockResolvedValue(entered);
+    svc.enter.mockResolvedValue(saved(entered));
 
     await userEvent.type(screen.getByLabelText(/type the machine ID/i), "l1");
     await userEvent.click(screen.getByRole("button", { name: /find/i }));
@@ -233,7 +235,7 @@ describe("scanning and entering", () => {
     const unplanned = loom({ ID: "L7" });
     await start([ready, unplanned]);
     svc.setOperator.mockResolvedValue({ detailId: "d7", added: true, planCreated: false });
-    svc.enter.mockResolvedValue({ ...unplanned, entry: "entered" });
+    svc.enter.mockResolvedValue(saved({ ...unplanned, entry: "entered" }));
 
     await userEvent.click(screen.getByRole("button", { name: /L7/ }));
     expect(await screen.findByLabelText(/operator — puts this loom on the shift/i)).toBeInTheDocument();
@@ -276,6 +278,40 @@ describe("scanning and entering", () => {
       await userEvent.click(screen.getByRole("button", { name: /scan the next loom/i }));
       await screen.findByText(/entered$/);
     }
+  });
+
+  it("shows the office's operator on a loom it planned, and does not let the floor change it", async () => {
+    const office = loom({ ID: "L1", entry: "ready", detail: { id: "d1", status: "open", operator: { id: "o1", name: "Ravi" }, operatorLocked: true, submitted: null } });
+    await start([office]);
+    svc.enter.mockResolvedValue(saved({ ...office, entry: "entered" }));
+    await userEvent.click(screen.getByRole("button", { name: /L1/ }));
+    const operator = await screen.findByLabelText("Operator");
+    expect(operator).toHaveTextContent("Ravi");
+    expect(operator).toHaveTextContent(/by the office/);
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/production per head/i), "400");
+    await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
+    await waitFor(() => expect(svc.enter).toHaveBeenCalledWith(expect.objectContaining({ detailId: "d1", production: 400, operator: null })));
+    expect(svc.setOperator).not.toHaveBeenCalled();
+  });
+
+  it("says when the last running loom is entered: the plan is drafted and the free looms are named", async () => {
+    const mine = loom({ ID: "L1", entry: "ready", detail: { id: "d1", status: "open", operator: { id: "o1", name: "Ravi" }, operatorLocked: false, submitted: null } });
+    await start([mine, loom({ ID: "L2", status: "free", job: null, entry: "free", why: "No job on this loom." })], fromFloor);
+    const done = { ...mine, entry: "entered" as const };
+    const completion = { completedAt: "2026-10-21T14:00:00Z", completedBy: "Kumar", freeMachines: [{ id: "id-L2", ID: "L2", why: "No job on this loom." }] };
+    svc.enter.mockResolvedValue(saved(done, { ...fromFloor, floor: completion }, { ...completion, entered: 1 }));
+
+    await userEvent.click(screen.getByRole("button", { name: /^L1/ }));
+    await userEvent.type(await screen.findByLabelText(/production per head/i), "600");
+    // The shift as the server has it after the save, for the refresh.
+    svc.shift.mockResolvedValue(stateOf([done, loom({ ID: "L2", status: "free", job: null, entry: "free" })], { ...fromFloor, floor: completion }));
+    await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
+
+    expect(await screen.findByText(/Every running loom is entered — the shift plan is drafted for the office to confirm/)).toBeInTheDocument();
+    expect(screen.getByText(/1 loom was free: L2\./)).toBeInTheDocument();
+    expect(toast).toHaveBeenCalledWith("Every loom entered — plan drafted for the office. 1 loom free: L2.", "info");
   });
 
   it("locks everything when the shift is finalised", async () => {

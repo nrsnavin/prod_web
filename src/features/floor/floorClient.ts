@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import { config } from "@/app/config";
 import { toApiError } from "@/core/http/httpClient";
-import type { EntryInput, FloorMachine, FloorSession, FloorState, Shift } from "./types";
+import type { EntryInput, EntrySaved, FloorMachine, FloorSession, FloorState, Shift } from "./types";
 import type { TimerReading } from "@/features/shifts/timerReading";
 
 // ══════════════════════════════════════════════════════════════════
@@ -101,9 +101,9 @@ export const floorService = {
     return data;
   },
 
-  async enter(input: EntryInput): Promise<FloorMachine> {
-    const { data } = await http().post<{ machine: FloorMachine }>("/floor/entry", input);
-    return data.machine;
+  async enter(input: EntryInput): Promise<EntrySaved> {
+    const { data } = await http().post<EntrySaved>("/floor/entry", input);
+    return { machine: data.machine, plan: data.plan ?? null, shiftComplete: data.shiftComplete ?? null };
   },
 
   // ── The timer photo, for TimerPhotoReader ───────────────────────

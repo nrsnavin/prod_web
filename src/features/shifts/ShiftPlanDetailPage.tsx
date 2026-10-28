@@ -2,7 +2,7 @@ import { TimerPhotoReader } from "./TimerPhotoReader";
 import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Trash2, Sun, Moon, Download, UploadCloud, Gauge } from "lucide-react";
+import { ArrowLeft, Trash2, Sun, Moon, Download, UploadCloud, Gauge, CheckCircle2, ScanLine } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -168,7 +168,7 @@ export function ShiftPlanDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: plan, isLoading, isError, error, refetch } = useShiftPlan(id);
-  const { deletePlan } = useShiftMutations();
+  const { deletePlan, confirmPlan } = useShiftMutations();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -244,6 +244,19 @@ export function ShiftPlanDetailPage() {
         subtitle={plan.description}
         actions={
           <>
+            {plan.status === "draft" && (
+              <Button
+                loading={confirmPlan.isPending}
+                onClick={() =>
+                  confirmPlan.mutate(plan._id, {
+                    onSuccess: () => toast("Shift plan confirmed", "success"),
+                    onError: (e) => toast(e instanceof ApiError ? e.message : "Could not confirm the plan", "error"),
+                  })
+                }
+              >
+                <CheckCircle2 className="h-4 w-4" /> Confirm plan
+              </Button>
+            )}
             <Button variant="secondary" onClick={downloadSheet} loading={downloading}>
               <Download className="h-4 w-4" /> Download sheet
             </Button>
@@ -256,6 +269,43 @@ export function ShiftPlanDetailPage() {
           </>
         }
       />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {plan.status && (
+          <StatusChip tone={plan.status === "confirmed" ? "success" : "warning"}>
+            {plan.status === "confirmed" ? "Confirmed" : "Draft — not confirmed yet"}
+          </StatusChip>
+        )}
+        {plan.finalized && <StatusChip tone="info">Finalised</StatusChip>}
+        {plan.source === "floor" && (
+          <StatusChip tone="neutral">
+            <ScanLine className="mr-1 inline h-3.5 w-3.5" aria-hidden /> Made from the floor
+          </StatusChip>
+        )}
+      </div>
+
+      {plan.source === "floor" && (
+        <Card className="mb-4 p-5" aria-label="From the floor">
+          {plan.floor ? (
+            <>
+              <p className="font-semibold">
+                Every running loom entered{plan.floor.completedBy ? ` by ${plan.floor.completedBy}` : ""} at{" "}
+                {new Date(plan.floor.completedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                {plan.status === "draft" ? " — ready to confirm." : "."}
+              </p>
+              <p className="mt-1 text-sm text-ink-600">
+                {plan.floor.freeMachines.length
+                  ? `Free that shift: ${plan.floor.freeMachines.map((m) => m.ID).join(", ")}.`
+                  : "No loom was free that shift."}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-ink-600">
+              Being entered on the floor, loom by loom. It is complete once every running loom is in; the free looms are listed here then.
+            </p>
+          )}
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="p-5">

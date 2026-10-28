@@ -70,6 +70,10 @@ export function useShiftMutations() {
     mutationFn: (id: string) => shiftService.deletePlan(id),
     onSuccess: invalidate,
   });
+  const confirmPlan = useMutation({
+    mutationFn: (id: string) => shiftService.confirmPlan(id),
+    onSuccess: invalidate,
+  });
   const verify = useMutation({
     mutationFn: shiftService.verifyProduction,
 
@@ -103,7 +107,7 @@ export function useShiftMutations() {
 
     onSettled: invalidate,
   });
-  return { createPlan, deletePlan, verify };
+  return { createPlan, deletePlan, confirmPlan, verify };
 }
 
 export function useProductionRange(startDate: string, endDate: string, enabled = true) {

@@ -17,11 +17,24 @@ export interface ShiftPlanMachineRow {
   id: string;
 }
 
+/** A plan made from the floor, once every running loom was entered there. */
+export interface PlanFloorCompletion {
+  completedAt: string;
+  completedBy: string;
+  freeMachines: { id: string; ID: string; why: string }[];
+}
+
 export interface ShiftPlanDetail {
   _id: string;
   date: string;
   shift: "DAY" | "NIGHT";
   description?: string;
+  /** draft until the admin confirms it. */
+  status?: "draft" | "confirmed";
+  finalized?: boolean;
+  /** office: made in the app; floor: made on the floor tablet from the looms entered. */
+  source?: "office" | "floor";
+  floor?: PlanFloorCompletion | null;
   totalProduction: number;
   operatorCount: number;
   machines: ShiftPlanMachineRow[];

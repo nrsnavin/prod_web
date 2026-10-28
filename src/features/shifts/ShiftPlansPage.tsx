@@ -42,7 +42,11 @@ function ShiftCard({
         <h3 className="font-semibold">{label}</h3>
         <span className="ml-auto">
           {created ? (
-            <StatusChip tone="success">planned</StatusChip>
+            summary!.status === "draft" ? (
+              <StatusChip tone="warning">draft — confirm</StatusChip>
+            ) : (
+              <StatusChip tone="success">planned</StatusChip>
+            )
           ) : (
             <StatusChip tone="neutral">not created</StatusChip>
           )}
