@@ -267,7 +267,7 @@ describe("scanning and entering", () => {
   it("explains a loom that cannot be entered — verified, loading, free, locked — and offers the next one", async () => {
     const cases: [FloorMachine, RegExp][] = [
       [loom({ ID: "L1", entry: "verified", why: "Verified already.", detail: { id: "d1", status: "closed", operator: null, submitted: { production: 800, timer: "7:00:00", feedback: "", at: null, byName: "" } } }), /Verified already/],
-      [loom({ ID: "L2", entry: "loading", loading: true, why: "The loom is being loaded for its job — nothing to enter." }), /being loaded/],
+      [loom({ ID: "L2", entry: "loading", loading: true, why: "Being loaded for its job — no production to enter." }), /being loaded/i],
       [loom({ ID: "L3", entry: "free", status: "free", job: null, why: "No job on this loom." }), /No job on this loom/],
       [loom({ ID: "L4", entry: "locked", why: "Its job is finishing; production is closed.", job: { id: "j", no: "J-3", status: "finishing" } }), /production is closed/],
     ];
@@ -310,15 +310,30 @@ describe("scanning and entering", () => {
     expect(dialog).toHaveTextContent("1 loom is still to enter: L4.");
     expect(svc.complete).toHaveBeenLastCalledWith(false);
 
-    const completion = { completedAt: "2026-10-21T14:00:00Z", completedBy: "Kumar", freeMachines: [{ id: "id-L2", ID: "L2", why: "No job on this loom." }] };
-    svc.complete.mockResolvedValueOnce({ plan: { ...fromFloor, floor: completion }, entered: 1, toEnter: ["L4"], freeMachines: completion.freeMachines });
+    const completion = { completedAt: "2026-10-21T14:00:00Z", completedBy: "Kumar", freeMachines: [{ id: "id-L2", ID: "L2", why: "No job on this loom." }], loadingMachines: [{ id: "id-L3", ID: "L3", operatorName: "Sita" }] };
+    svc.complete.mockResolvedValueOnce({ plan: { ...fromFloor, floor: completion }, entered: 1, toEnter: ["L4"], freeMachines: completion.freeMachines, loadingMachines: completion.loadingMachines });
     svc.shift.mockResolvedValue(stateOf([done, pending], { ...fromFloor, floor: completion }));
     await userEvent.click(within(dialog).getByRole("button", { name: /create anyway/i }));
     expect(svc.complete).toHaveBeenLastCalledWith(true);
 
-    expect(await screen.findByText(/Shift plan created — the office confirms it\. 1 loom was free: L2\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Shift plan created — the office confirms it\. 1 loom was free: L2\. Being loaded: L3 \(Sita\)\./)).toBeInTheDocument();
     expect(toast).toHaveBeenCalledWith("Shift plan created — the office confirms it. 1 loom free: L2.", "success");
     expect(screen.queryByRole("button", { name: /create shift plan/i })).not.toBeInTheDocument();
+  });
+
+  it("a loom being loaded takes the operator loading it, with nothing to enter", async () => {
+    const loadingLoom = loom({ ID: "L3", entry: "loading", loading: true, why: "Being loaded for its job — no production to enter. Put the operator loading it on the shift." });
+    await start([ready, loadingLoom], fromFloor);
+    svc.setOperator.mockResolvedValue({ detailId: "d3", added: true, planCreated: false });
+    await userEvent.click(screen.getByRole("button", { name: /^L3/ }));
+    expect(await screen.findByText(/no production to enter\. The operator loading it is on the shift/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/production per head/i)).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Operator loading it"), "o2");
+    await waitFor(() => expect(svc.setOperator).toHaveBeenCalledWith("id-L3", "o2"));
+    expect(await screen.findByRole("status")).toHaveTextContent("Sita is on this loom this shift.");
+    await userEvent.click(screen.getByRole("button", { name: /scan the next loom/i }));
+    await screen.findByText(/entered$/);
   });
 
   it("Create shift plan is not offered on the office's plan, nor before anything is entered", async () => {

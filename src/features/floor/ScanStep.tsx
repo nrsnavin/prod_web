@@ -99,6 +99,8 @@ export function ScanStep({ state, onMachine, onRefresh, onAuthLost, onCompleted,
             {state.plan.floor.freeMachines.length > 0
               ? ` ${state.plan.floor.freeMachines.length} loom${state.plan.floor.freeMachines.length === 1 ? " was" : "s were"} free: ${state.plan.floor.freeMachines.map((m) => m.ID).join(", ")}.`
               : " No loom was free."}
+            {state.plan.floor.loadingMachines.length > 0 &&
+              ` Being loaded: ${state.plan.floor.loadingMachines.map((m) => `${m.ID}${m.operatorName ? ` (${m.operatorName})` : ""}`).join(", ")}.`}
           </span>
         </p>
       )}

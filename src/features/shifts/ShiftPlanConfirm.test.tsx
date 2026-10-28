@@ -53,8 +53,9 @@ describe("a plan made from the floor", () => {
   });
 
   it("once every loom is entered, names who finished it and the looms that were free", () => {
-    plan = { ...base, floor: { completedAt: "2026-10-21T14:10:00.000Z", completedBy: "Kumar", freeMachines: [{ id: "m2", ID: "L2", why: "No job on this loom." }, { id: "m5", ID: "L5", why: "No job on this loom." }] } };
+    plan = { ...base, floor: { completedAt: "2026-10-21T14:10:00.000Z", completedBy: "Kumar", freeMachines: [{ id: "m2", ID: "L2", why: "No job on this loom." }, { id: "m5", ID: "L5", why: "No job on this loom." }], loadingMachines: [{ id: "m3", ID: "L3", operatorName: "Sita" }, { id: "m6", ID: "L6", operatorName: "" }] } };
     open();
+    expect(screen.getByText("Being loaded: L3 (Sita), L6 (nobody put on it).")).toBeInTheDocument();
     expect(screen.getByText(/Created on the floor by Kumar at .* — ready to confirm\./)).toBeInTheDocument();
     expect(screen.getByText("Free that shift: L2, L5.")).toBeInTheDocument();
   });

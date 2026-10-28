@@ -69,6 +69,8 @@ export interface FloorCompletion {
   completedAt: string;
   completedBy: string;
   freeMachines: FreeMachine[];
+  /** Looms being loaded that shift, and who loaded them. */
+  loadingMachines: { id: string; ID: string; operatorName: string }[];
 }
 
 export interface FloorPlan {

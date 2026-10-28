@@ -24,6 +24,10 @@ import type { EntrySaved, FloorMachine, FloorState } from "./types";
 //  the timer photo taken next is kept with that entry for the office to
 //  see. On a plan the office made, the operator it put on the loom is
 //  shown and cannot be changed here.
+//
+//  A loom being loaded has no production to enter, but loading it is
+//  work: the operator loading it goes on the shift the same way (an
+//  operator can be on a loading loom and a running one both).
 // ══════════════════════════════════════════════════════════════════
 
 const timerService = {
@@ -69,14 +73,18 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
   const [error, setError] = useState<string | null>(null);
 
   // On a loom not on the shift, the operator chosen puts it there at once.
+  // A loading loom's operator is saved as chosen too: there is no save button after.
+  const loading = machine.entry === "loading";
+  const [placed, setPlaced] = useState<string | null>(null);
   const chooseOperator = async (next: string) => {
     setOperator(next);
-    if (detailId || !next) return;
+    if ((detailId && !loading) || !next) return;
     setError(null);
     setPlacing(true);
     try {
       const placed = await floorService.setOperator(machine.id, next);
       setDetailId(placed.detailId);
+      setPlaced(next);
       if (placed.planCreated) onPlanMade?.();
     } catch (err) {
       setOperator("");
@@ -155,7 +163,36 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
         </p>
       )}
 
-      {!enterable ? (
+      {loading && !state.plan?.finalized ? (
+        <div className="space-y-4">
+          <p className="rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info">
+            Being loaded for its job — no production to enter. The operator loading it is on the shift, so the work is recorded.
+          </p>
+          {locked ? (
+            <div className="rounded-lg bg-surface-muted px-3 py-2 text-sm" aria-label="Operator">
+              <span className="text-ink-500">Loading it </span>
+              <span className="font-semibold">{machine.detail?.operator?.name ?? "—"}</span>
+              <span className="block text-xs text-ink-400">Put on this loom by the office — ask them to change it.</span>
+            </div>
+          ) : (
+            <Select
+              label="Operator loading it"
+              value={operator}
+              onChange={(e) => void chooseOperator(e.target.value)}
+              options={options}
+              placeholder="Choose…"
+              disabled={placing}
+            />
+          )}
+          {placed && operator === placed && (
+            <p className="text-sm text-status-success" role="status">
+              {options.find((o) => o.value === placed)?.label ?? "The operator"} is on this loom this shift.
+            </p>
+          )}
+          {error && <p role="alert" className="rounded-lg bg-status-dangerBg px-3 py-2 text-sm text-status-danger">{error}</p>}
+          <Button variant="secondary" className="w-full" onClick={onBack}>Scan the next loom</Button>
+        </div>
+      ) : !enterable ? (
         <div className="space-y-3 rounded-xl border border-ink-200 bg-surface-muted p-4 text-sm">
           <p className="font-medium">{state.plan?.finalized ? "This shift is finalised." : machine.why ?? "Nothing to enter on this loom."}</p>
           <Button variant="secondary" className="w-full" onClick={onBack}>Scan the next loom</Button>

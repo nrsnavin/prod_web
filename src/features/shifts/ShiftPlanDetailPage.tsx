@@ -298,6 +298,11 @@ export function ShiftPlanDetailPage() {
                   ? `Free that shift: ${plan.floor.freeMachines.map((m) => m.ID).join(", ")}.`
                   : "No loom was free that shift."}
               </p>
+              {(plan.floor.loadingMachines?.length ?? 0) > 0 && (
+                <p className="mt-1 text-sm text-ink-600">
+                  Being loaded: {plan.floor.loadingMachines!.map((m) => `${m.ID}${m.operatorName ? ` (${m.operatorName})` : " (nobody put on it)"}`).join(", ")}.
+                </p>
+              )}
             </>
           ) : (
             <p className="text-sm text-ink-600">

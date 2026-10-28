@@ -22,6 +22,8 @@ export interface PlanFloorCompletion {
   completedAt: string;
   completedBy: string;
   freeMachines: { id: string; ID: string; why: string }[];
+  /** Looms being loaded that shift, and who loaded them (an entry with no production). */
+  loadingMachines?: { id: string; ID: string; operatorName: string }[];
 }
 
 export interface ShiftPlanDetail {
