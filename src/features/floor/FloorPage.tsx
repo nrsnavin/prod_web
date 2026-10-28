@@ -9,7 +9,6 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { floorService, floorTokenStore } from "./floorClient";
 import { OpenStep } from "./OpenStep";
-import { SetupStep } from "./SetupStep";
 import { ScanStep } from "./ScanStep";
 import { EntryStep } from "./EntryStep";
 import type { FloorMachine, FloorSession, FloorState } from "./types";
@@ -17,12 +16,13 @@ import type { FloorMachine, FloorSession, FloorState } from "./types";
 // ══════════════════════════════════════════════════════════════════
 //  THE FLOOR-ENTRY SCREEN — /floor, no login
 //
-//  A supervisor on the floor tablet opens one shift with its PIN, puts
-//  operators on the looms if nobody made the plan, scans each loom's
-//  label and enters what it made. Four steps, one screen, built for a
-//  phone held in one hand.
+//  A supervisor on the floor tablet opens one shift with its PIN, scans
+//  each loom's label, says who ran it and enters what it made. Three
+//  steps, one screen, built for a phone held in one hand. Nobody plans
+//  the shift first: choosing the operator puts the loom on the shift,
+//  and the first loom entered makes the plan when nobody did.
 //
-//    open  →  setup (no plan yet)  →  scan  ⇄  entry
+//    open  →  scan  ⇄  entry
 //
 //  The token lives for the shift; when it ends, or the admin changes
 //  the PIN, the PIN is asked for again where the supervisor stands,
@@ -32,7 +32,6 @@ import type { FloorMachine, FloorSession, FloorState } from "./types";
 type Phase =
   | { kind: "booting" }
   | { kind: "open" }
-  | { kind: "setup" }
   | { kind: "scan" }
   | { kind: "entry"; machine: FloorMachine };
 
@@ -70,7 +69,7 @@ export function FloorPage() {
       try {
         const next = await floorService.shift();
         setState(next);
-        setPhase(next.plan ? { kind: "scan" } : { kind: "setup" });
+        setPhase({ kind: "scan" });
       } catch {
         floorTokenStore.clear();
         setSession(null);
@@ -141,46 +140,25 @@ export function FloorPage() {
               onOpened={(r) => {
                 setSession(r.session);
                 setState(r.state);
-                setPhase(r.state.plan ? { kind: "scan" } : { kind: "setup" });
+                setPhase({ kind: "scan" });
               }}
             />
           </div>
         )}
 
-        {phase.kind === "setup" && state && (
-          <SetupStep
+        {phase.kind === "scan" && state && (
+          <ScanStep
             state={state}
-            onPlanned={(next) => {
-              setState(next);
-              setPhase({ kind: "scan" });
-              toast("Plan made — scan the first loom", "success");
-            }}
-            onPlanExists={async () => {
-              toast("A plan was made meanwhile — carrying on with it", "info");
-              const next = await refresh();
-              if (next?.plan) setPhase({ kind: "scan" });
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            onAuthLost={authLost}
+            onMachine={(m) => {
+              setPhase({ kind: "entry", machine: m });
+              // A loom tapped in the list comes from the state as last
+              // fetched; another tablet may have entered it since.
+              void refresh();
             }}
           />
-        )}
-
-        {phase.kind === "scan" && state && (
-          state.plan ? (
-            <ScanStep
-              state={state}
-              refreshing={refreshing}
-              onRefresh={() => void refresh()}
-              onAuthLost={authLost}
-              onMachine={(m) => {
-                setPhase({ kind: "entry", machine: m });
-                // A loom tapped in the list comes from the state as last
-                // fetched; another tablet may have entered it since.
-                void refresh();
-              }}
-            />
-          ) : (
-            // The plan was deleted in the office meanwhile.
-            <SetupStep state={state} onPlanned={(next) => { setState(next); }} onPlanExists={() => void refresh()} />
-          )
         )}
 
         {phase.kind === "entry" && state && (
@@ -190,6 +168,10 @@ export function FloorPage() {
             state={state}
             onBack={() => setPhase({ kind: "scan" })}
             onAuthLost={authLost}
+            onPlanMade={() => {
+              toast("Shift plan made from this loom — the office can confirm it", "info");
+              void refresh();
+            }}
             onSaved={(m) => {
               toast(`${m.ID} saved — ${m.detail?.submitted?.production ?? 0} m/head`, "success");
               setState((s) => s ? { ...s, machines: s.machines.map((x) => (x.id === m.id ? m : x)) } : s);
@@ -208,7 +190,7 @@ export function FloorPage() {
             setPinAgain(false);
             setSession(r.session);
             setState(r.state);
-            if (phase.kind === "booting" || phase.kind === "open") setPhase(r.state.plan ? { kind: "scan" } : { kind: "setup" });
+            if (phase.kind === "booting" || phase.kind === "open") setPhase({ kind: "scan" });
           }}
           onChangeShift={() => { setPinAgain(false); changeShift(); }}
         />

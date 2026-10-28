@@ -7,16 +7,16 @@ import type { FloorMachine, FloorState } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
 //  The floor screen, end to end against a stubbed server: open with
-//  the PIN, make the plan when there is none, scan or pick a loom,
-//  enter its production, and get the PIN asked for again when the
-//  session ends — without losing the place.
+//  the PIN, scan or pick a loom, say who ran it (which puts it on the
+//  shift, making the plan when there is none), enter its production,
+//  and get the PIN asked for again when the session ends — without
+//  losing the place.
 // ══════════════════════════════════════════════════════════════════
 
 const svc = {
   open: vi.fn(),
   shift: vi.fn(),
   machine: vi.fn(),
-  createPlan: vi.fn(),
   setOperator: vi.fn(),
   enter: vi.fn(),
   readTimerPhoto: vi.fn(),
@@ -67,17 +67,16 @@ const openWith = async (pin = "4821") => {
 };
 
 describe("opening the shift", () => {
-  it("asks for the date, shift, name and PIN, and opens on the plan setup when there is no plan", async () => {
+  it("asks for the date, shift, name and PIN, and goes straight to scanning — saying so when there is no plan", async () => {
     svc.open.mockResolvedValue({ token: "t", session, state: stateOf([loom({ ID: "L1" }), loom({ ID: "L2", status: "free", job: null, entry: "free" })]) });
     render(<FloorPage />);
     expect(screen.getByRole("heading", { name: /open the shift/i })).toBeInTheDocument();
     await openWith();
 
     expect(svc.open).toHaveBeenCalledWith(expect.objectContaining({ pin: "4821", name: "Kumar", shift: expect.stringMatching(/DAY|NIGHT/) }));
-    expect(await screen.findByRole("heading", { name: /who is on each loom/i })).toBeInTheDocument();
-    // Only looms with a job are listed for an operator.
-    expect(screen.getByLabelText("Operator on L1")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Operator on L2")).not.toBeInTheDocument();
+    expect(await screen.findByText(/0 of 1 entered/)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/No plan for this shift yet/);
+    expect(screen.getByRole("button", { name: /L1/ })).toBeInTheDocument();
     expect(screen.getByText("Kumar")).toBeInTheDocument();
   });
 
@@ -106,49 +105,45 @@ describe("opening the shift", () => {
   });
 });
 
-describe("making the plan from the floor", () => {
-  it("puts an operator on each loom and creates the plan", async () => {
-    svc.open.mockResolvedValue({ token: "t", session, state: stateOf([loom({ ID: "L1" }), loom({ ID: "L2" })]) });
-    svc.createPlan.mockResolvedValue(stateOf([
-      loom({ ID: "L1", entry: "ready", detail: { id: "d1", status: "open", operator: { id: "o1", name: "Ravi" }, submitted: null } }),
-      loom({ ID: "L2", entry: "ready", detail: { id: "d2", status: "open", operator: { id: "o2", name: "Sita" }, submitted: null } }),
-    ], planned));
+describe("the plan, made from the floor", () => {
+  it("is made the moment the first loom's operator is chosen, and the timer photo is kept with that entry", async () => {
+    const unplanned = loom({ ID: "L1" });
+    svc.open.mockResolvedValue({ token: "t", session, state: stateOf([unplanned]) });
+    svc.shift.mockResolvedValue(stateOf([unplanned]));
+    svc.setOperator.mockResolvedValue({ detailId: "d1", added: true, planCreated: true });
     render(<FloorPage />);
     await openWith();
-    await screen.findByRole("heading", { name: /who is on each loom/i });
+    await userEvent.click(await screen.findByRole("button", { name: /L1/ }));
 
-    const create = screen.getByRole("button", { name: /create the plan/i });
-    expect(create).toBeDisabled();
-    await userEvent.selectOptions(screen.getByLabelText("Operator on L1"), "o1");
-    await userEvent.selectOptions(screen.getByLabelText("Operator on L2"), "o2");
-    await userEvent.click(screen.getByRole("button", { name: /create the plan · 2 looms/i }));
+    await userEvent.selectOptions(await screen.findByLabelText(/operator — puts this loom on the shift/i), "o1");
+    await waitFor(() => expect(svc.setOperator).toHaveBeenCalledWith("id-L1", "o1"));
+    expect(await screen.findByLabelText("Operator")).toHaveValue("o1");
+    expect(toast).toHaveBeenCalledWith(expect.stringMatching(/Shift plan made from this loom/), "info");
 
-    expect(svc.createPlan).toHaveBeenCalledWith([{ machine: "id-L1", operator: "o1" }, { machine: "id-L2", operator: "o2" }]);
-    expect(await screen.findByText(/0 of 2 entered/)).toBeInTheDocument();
+    // The photo taken next goes with the entry just made.
+    svc.readTimerPhoto.mockResolvedValue({ reading: { displays: [], primary: { text: "7:30:00", kind: "run_time" }, problem: null }, suggestionId: null, photoId: "ph1" });
+    const file = new File([new Uint8Array([1, 2, 3])], "timer.jpg", { type: "image/jpeg" });
+    await userEvent.upload(screen.getByTestId("timer-photo-input"), file);
+    await waitFor(() => expect(svc.readTimerPhoto).toHaveBeenCalledWith(expect.anything(), "d1"));
+
+    svc.enter.mockResolvedValue({ ...unplanned, entry: "entered", detail: { id: "d1", status: "pending_verification", operator: { id: "o1", name: "Ravi" }, submitted: { production: 500, timer: null, feedback: "", at: null, byName: "Kumar" } } });
+    await userEvent.type(screen.getByLabelText(/production per head/i), "500");
+    await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
+    await waitFor(() => expect(svc.enter).toHaveBeenCalledWith(expect.objectContaining({ detailId: "d1", production: 500, operator: "o1" })));
+    expect(svc.setOperator).toHaveBeenCalledTimes(1);
   });
 
-  it("fills the empty rows with one operator", async () => {
-    svc.open.mockResolvedValue({ token: "t", session, state: stateOf([loom({ ID: "L1" }), loom({ ID: "L2" })]) });
+  it("shows the server's words when the loom cannot go on the shift, and clears the choice", async () => {
+    const unplanned = loom({ ID: "L1" });
+    svc.open.mockResolvedValue({ token: "t", session, state: stateOf([unplanned]) });
+    svc.shift.mockResolvedValue(stateOf([unplanned]));
+    svc.setOperator.mockRejectedValue(new ApiError("Ravi left on 20 Oct 2026 — choose someone else for this shift.", 409, undefined, "EMPLOYEE_OFFBOARDED"));
     render(<FloorPage />);
     await openWith();
-    await screen.findByRole("heading", { name: /who is on each loom/i });
-    await userEvent.selectOptions(screen.getByLabelText("Operator on L2"), "o2");
-    await userEvent.selectOptions(screen.getByLabelText(/same operator on the empty rows/i), "o1");
-    await userEvent.click(screen.getByRole("button", { name: /^fill$/i }));
-    expect(screen.getByLabelText("Operator on L1")).toHaveValue("o1");
-    expect(screen.getByLabelText("Operator on L2")).toHaveValue("o2");
-  });
-
-  it("carries on with a plan someone made meanwhile", async () => {
-    svc.open.mockResolvedValue({ token: "t", session, state: stateOf([loom({ ID: "L1" })]) });
-    svc.createPlan.mockRejectedValue(new ApiError("This shift has a plan already", 409, undefined, "PLAN_EXISTS"));
-    svc.shift.mockResolvedValue(stateOf([loom({ ID: "L1", entry: "ready", detail: { id: "d1", status: "open", operator: null, submitted: null } })], planned));
-    render(<FloorPage />);
-    await openWith();
-    await userEvent.selectOptions(await screen.findByLabelText("Operator on L1"), "o1");
-    await userEvent.click(screen.getByRole("button", { name: /create the plan/i }));
-    expect(await screen.findByText(/0 of 1 entered/)).toBeInTheDocument();
-    expect(toast).toHaveBeenCalledWith(expect.stringMatching(/made meanwhile/), "info");
+    await userEvent.click(await screen.findByRole("button", { name: /L1/ }));
+    await userEvent.selectOptions(await screen.findByLabelText(/operator — puts this loom on the shift/i), "o1");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Ravi left on 20 Oct 2026/);
+    expect(screen.getByLabelText(/operator — puts this loom on the shift/i)).toHaveValue("");
   });
 });
 
@@ -234,23 +229,25 @@ describe("scanning and entering", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/No machine called "L9"/);
   });
 
-  it("adds a loom the plan left out, with the operator chosen on the spot", async () => {
+  it("adds a loom the plan left out as soon as its operator is chosen", async () => {
     const unplanned = loom({ ID: "L7" });
     await start([ready, unplanned]);
-    svc.setOperator.mockResolvedValue({ detailId: "d7", added: true });
+    svc.setOperator.mockResolvedValue({ detailId: "d7", added: true, planCreated: false });
     svc.enter.mockResolvedValue({ ...unplanned, entry: "entered" });
 
     await userEvent.click(screen.getByRole("button", { name: /L7/ }));
-    expect(await screen.findByLabelText(/operator — not on the plan yet/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/operator — puts this loom on the shift/i)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/production per head/i), "500");
     await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/choose who ran this loom/i);
     expect(svc.enter).not.toHaveBeenCalled();
 
-    await userEvent.selectOptions(screen.getByLabelText(/operator — not on the plan yet/i), "o2");
+    await userEvent.selectOptions(screen.getByLabelText(/operator — puts this loom on the shift/i), "o2");
+    await waitFor(() => expect(svc.setOperator).toHaveBeenCalledWith("id-L7", "o2"));
+    expect(await screen.findByLabelText("Operator")).toHaveValue("o2");
+    expect(toast).not.toHaveBeenCalledWith(expect.stringMatching(/plan made/i), expect.anything());
     await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
     await waitFor(() => expect(svc.enter).toHaveBeenCalled());
-    expect(svc.setOperator).toHaveBeenCalledWith("id-L7", "o2");
     expect(svc.enter).toHaveBeenCalledWith(expect.objectContaining({ detailId: "d7", production: 500, operator: "o2" }));
   });
 

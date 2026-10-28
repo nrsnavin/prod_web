@@ -95,13 +95,9 @@ export const floorService = {
     return data.machine;
   },
 
-  async createPlan(rows: { machine: string; operator: string }[]): Promise<FloorState> {
-    const { data } = await http().post<{ state: FloorState }>("/floor/plan", { rows });
-    return data.state;
-  },
-
-  async setOperator(machine: string, operator: string): Promise<{ detailId: string; added: boolean }> {
-    const { data } = await http().post<{ detailId: string; added: boolean }>("/floor/operator", { machine, operator });
+  /** Puts the loom on the shift with this operator; the first loom makes the plan when nobody did. */
+  async setOperator(machine: string, operator: string): Promise<{ detailId: string; added: boolean; planCreated: boolean }> {
+    const { data } = await http().post<{ detailId: string; added: boolean; planCreated: boolean }>("/floor/operator", { machine, operator });
     return data;
   },
 

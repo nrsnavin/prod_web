@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Keyboard, RefreshCw, Search } from "lucide-react";
+import { ClipboardList, Keyboard, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ApiError } from "@/core/http/httpClient";
 import { floorService } from "./floorClient";
@@ -14,6 +14,8 @@ import type { FloorMachine, FloorState } from "./types";
 //  The camera reads the label; the loom's ID can be typed; or the loom
 //  is tapped in the list, which also shows how far the shift has got.
 //  All three end in the same place: the entry screen for that loom.
+//  A shift nobody planned is scanned the same way: the plan is made
+//  from the first loom entered.
 // ══════════════════════════════════════════════════════════════════
 
 export function ScanStep({ state, onMachine, onRefresh, onAuthLost, refreshing }: {
@@ -50,6 +52,12 @@ export function ScanStep({ state, onMachine, onRefresh, onAuthLost, refreshing }
 
   return (
     <div className="space-y-4">
+      {!state.plan && (
+        <p className="flex items-start gap-2 rounded-lg bg-status-infoBg px-3 py-2 text-sm text-status-info" role="status">
+          <ClipboardList className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <span>No plan for this shift yet. Scan a loom and choose who ran it — the plan is made from the looms you enter.</span>
+        </p>
+      )}
       <div className="rounded-xl border border-ink-200 bg-surface p-3">
         <div className="flex items-center justify-between text-sm">
           <span className="font-semibold">{done} of {total} entered</span>

@@ -17,8 +17,11 @@ import type { FloorMachine, FloorState } from "./types";
 //  The loom's job and head map, the operator, the run time (typed, or
 //  read off a photo of the display), the metres a head, a remark.
 //  Saved as a SUBMISSION for the office to verify; until then it can be
-//  corrected here. A loom the plan left out is added to it first, with
-//  the operator chosen here.
+//  corrected here.
+//
+//  A loom not on the shift yet goes on it the moment its operator is
+//  chosen (the first one makes the plan, when nobody did), so the timer
+//  photo taken next is kept with that entry for the office to see.
 // ══════════════════════════════════════════════════════════════════
 
 const timerService = {
@@ -29,15 +32,21 @@ const timerService = {
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
 
-export function EntryStep({ machine, state, onSaved, onBack, onAuthLost }: {
+export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanMade }: {
   machine: FloorMachine;
   state: FloorState;
   onSaved: (m: FloorMachine) => void;
   onBack: () => void;
   onAuthLost: () => void;
+  /** The shift had no plan; this loom just made it. */
+  onPlanMade?: () => void;
 }) {
   const prior = machine.detail?.submitted ?? null;
   const [operator, setOperator] = useState(machine.detail?.operator?.id ?? "");
+  // The entry this loom has on the shift — from the plan, or made here
+  // when the operator was chosen.
+  const [detailId, setDetailId] = useState<string | null>(machine.detail?.id ?? null);
+  const [placing, setPlacing] = useState(false);
   const [timer, setTimer] = useState(prior?.timer ?? "");
   const [production, setProduction] = useState(prior?.production != null ? String(prior.production) : "");
   // The metres the run time filled in last. While the field still shows
@@ -57,6 +66,25 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // On a loom not on the shift, the operator chosen puts it there at once.
+  const chooseOperator = async (next: string) => {
+    setOperator(next);
+    if (detailId || !next) return;
+    setError(null);
+    setPlacing(true);
+    try {
+      const placed = await floorService.setOperator(machine.id, next);
+      setDetailId(placed.detailId);
+      if (placed.planCreated) onPlanMade?.();
+    } catch (err) {
+      setOperator("");
+      if (err instanceof ApiError && err.status === 401) { onAuthLost(); return; }
+      setError(err instanceof ApiError ? err.message : "Could not put this loom on the shift — try again.");
+    } finally {
+      setPlacing(false);
+    }
+  };
+
   const options = state.operators.map((o) => ({ value: o.id, label: o.department && o.department !== "weaving" ? `${o.name} (${o.department})` : o.name }));
   const metres = Number(production);
   const total = Number.isFinite(metres) && production !== "" ? metres * machine.headsRunning : null;
@@ -65,13 +93,11 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost }: {
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!machine.detail && !operator) return setError("Choose who ran this loom — it is not on the plan yet.");
+    if (!detailId || !operator) return setError("Choose who ran this loom — that puts it on the shift.");
     if (production === "" || !Number.isFinite(metres) || metres < 0) return setError("Enter the metres produced a head, 0 or more.");
     const runTime = tidyRunTime(timer);
     setBusy(true);
     try {
-      let detailId = machine.detail?.id;
-      if (!detailId) detailId = (await floorService.setOperator(machine.id, operator)).detailId;
       const saved = await floorService.enter({
         detailId, production: metres, timer: runTime || null, feedback: feedback.trim(), operator: operator || null,
       });
@@ -132,11 +158,12 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost }: {
       ) : (
         <form onSubmit={save} noValidate className="space-y-4">
           <Select
-            label={machine.detail ? "Operator" : "Operator — not on the plan yet"}
+            label={detailId ? "Operator" : "Operator — puts this loom on the shift"}
             value={operator}
-            onChange={(e) => setOperator(e.target.value)}
+            onChange={(e) => void chooseOperator(e.target.value)}
             options={options}
             placeholder="Choose…"
+            disabled={placing}
           />
 
           <div className="space-y-2">
@@ -149,7 +176,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost }: {
               onBlur={() => changeRunTime(tidyRunTime(timer))}
               hint={`Hours and minutes the loom ran this shift. Fills the metres a head at ${DEFAULT_CM_PER_MIN} cm a minute.`}
             />
-            <TimerPhotoReader onUse={changeRunTime} shiftId={machine.detail?.id} service={timerService} />
+            <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} />
           </div>
 
           <Input
@@ -180,7 +207,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost }: {
           {error && <p role="alert" className="rounded-lg bg-status-dangerBg px-3 py-2 text-sm text-status-danger">{error}</p>}
 
           <div className="sticky bottom-0 -mx-4 border-t border-ink-100 bg-canvas/95 px-4 py-3 backdrop-blur" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-            <Button type="submit" size="lg" className="w-full" loading={busy}>
+            <Button type="submit" size="lg" className="w-full" loading={busy} disabled={placing}>
               <Check className="h-4 w-4" aria-hidden /> {machine.entry === "entered" ? "Save the correction" : "Save and scan next"}
             </Button>
           </div>
