@@ -18,6 +18,7 @@
     { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" }
   ],
   "shortcuts": [
+    { "name": "Floor production entry", "short_name": "Floor entry", "url": "/floor", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Job orders", "url": "/jobs", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Production view", "short_name": "Production", "url": "/production", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Machine issues", "url": "/machine-issues", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },

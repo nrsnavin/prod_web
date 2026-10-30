@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useLocation, useNavigate, Navigate } from "react-router-dom";
-import { ArrowLeft, KeyRound, MailCheck, Smartphone } from "lucide-react";
+import { ArrowLeft, KeyRound, MailCheck, ScanLine, Smartphone } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
 import { SESSION_EXPIRED_KEY } from "@/core/auth/authStore";
 import { Button } from "@/components/ui/Button";
@@ -46,7 +46,29 @@ import { AuthLayout } from "./AuthLayout";
 //
 //  The password FIELD is still never on the first screen — reaching it
 //  is a deliberate second step.
+//
+//  The floor-entry screen (/floor) needs no login — a shift PIN opens
+//  it — so the sign-in page is where a supervisor finds it: open it
+//  here once, add the app to the home screen, and it is one tap from
+//  then on. The one place it is linked from.
 // ══════════════════════════════════════════════════════════════════
+
+/** The way to the floor-entry screen, on both first screens. */
+function FloorEntryLink() {
+  return (
+    <div className="mt-6 border-t border-ink-100 pt-4">
+      <Link
+        to="/floor"
+        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-ink-200 bg-surface px-4 text-sm font-medium text-ink-700 hover:border-ink-400"
+      >
+        <ScanLine className="h-4 w-4" aria-hidden /> Floor production entry
+      </Link>
+      <p className="mt-2 text-center text-xs text-ink-400">
+        Opens with the shift PIN, no sign-in. On the floor tablet, add this app to the home screen to open it in one tap.
+      </p>
+    </div>
+  );
+}
 
 // ── Step 1: email ───────────────────────────────────────────────────────
 const emailSchema = z.object({
@@ -333,6 +355,8 @@ function EmailStep({
         <Smartphone className="h-4 w-4" aria-hidden />
         Use phone and PIN
       </Button>
+
+      <FloorEntryLink />
     </>
   );
 }
@@ -432,6 +456,8 @@ function PhoneStep({
           Sign in with email instead
         </button>
       </p>
+
+      <FloorEntryLink />
     </>
   );
 }

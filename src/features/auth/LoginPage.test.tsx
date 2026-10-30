@@ -432,3 +432,19 @@ describe("signing in with a phone and PIN", () => {
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
   });
 });
+
+// ══════════════════════════════════════════════════════════════════
+//  The floor-entry screen needs no login, so this is where a supervisor
+//  finds it — on both first screens — to open once and add to the home
+//  screen.
+// ══════════════════════════════════════════════════════════════════
+describe("the way to the floor", () => {
+  it("links to floor production entry from the email screen and the phone screen", async () => {
+    localStorage.removeItem("jarvis.loginMode");
+    render(<MemoryRouter><LoginPage /></MemoryRouter>);
+    expect(screen.getByRole("link", { name: /floor production entry/i })).toHaveAttribute("href", "/floor");
+    expect(screen.getByText(/add this app to the home screen/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /use phone and pin/i }));
+    expect(screen.getByRole("link", { name: /floor production entry/i })).toHaveAttribute("href", "/floor");
+  });
+});
