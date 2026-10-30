@@ -22,6 +22,8 @@ const svc = {
   enter: vi.fn(),
   readTimerPhoto: vi.fn(),
   photoUsed: vi.fn(),
+  previousTimerPhoto: vi.fn(),
+  timerPhotoFileUrl: vi.fn(),
 };
 let stored: { token: string; session: { dateKey: string; shift: "DAY" | "NIGHT"; name: string } } | null = null;
 vi.mock("./floorClient", () => ({
@@ -58,6 +60,8 @@ const saved = (machine: FloorMachine, plan: FloorPlan = planned): EntrySaved => 
 
 beforeEach(() => {
   for (const f of Object.values(svc)) f.mockReset();
+  svc.previousTimerPhoto.mockResolvedValue({ shift: { dateKey: "2026-10-20", shift: "NIGHT", label: "Night shift · 20 Oct 2026" }, operator: null, runTime: null, photo: null });
+  svc.timerPhotoFileUrl.mockImplementation((id: string) => `/api/floor/timer-photo/${id}/file?floorToken=t`);
   toast.mockReset();
   stored = null;
   localStorage.clear();
@@ -279,6 +283,33 @@ describe("scanning and entering", () => {
       await userEvent.click(screen.getByRole("button", { name: /scan the next loom/i }));
       await screen.findByText(/entered$/);
     }
+  });
+
+  it("shows the loom's timer photo from the shift before, beside the camera", async () => {
+    svc.previousTimerPhoto.mockResolvedValue({
+      shift: { dateKey: "2026-10-20", shift: "NIGHT", label: "Night shift · 20 Oct 2026" }, operator: "Ravi", runTime: "7:45:00",
+      photo: { id: "ph9", takenAt: "2026-10-21T02:10:00Z", byName: "Night Sup", readText: "07:45:12", runTimeUsed: "7:45:00", used: true },
+    });
+    await start();
+    await userEvent.click(screen.getByRole("button", { name: /L1/ }));
+    const card = await screen.findByLabelText("Timer the shift before");
+    expect(svc.previousTimerPhoto).toHaveBeenCalledWith("id-L1");
+    expect(card).toHaveTextContent("Shift before · Night shift · 20 Oct 2026");
+    expect(card).toHaveTextContent("Timer read 7:45:00 · Ravi");
+    expect(card).toHaveTextContent(/Photo by Night Sup at .* · used for the run time/);
+    expect(within(card).getByRole("img")).toHaveAttribute("src", "/api/floor/timer-photo/ph9/file?floorToken=t");
+    expect(within(card).getByRole("link", { name: /timer photo from the night shift/i })).toHaveAttribute("href", "/api/floor/timer-photo/ph9/file?floorToken=t");
+  });
+
+  it("says when the shift before took no photo, or did not run this loom", async () => {
+    svc.previousTimerPhoto.mockResolvedValueOnce({ shift: { dateKey: "2026-10-21", shift: "DAY", label: "Day shift · 21 Oct 2026" }, operator: "Sita", runTime: "6:30:00", photo: null });
+    await start();
+    await userEvent.click(screen.getByRole("button", { name: /L1/ }));
+    expect(await screen.findByLabelText("Timer the shift before")).toHaveTextContent("No timer photo was taken (run time 6:30:00 · Sita).");
+    await userEvent.click(screen.getByRole("button", { name: /back to scanning/i }));
+
+    await userEvent.click(screen.getByRole("button", { name: /L1/ }));
+    expect(await screen.findByLabelText("Timer the shift before")).toHaveTextContent("This loom was not on that shift.");
   });
 
   it("shows the office's operator on a loom it planned, and does not let the floor change it", async () => {

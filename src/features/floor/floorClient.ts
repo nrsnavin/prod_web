@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import { config } from "@/app/config";
 import { toApiError } from "@/core/http/httpClient";
-import type { CompleteResult, EntryInput, EntrySaved, FloorMachine, FloorSession, FloorState, Shift } from "./types";
+import type { CompleteResult, EntryInput, EntrySaved, FloorMachine, FloorSession, FloorState, PreviousTimerPhoto, Shift } from "./types";
 import type { TimerReading } from "@/features/shifts/timerReading";
 
 // ══════════════════════════════════════════════════════════════════
@@ -110,6 +110,17 @@ export const floorService = {
   async complete(force = false): Promise<CompleteResult> {
     const { data } = await http().post<CompleteResult>("/floor/complete", force ? { force: true } : {});
     return data;
+  },
+
+  /** The loom's timer photo from the shift before. */
+  async previousTimerPhoto(machine: string): Promise<PreviousTimerPhoto> {
+    const { data } = await http().get<{ previous: PreviousTimerPhoto }>("/floor/previous-timer-photo", { params: { machine } });
+    return data.previous;
+  },
+  /** An <img> cannot send the header, so the token rides in the query. */
+  timerPhotoFileUrl(photoId: string): string {
+    const token = floorTokenStore.read()?.token ?? "";
+    return `${config.apiBaseUrl}/floor/timer-photo/${encodeURIComponent(photoId)}/file?floorToken=${encodeURIComponent(token)}`;
   },
 
   // ── The timer photo, for TimerPhotoReader ───────────────────────

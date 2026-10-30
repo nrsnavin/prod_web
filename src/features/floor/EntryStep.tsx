@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowLeft, Check, Info } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Check, History, Info } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -9,7 +9,7 @@ import { DEFAULT_CM_PER_MIN, perHeadText } from "@/features/shifts/productionRat
 import { floorService } from "./floorClient";
 import { canEnter, tidyRunTime } from "./floorRules";
 import { EntryChip, HeadMap } from "./LoomCard";
-import type { EntrySaved, FloorMachine, FloorState } from "./types";
+import type { EntrySaved, FloorMachine, FloorState, PreviousTimerPhoto } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
 //  STEP 4 — THE LOOM'S PRODUCTION
@@ -37,6 +37,61 @@ const timerService = {
 
 const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
+
+/**
+ * The timer photo from the shift before, beside the camera: what the
+ * display read when the last shift on this loom ended, so the figure
+ * about to be read (or typed) can be checked against it.
+ */
+function PreviousTimer({ machineId }: { machineId: string }) {
+  const [previous, setPrevious] = useState<PreviousTimerPhoto | null | "loading">("loading");
+  useEffect(() => {
+    let live = true;
+    setPrevious("loading");
+    floorService.previousTimerPhoto(machineId)
+      .then((p) => { if (live) setPrevious(p); })
+      .catch(() => { if (live) setPrevious(null); });
+    return () => { live = false; };
+  }, [machineId]);
+
+  if (previous === "loading" || previous === null) return null;
+  const p = previous;
+  const figure = p.photo?.runTimeUsed ?? p.runTime ?? p.photo?.readText ?? null;
+  return (
+    <div className="flex gap-3 rounded-lg border border-ink-200 bg-surface-muted p-3 text-sm" aria-label="Timer the shift before">
+      {p.photo ? (
+        <a href={floorService.timerPhotoFileUrl(p.photo.id)} target="_blank" rel="noreferrer" className="shrink-0" title="Open the photo">
+          <img src={floorService.timerPhotoFileUrl(p.photo.id)} alt={`Timer photo from the ${p.shift.label}`} className="h-20 w-20 rounded-md border border-ink-200 object-cover" />
+        </a>
+      ) : (
+        <span className="grid h-20 w-20 shrink-0 place-items-center rounded-md border border-dashed border-ink-200 text-ink-300">
+          <History className="h-6 w-6" aria-hidden />
+        </span>
+      )}
+      <div className="min-w-0 space-y-0.5">
+        <p className="font-medium text-ink-700">Shift before · {p.shift.label}</p>
+        {p.photo ? (
+          <>
+            <p className="text-ink-600">
+              Timer read <span className="font-semibold tabular-nums text-ink-900">{figure ?? "—"}</span>
+              {p.operator ? ` · ${p.operator}` : ""}
+            </p>
+            <p className="text-xs text-ink-400">
+              Photo{p.photo.byName ? ` by ${p.photo.byName}` : ""}{p.photo.takenAt ? ` at ${when(p.photo.takenAt)}` : ""}
+              {p.photo.used ? " · used for the run time" : ""}
+            </p>
+          </>
+        ) : (
+          <p className="text-ink-500">
+            {p.operator
+              ? `No timer photo was taken${p.runTime ? ` (run time ${p.runTime}` : ""}${p.operator ? `${p.runTime ? " · " : " ("}${p.operator})` : p.runTime ? ")" : ""}.`
+              : "This loom was not on that shift."}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanMade }: {
   machine: FloorMachine;
@@ -227,6 +282,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
               hint={`Hours and minutes the loom ran this shift. Fills the metres a head at ${DEFAULT_CM_PER_MIN} cm a minute.`}
             />
             <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} />
+            <PreviousTimer machineId={machine.id} />
           </div>
 
           <Input

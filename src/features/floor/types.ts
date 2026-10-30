@@ -109,6 +109,21 @@ export interface CompleteResult {
   freeMachines: FreeMachine[];
 }
 
+/** The loom's timer photo from the shift before, shown beside the camera. */
+export interface PreviousTimerPhoto {
+  shift: { dateKey: string; shift: Shift; label: string };
+  operator: string | null;
+  runTime: string | null;
+  photo: {
+    id: string;
+    takenAt: string;
+    byName: string;
+    readText: string | null;
+    runTimeUsed: string | null;
+    used: boolean;
+  } | null;
+}
+
 export interface EntryInput {
   detailId: string;
   production: number;
