@@ -8,7 +8,7 @@ const verifyMutate = vi.fn((_a: unknown, opts?: { onSuccess?: () => void }) => o
 const toast = vi.fn();
 
 vi.mock("./hooks", () => ({
-  useShiftMutations: () => ({ verify: { mutate: verifyMutate, isPending: false } }),
+  useShiftMutations: () => ({ verify: { mutate: verifyMutate, mutateAsync: vi.fn(), isPending: false } }),
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast }) }));
 // The expected-output hint has its own tests (features/productionModel).
@@ -42,6 +42,24 @@ describe("EnterProductionModal (add production to an open shift)", () => {
   it("disables Save until a production value is entered", () => {
     render(<EnterProductionModal plan={plan} row={row} onClose={() => {}} />);
     expect(screen.getByRole("button", { name: /save production/i })).toBeDisabled();
+  });
+
+  it("an entry from the floor opens on what was entered, and verifies it", async () => {
+    const user = userEvent.setup();
+    const pending: ShiftPlanMachineRow = {
+      ...row, status: "pending_verification", headsRun: 2, draftProduction: 1640,
+      submitted: { production: 820, timer: "7:30:00", feedback: "beam changed", at: "2026-07-23T13:40:00Z", byName: "Kumar" },
+    };
+    render(<EnterProductionModal plan={plan} row={pending} onClose={() => {}} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/Entered by Kumar at .*: 820 m\/head · 7:30:00 · “beam changed”/);
+    expect(screen.getByLabelText(/Production per head \(m\)/i)).toHaveValue(820);
+    expect(screen.getByLabelText(/Runtime/i)).toHaveValue("7:30:00");
+    await user.click(screen.getByRole("button", { name: /^verify$/i }));
+    expect(verifyMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ shiftId: "sd-1", productionMeters: 820, timer: "7:30:00" }),
+      expect.anything()
+    );
+    expect(toast).toHaveBeenCalledWith("Verified — cascaded to job & order", "success");
   });
 
   it("verifies the shift detail with the entered meters", async () => {

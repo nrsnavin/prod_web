@@ -2,7 +2,7 @@ import { TimerPhotoReader } from "./TimerPhotoReader";
 import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Trash2, Sun, Moon, Download, UploadCloud, Gauge, CheckCircle2, ScanLine } from "lucide-react";
+import { ArrowLeft, Trash2, Sun, Moon, Download, UploadCloud, Gauge, CheckCircle2, ScanLine, BadgeCheck } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,12 @@ import { SheetUploadModal } from "./SheetUploadModal";
 import { formatDate } from "@/core/format/date";
 import { DEFAULT_CM_PER_MIN, perHeadText } from "./productionRate";
 
+const when = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
+
+/** Entered but not verified: the plan shows what was typed, as a draft. */
+const isPending = (m: ShiftPlanMachineRow) => m.status === "pending_verification" && !!m.submitted;
+
 const columns: Column<ShiftPlanMachineRow>[] = [
   { key: "machine", header: "Machine", render: (m) => <span className="font-medium">{m.machineName}</span> },
   {
@@ -39,23 +45,46 @@ const columns: Column<ShiftPlanMachineRow>[] = [
       ),
   },
   { key: "operator", header: "Operator", render: (m) => m.operatorName },
-  { key: "timer", header: "Runtime", align: "right", render: (m) => m.timer || "—" },
+  {
+    key: "timer",
+    header: "Runtime",
+    align: "right",
+    render: (m) => (isPending(m) ? <span className="text-status-warning tabular-nums">{m.submitted!.timer || "—"}</span> : m.timer || "—"),
+  },
   {
     key: "production",
     header: "Output (m)",
     align: "right",
-    render: (m) => m.production.toLocaleString("en-IN"),
+    render: (m) =>
+      isPending(m) ? (
+        <span className="tabular-nums">
+          <span className="text-status-warning">{(m.draftProduction ?? 0).toLocaleString("en-IN")}</span>
+          <span className="block text-xs text-ink-400">
+            {m.submitted!.production != null ? `${m.submitted!.production.toLocaleString("en-IN")} /head × ${m.headsRun ?? 1}` : "—"} · to verify
+          </span>
+        </span>
+      ) : (
+        m.production.toLocaleString("en-IN")
+      ),
   },
   {
     key: "status",
     header: "Status",
-    render: (m) => (
-      <StatusChip
-        tone={m.status === "closed" ? "success" : m.status === "running" || m.status === "loading" ? "info" : "neutral"}
-      >
-        {m.status}
-      </StatusChip>
-    ),
+    render: (m) =>
+      isPending(m) ? (
+        <span>
+          <StatusChip tone="warning">Entered — to verify</StatusChip>
+          <span className="mt-0.5 block text-xs text-ink-400">
+            {m.submitted!.byName ? `by ${m.submitted!.byName}` : "entered"}{m.submitted!.at ? ` at ${when(m.submitted!.at)}` : ""}
+          </span>
+        </span>
+      ) : (
+        <StatusChip
+          tone={m.status === "closed" ? "success" : m.status === "running" || m.status === "loading" ? "info" : "neutral"}
+        >
+          {m.status === "closed" ? "Verified" : m.status === "open" ? "Not entered" : m.status}
+        </StatusChip>
+      ),
   },
 ];
 
@@ -73,8 +102,13 @@ export function EnterProductionModal({
 }) {
   const { toast } = useToast();
   const { verify } = useShiftMutations();
-  const [meters, setMeters] = useState(row.production ? String(row.production) : "");
-  const [timer, setTimer] = useState(row.timer ?? "");
+  // An entry awaiting verification opens on what was entered — per head,
+  // as the floor typed it — so verifying it is one look and one tap.
+  const pending = isPending(row);
+  const [meters, setMeters] = useState(
+    pending && row.submitted!.production != null ? String(row.submitted!.production) : row.production ? String(row.production) : ""
+  );
+  const [timer, setTimer] = useState((pending ? row.submitted!.timer : row.timer) ?? "");
   const [note, setNote] = useState("");
   // The metres the run time filled in last: refilled while the field
   // still shows it, left alone once a figure has been typed.
@@ -89,7 +123,7 @@ export function EnterProductionModal({
   };
 
   return (
-    <FormScreen open onClose={onClose} title="Enter shift production" width="max-w-md">
+    <FormScreen open onClose={onClose} title={pending ? "Verify shift production" : "Enter shift production"} width="max-w-md">
       <div className="space-y-4">
         <div className="rounded-xl bg-ink-100/60 p-3 text-sm">
           <p className="font-semibold">{row.machineName}</p>
@@ -99,6 +133,14 @@ export function EnterProductionModal({
             {formatDate(plan.date)}
           </p>
         </div>
+        {pending && (
+          <p className="rounded-lg bg-status-warningBg px-3 py-2 text-sm text-status-warning" role="status">
+            Entered{row.submitted!.byName ? ` by ${row.submitted!.byName}` : ""}{row.submitted!.at ? ` at ${when(row.submitted!.at)}` : ""}:{" "}
+            <span className="font-semibold tabular-nums">{row.submitted!.production ?? "—"} m/head</span>
+            {row.submitted!.timer ? ` · ${row.submitted!.timer}` : ""}
+            {row.submitted!.feedback ? ` · “${row.submitted!.feedback}”` : ""}. Change a figure if the counter says otherwise.
+          </p>
+        )}
 
         <div className="space-y-2">
           <Input
@@ -128,7 +170,7 @@ export function EnterProductionModal({
           onChange={(e) => setNote(e.target.value)}
         />
         <p className="text-xs text-ink-400">
-          Saving records verified output for this machine and cascades it to the job, order and shift totals.
+          {pending ? "Verifying" : "Saving"} records verified output for this machine and cascades it to the job, order and shift totals.
         </p>
 
         <div className="flex justify-end gap-2 pt-1">
@@ -146,7 +188,7 @@ export function EnterProductionModal({
                 },
                 {
                   onSuccess: () => {
-                    toast("Production recorded — cascaded to job & order", "success");
+                    toast(pending ? "Verified — cascaded to job & order" : "Production recorded — cascaded to job & order", "success");
                     onClose();
                   },
                   onError: (e) =>
@@ -155,7 +197,7 @@ export function EnterProductionModal({
               )
             }
           >
-            <Gauge className="h-4 w-4" /> Save production
+            {pending ? <BadgeCheck className="h-4 w-4" /> : <Gauge className="h-4 w-4" />} {pending ? "Verify" : "Save production"}
           </Button>
         </div>
       </div>
@@ -168,8 +210,10 @@ export function ShiftPlanDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: plan, isLoading, isError, error, refetch } = useShiftPlan(id);
-  const { deletePlan, confirmPlan } = useShiftMutations();
+  const { deletePlan, confirmPlan, verify } = useShiftMutations();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [verifyAllOpen, setVerifyAllOpen] = useState(false);
+  const [verifyingAll, setVerifyingAll] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [entering, setEntering] = useState<ShiftPlanMachineRow | null>(null);
@@ -195,12 +239,42 @@ export function ShiftPlanDetailPage() {
           </span>
         );
       }
+      if (isPending(m)) {
+        return (
+          <Button size="sm" onClick={() => setEntering(m)}>
+            <BadgeCheck className="h-4 w-4" /> Verify
+          </Button>
+        );
+      }
       return (
         <Button size="sm" variant="secondary" onClick={() => setEntering(m)}>
           <Gauge className="h-4 w-4" /> Enter production
         </Button>
       );
     },
+  };
+
+  // Every entered row, verified with the figures as entered, one after
+  // the other; a row that fails stops the run and says which.
+  const verifyAll = async () => {
+    if (!plan) return;
+    const rows = plan.machines.filter(isPending);
+    setVerifyingAll(true);
+    let done = 0;
+    try {
+      for (const m of rows) {
+        await verify.mutateAsync({ shiftId: m.id, productionMeters: Number(m.submitted!.production ?? 0), timer: m.submitted!.timer ?? undefined });
+        done += 1;
+      }
+      toast(`${done} ${done === 1 ? "entry" : "entries"} verified — cascaded to job & order`, "success");
+      setVerifyAllOpen(false);
+    } catch (e) {
+      toast(`${done} verified; ${rows[done]?.machineName ?? "the next"} failed: ${e instanceof ApiError ? e.message : "try again"}`, "error");
+      setVerifyAllOpen(false);
+    } finally {
+      setVerifyingAll(false);
+      refetch();
+    }
   };
 
   const downloadSheet = async () => {
@@ -312,12 +386,30 @@ export function ShiftPlanDetailPage() {
         </Card>
       )}
 
+      {(plan.pendingCount ?? 0) > 0 && (
+        <Card className="mb-4 flex flex-wrap items-center gap-3 border-status-warning/40 bg-status-warningBg p-4" aria-label="To verify">
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="font-semibold text-status-warning">
+              {plan.pendingCount} {plan.pendingCount === 1 ? "entry" : "entries"} entered, waiting to be verified —{" "}
+              {(plan.draftedProduction ?? 0).toLocaleString("en-IN")} m drafted.
+            </p>
+            <p className="text-ink-600">Entered on the floor or by the operator. Nothing reaches the job until you verify it.</p>
+          </div>
+          <Button onClick={() => setVerifyAllOpen(true)} loading={verifyingAll}>
+            <BadgeCheck className="h-4 w-4" /> Verify all as entered
+          </Button>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="p-5">
-          <p className="text-sm text-ink-400">Total production</p>
+          <p className="text-sm text-ink-400">Verified production</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">
             {plan.totalProduction.toLocaleString("en-IN")} m
           </p>
+          {(plan.draftedProduction ?? 0) > 0 && (
+            <p className="mt-1 text-xs text-status-warning">+ {(plan.draftedProduction ?? 0).toLocaleString("en-IN")} m drafted, to verify</p>
+          )}
         </Card>
         <Card className="p-5">
           <p className="text-sm text-ink-400">Machines</p>
@@ -358,6 +450,16 @@ export function ShiftPlanDetailPage() {
           onApplied={() => refetch()}
         />
       )}
+
+      <ConfirmDialog
+        open={verifyAllOpen}
+        title="Verify every entry as entered?"
+        message={`${plan.pendingCount ?? 0} ${(plan.pendingCount ?? 0) === 1 ? "entry is" : "entries are"} verified with the figures as entered (${(plan.draftedProduction ?? 0).toLocaleString("en-IN")} m in all) and cascaded to the jobs and orders. To change a figure first, verify that row on its own.`}
+        confirmLabel="Verify all"
+        loading={verifyingAll}
+        onCancel={() => setVerifyAllOpen(false)}
+        onConfirm={() => void verifyAll()}
+      />
 
       <ConfirmDialog
         open={deleteOpen}

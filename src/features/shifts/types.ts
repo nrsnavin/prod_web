@@ -9,9 +9,21 @@ export interface ShiftPlanMachineRow {
   /** The JOB's status (not the shift's) — drives the production lock. */
   jobStatus?: string;
   operatorName: string;
+  /** Verified output across the heads run (0 until verified). */
   production: number;
   timer?: string;
   status: string;
+  headsRun?: number;
+  /** Entered (floor, operator or slip) but not verified: per head, as typed. */
+  submitted?: {
+    production: number | null;
+    timer: string | null;
+    feedback: string;
+    at: string | null;
+    byName: string;
+  } | null;
+  /** The submitted figure across the heads run — what `production` becomes once verified. */
+  draftProduction?: number;
   // The ShiftDetail id — the target of verify-production when an admin
   // enters output for an open row. (`shiftPlanById` returns it as `id`.)
   id: string;
@@ -37,7 +49,12 @@ export interface ShiftPlanDetail {
   /** office: made in the app; floor: made on the floor tablet from the looms entered. */
   source?: "office" | "floor";
   floor?: PlanFloorCompletion | null;
+  /** Verified output. */
   totalProduction: number;
+  /** Entered but not verified yet. */
+  draftedProduction?: number;
+  pendingCount?: number;
+  verifiedCount?: number;
   operatorCount: number;
   machines: ShiftPlanMachineRow[];
 }

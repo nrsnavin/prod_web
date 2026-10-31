@@ -12,13 +12,14 @@ import type { ShiftPlanDetail } from "./types";
 // ══════════════════════════════════════════════════════════════════
 
 const confirmMutate = vi.fn((_id: string, opts?: { onSuccess?: () => void }) => opts?.onSuccess?.());
+const verifyAsync = vi.fn(async () => ({}));
 let plan: ShiftPlanDetail;
 vi.mock("./hooks", () => ({
   useShiftPlan: () => ({ data: plan, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useShiftMutations: () => ({
     confirmPlan: { mutate: confirmMutate, isPending: false },
     deletePlan: { mutate: vi.fn(), isPending: false },
-    verify: { mutate: vi.fn(), isPending: false },
+    verify: { mutate: vi.fn(), mutateAsync: verifyAsync, isPending: false },
   }),
 }));
 const toast = vi.fn();
@@ -37,7 +38,7 @@ const open = () => render(
   </MemoryRouter>
 );
 
-beforeEach(() => { confirmMutate.mockClear(); toast.mockClear(); });
+beforeEach(() => { confirmMutate.mockClear(); verifyAsync.mockClear(); toast.mockClear(); });
 
 describe("a plan made from the floor", () => {
   it("says it is still being entered, and is a draft to confirm", async () => {
@@ -66,6 +67,31 @@ describe("a plan made from the floor", () => {
     expect(screen.getByText("Confirmed")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /confirm plan/i })).not.toBeInTheDocument();
     expect(screen.getByText("No loom was free that shift.")).toBeInTheDocument();
+  });
+
+  it("shows what the floor entered as a draft to verify, and verifies it all in one go", async () => {
+    plan = {
+      ...base, totalProduction: 0, draftedProduction: 2460, pendingCount: 2, verifiedCount: 0,
+      machines: [
+        { id: "d1", machineId: "m1", machineName: "L1", jobOrderNo: 12, operatorName: "Ravi", production: 0, timer: "00:00:00", status: "pending_verification", headsRun: 2, draftProduction: 1640, submitted: { production: 820, timer: "7:30:00", feedback: "", at: "2026-10-21T13:40:00Z", byName: "Kumar" } },
+        { id: "d2", machineId: "m2", machineName: "L2", jobOrderNo: 12, operatorName: "Sita", production: 0, timer: "00:00:00", status: "pending_verification", headsRun: 1, draftProduction: 820, submitted: { production: 820, timer: "7:00:00", feedback: "", at: "2026-10-21T13:45:00Z", byName: "Kumar" } },
+        { id: "d3", machineId: "m3", machineName: "L3", jobOrderNo: 12, operatorName: "Anu", production: 0, timer: "00:00:00", status: "open" },
+      ],
+    };
+    open();
+    expect(screen.getByLabelText("To verify")).toHaveTextContent("2 entries entered, waiting to be verified — 2,460 m drafted.");
+    expect(screen.getByText("Verified production").parentElement).toHaveTextContent("0 m+ 2,460 m drafted, to verify");
+    expect(screen.getAllByText("Entered — to verify")).toHaveLength(2);
+    expect(screen.getByText("820 /head × 2 · to verify")).toBeInTheDocument();
+    expect(screen.getByText("Not entered")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^verify$/i })).toHaveLength(2);
+
+    await userEvent.click(screen.getByRole("button", { name: /verify all as entered/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^verify all$/i }));
+    expect(verifyAsync).toHaveBeenCalledTimes(2);
+    expect(verifyAsync).toHaveBeenNthCalledWith(1, { shiftId: "d1", productionMeters: 820, timer: "7:30:00" });
+    expect(verifyAsync).toHaveBeenNthCalledWith(2, { shiftId: "d2", productionMeters: 820, timer: "7:00:00" });
+    expect(toast).toHaveBeenCalledWith("2 entries verified — cascaded to job & order", "success");
   });
 
   it("an office plan has no floor panel", () => {
