@@ -33,6 +33,8 @@ const schema = z.object({
   leadTimeDays: z.coerce.number().min(0).optional(),
   minOrderQty: z.coerce.number().min(0).optional(),
   packSize: z.coerce.number().min(0).optional(),
+  gstRegistration: z.enum(["regular", "composition", "unregistered"]).optional(),
+  paymentTermsDays: z.coerce.number().min(0).max(365).optional(),
 });
 
 function SupplierForm({
@@ -62,6 +64,8 @@ function SupplierForm({
       leadTimeDays: initial?.leadTimeDays ?? 0,
       minOrderQty: initial?.minOrderQty ?? 0,
       packSize: initial?.packSize ?? 0,
+      gstRegistration: initial?.gstRegistration ?? "regular",
+      paymentTermsDays: initial?.paymentTermsDays ?? 30,
     },
   });
   return (
@@ -76,6 +80,17 @@ function SupplierForm({
         <Input label="GSTIN" {...register("gstin")} />
       </div>
       <Input label="Address" {...register("address")} />
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-ink-700">GST registration</span>
+          <select className="rounded-lg border border-ink-200 px-3 py-2" {...register("gstRegistration")}>
+            <option value="regular">Regular (charges GST)</option>
+            <option value="composition">Composition dealer (no GST)</option>
+            <option value="unregistered">Not registered (no GST)</option>
+          </select>
+        </label>
+        <Input label="Bills fall due after (days)" type="number" min={0} {...register("paymentTermsDays")} />
+      </div>
 
       <fieldset className="rounded-md border border-ink-200 p-3">
         <legend className="px-1 text-xs font-medium text-ink-500">Replenishment terms</legend>

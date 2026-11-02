@@ -13,6 +13,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { useCreditHold } from "@/features/customers/credit";
 import { ApiError } from "@/core/http/httpClient";
 import { useDcs, useDcMutations } from "./hooks";
 import { DcFormValues, DcStatus, DcType, DeliveryChallan } from "./types";
@@ -106,8 +107,9 @@ export function DcListPage() {
     short: NonNullable<ReturnType<typeof stockShortFrom>>;
   } | null>(null);
 
-  const submit = (values: DcFormValues) =>
-    create.mutate(values, {
+  const hold = useCreditHold("this challan");
+  const submit = (values: DcFormValues) => hold.run((creditOverride) =>
+    create.mutate({ ...values, ...(creditOverride ? { creditOverride } : {}) }, {
       onSuccess: (dc) => {
         setStockShort(null);
         closeCreate();
@@ -121,9 +123,9 @@ export function DcListPage() {
           return;
         }
         setStockShort(null);
-        toast(e instanceof ApiError ? e.message : "Failed to create DC", "error");
+        if (!hold.onError(e)) toast(e instanceof ApiError ? e.message : "Failed to create DC", "error");
       },
-    });
+    }));
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / 20)) : 1;
 
@@ -194,6 +196,7 @@ export function DcListPage() {
         <Pagination page={page} totalPages={totalPages} total={data?.total} onChange={setPage} />
       </Card>
 
+      {hold.dialog}
       <FormScreen open={createOpen} onClose={closeCreate} title="New delivery challan" width="max-w-3xl">
         <DcForm
           prefillElastics={prefill}

@@ -28,6 +28,9 @@ const schema = z.object({
     .optional()
     .or(z.literal("")),
   paymentTerms: z.string().optional(),
+  // 0 = no limit: nothing is held until the office sets one.
+  creditLimit: z.coerce.number().min(0, "0 or more").optional(),
+  maxOverdueDays: z.coerce.number().min(0, "0 or more").optional(),
 });
 
 export function CustomerForm({
@@ -58,6 +61,8 @@ export function CustomerForm({
       pincode: initial?.pincode ?? "",
       stateCode: initial?.stateCode ?? "",
       paymentTerms: initial?.paymentTerms ?? "",
+      creditLimit: initial?.creditLimit ?? 0,
+      maxOverdueDays: initial?.maxOverdueDays ?? 0,
     },
   });
 
@@ -89,7 +94,11 @@ export function CustomerForm({
           {...register("stateCode")}
         />
       </div>
-      <Input label="Payment terms" placeholder="e.g. 30 days" {...register("paymentTerms")} />
+      <div className="grid grid-cols-3 gap-3">
+        <Input label="Payment terms" placeholder="e.g. 30 days" {...register("paymentTerms")} />
+        <Input label="Credit limit (₹)" type="number" min={0} hint="0 = no limit" error={errors.creditLimit?.message} {...register("creditLimit")} />
+        <Input label="Hold when overdue beyond (days)" type="number" min={0} hint="0 = never" error={errors.maxOverdueDays?.message} {...register("maxOverdueDays")} />
+      </div>
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel

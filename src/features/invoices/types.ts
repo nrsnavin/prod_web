@@ -153,6 +153,8 @@ export interface InvoiceLineOverride {
 }
 
 export interface InvoiceCreateBody {
+  /** An admin releasing a customer on credit hold, with the reason. */
+  creditOverride?: string;
   orderId: string;
   dcIds: string[];
   invoiceDate?: string;

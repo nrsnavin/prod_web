@@ -101,11 +101,15 @@ export const accountsService = {
     (await httpClient.post<{ success: boolean; batch: TallyBatch }>("/accounts/tally/export", body)).batch,
   tallyBatches: async () => (await httpClient.get<{ success: boolean; batches: TallyBatch[] }>("/accounts/tally/batches")).batches,
   tallyXml: (id: string) => httpClient.getBlob(`/accounts/tally/batches/${id}/xml`),
-  collections: () => httpClient.get<{ success: boolean; rows: CollectionEntry[]; total: number; whatsapp: boolean }>("/accounts/collections"),
+  collections: (held = false) => httpClient.get<{ success: boolean; rows: CollectionEntry[]; total: number; whatsapp: boolean }>("/accounts/collections", held ? { held: "true" } : undefined),
   draftReminder: (customer: string, tone: "gentle" | "firm" = "gentle") =>
     httpClient.post<{ success: boolean; message: string; byModel: boolean; to: string; entry: CollectionEntry }>("/accounts/collections/draft", { customer, tone }),
-  sendReminder: (to: string, message: string) =>
-    httpClient.post<{ success: boolean; sent: boolean; dryRun?: boolean; error?: string; to: string }>("/accounts/collections/send", { to, message }),
+  sendReminder: (to: string, message: string, extra: { customer?: string; tone?: string } = {}) =>
+    httpClient.post<{ success: boolean; sent: boolean; dryRun?: boolean; error?: string; to: string }>("/accounts/collections/send", { to, message, ...extra }),
+  logCollection: (body: { customer: string; kind: "call" | "promise" | "note"; note?: string; promiseDate?: string; promiseAmount?: number; channel?: string }) =>
+    httpClient.post<{ success: boolean }>("/accounts/collections/log", body),
+  collectionHistory: async (customer: string) =>
+    (await httpClient.get<{ success: boolean; history: Array<{ _id: string; kind: string; channel?: string; note?: string; message?: string; promiseDate?: string; promiseAmount?: number; result?: string; byName?: string; createdAt: string }> }>(`/accounts/collections/${customer}/history`)).history,
 
   // ── Credits ──
   credits: async (partyType: "customer" | "supplier", party: string) =>
@@ -143,6 +147,18 @@ export const accountsService = {
     (await httpClient.put<{ success: boolean; settings: AccountsSettings }>("/accounts/settings", body)).settings,
   lockBooks: async (lockDate: string | null, reason?: string) =>
     (await httpClient.post<{ success: boolean; settings: AccountsSettings }>("/accounts/lock", { lockDate, reason })).settings,
+
+  // ── Documents for the other side ──
+  notePdfUrl: (id: string) => `/api/v2/accounts/notes/${id}/pdf`,
+  paymentPdfUrl: (id: string) => `/api/v2/accounts/payments/${id}/pdf`,
+  statementPdfUrl: (partyType: "customer" | "supplier", party: string, range: { from?: string; to?: string } = {}) =>
+    `/api/v2/accounts/statement/pdf?${new URLSearchParams(clean({ partyType, party, ...range }) as Record<string, string>).toString()}`,
+  noteEinvoiceJson: (id: string) => httpClient.getBlob(`/accounts/notes/${id}/einvoice.json`),
+  registerNoteIrn: (id: string) => httpClient.post<{ success: boolean; note: AccountNote }>(`/accounts/notes/${id}/register-irn`, {}),
+  pasteNoteIrn: (id: string, body: { irn: string; ackNo?: string; ackDate?: string; signedQr?: string }) =>
+    httpClient.post<{ success: boolean; note: AccountNote }>(`/accounts/notes/${id}/irn`, body),
+  shareDraft: (body: { kind: "payment" | "note" | "statement"; id?: string; partyType?: "customer" | "supplier"; party?: string; from?: string; to?: string }) =>
+    httpClient.post<{ success: boolean; to: string; message: string }>("/accounts/share/draft", body),
 
   attachmentUrl: (kind: "bills" | "expenses" | "notes" | "payments", id: string, aid: string) => `/api/v2/accounts/${kind}/${id}/attachments/${aid}`,
 };

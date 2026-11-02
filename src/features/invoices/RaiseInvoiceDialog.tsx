@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
+import { CreditBand, useCreditHold } from "@/features/customers/credit";
 import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
 import { useInvoiceMutations, useInvoiceOrderInfo } from "./hooks";
@@ -65,9 +66,11 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
       return next;
     });
 
-  const raise = () =>
+  const hold = useCreditHold("this invoice");
+  const raise = () => hold.run((creditOverride) =>
     create.mutate(
       {
+        creditOverride,
         orderId,
         dcIds: [...selected],
         invoiceDate,
@@ -81,16 +84,18 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
           onClose();
           navigate(`/invoices/${inv._id}`);
         },
-        onError: (e) => toast(e instanceof ApiError ? e.message : "Could not raise the invoice", "error"),
+        onError: (e) => { if (!hold.onError(e)) toast(e instanceof ApiError ? e.message : "Could not raise the invoice", "error"); },
       }
-    );
+    ));
 
   return (
     <Modal open onClose={onClose} title="Raise invoice" width="max-w-4xl">
       {isLoading && <Skeleton className="h-64 w-full" />}
       {isError && <ErrorBanner message={(error as Error).message} />}
+      {hold.dialog}
       {info && (
         <div className="space-y-5">
+          <CreditBand customerId={info.order.customer} />
           <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
             <p>
               <span className="font-semibold">Order #{info.order.orderNo}</span>

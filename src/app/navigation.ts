@@ -32,6 +32,7 @@ import {
   CalendarOff,
   Megaphone,
   MessageSquareWarning,
+  HandCoins,
   PackageX,
   Wrench,
   BellRing,
@@ -215,6 +216,7 @@ export const navSections: NavSection[] = [
     items: [
       { label: "Announcements", path: "/announcements", icon: Megaphone }, // all
       { label: "Feedback", path: "/feedback", icon: MessageSquareWarning }, // all
+      { label: "Expense claims", path: "/claims", icon: HandCoins }, // all
       { label: "Machine Issues", path: "/machine-issues", icon: Wrench }, // all
       { label: "Notifications", path: "/notification-settings", icon: BellRing, departments: ["admin"] },
       { label: "AI Advisor", path: "/advisor", icon: Sparkles, departments: ["admin", "finance"] },

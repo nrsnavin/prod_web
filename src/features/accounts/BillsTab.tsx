@@ -21,7 +21,7 @@ import { stateCodeFromGstin } from "@/features/invoices/gst";
 import type { SupplyType } from "@/features/invoices/types";
 import { useAccountsMutations, useBillPoInfo, useBills, useCategories } from "./hooks";
 import { LinesEditor, PartyPicker, billLabel, billTone, blankLine, money, today } from "./shared";
-import type { BillStatus, LineInput, SupplierBill } from "./types";
+import type { BillStatus, BillVariance, LineInput, SupplierBill } from "./types";
 import { ScanBillDialog, type ScanDraft } from "./ScanBill";
 import { ExpenseForm } from "./ExpensesTab";
 
@@ -104,6 +104,10 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
   const [itcEligible, setItcEligible] = useState(true);
   const [tds, setTds] = useState<{ applicable: boolean; section: string; rate: number | "" }>({ applicable: false, section: "194C", rate: 2 });
   const [notes, setNotes] = useState("");
+  const [reverseCharge, setReverseCharge] = useState(false);
+  // The three-way match: what the server found off the PO or the receipts.
+  const [variance, setVariance] = useState<BillVariance | null>(null);
+  const [varianceNote, setVarianceNote] = useState("");
 
   const sellerState = settings?.invoice?.stateCode || stateCodeFromGstin(settings?.gstin);
   const supplyType: SupplyType = supplierGstin && sellerState && stateCodeFromGstin(supplierGstin) !== sellerState ? "inter" : "intra";
@@ -139,10 +143,18 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
         purchaseOrder: poId || undefined, inwards: poId ? inwards : undefined, kind, category: category || undefined,
         lines, itcEligible, tds: { applicable: tds.applicable, section: tds.section, rate: Number(tds.rate) || 0 }, notes: notes.trim() || undefined,
         source: initialDraft ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
+        reverseCharge: reverseCharge || undefined, varianceNote: varianceNote.trim() || undefined,
       },
       {
         onSuccess: (bill) => { toast(`Bill ${bill.billNo} entered`, "success"); onDone(bill._id); },
-        onError: (e) => toast(e instanceof ApiError ? e.message : "Could not enter the bill", "error"),
+        onError: (e) => {
+          if (e instanceof ApiError && e.code === "BILL_VARIANCE") {
+            setVariance((e.data?.details as BillVariance | undefined) ?? null);
+            toast("The bill does not match the PO — say why below, then enter it", "info");
+            return;
+          }
+          toast(e instanceof ApiError ? e.message : "Could not enter the bill", "error");
+        },
       }
     );
 
@@ -184,6 +196,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={itcEligible} onChange={(e) => setItcEligible(e.target.checked)} /> Input credit can be claimed</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={tds.applicable} onChange={(e) => setTds({ ...tds, applicable: e.target.checked })} /> TDS applies when paying</label>
+        <label className="flex items-center gap-2 text-sm" title="The supplier charges no GST; we pay it to the government and claim it back (goods transport, legal fees)"><input type="checkbox" checked={reverseCharge} onChange={(e) => setReverseCharge(e.target.checked)} /> Reverse charge: we pay the GST</label>
         {tds.applicable && (
           <div className="grid grid-cols-2 gap-2">
             <Input label="Section" value={tds.section} onChange={(e) => setTds({ ...tds, section: e.target.value })} />
@@ -192,10 +205,21 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
         )}
       </div>
       <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      {variance && variance.lines.length > 0 && (
+        <div role="alert" className="rounded-lg border border-status-warning/40 bg-status-warningBg p-3 text-sm">
+          <p className="font-semibold text-status-warning">Off the PO or the receipts by ₹{money(variance.total)}</p>
+          <table className="mt-2 w-full text-xs">
+            <thead><tr className="text-ink-500"><th className="text-left font-medium">Line</th><th className="text-right font-medium">PO rate</th><th className="text-right font-medium">Billed rate</th><th className="text-right font-medium">Received</th><th className="text-right font-medium">Billed</th><th className="text-right font-medium">Extra</th></tr></thead>
+            <tbody>{variance.lines.map((l, i) => <tr key={i}><td>{l.description}</td><td className="text-right tabular-nums">{l.poRate ?? "—"}</td><td className="text-right tabular-nums">{l.billRate}{l.rateOffPercent ? ` (${l.rateOffPercent > 0 ? "+" : ""}${l.rateOffPercent}%)` : ""}</td><td className="text-right tabular-nums">{l.receivedQty ?? "—"}</td><td className="text-right tabular-nums">{l.billedQty}</td><td className="text-right tabular-nums">₹{money(l.amount)}</td></tr>)}</tbody>
+          </table>
+          <Input label="Why this bill is right *" value={varianceNote} onChange={(e) => setVarianceNote(e.target.value)} placeholder="e.g. Rate revised by phone on 2 July; 2 kg extra accepted" />
+          <p className="mt-1 text-xs text-ink-500">Or correct the lines — or enter it as billed and raise a debit note for the difference.</p>
+        </div>
+      )}
 
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={submit} disabled={!ready} loading={createBill.isPending}>Enter bill</Button>
+        <Button onClick={submit} disabled={!ready || (!!variance?.lines.length && varianceNote.trim().length < 8)} loading={createBill.isPending}>Enter bill</Button>
       </div>
     </div>
   );

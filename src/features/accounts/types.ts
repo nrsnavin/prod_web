@@ -32,6 +32,8 @@ export interface ExpenseCategory {
   /** Expenses above this need an approver; 0 = always. */
   approvalAbove?: number;
   tdsSection?: string;
+  /** Most one person may claim under this head in a day; 0 = no limit. */
+  claimDailyLimit?: number;
   active?: boolean;
 }
 
@@ -100,6 +102,9 @@ export interface SupplierBill {
   paidAmount: number;
   tdsAmount: number;
   debitedAmount: number;
+  reverseCharge?: boolean;
+  rcm?: { cgst: number; sgst: number; igst: number; tax: number };
+  variance?: BillVariance;
   outstanding?: number;
   status: BillStatus;
   cancel?: { reason?: string; at?: string };
@@ -117,7 +122,16 @@ export interface BillPoInfo {
   lines: Array<LineInput & { inwards: string[] }>;
 }
 
+export interface BillVariance {
+  lines: Array<{ description: string; poRate: number | null; billRate: number; receivedQty: number | null; billedQty: number; rateOffPercent: number | null; amount: number }>;
+  total: number;
+  note?: string;
+}
+
 export interface BillCreateBody {
+  reverseCharge?: boolean;
+  /** Why a bill off the PO or the receipts is right (the three-way match). */
+  varianceNote?: string;
   supplier: string;
   supplierBillNo: string;
   billDate?: string;
@@ -206,6 +220,7 @@ export interface AccountNote {
   applied?: number;
   unapplied?: number;
   applications?: Array<{ docType: Allocation["docType"]; doc: string; docNo: string; amount: number; at?: string }>;
+  einvoice?: { status: "pending" | "registered" | "cancelled"; irn?: string; ackNo?: string; ackDate?: string };
   status: "issued" | "cancelled";
   cancel?: { reason?: string; at?: string };
   notes?: string;
@@ -466,6 +481,11 @@ export interface CollectionEntry {
   party: string; partyName: string; total: number; overdue: number; oldestDays: number; count: number; priority: number;
   docs: OpenDoc[];
   contact: { name: string; phone: string; email: string; accountant: string; accountantPhone: string; paymentTerms: string };
+  lastContact?: { kind: string; at: string; byName?: string; note?: string; channel?: string } | null;
+  promise?: { date: string; amount: number; note?: string; live: boolean; broken: boolean } | null;
+  recentlyContacted?: boolean;
+  held?: boolean;
+  next?: { action: "remind" | "call"; tone: "gentle" | "firm"; label: string };
 }
 
 // ── Credits, contras, opening balances, settings ──

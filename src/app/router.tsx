@@ -103,6 +103,7 @@ const BonusPage = lazyPage(() => import("@/features/hr/BonusPage"), "BonusPage")
 const LeavePage = lazyPage(() => import("@/features/hr/LeavePage"), "LeavePage");
 const AnnouncementsPage = lazyPage(() => import("@/features/comms/AnnouncementsPage"), "AnnouncementsPage");
 const FeedbackPage = lazyPage(() => import("@/features/comms/FeedbackPage"), "FeedbackPage");
+const ClaimsPage = lazyPage(() => import("@/features/claims/ClaimsPage"), "ClaimsPage");
 const MachineIssuesPage = lazyPage(() => import("@/features/comms/MachineIssuesPage"), "MachineIssuesPage");
 const NotificationSettingsPage = lazyPage(() => import("@/features/comms/NotificationSettingsPage"), "NotificationSettingsPage");
 const UsersPage = lazyPage(() => import("@/features/users/UsersPage"), "UsersPage");
@@ -169,6 +170,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/leave": withSuspense(<LeavePage />),
   "/announcements": withSuspense(<AnnouncementsPage />),
   "/feedback": withSuspense(<FeedbackPage />),
+  "/claims": withSuspense(<ClaimsPage />),
   "/machine-issues": withSuspense(<MachineIssuesPage />),
   "/notification-settings": withSuspense(<NotificationSettingsPage />),
   "/advisor": withSuspense(<AdvisorPage />),

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
 import { customerService } from "@/features/customers/api";
+import { CreditBand } from "@/features/customers/credit";
 import { elasticService } from "@/features/elastics/api";
 import { useElasticGroups } from "@/features/elasticGroups/hooks";
 import { itemElasticId, itemElasticName } from "@/features/elasticGroups/types";
@@ -139,6 +140,7 @@ export function OrderForm({
         <Input label="Order date *" type="date" error={errors.date?.message} {...register("date")} />
         <Input label="Supply date *" type="date" error={errors.supplyDate?.message} {...register("supplyDate")} />
       </div>
+      <CreditBand customerId={watchedCustomer || undefined} />
       <Input label="Description" {...register("description")} />
 
       {/* Add from an elastic group — always shown so the shortcut is

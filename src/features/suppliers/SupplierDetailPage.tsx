@@ -1,3 +1,6 @@
+import { PartyActions } from "@/features/accounts/PartyActions";
+import { canAccessPath } from "@/app/navigation";
+import { useAuth } from "@/core/auth/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Plus, ChevronRight, Package } from "lucide-react";
@@ -39,6 +42,7 @@ function PoRow({ po }: { po: PurchaseOrder }) {
 export function SupplierDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const supplier = useQuery({
     queryKey: ["supplier", "detail", id],
@@ -74,6 +78,7 @@ export function SupplierDetailPage() {
   }
 
   const s = supplier.data;
+  const canMoney = canAccessPath("/accounts", user);
   const poList = pos.data?.pos ?? [];
 
   return (
@@ -85,9 +90,12 @@ export function SupplierDetailPage() {
         title={s.name}
         subtitle={s.contactPerson}
         actions={
-          <Button onClick={() => navigate("/purchase-orders/new")}>
-            <Plus className="h-4 w-4" /> New PO
-          </Button>
+          <>
+            {canMoney && <PartyActions partyType="supplier" party={s._id} name={s.name} />}
+            <Button onClick={() => navigate("/purchase-orders/new")}>
+              <Plus className="h-4 w-4" /> New PO
+            </Button>
+          </>
         }
       />
 

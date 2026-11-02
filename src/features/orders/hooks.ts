@@ -63,7 +63,7 @@ export function useOrderMutations() {
   };
 
   const create = useMutation({
-    mutationFn: (body: OrderFormValues) => orderService.create(body),
+    mutationFn: (body: OrderFormValues & { creditOverride?: string }) => orderService.create(body),
     onSuccess: invalidate,
   });
   const approve = useMutation({

@@ -1,3 +1,7 @@
+import { PartyActions } from "@/features/accounts/PartyActions";
+import { canAccessPath } from "@/app/navigation";
+import { useAuth } from "@/core/auth/useAuth";
+import { CreditBand } from "@/features/customers/credit";
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, Pencil, UserCheck, UserX } from "lucide-react";
@@ -20,6 +24,7 @@ import { CustomerRecentCard } from "./CustomerRecentCard";
 import { formatDate } from "@/core/format/date";
 
 export function CustomerDetailPage() {
+  const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -60,6 +65,7 @@ export function CustomerDetailPage() {
         subtitle={customer.contactName}
         actions={
           <>
+            {canAccessPath("/accounts", user) && <PartyActions partyType="customer" party={customer._id} name={customer.name} />}
             <Button variant="secondary" onClick={() => { setEditVersion(customer.__v); setEditOpen(true); }}>
               <Pencil className="h-4 w-4" /> Edit
             </Button>
@@ -91,6 +97,7 @@ export function CustomerDetailPage() {
         }
       />
 
+      <div className="mb-4"><CreditBand customerId={customer._id} /></div>
       <Card className="p-6">
         <div className="mb-4">
           <StatusChip tone={customer.status === "Inactive" ? "neutral" : "success"}>

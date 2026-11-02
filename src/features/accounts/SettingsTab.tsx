@@ -68,6 +68,7 @@ function CategoryDialog({ initial, onClose }: { initial: Partial<ExpenseCategory
           <Input label="Tally ledger" value={form.ledger ?? ""} onChange={(e) => set("ledger", e.target.value)} />
           <Input label="Needs approval above ₹ (0 = always)" type="number" min={0} value={form.approvalAbove ?? 0} onChange={(e) => set("approvalAbove", Number(e.target.value))} />
           <Input label="Usual TDS section" value={form.tdsSection ?? ""} onChange={(e) => set("tdsSection", e.target.value)} placeholder="194C, 194I, 194J" />
+          <Input label="Most one person may claim a day (₹)" type="number" min={0} value={form.claimDailyLimit ?? 0} onChange={(e) => set("claimDailyLimit", Number(e.target.value))} hint="0 = no limit" />
         </div>
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2"><input type="checkbox" checked={!!form.itcEligible} onChange={(e) => set("itcEligible", e.target.checked)} /> GST on it can be claimed</label>

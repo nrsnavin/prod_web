@@ -8,6 +8,10 @@ import { formatDate } from "@/core/format/date";
 import { useOutstanding, useStatement } from "./hooks";
 import { PartyPicker, RangePicker, money } from "./shared";
 import { CreditsCard } from "./Credits";
+import { ShareDialog } from "./Share";
+import { accountsService } from "./api";
+import { Button } from "@/components/ui/Button";
+import { FileDown, MessageCircle } from "lucide-react";
 import type { LedgerRow } from "./types";
 
 const docPath = (r: LedgerRow) =>
@@ -22,6 +26,7 @@ export function StatementsTab() {
   const [range, setRange] = useState({ from: "", to: "" });
   const { data: st, isLoading } = useStatement(party ? partyType : undefined, party || undefined, { from: range.from || undefined, to: range.to || undefined });
   const { data: ageing } = useOutstanding(partyType === "customer" ? "receivable" : "payable");
+  const [sharing, setSharing] = useState(false);
 
   return (
     <div className="space-y-4">
@@ -42,7 +47,11 @@ export function StatementsTab() {
               <h3 className="font-semibold">{st.party.name}</h3>
               <p className="text-sm text-ink-400">{st.party.gstin ? `GSTIN ${st.party.gstin} · ` : ""}{partyType === "customer" ? "receivable" : "payable"} ₹{money(st.open.total)} across {st.open.count} open document{st.open.count === 1 ? "" : "s"}{st.open.overdue > 0 ? ` · ₹${money(st.open.overdue)} overdue` : ""}</p>
             </div>
-            <p className="text-sm">Closing balance <span className="font-semibold tabular-nums">₹{money(st.closing)}</span></p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm">Closing balance <span className="font-semibold tabular-nums">₹{money(st.closing)}</span></p>
+              <a href={accountsService.statementPdfUrl(partyType, party, { from: range.from || undefined, to: range.to || undefined })} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-2.5 py-1.5 text-sm font-medium text-ink-700 hover:bg-ink-50"><FileDown className="h-4 w-4" /> PDF</a>
+              <Button size="sm" variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> WhatsApp</Button>
+            </div>
           </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
@@ -70,6 +79,8 @@ export function StatementsTab() {
           </div>
         </Card>
       ))}
+
+      {sharing && party && <ShareDialog what={{ kind: "statement", partyType, party, from: range.from || undefined, to: range.to || undefined }} customer={partyType === "customer" ? party : undefined} onClose={() => setSharing(false)} />}
 
       {ageing && (
         <Card className="p-5">

@@ -1,6 +1,10 @@
+import { VoucherForm } from "@/features/accounts/VouchersTab";
+import { FormScreen } from "@/components/ui/FormScreen";
+import { canAccessPath } from "@/app/navigation";
+import { useAuth } from "@/core/auth/useAuth";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, FileDown, FileJson, BadgeCheck, ClipboardPaste, XCircle, AlertTriangle } from "lucide-react";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, FileDown, FileJson, BadgeCheck, ClipboardPaste, XCircle, AlertTriangle, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -58,6 +62,9 @@ export function InvoiceDetailPage() {
   const { registerIrn, pasteIrn, cancel } = useInvoiceMutations();
   const [busy, setBusy] = useState<"pdf" | "json" | null>(null);
   const [irnOpen, setIrnOpen] = useState(false);
+  const [receiving, setReceiving] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [notReady, setNotReady] = useState<string[] | null>(null);
   useTrackRecent("Invoice", `/invoices/${id}`, inv?.invoiceNumber);
@@ -149,6 +156,11 @@ export function InvoiceDetailPage() {
                 </Button>
               </>
             )}
+            {issued && canAccessPath("/accounts", user) && (
+              <Button variant="secondary" onClick={() => setReceiving(true)}>
+                <Wallet className="h-4 w-4" /> Record receipt
+              </Button>
+            )}
             {issued && (
               <Button variant="danger" onClick={() => setCancelOpen(true)}>
                 <XCircle className="h-4 w-4" /> Cancel
@@ -157,6 +169,12 @@ export function InvoiceDetailPage() {
           </>
         }
       />
+      <FormScreen open={receiving} onClose={() => setReceiving(false)} title={`Receipt from ${inv.buyer.name}`} width="max-w-4xl">
+        {receiving && (
+          <VoucherForm kind="receipt" initialParty={{ id: typeof inv.customer === "string" ? inv.customer : inv.customer._id, name: inv.buyer.name }} initialDocs={[inv._id]}
+            onDone={(id) => { setReceiving(false); navigate(`/accounts/payments/${id}`); }} onCancel={() => setReceiving(false)} />
+        )}
+      </FormScreen>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <StatusChip tone={invoiceStatusTone[inv.status]}>{inv.status}</StatusChip>
         <StatusChip tone={einvoiceTone[inv.einvoice.status]}>{einvoiceLabel[inv.einvoice.status]}</StatusChip>

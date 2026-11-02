@@ -21,6 +21,9 @@ export interface Customer {
   pincode?: string;
   /** Two-digit GST state code; blank means "work it out from the GSTIN". */
   stateCode?: string;
+  /** Credit control: 0 = no limit. */
+  creditLimit?: number;
+  maxOverdueDays?: number;
   purchase?: unknown[];
   accountant?: { name?: string; phoneNumber?: string };
   merchandiser?: { name?: string; phoneNumber?: string };
@@ -39,6 +42,8 @@ export interface CustomerFormValues {
   pincode?: string;
   stateCode?: string;
   paymentTerms?: string;
+  creditLimit?: number;
+  maxOverdueDays?: number;
 }
 
 export interface CustomerListResult {

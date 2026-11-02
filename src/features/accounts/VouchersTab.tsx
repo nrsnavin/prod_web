@@ -151,8 +151,8 @@ const tdsShare = (d: OpenDoc) => (d.docType === "OpeningBalance" ? 1 : d.taxable
 export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs }: {
   kind: VoucherKind; onDone: (id: string) => void; onCancel: () => void;
   initialParty?: { id: string; name: string };
-  /** Documents to tick when they load (record a payment from the document itself). */
-  initialDocs?: string[];
+  /** Documents to tick when they load (record a payment from the document itself), or "all" of them. */
+  initialDocs?: string[] | "all";
 }) {
   const { toast } = useToast();
   const { createPayment } = useAccountsMutations();
@@ -185,7 +185,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   useEffect(() => {
     if (seeded.current || !initialDocs?.length || !docs.length) return;
     seeded.current = true;
-    setPicked(Object.fromEntries(docs.filter((d) => initialDocs.includes(d.id)).map((d) => [d.id, d.outstanding])));
+    setPicked(Object.fromEntries(docs.filter((d) => initialDocs === "all" || initialDocs.includes(d.id)).map((d) => [d.id, d.outstanding])));
   }, [docs, initialDocs]);
 
   const rate = kind === "payment" ? Number(tdsRate) || 0 : 0;

@@ -3,6 +3,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { OrderForm } from "./OrderForm";
 
+// Credit control reads the server; these tests are about the form itself.
+vi.mock("@/features/customers/credit", () => ({
+  CreditBand: () => null,
+  useCreditHold: () => ({ run: (fn: (o?: string) => void) => fn(undefined), onError: () => false, dialog: null }),
+}));
+
+
 // ══════════════════════════════════════════════════════════════════
 //  "ADD FROM ELASTIC GROUP" LEFT THE LINES LOOKING EMPTY
 //

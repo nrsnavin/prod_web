@@ -5,6 +5,13 @@ import { MemoryRouter } from "react-router-dom";
 import { RaiseInvoiceDialog } from "./RaiseInvoiceDialog";
 import type { InvoiceOrderInfo } from "./types";
 
+// Credit control reads the server; these tests are about the form itself.
+vi.mock("@/features/customers/credit", () => ({
+  CreditBand: () => null,
+  useCreditHold: () => ({ run: (fn: (o?: string) => void) => fn(undefined), onError: () => false, dialog: null }),
+}));
+
+
 // ══════════════════════════════════════════════════════════════════
 //  RAISING AN INVOICE FROM THE ORDER
 //

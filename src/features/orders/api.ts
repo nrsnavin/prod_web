@@ -48,7 +48,7 @@ export const orderService = {
   statusReportsPdf(ids: string[]): Promise<Blob> {
     return httpClient.postBlob("/order/bulk/status-report.pdf", { ids });
   },
-  async create(body: OrderFormValues): Promise<string> {
+  async create(body: OrderFormValues & { creditOverride?: string }): Promise<string> {
     const res = await httpClient.post<{ success: boolean; orderId: string }>(
       "/order/create-order",
       body

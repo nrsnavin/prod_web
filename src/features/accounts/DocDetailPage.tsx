@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, XCircle, Check, X, Banknote, Paperclip, Wallet } from "lucide-react";
+import { ArrowLeft, XCircle, Check, X, Banknote, Paperclip, Wallet, FileDown, FileJson, BadgeCheck, ClipboardPaste, MessageCircle } from "lucide-react";
+import { IrnDialog } from "@/features/invoices/IrnDialog";
+import { ShareDialog } from "./Share";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -121,7 +123,16 @@ export function BillDetailPage() {
         ]} />
         <Lines lines={bill.lines} supplyType={bill.supplyType} />
         <p className="mt-3 text-right text-sm">Total <span className="font-semibold tabular-nums">₹{money(bill.totals.grand)}</span> <span className="text-ink-400">(tax ₹{money(bill.totals.tax)})</span></p>
+        {bill.reverseCharge && <p className="mt-1 text-right text-sm text-ink-500">Reverse charge: GST of ₹{money(bill.rcm?.tax)} is ours to pay, and to claim</p>}
       </Card>
+      {bill.variance && bill.variance.lines.length > 0 && (
+        <Card className="mt-4 border-status-warning/40 p-5">
+          <h3 className="font-semibold">Off the PO or the receipts by ₹{money(bill.variance.total)}</h3>
+          {bill.variance.note && <p className="text-sm text-ink-500">Entered because: {bill.variance.note}</p>}
+          <ul className="mt-2 text-sm">{bill.variance.lines.map((l, i) => <li key={i}>{l.description}: billed {l.billedQty} at ₹{l.billRate}{l.poRate ? ` against the PO's ₹${l.poRate}` : ""}{l.receivedQty !== null ? `, ${l.receivedQty} received` : ""} — ₹{money(l.amount)} more</li>)}</ul>
+          {bill.status !== "cancelled" && <Link to="/accounts/notes?new=debit" className="mt-2 inline-block text-sm text-brand-600 hover:underline">Raise a debit note for the difference</Link>}
+        </Card>
+      )}
       {(payments.length > 0 || notes.length > 0) && (
         <Card className="mt-4 p-5">
           <h3 className="font-semibold">Settled by</h3>
@@ -194,9 +205,29 @@ export function NoteDetailPage() {
   const { cancelNote } = useAccountsMutations();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [irnOpen, setIrnOpen] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [busy, setBusy] = useState("");
+  const qc = useQueryClient();
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Note not found"}</p>;
   const n = data.note;
+  const toCustomer = n.partyType === "customer";
+  const registered = n.einvoice?.status === "registered";
+  const refresh = () => qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
+  const json = async () => {
+    setBusy("json");
+    try {
+      const blob = await accountsService.noteEinvoiceJson(n._id);
+      const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${n.noteNo.replace(/\//g, "-")}-einvoice.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { toast(e instanceof Error ? e.message : "Could not build the JSON", "error"); } finally { setBusy(""); }
+  };
+  const register = async () => {
+    setBusy("irn");
+    try { const r = await accountsService.registerNoteIrn(n._id); toast(`IRN registered — ${r.note.einvoice?.irn}`, "success"); refresh(); }
+    catch (e) { toast(e instanceof ApiError ? e.message : "Could not register", "error"); if (e instanceof ApiError && e.code === "EINVOICE_NOT_CONFIGURED") setIrnOpen(true); }
+    finally { setBusy(""); }
+  };
   const party = n.partyType === "customer" ? n.customer : n.supplier;
   const credit: Credit | null = n.status === "issued" && (n.unapplied ?? 0) > 0 && party
     ? { sourceType: "AccountNote", id: n._id, docNo: n.noteNo, date: n.date, amount: n.totals.grand, available: n.unapplied ?? 0, label: n.reason }
@@ -206,10 +237,14 @@ export function NoteDetailPage() {
     <>
       <Link to="/accounts/notes" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Credit / debit notes</Link>
       <PageHeader title={n.noteNo} subtitle={`${noteKindLabel(n)} · ${n.partyName} · ${formatDate(n.date)}`} actions={<>
+        <a href={accountsService.notePdfUrl(n._id)} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"><FileDown className="h-4 w-4" /> PDF</a>
+        {toCustomer && <Button variant="secondary" onClick={json} loading={busy === "json"}><FileJson className="h-4 w-4" /> e-Invoice JSON</Button>}
+        {toCustomer && n.status === "issued" && !registered && <><Button variant="secondary" onClick={register} loading={busy === "irn"}><BadgeCheck className="h-4 w-4" /> Register IRN</Button><Button variant="secondary" onClick={() => setIrnOpen(true)}><ClipboardPaste className="h-4 w-4" /> Paste IRN</Button></>}
+        <Button variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> WhatsApp</Button>
         {credit && <Button onClick={() => setApplying(true)}>Apply ₹{money(credit.available)}</Button>}
         {n.status === "issued" && <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button>}
       </>} />
-      <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={n.status === "issued" ? "success" : "danger"}>{n.status}</StatusChip><StatusChip tone={n.kind === "credit" ? "info" : "warning"}>{noteKindLabel(n)}</StatusChip>{(n.unapplied ?? 0) > 0 && <StatusChip tone="warning">₹{money(n.unapplied)} unapplied</StatusChip>}{n.status === "cancelled" && n.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {n.cancel.reason}</span>}</div>
+      <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={n.status === "issued" ? "success" : "danger"}>{n.status}</StatusChip><StatusChip tone={n.kind === "credit" ? "info" : "warning"}>{noteKindLabel(n)}</StatusChip>{(n.unapplied ?? 0) > 0 && <StatusChip tone="warning">₹{money(n.unapplied)} unapplied</StatusChip>}{registered && <StatusChip tone="success">IRN {n.einvoice?.irn?.slice(0, 12)}…</StatusChip>}{n.status === "cancelled" && n.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {n.cancel.reason}</span>}</div>
       <Card className="p-6">
         <DescriptionList columns={3} items={[
           { label: "Against", value: <Link to={againstPath} className="text-brand-600 hover:underline">{n.against.docNo}</Link> }, { label: "Reason", value: n.reason }, { label: "Party GSTIN", value: n.partyGstin || undefined },
@@ -223,6 +258,8 @@ export function NoteDetailPage() {
       </Card>
       <History rows={n.fingerprints} />
       {applying && credit && party && <ApplyCreditDialog credit={credit} partyType={n.partyType} party={party} onClose={() => setApplying(false)} />}
+      {irnOpen && <IrnDialog invoiceNumber={n.noteNo} onClose={() => setIrnOpen(false)} onConfirm={(body) => accountsService.pasteNoteIrn(n._id, body).then(() => { setIrnOpen(false); toast("IRN recorded", "success"); refresh(); }).catch((e) => toast(e instanceof ApiError ? e.message : "Could not record the IRN", "error"))} />}
+      {sharing && <ShareDialog what={{ kind: "note", id: n._id }} customer={toCustomer ? n.customer : undefined} onClose={() => setSharing(false)} />}
       <ReasonDialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${n.noteNo}?`} description="The amount goes back onto the documents it was applied to." confirmLabel="Cancel note" minLength={8} loading={cancelNote.isPending}
         onConfirm={(reason) => cancelNote.mutate({ id: n._id, reason }, { onSuccess: () => { setCancelOpen(false); toast("Note cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
     </>
@@ -236,6 +273,7 @@ export function PaymentDetailPage() {
   const { cancelPayment } = useAccountsMutations();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [sharing, setSharing] = useState(false);
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Voucher not found"}</p>;
   const p = data.payment;
@@ -248,6 +286,8 @@ export function PaymentDetailPage() {
     <>
       <Link to="/accounts/vouchers" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Receipts &amp; payments</Link>
       <PageHeader title={p.voucherNo} subtitle={`${p.kind === "receipt" ? "Received from" : "Paid to"} ${p.partyName} · ${formatDate(p.date)}`} actions={<>
+        <a href={accountsService.paymentPdfUrl(p._id)} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"><FileDown className="h-4 w-4" /> {p.kind === "receipt" ? "Receipt" : "Payment advice"}</a>
+        {p.partyType !== "other" && <Button variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> WhatsApp</Button>}
         {credit && <Button onClick={() => setApplying(true)}>Apply ₹{money(credit.available)}</Button>}
         {p.status === "posted" && <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button>}
       </>} />
@@ -269,6 +309,7 @@ export function PaymentDetailPage() {
       <Attachments kind="payments" id={p._id} rows={undefined} />
       <History rows={p.fingerprints} />
       {applying && credit && party && <ApplyCreditDialog credit={credit} partyType={p.partyType as "customer" | "supplier"} party={party} onClose={() => setApplying(false)} />}
+      {sharing && <ShareDialog what={{ kind: "payment", id: p._id }} customer={p.partyType === "customer" ? p.customer : undefined} onClose={() => setSharing(false)} />}
       <ReasonDialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${p.voucherNo}?`} description="Every document it settled goes back to outstanding." confirmLabel="Cancel voucher" minLength={8} loading={cancelPayment.isPending}
         onConfirm={(reason) => cancelPayment.mutate({ id: p._id, reason }, { onSuccess: () => { setCancelOpen(false); toast("Voucher cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
     </>

@@ -14,9 +14,17 @@ export interface Supplier {
   leadTimeDays?: number;
   minOrderQty?: number;
   packSize?: number;
+
+  // ── Accounts ──
+  /** What GST it may charge: a composition dealer or unregistered supplier charges none. */
+  gstRegistration?: "regular" | "composition" | "unregistered";
+  /** Days after the bill date its bills fall due. */
+  paymentTermsDays?: number;
 }
 
 export interface SupplierFormValues {
+  gstRegistration?: "regular" | "composition" | "unregistered";
+  paymentTermsDays?: number;
   name: string;
   phoneNumber?: string;
   gstin?: string;

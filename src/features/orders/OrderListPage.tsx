@@ -11,6 +11,7 @@ import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
+import { useCreditHold } from "@/features/customers/credit";
 import { ApiError } from "@/core/http/httpClient";
 import { useOrders, useOrderMutations } from "./hooks";
 import { ORDER_FILTERS, OrderFilter, OrderListItem } from "./types";
@@ -58,6 +59,7 @@ export function OrderListPage() {
     hasNextPage, fetchNextPage, isFetchingNextPage,
   } = useOrders(status);
   const { create } = useOrderMutations();
+  const hold = useCreditHold("this order");
 
   // Ticked orders, kept with their rows so a selection survives a change
   // of filter; the bar sees the latest copy of each row on screen.
@@ -151,17 +153,19 @@ export function OrderListPage() {
           submitting={create.isPending}
           onCancel={() => closeCreate()}
           onSubmit={(values) =>
-            create.mutate(values, {
+            hold.run((creditOverride) => create.mutate({ ...values, creditOverride }, {
               onSuccess: (orderId) => {
                 closeCreate();
                 toast("Order created", "success");
                 navigate(`/orders/${orderId}`);
               },
-              onError: (e) =>
-                toast(e instanceof ApiError ? e.message : "Failed to create order", "error"),
-            })
+              onError: (e) => {
+                if (!hold.onError(e)) toast(e instanceof ApiError ? e.message : "Failed to create order", "error");
+              },
+            }))
           }
         />
+        {hold.dialog}
       </FormScreen>
     </>
   );
