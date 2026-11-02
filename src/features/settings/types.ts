@@ -11,6 +11,29 @@ export interface DocumentSettings {
   termsText: string;
   accentColor: string;
   logo: string; // base64 data URL or ""
+  invoice?: InvoiceSettings;
 }
 
-export type DocumentSettingsInput = Partial<DocumentSettings>;
+/** Settings → Invoice. The GSP secrets never come back from the server. */
+export interface InvoiceSettings {
+  defaultHsn: string;
+  defaultGstPercent: number;
+  city: string;
+  pincode: string;
+  stateCode: string;
+  bank: { name: string; account: string; ifsc: string; branch: string };
+  declaration: string;
+  gsp: {
+    provider: string;
+    baseUrl: string;
+    username: string;
+    clientId: string;
+    /** Sent only when typed; blank keeps what is stored. */
+    clientSecret?: string;
+    password?: string;
+    /** Server-set: a provider with credentials is connected. */
+    configured?: boolean;
+  };
+}
+
+export type DocumentSettingsInput = Partial<Omit<DocumentSettings, "invoice">> & { invoice?: Partial<InvoiceSettings> };

@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   ClipboardList,
   Truck,
+  Receipt,
   FlaskConical,
   Layers,
   Disc3,
@@ -115,6 +116,9 @@ export const navSections: NavSection[] = [
       { label: "Orders", path: "/orders", icon: ShoppingCart, departments: ["admin", "finance"] },
       { label: "Job Orders", path: "/jobs", icon: ClipboardList, departments: ["admin", "production", "packing"] },
       { label: "Delivery Challans", path: "/delivery-challans", icon: Truck, departments: ["admin", "finance"] },
+      // Tax invoices raised against an order's challans. Mirrors
+      // /invoices in utils/features.js.
+      { label: "Invoices", path: "/invoices", icon: Receipt, departments: ["admin", "finance"] },
       // Raised by sales, worked by production — both write to the log,
       // so both departments carry it. Mirrors /samples in utils/features.js.
       { label: "Sample Requests", path: "/samples", icon: FlaskConical, departments: ["admin", "finance", "production"] },

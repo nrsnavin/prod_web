@@ -32,6 +32,12 @@ const schema = z.object({
   noOfHook: z.coerce.number().min(0).optional(),
   weight: z.coerce.number().min(0).optional(),
   conversionCost: z.coerce.number().min(0).optional(),
+  hsn: z.string().regex(/^(\d{4,8})?$/, "HSN is 4 to 8 digits").optional(),
+  // Blank means "the Settings default"; sent as null so the server clears an override.
+  gstPercent: z
+    .union([z.literal(""), z.coerce.number().min(0).max(100)])
+    .optional()
+    .transform((v) => (v === "" || v === undefined ? null : v)),
   // Validated by shape only. A half-filled beam is not an error to
   // shout about — formToTemplate drops the blanks on the way out, so a
   // user who starts a template and changes their mind is not blocked
@@ -103,6 +109,8 @@ export function ElasticForm({
       // The cost sheet's figure; with no cost sheet yet, the same 1.25 the
       // server starts one at. Never a 0 nobody chose: the edit saves it.
       conversionCost: initial?.conversionCost ?? initial?.costing?.conversionCost ?? 1.25,
+      hsn: initial?.hsn ?? "",
+      gstPercent: initial?.gstPercent ?? null,
       warpingPlanTemplate: { beams: templateToForm(initial?.warpingPlanTemplate) },
     },
   });
@@ -221,6 +229,13 @@ export function ElasticForm({
         <Input label="Hooks" type="number" {...register("noOfHook")} />
         <Input label="Weight (g/m)" type="number" step="0.01" {...register("weight")} />
         <Input label="Conversion cost (₹)" type="number" step="0.01" {...register("conversionCost")} />
+      </div>
+
+      <p className="text-sm font-semibold text-ink-600 pt-1">Tax on invoices</p>
+      <p className="text-xs text-ink-400">Leave blank to use the defaults in Settings → Invoice.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <Input label="HSN" inputMode="numeric" placeholder="default" error={errors.hsn?.message} {...register("hsn")} />
+        <Input label="GST %" type="number" step="0.01" placeholder="default" error={errors.gstPercent?.message} {...register("gstPercent")} />
       </div>
 
       <div className="border-t border-ink-100 pt-4">

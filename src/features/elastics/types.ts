@@ -93,6 +93,8 @@ export interface Elastic {
   quantityProduced?: number;
   stock?: number;
   minStock?: number;
+  hsn?: string;
+  gstPercent?: number | null;
   reservedStock?: number;
   conversionCost?: number;
   costing?: ElasticCosting;
@@ -121,6 +123,9 @@ export interface ElasticFormValues {
   noOfHook?: number;
   weight?: number;
   conversionCost?: number;
+  /** Tax classification for invoices; blank / null falls back to Settings → Invoice. */
+  hsn?: string;
+  gstPercent?: number | null;
   /** Omitted entirely when the form left the template empty. */
   warpingPlanTemplate?: { beams: Array<{ beamNo: number; sections: Array<{ warpYarn: string; ends: number; maxMeters: number }> }> };
 }

@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { FileText, PanelLeft, LayoutTemplate, Palette } from "lucide-react";
+import { FileText, PanelLeft, LayoutTemplate, Palette, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/components/ui/cn";
 import { useAuth } from "@/core/auth/useAuth";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { DocumentSettingsForm } from "./DocumentSettingsForm";
+import { InvoiceSettingsForm } from "./InvoiceSettingsForm";
 import { SidebarLayoutEditor } from "./SidebarLayoutEditor";
 import { PdfDesignerPage } from "@/features/pdfTemplates/PdfDesignerPage";
 
-type Tab = "appearance" | "sidebar" | "documents" | "designer";
+type Tab = "appearance" | "sidebar" | "documents" | "invoice" | "designer";
 
 export function SettingsPage() {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ export function SettingsPage() {
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "sidebar", label: "Sidebar layout", icon: PanelLeft },
     { id: "documents", label: "Documents & Branding", icon: FileText },
+    { id: "invoice", label: "Invoice & e-Invoice", icon: Receipt },
     { id: "designer", label: "PDF Designer", icon: LayoutTemplate, adminOnly: true },
   ];
   const tabs = TABS.filter((t) => !t.adminOnly || isAdmin);
@@ -47,6 +49,7 @@ export function SettingsPage() {
       {tab === "appearance" && <AppearanceSettings />}
       {tab === "sidebar" && <SidebarLayoutEditor />}
       {tab === "documents" && <DocumentSettingsForm />}
+      {tab === "invoice" && <InvoiceSettingsForm />}
       {tab === "designer" && isAdmin && <PdfDesignerPage />}
     </>
   );

@@ -16,6 +16,7 @@ import { CustomerForm } from "./CustomerForm";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { CustomerElasticGroups } from "@/features/elasticGroups/CustomerElasticGroups";
 import { CustomerOrdersCard } from "./CustomerOrdersCard";
+import { CustomerRecentCard } from "./CustomerRecentCard";
 import { formatDate } from "@/core/format/date";
 
 export function CustomerDetailPage() {
@@ -131,6 +132,9 @@ export function CustomerDetailPage() {
       </Card>
 
       <CustomerOrdersCard customerId={customer._id} />
+
+      {/* The paperwork behind those orders: what went out, what was billed. */}
+      <CustomerRecentCard customerId={customer._id} />
 
       <CustomerElasticGroups customerId={customer._id} />
 

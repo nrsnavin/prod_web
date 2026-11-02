@@ -55,7 +55,51 @@ export const customerService = {
       hasMore: res.hasMore ?? false,
     };
   },
+
+  /** Latest orders, challans and invoices in one read (api/customer.js /:id/recent). */
+  async recent(id: string): Promise<CustomerRecent> {
+    const res = await httpClient.get<{ success: boolean } & CustomerRecent>(`/customer/${id}/recent`);
+    return {
+      orders: res.orders ?? [],
+      orderTotal: res.orderTotal ?? 0,
+      dcs: res.dcs ?? [],
+      dcTotal: res.dcTotal ?? 0,
+      invoices: res.invoices ?? [],
+      invoiceTotal: res.invoiceTotal ?? 0,
+      invoiced: res.invoiced ?? { amount: 0, count: 0 },
+    };
+  },
 };
+
+export interface CustomerRecentDc {
+  _id: string;
+  dcNumber: string;
+  status: string;
+  type?: string;
+  dispatchDate?: string;
+  totalQuantity?: number;
+  orderNo?: number;
+  order?: string;
+}
+export interface CustomerRecentInvoice {
+  _id: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  status: string;
+  totals?: { grand?: number };
+  einvoice?: { status?: string; irn?: string };
+  orderNo?: number;
+  order?: string;
+}
+export interface CustomerRecent {
+  orders: CustomerOrderRow[];
+  orderTotal: number;
+  dcs: CustomerRecentDc[];
+  dcTotal: number;
+  invoices: CustomerRecentInvoice[];
+  invoiceTotal: number;
+  invoiced: { amount: number; count: number };
+}
 
 export interface CustomerOrderRow {
   _id: string;

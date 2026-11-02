@@ -28,6 +28,7 @@ import { OrderMaterialPo } from "./OrderMaterialPo";
 import { OrderYarnLots } from "./OrderYarnLots";
 import { OrderLotAssign } from "./OrderLotAssign";
 import { OrderDeliveryChallans } from "./OrderDeliveryChallans";
+import { OrderInvoices } from "./OrderInvoices";
 import { OrderElasticProgress, OrderStatus, RawMaterialRequirement, StockShortfall } from "./types";
 import { jobRefId } from "./orderJobRef";
 import { OrderJobGlance } from "./OrderJobGlance";
@@ -644,6 +645,9 @@ export function OrderDetailPage() {
           all without leaving it for the DC list. */}
       <Section id="dispatch">
         <OrderDeliveryChallans orderId={order._id} />
+        {/* And what has been billed for it, raised from here against
+            those challans. */}
+        <OrderInvoices orderId={order._id} />
       </Section>
 
       {/* Jobs planned past what the order asked for. Sits ABOVE the
