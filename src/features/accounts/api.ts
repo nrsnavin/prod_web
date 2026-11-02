@@ -1,5 +1,6 @@
 import { httpClient } from "@/core/http/httpClient";
 import type {
+  CollectionEntry, ScanResult, StatementPostRow, StatementResult,
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
 } from "./types";
@@ -61,6 +62,33 @@ export const accountsService = {
   expenseReport: (range: { from?: string; to?: string }) => httpClient.get<ExpenseReport & { success: boolean }>("/accounts/reports/expenses", clean(range)),
   cashbook: (account: string, range: { from?: string; to?: string }) => httpClient.get<CashbookReport & { success: boolean }>("/accounts/reports/cashbook", clean({ account, ...range })),
   daybook: (date: string) => httpClient.get<DaybookReport & { success: boolean }>("/accounts/reports/daybook", { date }),
+
+  // ── AI ──
+  async scan(files: File[]): Promise<ScanResult> {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    const res = await fetch("/api/v2/accounts/scan", { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not read the bill");
+    return body as ScanResult;
+  },
+  async uploadStatement(account: string, file: File, useModel = true): Promise<StatementResult> {
+    const fd = new FormData();
+    fd.append("account", account);
+    fd.append("useModel", String(useModel));
+    fd.append("file", file);
+    const res = await fetch("/api/v2/accounts/bank/statement", { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not read the statement");
+    return body as StatementResult;
+  },
+  postStatement: (account: string, rows: StatementPostRow[]) =>
+    httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; voucherNo?: string; _id?: string; error?: string }>; posted: number; failed: number }>("/accounts/bank/statement/post", { account, rows }),
+  collections: () => httpClient.get<{ success: boolean; rows: CollectionEntry[]; total: number; whatsapp: boolean }>("/accounts/collections"),
+  draftReminder: (customer: string, tone: "gentle" | "firm" = "gentle") =>
+    httpClient.post<{ success: boolean; message: string; byModel: boolean; to: string; entry: CollectionEntry }>("/accounts/collections/draft", { customer, tone }),
+  sendReminder: (to: string, message: string) =>
+    httpClient.post<{ success: boolean; sent: boolean; dryRun?: boolean; error?: string; to: string }>("/accounts/collections/send", { to, message }),
 
   attachmentUrl: (kind: "bills" | "expenses" | "notes" | "payments", id: string, aid: string) => `/api/v2/accounts/${kind}/${id}/attachments/${aid}`,
 };

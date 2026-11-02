@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, ScanLine } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -22,6 +22,8 @@ import type { SupplyType } from "@/features/invoices/types";
 import { useAccountsMutations, useBillPoInfo, useBills, useCategories } from "./hooks";
 import { LinesEditor, PartyPicker, billLabel, billTone, blankLine, money, today } from "./shared";
 import type { BillStatus, LineInput, SupplierBill } from "./types";
+import { ScanBillDialog, type ScanDraft } from "./ScanBill";
+import { ExpenseForm } from "./ExpensesTab";
 
 const columns: Column<SupplierBill>[] = [
   { key: "no", header: "Bill", render: (b) => <span className="font-medium">{b.billNo}</span> },
@@ -40,8 +42,10 @@ export function BillsTab() {
   const [search, setSearch] = useState("");
   const [params, setParams] = useSearchParams();
   const createOpen = params.get("new") === "bill";
+  const scanOpen = params.get("scan") === "1";
   const navigate = useNavigate();
   const { data, isLoading } = useBills({ page, status, search });
+  const [draft, setDraft] = useState<{ draft: ScanDraft; as: "bill" | "expense" } | null>(null);
 
   return (
     <>
@@ -52,7 +56,10 @@ export function BillsTab() {
           value={status}
           onChange={(v) => { setStatus(v); setPage(1); }}
         />
-        <Button className="ml-auto" onClick={() => setParams({ new: "bill" })}><Plus className="h-4 w-4" /> Enter bill</Button>
+        <span className="ml-auto flex gap-2">
+          <Button variant="secondary" onClick={() => setParams({ scan: "1" })}><ScanLine className="h-4 w-4" /> Scan a bill</Button>
+          <Button onClick={() => setParams({ new: "bill" })}><Plus className="h-4 w-4" /> Enter bill</Button>
+        </span>
       </div>
       <Card>
         <DataTable columns={columns} rows={data?.bills ?? []} rowKey={(b) => b._id} onRowClick={(b) => navigate(`/accounts/bills/${b._id}`)} loading={isLoading}
@@ -62,6 +69,13 @@ export function BillsTab() {
       <FormScreen open={createOpen} onClose={() => setParams({})} title="Enter supplier bill" width="max-w-5xl">
         <BillForm onDone={(id) => { setParams({}); navigate(`/accounts/bills/${id}`); }} onCancel={() => setParams({})} />
       </FormScreen>
+      {scanOpen && !draft && <ScanBillDialog onClose={() => setParams({})} onUse={(d, as) => setDraft({ draft: d, as })} />}
+      <FormScreen open={draft?.as === "bill"} onClose={() => { setDraft(null); setParams({}); }} title="Supplier bill from the scan — check every figure" width="max-w-5xl">
+        {draft?.as === "bill" && <BillForm key={draft.draft.aiSuggestion ?? "scan"} initialDraft={draft.draft} onDone={(id) => { setDraft(null); setParams({}); navigate(`/accounts/bills/${id}`); }} onCancel={() => { setDraft(null); setParams({}); }} />}
+      </FormScreen>
+      <FormScreen open={draft?.as === "expense"} onClose={() => { setDraft(null); setParams({}); }} title="Expense from the scan — check every figure" width="max-w-4xl">
+        {draft?.as === "expense" && <ExpenseForm key={draft.draft.aiSuggestion ?? "scan"} initialDraft={draft.draft} onDone={() => { setDraft(null); setParams({}); navigate("/accounts/expenses"); }} onCancel={() => { setDraft(null); setParams({}); }} />}
+      </FormScreen>
     </>
   );
 }
@@ -70,22 +84,22 @@ export function BillsTab() {
  * A supplier bill: against a purchase order (its unbilled receipts come
  * in as lines at the PO price) or a service bill with none.
  */
-export function BillForm({ onDone, onCancel, initialPo }: { onDone: (id: string) => void; onCancel: () => void; initialPo?: string }) {
+export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone: (id: string) => void; onCancel: () => void; initialPo?: string; initialDraft?: ScanDraft }) {
   const { toast } = useToast();
   const { createBill } = useAccountsMutations();
   const { data: settings } = useDocumentSettings();
   const { data: categories } = useCategories();
-  const [supplier, setSupplier] = useState("");
-  const [supplierGstin, setSupplierGstin] = useState("");
-  const [poId, setPoId] = useState(initialPo ?? "");
+  const [supplier, setSupplier] = useState(initialDraft?.supplier?._id ?? "");
+  const [supplierGstin, setSupplierGstin] = useState(initialDraft?.supplierGstin ?? "");
+  const [poId, setPoId] = useState(initialPo ?? initialDraft?.purchaseOrder ?? "");
   const [pos, setPos] = useState<Array<{ _id: string; poNo: number; status: string }>>([]);
   const { data: poInfo } = useBillPoInfo(poId || undefined);
   const [kind, setKind] = useState<"goods" | "service">("goods");
   const [category, setCategory] = useState("");
-  const [supplierBillNo, setSupplierBillNo] = useState("");
-  const [billDate, setBillDate] = useState(today());
+  const [supplierBillNo, setSupplierBillNo] = useState(initialDraft?.billNo ?? "");
+  const [billDate, setBillDate] = useState(initialDraft?.billDate ?? today());
   const [dueDate, setDueDate] = useState("");
-  const [lines, setLines] = useState<LineInput[]>([blankLine(settings?.invoice?.defaultGstPercent ?? 5)]);
+  const [lines, setLines] = useState<LineInput[]>(initialDraft?.lines.length ? initialDraft.lines : [blankLine(settings?.invoice?.defaultGstPercent ?? 5)]);
   const [inwards, setInwards] = useState<string[]>([]);
   const [itcEligible, setItcEligible] = useState(true);
   const [tds, setTds] = useState<{ applicable: boolean; section: string; rate: number | "" }>({ applicable: false, section: "194C", rate: 2 });
@@ -109,11 +123,11 @@ export function BillForm({ onDone, onCancel, initialPo }: { onDone: (id: string)
   useEffect(() => {
     if (!poInfo) return;
     if (!supplier) { setSupplier(poInfo.po.supplier._id); setSupplierGstin(poInfo.po.supplier.gstin ?? ""); }
-    if (poInfo.lines.length) {
+    if (poInfo.lines.length && !initialDraft?.lines.length) {
       setLines(poInfo.lines.map((l) => ({ rawMaterial: l.rawMaterial, description: l.description, hsn: l.hsn ?? "", unit: l.unit ?? "", quantity: l.quantity, rate: l.rate, gstPercent: l.gstPercent })));
       setInwards(poInfo.lines.flatMap((l) => l.inwards));
     }
-  }, [poInfo, supplier]);
+  }, [poInfo, supplier, initialDraft]);
 
   const ready = supplier && supplierBillNo.trim() && lines.every((l) => l.description.trim() && Number(l.rate) >= 0 && l.rate !== "");
   const categoryOptions = useMemo(() => (categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name })), [categories]);
@@ -124,6 +138,7 @@ export function BillForm({ onDone, onCancel, initialPo }: { onDone: (id: string)
         supplier, supplierBillNo: supplierBillNo.trim(), billDate, dueDate: dueDate || undefined,
         purchaseOrder: poId || undefined, inwards: poId ? inwards : undefined, kind, category: category || undefined,
         lines, itcEligible, tds: { applicable: tds.applicable, section: tds.section, rate: Number(tds.rate) || 0 }, notes: notes.trim() || undefined,
+        source: initialDraft ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
       },
       {
         onSuccess: (bill) => { toast(`Bill ${bill.billNo} entered`, "success"); onDone(bill._id); },

@@ -23,6 +23,7 @@ import type { SupplyType } from "@/features/invoices/types";
 import { useAccountsMutations, useBankAccounts, useCategories, useExpenses } from "./hooks";
 import { LinesEditor, PartyPicker, blankLine, expenseLabel, expenseTone, money, priceInputs, today } from "./shared";
 import type { Expense, ExpenseStatus, LineInput } from "./types";
+import type { ScanDraft } from "./ScanBill";
 
 /** Which account the money goes from, for paying an expense. */
 export function PayDialog({ title, amount, onClose, onConfirm, loading }: { title: string; amount: number; onClose: () => void; onConfirm: (body: { account: string; reference?: string }) => void; loading?: boolean }) {
@@ -117,23 +118,24 @@ export function ExpensesTab() {
  * with its GST, or itemised lines. Paid on the spot from an account, or
  * left to be paid after approval.
  */
-export function ExpenseForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+export function ExpenseForm({ onDone, onCancel, initialDraft }: { onDone: () => void; onCancel: () => void; initialDraft?: ScanDraft }) {
   const { toast } = useToast();
   const { createExpense } = useAccountsMutations();
   const { data: categories } = useCategories();
   const { data: accounts } = useBankAccounts();
   const { data: settings } = useDocumentSettings();
+  const scanned = initialDraft?.lines ?? [];
   const [category, setCategory] = useState("");
-  const [description, setDescription] = useState("");
-  const [date, setDate] = useState(today());
-  const [supplier, setSupplier] = useState("");
-  const [payeeName, setPayeeName] = useState("");
-  const [payeeGstin, setPayeeGstin] = useState("");
-  const [refNo, setRefNo] = useState("");
-  const [itemised, setItemised] = useState(false);
-  const [amount, setAmount] = useState<number | "">("");
-  const [gstPercent, setGstPercent] = useState<number | "">(0);
-  const [lines, setLines] = useState<LineInput[]>([blankLine(0)]);
+  const [description, setDescription] = useState(scanned.length === 1 ? scanned[0].description : "");
+  const [date, setDate] = useState(initialDraft?.billDate ?? today());
+  const [supplier, setSupplier] = useState(initialDraft?.supplier?._id ?? "");
+  const [payeeName, setPayeeName] = useState(initialDraft?.supplier?.name ?? initialDraft?.supplierName ?? "");
+  const [payeeGstin, setPayeeGstin] = useState(initialDraft?.supplierGstin ?? "");
+  const [refNo, setRefNo] = useState(initialDraft?.billNo ?? "");
+  const [itemised, setItemised] = useState(scanned.length > 1);
+  const [amount, setAmount] = useState<number | "">(scanned.length === 1 ? Number(scanned[0].rate) * (Number(scanned[0].quantity) || 1) || "" : "");
+  const [gstPercent, setGstPercent] = useState<number | "">(scanned.length === 1 ? scanned[0].gstPercent : 0);
+  const [lines, setLines] = useState<LineInput[]>(scanned.length > 1 ? scanned : [blankLine(0)]);
   const [payNow, setPayNow] = useState(false);
   const [account, setAccount] = useState("");
   const [notes, setNotes] = useState("");
@@ -154,6 +156,7 @@ export function ExpenseForm({ onDone, onCancel }: { onDone: () => void; onCancel
         category, description: description.trim(), date, supplier: supplier || undefined, payeeName: payeeName.trim() || undefined, payeeGstin: payeeGstin.trim() || undefined, refNo: refNo.trim() || undefined,
         ...(itemised ? { lines } : { amount: Number(amount), gstPercent: Number(gstPercent) || 0 }),
         payNow: payNow && !needsApproval && chosenAccount ? { account: chosenAccount } : undefined, notes: notes.trim() || undefined,
+        source: initialDraft ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
       },
       {
         onSuccess: (r) => { toast(r.voucher ? `${r.expense.expenseNo} paid — voucher ${r.voucher.voucherNo}` : r.expense.status === "pending" ? `${r.expense.expenseNo} sent for approval` : `${r.expense.expenseNo} recorded`, "success"); onDone(); },

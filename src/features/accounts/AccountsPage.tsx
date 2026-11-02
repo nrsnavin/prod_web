@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { LayoutDashboard, FileText, Wallet, ArrowLeftRight, FileMinus, BookOpen, BarChart3, Settings2 } from "lucide-react";
+import { LayoutDashboard, FileText, Wallet, ArrowLeftRight, FileMinus, BookOpen, BarChart3, Settings2, Landmark, BellRing } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/components/ui/cn";
 import { OverviewTab } from "./OverviewTab";
@@ -10,8 +10,10 @@ import { NotesTab } from "./NotesTab";
 import { StatementsTab } from "./StatementsTab";
 import { ReportsTab } from "./ReportsTab";
 import { SettingsTab } from "./SettingsTab";
+import { BankStatementTab } from "./BankStatementTab";
+import { CollectionsTab } from "./CollectionsTab";
 
-export type AccountsTab = "overview" | "bills" | "expenses" | "vouchers" | "notes" | "statements" | "reports" | "settings";
+export type AccountsTab = "overview" | "bills" | "expenses" | "vouchers" | "notes" | "bank" | "collections" | "statements" | "reports" | "settings";
 
 const TABS: { id: AccountsTab; label: string; icon: typeof FileText }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -19,6 +21,8 @@ const TABS: { id: AccountsTab; label: string; icon: typeof FileText }[] = [
   { id: "expenses", label: "Expenses", icon: Wallet },
   { id: "vouchers", label: "Receipts & payments", icon: ArrowLeftRight },
   { id: "notes", label: "Credit / debit notes", icon: FileMinus },
+  { id: "bank", label: "Bank statement", icon: Landmark },
+  { id: "collections", label: "Collections", icon: BellRing },
   { id: "statements", label: "Statements", icon: BookOpen },
   { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "settings", label: "Settings", icon: Settings2 },
@@ -56,6 +60,8 @@ export function AccountsPage() {
       {tab === "expenses" && <ExpensesTab />}
       {tab === "vouchers" && <VouchersTab />}
       {tab === "notes" && <NotesTab />}
+      {tab === "bank" && <BankStatementTab />}
+      {tab === "collections" && <CollectionsTab />}
       {tab === "statements" && <StatementsTab />}
       {tab === "reports" && <ReportsTab />}
       {tab === "settings" && <SettingsTab />}

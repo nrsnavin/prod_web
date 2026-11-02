@@ -375,3 +375,60 @@ export interface DaybookReport {
   payments: Array<{ _id: string; kind: VoucherKind; voucherNo: string; partyName: string; amount: number; mode: PaymentMode; accountName?: string; tds?: { amount?: number }; allocations?: Array<{ docNo: string }> }>;
   totals: { sales: number; purchases: number; expenses: number; received: number; paid: number };
 }
+
+// ── AI ──
+export interface ScanLine { description: string; hsn: string; quantity: number; unit: string; rate: number | null; gstPercent: number | null; amount: number | null; confidence: number }
+export interface ScanRead {
+  kind: "bill" | "receipt" | null;
+  problem: null | "not_a_bill" | "unreadable";
+  supplierName: string;
+  supplierGstin: string;
+  billNo: string;
+  billDate: string | null;
+  dueDate: string | null;
+  lines: ScanLine[];
+  totals: { taxable: number | null; cgst: number | null; sgst: number | null; igst: number | null; grand: number | null };
+  confidence: number;
+}
+export interface ScanResult {
+  read: ScanRead;
+  supplier: { _id: string; name: string; gstin?: string; matchedBy: "gstin" | "name" } | null;
+  alreadyEntered: string | null;
+  purchaseOrders: Array<{ _id: string; poNo: number; date?: string; status: string; receipts: number; unbilledReceipts: number }>;
+  aiSuggestion: string | null;
+}
+
+export interface StatementSuggestion {
+  partyType: "customer" | "supplier";
+  party: string;
+  partyName: string;
+  allocations: Array<{ docType: Allocation["docType"]; doc: string; docNo: string; amount: number }>;
+  confidence: number;
+  reason: string;
+  byModel?: boolean;
+}
+export interface StatementRow {
+  index: number;
+  date: string;
+  narration: string;
+  ref: string;
+  amount: number;
+  direction: "in" | "out";
+  status: "recorded" | "matched" | "unmatched";
+  suggestion: StatementSuggestion | null;
+  recorded?: { _id: string; voucherNo: string; partyName: string };
+  candidates?: Array<{ partyType: "customer" | "supplier"; party: string; partyName: string; docNo: string; docType: Allocation["docType"]; doc: string }>;
+}
+export interface StatementResult { account: { _id: string; name: string }; rows: StatementRow[]; counts: { recorded: number; matched: number; unmatched: number }; file: string }
+export interface StatementPostRow {
+  date: string; narration: string; ref: string; amount: number; direction: "in" | "out";
+  partyType: "customer" | "supplier" | "other"; party?: string; partyName?: string;
+  allocations?: Array<{ docType: Allocation["docType"]; doc: string; amount: number }>;
+  requestId?: string;
+}
+
+export interface CollectionEntry {
+  party: string; partyName: string; total: number; overdue: number; oldestDays: number; count: number; priority: number;
+  docs: OpenDoc[];
+  contact: { name: string; phone: string; email: string; accountant: string; accountantPhone: string; paymentTerms: string };
+}
