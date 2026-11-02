@@ -41,6 +41,8 @@ export interface OrderElasticProgress {
   name: string;
   ordered: number;
   produced: number;
+  /** Entered on the floor, not verified yet — what `produced` will become. */
+  drafted?: number;
   packed: number;
   /**
    * Goods that have actually left the building on a delivery note.
@@ -88,6 +90,8 @@ export interface JobElasticSummary {
   name: string;
   planned: number;
   produced: number;
+  /** Entered on the floor, not verified yet. */
+  drafted?: number;
   packed: number;
   pending: number;
 }

@@ -172,6 +172,8 @@ export interface JobSummaryRow {
   elasticName: string;
   planned: number;
   produced: number;
+  /** Entered on the floor, not verified yet — what `produced` will become. */
+  drafted?: number;
   packed: number;
   wasted: number;
   remaining: number;

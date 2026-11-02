@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useJob, useJobMutations, useJobSummary, useWeavingReadiness } from "./hooks";
 import { JOB_PIPELINE, JobShiftDetail, JobSummaryRow } from "./types";
+import { DraftedNote } from "./DraftedNote";
 import { nextJobStatus } from "./jobStatus";
 import { MachineAssignModal } from "./MachineAssignModal";
 import { JobElasticsEditModal, canEditElastics, editableReason } from "./JobElasticsEditModal";
@@ -89,7 +90,18 @@ const summaryColumns: Column<JobSummaryRow>[] = [
       </span>
     ),
   },
-  { key: "produced", header: "Produced", align: "right", render: (r) => r.produced.toLocaleString("en-IN") },
+  {
+    key: "produced",
+    header: "Produced",
+    align: "right",
+    render: (r) => (
+      <span className="tabular-nums">
+        {r.produced.toLocaleString("en-IN")}
+        {/* The floor's entry, until the office verifies it. */}
+        <DraftedNote drafted={r.drafted} />
+      </span>
+    ),
+  },
   { key: "packed", header: "Packed", align: "right", render: (r) => r.packed.toLocaleString("en-IN") },
   {
     key: "wasted",

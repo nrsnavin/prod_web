@@ -5,6 +5,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
 import { OrderJobRef } from "./types";
 import { jobRefId, jobRefNo, jobRefStatus } from "./orderJobRef";
+import { DraftedNote } from "@/features/jobs/DraftedNote";
 
 const n = (v: number) => v.toLocaleString("en-IN");
 
@@ -89,6 +90,7 @@ export function OrderJobGlance({ job }: { job: OrderJobRef }) {
                     <td className="px-3 py-2 text-right tabular-nums">{n(r.planned)}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-ink-600">
                       {n(r.produced)}
+                      <DraftedNote drafted={r.drafted} />
                     </td>
                     <td
                       className={cn(

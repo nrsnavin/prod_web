@@ -18,7 +18,7 @@ let data: Data | undefined;
 let features: string[] = ["/orders", "/invoices"];
 vi.mock("@/features/invoices/hooks", () => ({ useOrderInvoices: () => ({ data, isLoading: false }) }));
 vi.mock("@/core/auth/useAuth", () => ({ useAuth: () => ({ user: { role: "accounts", department: "finance", features } }) }));
-const dialog = vi.fn(() => <div>raise dialog</div>);
+const dialog = vi.fn((_props: unknown) => <div>raise dialog</div>);
 vi.mock("@/features/invoices/RaiseInvoiceDialog", () => ({ RaiseInvoiceDialog: (p: unknown) => dialog(p) }));
 
 const make = (over: Partial<Data> = {}): Data => ({

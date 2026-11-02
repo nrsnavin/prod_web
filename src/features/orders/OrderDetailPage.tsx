@@ -32,6 +32,7 @@ import { OrderInvoices } from "./OrderInvoices";
 import { OrderElasticProgress, OrderStatus, RawMaterialRequirement, StockShortfall } from "./types";
 import { jobRefId } from "./orderJobRef";
 import { OrderJobGlance } from "./OrderJobGlance";
+import { DraftedNote } from "@/features/jobs/DraftedNote";
 // Recharts is 362 KB and this panel sits three screens down. Loading it
 // with the page meant everyone who opened an order to read its lines
 // paid for a chart they never scrolled to.
@@ -73,7 +74,11 @@ const elasticColumns: Column<OrderElasticProgress>[] = [
           <span className="h-1.5 w-16 rounded-full bg-ink-100 overflow-hidden">
             <span className="block h-full rounded-full bg-status-info" style={{ width: `${pct}%` }} />
           </span>
-          <span className="tabular-nums">{e.produced.toLocaleString("en-IN")}</span>
+          <span className="tabular-nums">
+            {e.produced.toLocaleString("en-IN")}
+            {/* Entered on the floor, waiting for the office to verify. */}
+            <DraftedNote drafted={e.drafted} />
+          </span>
         </span>
       );
     },
