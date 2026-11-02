@@ -18,7 +18,7 @@ const LEDGERS: Array<{ key: TallyLedgerKey; label: string }> = [
   { key: "tdsPayable", label: "TDS payable" }, { key: "tdsReceivable", label: "TDS receivable (deducted by customers)" },
   { key: "roundOff", label: "Round off" }, { key: "bankCharges", label: "Bank charges" },
   { key: "discountAllowed", label: "Discount allowed" }, { key: "discountReceived", label: "Discount received" },
-  { key: "badDebts", label: "Bad debts written off" }, { key: "sundryExpenses", label: "Expenses with no head ledger" },
+  { key: "badDebts", label: "Bad debts written off" }, { key: "writtenBack", label: "Supplier balances written back" }, { key: "sundryExpenses", label: "Expenses with no head ledger" },
   { key: "debtorsGroup", label: "Group for new customers" }, { key: "creditorsGroup", label: "Group for new suppliers" },
 ];
 

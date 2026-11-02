@@ -445,13 +445,17 @@ export interface StatementRow {
   ref: string;
   amount: number;
   direction: "in" | "out";
-  status: "recorded" | "matched" | "unmatched";
+  status: "recorded" | "matched" | "unmatched" | "ignored";
   suggestion: StatementSuggestion | null;
-  recorded?: { _id: string; voucherNo: string; partyName: string };
+  recorded?: { _id: string; voucherType?: "Payment" | "Contra"; voucherNo: string; partyName: string };
+  note?: string;
+  balance?: number | null;
   candidates?: Array<{ partyType: "customer" | "supplier"; party: string; partyName: string; docNo: string; docType: Allocation["docType"]; doc: string }>;
 }
-export interface StatementResult { account: { _id: string; name: string }; rows: StatementRow[]; counts: { recorded: number; matched: number; unmatched: number }; file: string }
+export interface StatementResult { statement?: string; account: { _id: string; name: string }; rows: StatementRow[]; counts: { recorded: number; matched: number; unmatched: number; ignored?: number }; file: string; closingBalance?: number | null }
 export interface StatementPostRow {
+  /** The line's index on the stored statement. */
+  index?: number;
   date: string; narration: string; ref: string; amount: number; direction: "in" | "out";
   partyType: "customer" | "supplier" | "other"; party?: string; partyName?: string;
   allocations?: Array<{ docType: Allocation["docType"]; doc: string; amount: number }>;
@@ -523,7 +527,7 @@ export interface OpeningImportRow {
 
 export type TallyLedgerKey =
   | "companyName" | "sales" | "purchase" | "outputCgst" | "outputSgst" | "outputIgst" | "inputCgst" | "inputSgst" | "inputIgst"
-  | "roundOff" | "tdsPayable" | "tdsReceivable" | "bankCharges" | "discountAllowed" | "discountReceived" | "badDebts" | "sundryExpenses"
+  | "roundOff" | "tdsPayable" | "tdsReceivable" | "bankCharges" | "discountAllowed" | "discountReceived" | "badDebts" | "writtenBack" | "sundryExpenses"
   | "debtorsGroup" | "creditorsGroup";
 export interface AccountsSettings {
   lockDate: string | null;
@@ -532,3 +536,38 @@ export interface AccountsSettings {
   tally: Record<TallyLedgerKey, string>;
   bills: { rateVariancePercent: number };
 }
+
+// ── Bank reconciliation ──
+export interface StoredStatement {
+  _id: string; account: string; accountName: string; file: string; from: string; to: string; closingBalance: number | null;
+  uploadedByName?: string; createdAt: string; lines: number; counts: Partial<Record<StatementRow["status"] | "posted", number>>;
+}
+export interface StoredStatementLine {
+  index: number; date: string; narration: string; ref: string; amount: number; direction: "in" | "out"; balance: number | null;
+  status: "recorded" | "posted" | "unmatched" | "matched" | "ignored"; voucherType: "Payment" | "Contra" | null; voucher: string | null; voucherNo: string; note: string;
+}
+export interface BookEntry { voucherType: "Payment" | "Contra"; _id: string; number: string; date: string; party: string; reference: string; direction: "in" | "out"; amount: number }
+export interface Reconciliation {
+  account: { _id: string; name: string };
+  asOf: string;
+  bookBalance: number;
+  uncleared: BookEntry[];
+  unmatched: Array<{ statement: string; index: number; date: string; narration: string; ref: string; amount: number; direction: "in" | "out" }>;
+  totals: { unclearedIn: number; unclearedOut: number; unmatchedIn: number; unmatchedOut: number };
+  expectedBankBalance: number;
+  bankBalance: number | null;
+  bankBalanceFrom: "entered" | { statement: string; file: string; to: string } | null;
+  difference: number | null;
+}
+
+// ── Tally ──
+export interface TallyPreview {
+  from: string; to: string;
+  counts: Record<string, number>;
+  vouchers: number;
+  alreadySent: number;
+  ledgers: string[];
+  problems: string[];
+  sample: Array<{ type: string; number: string; date: string; party: string; lines: Array<{ ledger: string; debit: number; credit: number }> }>;
+}
+export interface TallyBatch { _id: string; batchNo: number; from: string; to: string; counts: Record<string, number>; vouchers: number; ledgers: string[]; lockedUpTo: string | null; byName: string; createdAt: string }

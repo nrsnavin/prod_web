@@ -4,6 +4,7 @@ import type {
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
   AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow,
+  Reconciliation, StoredStatement, StoredStatementLine, TallyBatch, TallyPreview,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -83,8 +84,23 @@ export const accountsService = {
     if (!res.ok) throw new Error(body?.message || "Could not read the statement");
     return body as StatementResult;
   },
-  postStatement: (account: string, rows: StatementPostRow[]) =>
-    httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; voucherNo?: string; _id?: string; error?: string }>; posted: number; failed: number }>("/accounts/bank/statement/post", { account, rows }),
+  postStatement: (account: string, rows: StatementPostRow[], statement?: string) =>
+    httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; voucherNo?: string; _id?: string; error?: string }>; posted: number; failed: number }>("/accounts/bank/statement/post", { account, rows, statement }),
+  statements: async (account?: string) => (await httpClient.get<{ success: boolean; statements: StoredStatement[] }>("/accounts/bank/statements", clean({ account }))).statements,
+  storedStatement: async (id: string) => (await httpClient.get<{ success: boolean; statement: StoredStatement & { lines: StoredStatementLine[] } }>(`/accounts/bank/statements/${id}`)).statement,
+  ignoreLine: (statement: string, index: number, reason: string) => httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/ignore`, { reason }),
+  linkLine: (statement: string, index: number, voucherType: "Payment" | "Contra", voucher: string) =>
+    httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/link`, { voucherType, voucher }),
+  clearEntry: (body: { voucherType: "Payment" | "Contra"; id: string; account: string; clearedOn: string | null }) => httpClient.post<{ success: boolean }>("/accounts/bank/clear", body),
+  reconciliation: (account: string, asOf: string, bankBalance?: number | "") =>
+    httpClient.get<Reconciliation & { success: boolean }>("/accounts/bank/reconciliation", clean({ account, asOf, bankBalance })),
+
+  // ── Tally ──
+  tallyPreview: (range: { from: string; to: string }) => httpClient.get<TallyPreview & { success: boolean }>("/accounts/tally/preview", range),
+  tallyExport: async (body: { from: string; to: string; lock?: boolean; masters?: boolean }) =>
+    (await httpClient.post<{ success: boolean; batch: TallyBatch }>("/accounts/tally/export", body)).batch,
+  tallyBatches: async () => (await httpClient.get<{ success: boolean; batches: TallyBatch[] }>("/accounts/tally/batches")).batches,
+  tallyXml: (id: string) => httpClient.getBlob(`/accounts/tally/batches/${id}/xml`),
   collections: () => httpClient.get<{ success: boolean; rows: CollectionEntry[]; total: number; whatsapp: boolean }>("/accounts/collections"),
   draftReminder: (customer: string, tone: "gentle" | "firm" = "gentle") =>
     httpClient.post<{ success: boolean; message: string; byModel: boolean; to: string; entry: CollectionEntry }>("/accounts/collections/draft", { customer, tone }),
