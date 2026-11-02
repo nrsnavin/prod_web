@@ -29,6 +29,14 @@ export const useStatement = (partyType?: "customer" | "supplier", party?: string
 export const useOutstanding = (type: "receivable" | "payable", party?: string) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "outstanding", type, party], queryFn: () => accountsService.outstanding(type, party) });
 
+export const useCredits = (partyType?: "customer" | "supplier", party?: string) =>
+  useQuery({ queryKey: [ACCOUNTS_KEY, "credits", partyType, party], queryFn: () => accountsService.credits(partyType!, party!), enabled: !!partyType && !!party });
+export const useContras = (q: Record<string, unknown>, enabled = true) =>
+  useQuery({ queryKey: [ACCOUNTS_KEY, "contras", q], queryFn: () => accountsService.contras(q), placeholderData: (p) => p, enabled });
+export const useOpeningBalances = (q: Record<string, unknown>) =>
+  useQuery({ queryKey: [ACCOUNTS_KEY, "opening", q], queryFn: () => accountsService.openingBalances(q), placeholderData: (p) => p });
+export const useAccountsSettings = () => useQuery({ queryKey: [ACCOUNTS_KEY, "settings"], queryFn: accountsService.accountsSettings, staleTime: 60_000 });
+
 export function useAccountsMutations() {
   const qc = useQueryClient();
   const invalidate = () => {
@@ -51,6 +59,14 @@ export function useAccountsMutations() {
     cancelNote: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelNote(id, reason), onSuccess: invalidate }),
     createPayment: useMutation({ mutationFn: (b: PaymentCreateBody) => accountsService.createPayment(once(b)), onSuccess: done }),
     cancelPayment: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelPayment(id, reason), onSuccess: invalidate }),
+    applyCredit: useMutation({ mutationFn: accountsService.applyCredit, onSuccess: invalidate }),
+    createContra: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createContra>[0]) => accountsService.createContra(once(b)), onSuccess: done }),
+    cancelContra: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelContra(id, reason), onSuccess: invalidate }),
+    createOpening: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createOpening>[0]) => accountsService.createOpening(once(b)), onSuccess: done }),
+    cancelOpening: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelOpening(id, reason), onSuccess: invalidate }),
+    bulkOpening: useMutation({ mutationFn: accountsService.bulkOpening, onSuccess: invalidate }),
+    saveAccountsSettings: useMutation({ mutationFn: accountsService.saveAccountsSettings, onSuccess: invalidate }),
+    lockBooks: useMutation({ mutationFn: ({ lockDate, reason }: { lockDate: string | null; reason?: string }) => accountsService.lockBooks(lockDate, reason), onSuccess: invalidate }),
     saveBankAccount: useMutation({
       mutationFn: ({ id, body }: { id?: string; body: Record<string, unknown> }) => (id ? accountsService.updateBankAccount(id, body) : accountsService.createBankAccount(body)),
       onSuccess: invalidate,

@@ -84,15 +84,15 @@ export function ReportsTab() {
       {report === "tds" && (tds.isLoading ? <Skeleton className="h-64 w-full" /> : tds.data && (
         <Card className="p-5">
           <h3 className="font-semibold">TDS deducted</h3>
-          <p className="text-sm text-ink-400">₹{money(tds.data.total.tds)} on ₹{money(tds.data.total.gross)} paid</p>
+          <p className="text-sm text-ink-400">₹{money(tds.data.total.tds)} deducted on ₹{money(tds.data.total.base ?? tds.data.total.gross)} (value net of GST) of ₹{money(tds.data.total.gross)} settled</p>
           <table className="mt-3 w-full text-sm">
-            <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Deductee</th><th className="py-2 text-left font-medium">Section</th><th className="py-2 text-right font-medium">Rate</th><th className="py-2 text-right font-medium">Gross</th><th className="py-2 text-right font-medium">TDS</th><th className="py-2 text-left font-medium">Vouchers</th></tr></thead>
+            <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Deductee</th><th className="py-2 text-left font-medium">Section</th><th className="py-2 text-right font-medium">Rate</th><th className="py-2 text-right font-medium">Settled</th><th className="py-2 text-right font-medium">TDS on</th><th className="py-2 text-right font-medium">TDS</th><th className="py-2 text-left font-medium">Vouchers</th></tr></thead>
             <tbody className="divide-y divide-ink-100">
               {tds.data.rows.map((r, i) => (
-                <tr key={i}><td className="py-2">{r.partyName}</td><td className="py-2">{r.section || "—"}</td><td className="py-2 text-right">{r.rate}%</td><td className="py-2 text-right tabular-nums">{money(r.gross)}</td><td className="py-2 text-right tabular-nums font-medium">{money(r.tds)}</td>
+                <tr key={i}><td className="py-2">{r.partyName}</td><td className="py-2">{r.section || "—"}</td><td className="py-2 text-right">{r.rate}%</td><td className="py-2 text-right tabular-nums">{money(r.gross)}</td><td className="py-2 text-right tabular-nums">{money(r.base ?? r.gross)}</td><td className="py-2 text-right tabular-nums font-medium">{money(r.tds)}</td>
                   <td className="py-2">{r.vouchers.map((v) => <Link key={v._id} to={`/accounts/payments/${v._id}`} className="mr-2 text-brand-600 hover:underline">{v.voucherNo}</Link>)}</td></tr>
               ))}
-              {tds.data.rows.length === 0 && <tr><td className="py-4 text-ink-400" colSpan={6}>No TDS deducted in this period.</td></tr>}
+              {tds.data.rows.length === 0 && <tr><td className="py-4 text-ink-400" colSpan={7}>No TDS deducted in this period.</td></tr>}
             </tbody>
           </table>
         </Card>
@@ -120,7 +120,7 @@ export function ReportsTab() {
           <table className="mt-3 w-full text-sm">
             <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-left font-medium">Voucher</th><th className="py-2 text-left font-medium">Party</th><th className="py-2 text-left font-medium">Ref</th><th className="py-2 text-right font-medium">In</th><th className="py-2 text-right font-medium">Out</th><th className="py-2 text-right font-medium">Balance</th></tr></thead>
             <tbody className="divide-y divide-ink-100">
-              {book.data.rows.map((r) => <tr key={r._id}><td className="py-2">{formatDate(r.date)}</td><td className="py-2"><Link to={`/accounts/payments/${r._id}`} className="text-brand-600 hover:underline">{r.voucherNo}</Link></td><td className="py-2">{r.partyName}</td><td className="py-2 text-ink-500">{r.reference || r.narration || ""}</td><td className="py-2 text-right tabular-nums">{r.inflow ? money(r.inflow) : ""}</td><td className="py-2 text-right tabular-nums">{r.outflow ? money(r.outflow) : ""}</td><td className="py-2 text-right tabular-nums font-medium">{money(r.balance)}</td></tr>)}
+              {book.data.rows.map((r) => <tr key={r._id}><td className="py-2">{formatDate(r.date)}</td><td className="py-2">{r.docType === "Contra" ? <span className="font-medium">{r.voucherNo}</span> : <Link to={`/accounts/payments/${r._id}`} className="text-brand-600 hover:underline">{r.voucherNo}</Link>}</td><td className="py-2">{r.partyName}</td><td className="py-2 text-ink-500">{r.reference || r.narration || ""}</td><td className="py-2 text-right tabular-nums">{r.inflow ? money(r.inflow) : ""}</td><td className="py-2 text-right tabular-nums">{r.outflow ? money(r.outflow) : ""}</td><td className="py-2 text-right tabular-nums font-medium">{money(r.balance)}</td></tr>)}
               {book.data.rows.length === 0 && <tr><td className="py-4 text-ink-400" colSpan={7}>No movement in this period.</td></tr>}
             </tbody>
           </table>

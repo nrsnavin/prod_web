@@ -16,7 +16,9 @@ export interface BankAccount {
   float?: number;
   active?: boolean;
   isDefault?: boolean;
-  /** Server-computed: opening + receipts − payments. */
+  /** The ledger this account is in Tally. */
+  tallyLedger?: string;
+  /** Server-computed: opening + money in − money out (contras both ways). */
   balance?: number;
   receipts?: number;
   payments?: number;
@@ -138,6 +140,7 @@ export interface Expense {
   _id: string;
   expenseNo: string;
   date: string;
+  dueDate?: string;
   category: string;
   categoryName: string;
   description: string;
@@ -194,9 +197,15 @@ export interface AccountNote {
   partyGstin?: string;
   against: { docType: "Invoice" | "SupplierBill"; doc: string; docNo: string };
   reason: string;
+  /** The party's own number for the same note. */
+  partyNoteNo?: string;
   supplyType: SupplyType;
   lines?: TaxLine[];
   totals: InvoiceTotals;
+  /** Set against `against`; the rest is unapplied credit on the party. */
+  applied?: number;
+  unapplied?: number;
+  applications?: Array<{ docType: Allocation["docType"]; doc: string; docNo: string; amount: number; at?: string }>;
   status: "issued" | "cancelled";
   cancel?: { reason?: string; at?: string };
   notes?: string;
@@ -205,6 +214,9 @@ export interface AccountNote {
 
 export interface NoteCreateBody {
   kind: NoteKind;
+  /** A debit note goes to a supplier unless this says customer. */
+  partyType?: "customer" | "supplier";
+  partyNoteNo?: string;
   against: { doc: string };
   reason: string;
   date?: string;
@@ -215,13 +227,27 @@ export interface NoteCreateBody {
 
 export type VoucherKind = "receipt" | "payment";
 export type PaymentMode = "cash" | "bank" | "upi" | "cheque";
+export type SettleDocType = "Invoice" | "SupplierBill" | "Expense" | "OpeningBalance";
 export interface Allocation {
-  docType: "Invoice" | "SupplierBill" | "Expense";
+  docType: SettleDocType;
   doc: string;
   docNo: string;
   amount: number;
   tds: number;
+  /** The value TDS was deducted on (net of GST). */
+  tdsBase?: number;
+  /** Set when an amount left on account was applied later. */
+  appliedAt?: string;
 }
+export type AdjustmentKind = "bank_charges" | "discount" | "tds_by_customer" | "round_off" | "write_off";
+export interface Adjustment { kind: AdjustmentKind; label?: string; amount: number; note?: string }
+export const ADJUSTMENT_LABELS: Record<AdjustmentKind, string> = {
+  bank_charges: "Bank charges", discount: "Discount", tds_by_customer: "TDS deducted by customer", round_off: "Round off", write_off: "Write off",
+};
+export const ADJUSTMENT_KINDS: Record<"receipt" | "payment", AdjustmentKind[]> = {
+  receipt: ["bank_charges", "discount", "tds_by_customer", "round_off", "write_off"],
+  payment: ["discount", "round_off", "write_off"],
+};
 export interface Payment {
   _id: string;
   kind: VoucherKind;
@@ -236,9 +262,11 @@ export interface Payment {
   account: string;
   accountName?: string;
   reference?: string;
-  tds: { section?: string; rate?: number; amount: number };
+  tds: { section?: string; rate?: number; amount: number; base?: number };
+  adjustments?: Adjustment[];
   allocations: Allocation[];
   unallocated: number;
+  clearedOn?: string;
   status: "posted" | "cancelled";
   cancel?: { reason?: string; at?: string };
   narration?: string;
@@ -258,6 +286,7 @@ export interface PaymentCreateBody {
   account: string;
   reference?: string;
   tds?: { section?: string; rate?: number };
+  adjustments?: Array<{ kind: AdjustmentKind; amount: number; note?: string }>;
   allocations: Array<{ docType: Allocation["docType"]; doc: string; amount: number }>;
   narration?: string;
   source?: string;
@@ -267,7 +296,7 @@ export interface PaymentCreateBody {
 
 export type AgeingBucket = "current" | "d30" | "d60" | "d90" | "over90";
 export interface OpenDoc {
-  docType: "Invoice" | "SupplierBill" | "Expense";
+  docType: SettleDocType;
   id: string;
   docNo: string;
   refNo?: string;
@@ -283,6 +312,8 @@ export interface OpenDoc {
   overdueDays: number;
   bucket: AgeingBucket;
   tds?: { section: string; rate: number } | null;
+  /** Value net of GST over the total: the share TDS is deducted on. */
+  taxableRatio?: number;
 }
 export interface Ageing { current: number; d30: number; d60: number; d90: number; over90: number }
 export interface OutstandingTotals { total: number; overdue: number; count: number; ageing: Ageing }
@@ -298,7 +329,7 @@ export interface OutstandingResult {
 export interface LedgerRow {
   _id: string;
   date: string;
-  docType: "Invoice" | "SupplierBill" | "Expense" | "AccountNote" | "Payment";
+  docType: "Invoice" | "SupplierBill" | "Expense" | "AccountNote" | "Payment" | "OpeningBalance";
   doc: string;
   docNo: string;
   debit: number;
@@ -346,8 +377,8 @@ export interface GstReport {
 export interface TdsReport {
   from: string;
   to: string;
-  rows: Array<{ supplier?: string; partyName: string; section: string; rate: number; gross: number; tds: number; vouchers: Array<{ _id: string; voucherNo: string; date: string; gross: number; tds: number; docs: string[] }> }>;
-  total: { gross: number; tds: number };
+  rows: Array<{ supplier?: string; partyName: string; section: string; rate: number; gross: number; base?: number; tds: number; vouchers: Array<{ _id: string; voucherNo: string; date: string; gross: number; base?: number; tds: number; docs: string[] }> }>;
+  total: { gross: number; base?: number; tds: number };
 }
 export interface ExpenseReport {
   from: string;
@@ -361,7 +392,7 @@ export interface CashbookReport {
   from: string;
   to: string;
   opening: number;
-  rows: Array<Payment & { inflow: number; outflow: number; balance: number }>;
+  rows: Array<Omit<Payment, "kind"> & { kind: VoucherKind | "contra"; docType?: "Payment" | "Contra"; inflow: number; outflow: number; balance: number }>;
   closing: number;
   inflow: number;
   outflow: number;
@@ -431,4 +462,73 @@ export interface CollectionEntry {
   party: string; partyName: string; total: number; overdue: number; oldestDays: number; count: number; priority: number;
   docs: OpenDoc[];
   contact: { name: string; phone: string; email: string; accountant: string; accountantPhone: string; paymentTerms: string };
+}
+
+// ── Credits, contras, opening balances, settings ──
+export interface Credit {
+  sourceType: "Payment" | "AccountNote" | "OpeningBalance";
+  id: string;
+  docNo: string;
+  date: string;
+  amount: number;
+  available: number;
+  label: string;
+}
+
+export interface Contra {
+  _id: string;
+  contraNo: string;
+  date: string;
+  from: string;
+  fromName: string;
+  to: string;
+  toName: string;
+  amount: number;
+  mode: PaymentMode;
+  reference?: string;
+  narration?: string;
+  status: "posted" | "cancelled";
+  cancel?: { reason?: string };
+}
+
+export interface OpeningBalance {
+  _id: string;
+  docNo: string;
+  partyType: "customer" | "supplier";
+  customer?: string;
+  supplier?: string;
+  partyName: string;
+  kind: "due" | "advance";
+  refNo?: string;
+  date: string;
+  dueDate?: string;
+  amount: number;
+  settledAmount: number;
+  unapplied: number;
+  status: "posted" | "cancelled";
+  notes?: string;
+}
+export interface OpeningImportRow {
+  line: number;
+  partyType: "customer" | "supplier" | null;
+  party: string | null;
+  partyName: string;
+  refNo: string;
+  date: string | null;
+  dueDate: string | null;
+  amount: number;
+  kind: "due" | "advance" | null;
+  problem: string | null;
+}
+
+export type TallyLedgerKey =
+  | "companyName" | "sales" | "purchase" | "outputCgst" | "outputSgst" | "outputIgst" | "inputCgst" | "inputSgst" | "inputIgst"
+  | "roundOff" | "tdsPayable" | "tdsReceivable" | "bankCharges" | "discountAllowed" | "discountReceived" | "badDebts" | "sundryExpenses"
+  | "debtorsGroup" | "creditorsGroup";
+export interface AccountsSettings {
+  lockDate: string | null;
+  lockedBy?: string;
+  lockedAt?: string;
+  tally: Record<TallyLedgerKey, string>;
+  bills: { rateVariancePercent: number };
 }

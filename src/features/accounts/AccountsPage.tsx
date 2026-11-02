@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { LayoutDashboard, FileText, Wallet, ArrowLeftRight, FileMinus, BookOpen, BarChart3, Settings2, Landmark, BellRing } from "lucide-react";
+import { LayoutDashboard, FileText, Wallet, ArrowLeftRight, FileMinus, BookOpen, BarChart3, Settings2, Landmark, BellRing, History } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/components/ui/cn";
 import { OverviewTab } from "./OverviewTab";
@@ -12,8 +12,9 @@ import { ReportsTab } from "./ReportsTab";
 import { SettingsTab } from "./SettingsTab";
 import { BankStatementTab } from "./BankStatementTab";
 import { CollectionsTab } from "./CollectionsTab";
+import { OpeningTab } from "./OpeningTab";
 
-export type AccountsTab = "overview" | "bills" | "expenses" | "vouchers" | "notes" | "bank" | "collections" | "statements" | "reports" | "settings";
+export type AccountsTab = "overview" | "bills" | "expenses" | "vouchers" | "notes" | "bank" | "collections" | "statements" | "reports" | "opening" | "settings";
 
 const TABS: { id: AccountsTab; label: string; icon: typeof FileText }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -25,6 +26,7 @@ const TABS: { id: AccountsTab; label: string; icon: typeof FileText }[] = [
   { id: "collections", label: "Collections", icon: BellRing },
   { id: "statements", label: "Statements", icon: BookOpen },
   { id: "reports", label: "Reports", icon: BarChart3 },
+  { id: "opening", label: "Opening balances", icon: History },
   { id: "settings", label: "Settings", icon: Settings2 },
 ];
 
@@ -64,6 +66,7 @@ export function AccountsPage() {
       {tab === "collections" && <CollectionsTab />}
       {tab === "statements" && <StatementsTab />}
       {tab === "reports" && <ReportsTab />}
+      {tab === "opening" && <OpeningTab />}
       {tab === "settings" && <SettingsTab />}
     </>
   );

@@ -80,6 +80,41 @@ describe("a payment voucher", () => {
   });
 });
 
+describe("TDS and short payments", () => {
+  it("deducts TDS on the bill's value net of GST, not on the GST", async () => {
+    docs = [doc({ taxableRatio: 50000 / 52500 })];
+    render(<VoucherForm kind="payment" onDone={() => {}} onCancel={() => {}} />);
+    await userEvent.click(screen.getByText("pick party"));
+    await userEvent.click(await screen.findByLabelText("Settle PB/2026-27/0001"));
+    // 2% of 50,000 (the 2,500 GST is not deducted on) = 1,000 → 51,500 paid
+    expect(screen.getByLabelText("Voucher summary")).toHaveTextContent("TDS deducted₹1,000.00");
+    expect(screen.getByLabelText("Amount paid *")).toHaveValue(51500);
+  });
+
+  it("a receipt short by bank charges settles the invoice in full with one click", async () => {
+    docs = [{ docType: "Invoice", id: "i1", docNo: "INV/2026-27/0001", date: "2026-06-01", dueDate: "2026-07-01", party: "c1", partyName: "Sunrise", amount: 100000, outstanding: 100000, overdueDays: 0, bucket: "current" }];
+    render(<VoucherForm kind="receipt" onDone={() => {}} onCancel={() => {}} />);
+    await userEvent.click(screen.getByText("pick party"));
+    await userEvent.click(await screen.findByLabelText("Settle INV/2026-27/0001"));
+    const received = screen.getByLabelText("Amount received *");
+    await userEvent.clear(received);
+    await userEvent.type(received, "99950");
+    expect(screen.getByText(/₹50.00 short/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /post receipt/i })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Bank charges" }));
+    expect(screen.getByLabelText("Adjustment 1 amount")).toHaveValue(50);
+    await userEvent.click(screen.getByRole("button", { name: /post receipt/i }));
+    expect(createMutate.mock.calls[0][0]).toMatchObject({ amount: 99950, adjustments: [{ kind: "bank_charges", amount: 50 }], allocations: [{ doc: "i1", amount: 100000 }] });
+  });
+
+  it("ticks the documents it was opened for", async () => {
+    docs = [doc({}), doc({ id: "b2", docNo: "PB/2026-27/0002", amount: 1050, outstanding: 1050, tds: null })];
+    render(<VoucherForm kind="payment" initialParty={{ id: "s1", name: "Sri Yarn" }} initialDocs={["b2"]} onDone={() => {}} onCancel={() => {}} />);
+    expect(await screen.findByLabelText("Amount for PB/2026-27/0002")).toHaveValue(1050);
+    expect(screen.getByLabelText("Settle PB/2026-27/0001")).not.toBeChecked();
+  });
+});
+
 describe("a receipt voucher", () => {
   it("has no TDS, and what is not allocated stays on account", async () => {
     docs = [{ docType: "Invoice", id: "i1", docNo: "INV/2026-27/0001", date: "2026-06-01", dueDate: "2026-07-01", party: "c1", partyName: "Sunrise", amount: 10500, outstanding: 10500, overdueDays: 40, bucket: "d60" }];

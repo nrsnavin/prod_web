@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, XCircle, Check, X, Banknote, Paperclip } from "lucide-react";
+import { ArrowLeft, XCircle, Check, X, Banknote, Paperclip, Wallet } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -9,6 +9,7 @@ import { DescriptionList } from "@/components/ui/DescriptionList";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { FormScreen } from "@/components/ui/FormScreen";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -17,8 +18,13 @@ import { useAuth } from "@/core/auth/useAuth";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY, useAccountsMutations, useBill, useExpense, useNote, usePayment } from "./hooks";
 import { PayDialog } from "./ExpensesTab";
+import { VoucherForm } from "./VouchersTab";
+import { ApplyCreditDialog } from "./Credits";
+import { noteKindLabel } from "./NotesTab";
 import { billLabel, billTone, expenseLabel, expenseTone, money, qty } from "./shared";
-import type { Attachment, Fingerprint, TaxLine } from "./types";
+import type { Attachment, Credit, Fingerprint, TaxLine } from "./types";
+import { ADJUSTMENT_LABELS } from "./types";
+import { useNavigate } from "react-router-dom";
 import type { SupplyType } from "@/features/invoices/types";
 
 type Kind = "bills" | "expenses" | "notes" | "payments";
@@ -87,14 +93,20 @@ export function BillDetailPage() {
   const { data, isLoading, isError, error } = useBill(id);
   const { cancelBill } = useAccountsMutations();
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const navigate = useNavigate();
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Bill not found"}</p>;
   const { bill, payments, notes } = data;
+  const canPay = (bill.status === "open" || bill.status === "part_paid") && (bill.outstanding ?? 0) > 0;
   return (
     <>
       <Link to="/accounts/bills" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Supplier bills</Link>
       <PageHeader title={bill.billNo} subtitle={`${bill.supplierName} · their ${bill.supplierBillNo} dated ${formatDate(bill.billDate)}`}
-        actions={bill.status !== "cancelled" && bill.paidAmount === 0 && bill.debitedAmount === 0 ? <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button> : undefined} />
+        actions={<>
+          {canPay && <Button onClick={() => setPaying(true)}><Wallet className="h-4 w-4" /> Record payment</Button>}
+          {bill.status !== "cancelled" && bill.paidAmount === 0 && bill.debitedAmount === 0 && <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button>}
+        </>} />
       <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={billTone[bill.status]}>{billLabel[bill.status]}</StatusChip><StatusChip tone="neutral">{bill.supplyType === "inter" ? "IGST" : "CGST + SGST"}</StatusChip>{bill.tds?.applicable && <StatusChip tone="warning">TDS {bill.tds.section} @ {bill.tds.rate}%</StatusChip>}{bill.itc?.eligible ? <StatusChip tone="success">ITC ₹{money(bill.itc.amount)}</StatusChip> : <StatusChip tone="neutral">No input credit</StatusChip>}{bill.status === "cancelled" && bill.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {bill.cancel.reason}</span>}</div>
       <Card className="p-6">
         <DescriptionList columns={3} items={[
@@ -121,6 +133,9 @@ export function BillDetailPage() {
       )}
       <Attachments kind="bills" id={bill._id} rows={bill.attachments} />
       <History rows={bill.fingerprints} />
+      <FormScreen open={paying} onClose={() => setPaying(false)} title={`Pay ${bill.supplierName}`} width="max-w-4xl">
+        {paying && <VoucherForm kind="payment" initialParty={{ id: bill.supplier, name: bill.supplierName }} initialDocs={[bill._id]} onDone={(id) => { setPaying(false); navigate(`/accounts/payments/${id}`); }} onCancel={() => setPaying(false)} />}
+      </FormScreen>
       <ReasonDialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${bill.billNo}?`} description="It leaves the supplier's account. The receipts on it can be billed again." confirmLabel="Cancel bill" minLength={8} loading={cancelBill.isPending}
         onConfirm={(reason) => cancelBill.mutate({ id: bill._id, reason }, { onSuccess: () => { setCancelOpen(false); toast("Bill cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
     </>
@@ -151,7 +166,7 @@ export function ExpenseDetailPage() {
       <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={expenseTone[e.status]}>{expenseLabel[e.status]}</StatusChip>{e.itc?.eligible && <StatusChip tone="success">ITC ₹{money(e.itc.amount)}</StatusChip>}{e.approval?.byName && <span className="text-sm text-ink-500">{e.status === "rejected" ? "Rejected" : "Approved"} by {e.approval.byName}{e.approval.note ? ` — ${e.approval.note}` : ""}</span>}</div>
       <Card className="p-6">
         <DescriptionList columns={3} items={[
-          { label: "Date", value: formatDate(e.date) }, { label: "Paid to", value: e.payeeName || undefined }, { label: "Payee GSTIN", value: e.payeeGstin || undefined },
+          { label: "Date", value: formatDate(e.date) }, { label: "Due", value: e.dueDate ? formatDate(e.dueDate) : undefined }, { label: "Paid to", value: e.payeeName || undefined }, { label: "Payee GSTIN", value: e.payeeGstin || undefined },
           { label: "Their ref", value: e.refNo || undefined }, { label: "Entered by", value: e.submittedByName || undefined },
           { label: "Paid", value: e.paidAmount ? `₹${money(e.paidAmount)}${typeof e.paidFrom === "object" && e.paidFrom ? ` from ${e.paidFrom.name}` : ""}` : "Not yet" },
           { label: "Notes", value: e.notes || undefined },
@@ -178,24 +193,37 @@ export function NoteDetailPage() {
   const { data, isLoading, isError, error } = useNote(id);
   const { cancelNote } = useAccountsMutations();
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Note not found"}</p>;
   const n = data.note;
+  const party = n.partyType === "customer" ? n.customer : n.supplier;
+  const credit: Credit | null = n.status === "issued" && (n.unapplied ?? 0) > 0 && party
+    ? { sourceType: "AccountNote", id: n._id, docNo: n.noteNo, date: n.date, amount: n.totals.grand, available: n.unapplied ?? 0, label: n.reason }
+    : null;
   const againstPath = n.against.docType === "Invoice" ? `/invoices/${n.against.doc}` : `/accounts/bills/${n.against.doc}`;
   return (
     <>
       <Link to="/accounts/notes" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Credit / debit notes</Link>
-      <PageHeader title={n.noteNo} subtitle={`${n.kind === "credit" ? "Credit note to" : "Debit note to"} ${n.partyName} · ${formatDate(n.date)}`} actions={n.status === "issued" ? <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button> : undefined} />
-      <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={n.status === "issued" ? "success" : "danger"}>{n.status}</StatusChip><StatusChip tone={n.kind === "credit" ? "info" : "warning"}>{n.kind === "credit" ? "Credit note" : "Debit note"}</StatusChip>{n.status === "cancelled" && n.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {n.cancel.reason}</span>}</div>
+      <PageHeader title={n.noteNo} subtitle={`${noteKindLabel(n)} · ${n.partyName} · ${formatDate(n.date)}`} actions={<>
+        {credit && <Button onClick={() => setApplying(true)}>Apply ₹{money(credit.available)}</Button>}
+        {n.status === "issued" && <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button>}
+      </>} />
+      <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={n.status === "issued" ? "success" : "danger"}>{n.status}</StatusChip><StatusChip tone={n.kind === "credit" ? "info" : "warning"}>{noteKindLabel(n)}</StatusChip>{(n.unapplied ?? 0) > 0 && <StatusChip tone="warning">₹{money(n.unapplied)} unapplied</StatusChip>}{n.status === "cancelled" && n.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {n.cancel.reason}</span>}</div>
       <Card className="p-6">
         <DescriptionList columns={3} items={[
-          { label: "Against", value: <Link to={againstPath} className="text-brand-600 hover:underline">{n.against.docNo}</Link> }, { label: "Reason", value: n.reason }, { label: "Party GSTIN", value: n.partyGstin || undefined }, { label: "Notes", value: n.notes || undefined },
+          { label: "Against", value: <Link to={againstPath} className="text-brand-600 hover:underline">{n.against.docNo}</Link> }, { label: "Reason", value: n.reason }, { label: "Party GSTIN", value: n.partyGstin || undefined },
+          { label: "Their note no.", value: n.partyNoteNo || undefined },
+          { label: "Applied to it", value: n.applied !== undefined ? `₹${money(n.applied)}` : undefined },
+          { label: "Applied elsewhere", value: n.applications?.length ? n.applications.map((a) => `${a.docNo} ₹${money(a.amount)}`).join(", ") : undefined },
+          { label: "Notes", value: n.notes || undefined },
         ]} />
         <Lines lines={n.lines} supplyType={n.supplyType} />
         <p className="mt-3 text-right text-sm">Total <span className="font-semibold tabular-nums">₹{money(n.totals.grand)}</span> <span className="text-ink-400">(tax ₹{money(n.totals.tax)})</span></p>
       </Card>
       <History rows={n.fingerprints} />
-      <ReasonDialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${n.noteNo}?`} description="The amount goes back onto the document it was against." confirmLabel="Cancel note" minLength={8} loading={cancelNote.isPending}
+      {applying && credit && party && <ApplyCreditDialog credit={credit} partyType={n.partyType} party={party} onClose={() => setApplying(false)} />}
+      <ReasonDialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${n.noteNo}?`} description="The amount goes back onto the documents it was applied to." confirmLabel="Cancel note" minLength={8} loading={cancelNote.isPending}
         onConfirm={(reason) => cancelNote.mutate({ id: n._id, reason }, { onSuccess: () => { setCancelOpen(false); toast("Note cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
     </>
   );
@@ -207,29 +235,40 @@ export function PaymentDetailPage() {
   const { data, isLoading, isError, error } = usePayment(id);
   const { cancelPayment } = useAccountsMutations();
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Voucher not found"}</p>;
   const p = data.payment;
-  const docPath = (t: string, d: string) => (t === "Invoice" ? `/invoices/${d}` : t === "SupplierBill" ? `/accounts/bills/${d}` : `/accounts/expenses/${d}`);
+  const party = p.partyType === "customer" ? p.customer : p.partyType === "supplier" ? p.supplier : undefined;
+  const credit: Credit | null = p.status === "posted" && p.unallocated > 0.005 && party
+    ? { sourceType: "Payment", id: p._id, docNo: p.voucherNo, date: p.date, amount: p.amount, available: p.unallocated, label: p.kind === "receipt" ? "Received on account" : "Paid on account" }
+    : null;
+  const docPath = (t: string, d: string) => (t === "Invoice" ? `/invoices/${d}` : t === "SupplierBill" ? `/accounts/bills/${d}` : t === "OpeningBalance" ? "/accounts/opening" : `/accounts/expenses/${d}`);
   return (
     <>
       <Link to="/accounts/vouchers" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Receipts &amp; payments</Link>
-      <PageHeader title={p.voucherNo} subtitle={`${p.kind === "receipt" ? "Received from" : "Paid to"} ${p.partyName} · ${formatDate(p.date)}`} actions={p.status === "posted" ? <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button> : undefined} />
+      <PageHeader title={p.voucherNo} subtitle={`${p.kind === "receipt" ? "Received from" : "Paid to"} ${p.partyName} · ${formatDate(p.date)}`} actions={<>
+        {credit && <Button onClick={() => setApplying(true)}>Apply ₹{money(credit.available)}</Button>}
+        {p.status === "posted" && <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button>}
+      </>} />
       <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={p.status === "posted" ? "success" : "danger"}>{p.status}</StatusChip><StatusChip tone={p.kind === "receipt" ? "success" : "info"}>{p.kind}</StatusChip>{p.status === "cancelled" && p.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {p.cancel.reason}</span>}</div>
       <Card className="p-6">
         <DescriptionList columns={3} items={[
           { label: "Amount", value: <span className="font-semibold">₹{money(p.amount)}</span> }, { label: "Through", value: `${p.accountName || "—"} · ${p.mode}` }, { label: "Reference", value: p.reference || undefined },
-          { label: "TDS", value: p.tds?.amount ? `₹${money(p.tds.amount)} (${p.tds.section} @ ${p.tds.rate}%)` : undefined }, { label: "Left on account", value: p.unallocated ? `₹${money(p.unallocated)}` : undefined }, { label: "Narration", value: p.narration || undefined },
+          { label: "TDS", value: p.tds?.amount ? `₹${money(p.tds.amount)} (${p.tds.section} @ ${p.tds.rate}%${p.tds.base ? ` on ₹${money(p.tds.base)}` : ""})` : undefined },
+          { label: "Adjusted", value: p.adjustments?.length ? p.adjustments.map((a) => `${ADJUSTMENT_LABELS[a.kind]} ₹${money(a.amount)}`).join(", ") : undefined },
+          { label: "Left on account", value: p.unallocated ? `₹${money(p.unallocated)}` : undefined }, { label: "Cleared in bank", value: p.clearedOn ? formatDate(p.clearedOn) : undefined }, { label: "Narration", value: p.narration || undefined },
         ]} />
         {p.allocations.length > 0 && (
           <table className="mt-4 w-full text-sm">
             <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Settles</th><th className="py-2 text-right font-medium">Gross</th><th className="py-2 text-right font-medium">TDS</th><th className="py-2 text-right font-medium">Paid</th></tr></thead>
-            <tbody className="divide-y divide-ink-100">{p.allocations.map((a) => <tr key={a.doc}><td className="py-2"><Link to={docPath(a.docType, a.doc)} className="text-brand-600 hover:underline">{a.docNo}</Link></td><td className="py-2 text-right tabular-nums">{money(a.amount)}</td><td className="py-2 text-right tabular-nums">{a.tds ? money(a.tds) : "—"}</td><td className="py-2 text-right tabular-nums font-medium">{money(a.amount - a.tds)}</td></tr>)}</tbody>
+            <tbody className="divide-y divide-ink-100">{p.allocations.map((a) => <tr key={a.doc}><td className="py-2"><Link to={docPath(a.docType, a.doc)} className="text-brand-600 hover:underline">{a.docNo}</Link>{a.appliedAt && <span className="text-xs text-ink-400"> · applied {formatDate(a.appliedAt)}</span>}</td><td className="py-2 text-right tabular-nums">{money(a.amount)}</td><td className="py-2 text-right tabular-nums">{a.tds ? money(a.tds) : "—"}</td><td className="py-2 text-right tabular-nums font-medium">{money(a.amount - a.tds)}</td></tr>)}</tbody>
           </table>
         )}
       </Card>
       <Attachments kind="payments" id={p._id} rows={undefined} />
       <History rows={p.fingerprints} />
+      {applying && credit && party && <ApplyCreditDialog credit={credit} partyType={p.partyType as "customer" | "supplier"} party={party} onClose={() => setApplying(false)} />}
       <ReasonDialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${p.voucherNo}?`} description="Every document it settled goes back to outstanding." confirmLabel="Cancel voucher" minLength={8} loading={cancelPayment.isPending}
         onConfirm={(reason) => cancelPayment.mutate({ id: p._id, reason }, { onSuccess: () => { setCancelOpen(false); toast("Voucher cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
     </>

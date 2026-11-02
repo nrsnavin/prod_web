@@ -3,6 +3,7 @@ import type {
   CollectionEntry, ScanResult, StatementPostRow, StatementResult,
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
+  AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -48,7 +49,7 @@ export const accountsService = {
   payments: (q: Record<string, unknown>) => httpClient.get<Page<"payments", Payment>>("/accounts/payments", clean(q)),
   payment: (id: string) => httpClient.get<{ success: boolean; payment: Payment }>(`/accounts/payments/${id}`),
   openDocs: (partyType: "customer" | "supplier", party: string) =>
-    httpClient.get<{ success: boolean; docs: OpenDoc[]; balance: number }>("/accounts/payments/open-docs", { partyType, party }),
+    httpClient.get<{ success: boolean; docs: OpenDoc[]; balance: number; credits?: Credit[] }>("/accounts/payments/open-docs", { partyType, party }),
   createPayment: async (body: PaymentCreateBody) => (await httpClient.post<{ success: boolean; payment: Payment }>("/accounts/payments", body)).payment,
   cancelPayment: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; payment: Payment }>(`/accounts/payments/${id}/cancel`, { reason })).payment,
 
@@ -89,6 +90,43 @@ export const accountsService = {
     httpClient.post<{ success: boolean; message: string; byModel: boolean; to: string; entry: CollectionEntry }>("/accounts/collections/draft", { customer, tone }),
   sendReminder: (to: string, message: string) =>
     httpClient.post<{ success: boolean; sent: boolean; dryRun?: boolean; error?: string; to: string }>("/accounts/collections/send", { to, message }),
+
+  // ── Credits ──
+  credits: async (partyType: "customer" | "supplier", party: string) =>
+    (await httpClient.get<{ success: boolean; credits: Credit[] }>("/accounts/credits", { partyType, party })).credits,
+  applyCredit: (body: { source: { type: Credit["sourceType"]; id: string }; allocations: Array<{ docType: OpenDoc["docType"]; doc: string; amount: number }> }) =>
+    httpClient.post<{ success: boolean; applied: number; source: { docNo: string } }>("/accounts/credits/apply", body),
+
+  // ── Contras ──
+  contras: (q: Record<string, unknown>) => httpClient.get<Page<"contras", Contra>>("/accounts/contras", clean(q)),
+  createContra: async (body: { from: string; to: string; amount: number; date?: string; mode?: string; reference?: string; narration?: string; requestId?: string }) =>
+    (await httpClient.post<{ success: boolean; contra: Contra }>("/accounts/contras", body)).contra,
+  cancelContra: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; contra: Contra }>(`/accounts/contras/${id}/cancel`, { reason })).contra,
+
+  // ── Opening balances ──
+  openingBalances: (q: Record<string, unknown>) =>
+    httpClient.get<Page<"rows", OpeningBalance> & { totals: Record<"customer" | "supplier", { due: number; advance: number }> }>("/accounts/opening-balances", clean(q)),
+  createOpening: async (body: { partyType: "customer" | "supplier"; party: string; kind: "due" | "advance"; refNo?: string; date: string; dueDate?: string; amount: number; notes?: string; requestId?: string }) =>
+    (await httpClient.post<{ success: boolean; row: OpeningBalance }>("/accounts/opening-balances", body)).row,
+  cancelOpening: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; row: OpeningBalance }>(`/accounts/opening-balances/${id}/cancel`, { reason })).row,
+  async importOpening(file: File): Promise<{ rows: OpeningImportRow[]; ok: number; problems: number; file: string }> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/v2/accounts/opening-balances/import", { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not read the file");
+    return body;
+  },
+  bulkOpening: (rows: Array<Partial<OpeningImportRow> & { requestId?: string }>) =>
+    httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; docNo?: string; error?: string }>; posted: number; failed: number }>("/accounts/opening-balances/bulk", { rows }),
+  openingTemplateUrl: "/api/v2/accounts/opening-balances/template.xlsx",
+
+  // ── Settings and the lock ──
+  accountsSettings: async () => (await httpClient.get<{ success: boolean; settings: AccountsSettings }>("/accounts/settings")).settings,
+  saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills">>) =>
+    (await httpClient.put<{ success: boolean; settings: AccountsSettings }>("/accounts/settings", body)).settings,
+  lockBooks: async (lockDate: string | null, reason?: string) =>
+    (await httpClient.post<{ success: boolean; settings: AccountsSettings }>("/accounts/lock", { lockDate, reason })).settings,
 
   attachmentUrl: (kind: "bills" | "expenses" | "notes" | "payments", id: string, aid: string) => `/api/v2/accounts/${kind}/${id}/attachments/${aid}`,
 };

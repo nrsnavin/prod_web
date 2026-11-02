@@ -7,10 +7,12 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { formatDate } from "@/core/format/date";
 import { useOutstanding, useStatement } from "./hooks";
 import { PartyPicker, RangePicker, money } from "./shared";
+import { CreditsCard } from "./Credits";
 import type { LedgerRow } from "./types";
 
 const docPath = (r: LedgerRow) =>
-  r.docType === "Invoice" ? `/invoices/${r.doc}` : r.docType === "SupplierBill" ? `/accounts/bills/${r.doc}` : r.docType === "Expense" ? `/accounts/expenses/${r.doc}` : r.docType === "AccountNote" ? `/accounts/notes/${r.doc}` : `/accounts/payments/${r.doc}`;
+  r.docType === "Invoice" ? `/invoices/${r.doc}` : r.docType === "SupplierBill" ? `/accounts/bills/${r.doc}` : r.docType === "Expense" ? `/accounts/expenses/${r.doc}`
+    : r.docType === "AccountNote" ? `/accounts/notes/${r.doc}` : r.docType === "OpeningBalance" ? "/accounts/opening" : `/accounts/payments/${r.doc}`;
 
 /** A party's statement of account, and the ageing of everyone's outstanding. */
 export function StatementsTab() {
@@ -30,6 +32,8 @@ export function StatementsTab() {
         </div>
         <RangePicker from={range.from} to={range.to} onChange={setRange} />
       </div>
+
+      {party && <CreditsCard partyType={partyType} party={party} />}
 
       {party && (isLoading ? <Skeleton className="h-64 w-full" /> : st && (
         <Card>

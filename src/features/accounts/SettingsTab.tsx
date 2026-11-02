@@ -12,6 +12,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useAuth } from "@/core/auth/useAuth";
 import { useAccountsMutations, useBankAccounts, useCategories } from "./hooks";
 import { money } from "./shared";
+import { BooksSettings } from "./BooksSettings";
 import type { AccountKind, BankAccount, ExpenseCategory } from "./types";
 
 function AccountDialog({ initial, onClose }: { initial: Partial<BankAccount> | null; onClose: () => void }) {
@@ -34,6 +35,7 @@ function AccountDialog({ initial, onClose }: { initial: Partial<BankAccount> | n
           </div>
         )}
         {form.kind === "upi" && <Input label="UPI ID" value={form.upiId ?? ""} onChange={(e) => set("upiId", e.target.value)} />}
+        <Input label="Tally ledger" value={form.tallyLedger ?? ""} onChange={(e) => set("tallyLedger", e.target.value)} placeholder={form.kind === "cash" ? "Cash" : "e.g. Kotak Bank CA"} hint="The ledger name in Tally; blank uses the account's name" />
         <div className="grid grid-cols-3 gap-3">
           <Input label="Opening balance" type="number" step="0.01" value={form.openingBalance ?? 0} onChange={(e) => set("openingBalance", Number(e.target.value))} />
           <Input label="As on" type="date" value={form.openingDate ? String(form.openingDate).slice(0, 10) : ""} onChange={(e) => set("openingDate", e.target.value || null)} />
@@ -127,6 +129,7 @@ export function SettingsTab() {
           ))}
         </ul>
       </Card>
+      <BooksSettings isAdmin={isAdmin} />
       {account !== undefined && <AccountDialog initial={account} onClose={() => setAccount(undefined)} />}
       {category !== undefined && <CategoryDialog initial={category} onClose={() => setCategory(undefined)} />}
     </div>
