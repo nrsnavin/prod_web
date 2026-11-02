@@ -455,3 +455,26 @@ export interface ReplenishmentForecast {
   aiSummary: string | null;
   aiGenerated: boolean;
 }
+
+/** The filled stock-take sheet, read back by the server (nothing written). */
+export interface StockTakePreviewRow {
+  _id: string;
+  name: string;
+  category: string;
+  unit: string;
+  archived: boolean;
+  systemStock: number;
+  counted: number;
+  adjustment: number;
+}
+
+export interface StockTakePreview {
+  success: boolean;
+  file: string;
+  rows: StockTakePreviewRow[];
+  /** Rows left blank on the sheet — not counted, left alone. */
+  blank: number;
+  unknown: { row: number; name: string }[];
+  errors: { row: number; name: string; error: string }[];
+  changed: number;
+}

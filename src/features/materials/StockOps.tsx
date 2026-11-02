@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart, ClipboardList, IndianRupee } from "lucide-react";
+import { ShoppingCart, ClipboardList, IndianRupee, Download, UploadCloud } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
@@ -9,7 +9,19 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError, httpClient } from "@/core/http/httpClient";
 import { poService } from "@/features/suppliers/api";
 import { materialService } from "./api";
-import { BulkPriceResult, RawMaterial } from "./types";
+import { BulkPriceResult, RawMaterial, StockTakePreview } from "./types";
+
+/** Hand the browser a file to save. */
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 // ── Reorder suggestions (Phase 4) ───────────────────────────────────────
 interface ReorderGroup {
@@ -111,6 +123,44 @@ export function StockTakeModal({
   const { toast } = useToast();
   const qc = useQueryClient();
   const [counted, setCounted] = useState<Record<string, string>>({});
+  // ── The count on a sheet ─────────────────────────────────────
+  //  The materials shown go out as an Excel sheet with the counted
+  //  column blank (a blind count), and the filled sheet comes back to
+  //  fill the boxes below — matched row by row by the server, nothing
+  //  written until Post. A material on the sheet but not on screen
+  //  (the filter changed) is reported rather than quietly dropped.
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [sheet, setSheet] = useState<(StockTakePreview & { notShown: string[] }) | null>(null);
+  const shown = useMemo(() => new Set(materials.map((m) => m._id)), [materials]);
+
+  const downloadSheet = async () => {
+    setDownloading(true);
+    try {
+      const blob = await materialService.stockTakeSheet(materials.map((m) => m._id));
+      saveBlob(blob, `stock-take-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Could not download the sheet", "error");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const readSheet = async (file: File | undefined) => {
+    if (!file) return;
+    setReading(true);
+    try {
+      const p = await materialService.stockTakePreview(file);
+      const onScreen = p.rows.filter((r) => shown.has(r._id));
+      setCounted((c) => ({ ...c, ...Object.fromEntries(onScreen.map((r) => [r._id, String(r.counted)])) }));
+      setSheet({ ...p, notShown: p.rows.filter((r) => !shown.has(r._id)).map((r) => r.name) });
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Could not read the sheet", "error");
+    } finally {
+      setReading(false);
+    }
+  };
 
   const variances = useMemo(
     () =>
@@ -131,7 +181,7 @@ export function StockTakeModal({
         adjustments: variances.map((v) => ({
           _id: v.m._id,
           adjustment: v.adjustment,
-          reason: "Stock take (cycle count)",
+          reason: sheet ? `Stock take (sheet ${sheet.file || "uploaded"})` : "Stock take (cycle count)",
         })),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["materials"] }),
@@ -143,6 +193,46 @@ export function StockTakeModal({
         Enter physically counted quantities — only materials with a variance are adjusted, each
         with a ledger entry.
       </p>
+
+      <div className="mb-3 rounded-xl border border-ink-200 bg-surface-muted p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={downloadSheet} loading={downloading}>
+            <Download className="h-4 w-4" /> Download sheet (Excel)
+          </Button>
+          <Button type="button" variant="secondary" size="sm" onClick={() => fileInput.current?.click()} loading={reading}>
+            <UploadCloud className="h-4 w-4" /> Upload filled sheet
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="hidden"
+            aria-label="Filled stock take sheet"
+            onChange={(e) => { void readSheet(e.target.files?.[0]); e.target.value = ""; }}
+          />
+          <span className="text-xs text-ink-400">
+            {materials.length} material{materials.length === 1 ? "" : "s"} shown go on the sheet, with the counted column blank.
+          </span>
+        </div>
+        {sheet && (
+          <div className="mt-2 space-y-1 text-xs" role="status">
+            <p className="text-ink-600">
+              <span className="font-medium">{sheet.file || "Sheet"}</span>: {sheet.rows.length - sheet.notShown.length} counted
+              {sheet.blank ? `, ${sheet.blank} left blank` : ""}
+              {sheet.changed ? ` · ${sheet.changed} differ from the system` : " · all match the system"}.
+            </p>
+            {sheet.notShown.length > 0 && (
+              <p className="text-status-warning">Not shown here (change the filter to post them): {sheet.notShown.join(", ")}.</p>
+            )}
+            {sheet.unknown.length > 0 && (
+              <p className="text-status-warning">Not a material here: {sheet.unknown.map((u) => `${u.name} (row ${u.row})`).join(", ")}.</p>
+            )}
+            {sheet.errors.length > 0 && (
+              <p className="text-status-danger">Could not read: {sheet.errors.map((u) => `${u.name} (row ${u.row}: ${u.error})`).join(", ")}.</p>
+            )}
+          </div>
+        )}
+      </div>
       <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
         {materials.map((m) => {
           const v = counted[m._id];

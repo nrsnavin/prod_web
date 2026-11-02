@@ -13,7 +13,7 @@ import {
   SupplierOption,
   YarnLot,
   YarnLotStatus,
-} from "./types";
+ StockTakePreview } from "./types";
 
 /**
  * What the server takes.
@@ -173,6 +173,17 @@ export const materialService = {
   // and one that cannot be changed says why without stopping the rest.
   bulkUpdate(ids: string[], change: { supplier?: string; minStock?: number; group?: string | null }) {
     return httpClient.post<BulkResult>("/materials/bulk/update", { ids, ...change });
+  },
+  // ── Stock take on a sheet ──────────────────────────────────────
+  /** The count sheet (Ref, Material, Category, Unit, blank Counted stock) for these materials. */
+  stockTakeSheet(ids?: string[]): Promise<Blob> {
+    return httpClient.getBlob("/materials/stock-take.xlsx", ids?.length ? { ids: ids.join(",") } : undefined);
+  },
+  /** The filled sheet read back against the live stock. Writes nothing. */
+  stockTakePreview(file: File): Promise<StockTakePreview> {
+    const form = new FormData();
+    form.append("file", file);
+    return httpClient.post<StockTakePreview>("/materials/stock-take/preview", form);
   },
   bulkArchive(ids: string[], archived: boolean) {
     return httpClient.post<BulkResult>("/materials/bulk/archive", { ids, archived });
