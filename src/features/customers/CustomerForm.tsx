@@ -15,6 +15,18 @@ const schema = z.object({
     .or(z.literal("")),
   email: z.string().email("Enter a valid email").optional().or(z.literal("")),
   gstin: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  pincode: z
+    .string()
+    .regex(/^\d{6}$/, "Enter a 6-digit PIN code")
+    .optional()
+    .or(z.literal("")),
+  stateCode: z
+    .string()
+    .regex(/^\d{2}$/, "Enter the 2-digit GST state code")
+    .optional()
+    .or(z.literal("")),
   paymentTerms: z.string().optional(),
 });
 
@@ -41,6 +53,10 @@ export function CustomerForm({
       phoneNumber: initial?.phoneNumber ?? "",
       email: initial?.email ?? "",
       gstin: initial?.gstin ?? "",
+      address: initial?.address ?? "",
+      city: initial?.city ?? "",
+      pincode: initial?.pincode ?? "",
+      stateCode: initial?.stateCode ?? "",
       paymentTerms: initial?.paymentTerms ?? "",
     },
   });
@@ -60,6 +76,18 @@ export function CustomerForm({
       <div className="grid grid-cols-2 gap-3">
         <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
         <Input label="GSTIN" {...register("gstin")} />
+      </div>
+      <Input label="Billing address" placeholder="Street, area" {...register("address")} />
+      <div className="grid grid-cols-3 gap-3">
+        <Input label="City" {...register("city")} />
+        <Input label="PIN code" inputMode="numeric" error={errors.pincode?.message} {...register("pincode")} />
+        <Input
+          label="GST state code"
+          inputMode="numeric"
+          placeholder="from GSTIN"
+          error={errors.stateCode?.message}
+          {...register("stateCode")}
+        />
       </div>
       <Input label="Payment terms" placeholder="e.g. 30 days" {...register("paymentTerms")} />
       <div className="flex justify-end gap-2 pt-1">

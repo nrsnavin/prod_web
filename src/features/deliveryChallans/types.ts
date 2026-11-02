@@ -60,7 +60,7 @@ export interface DcStockShort {
 
 export interface DcOrderInfo {
   orderNo: number;
-  customer: { name: string; phone: string; gstin: string; contact: string };
+  customer: { name: string; phone: string; gstin: string; contact: string; address?: string };
   elastics: Array<{
     elasticId: string;
     elasticName: string;

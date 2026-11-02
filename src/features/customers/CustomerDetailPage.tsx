@@ -103,6 +103,10 @@ export function CustomerDetailPage() {
             { label: "Phone", value: customer.phoneNumber },
             { label: "Email", value: customer.email },
             { label: "GSTIN", value: customer.gstin },
+            {
+              label: "Billing address",
+              value: [customer.address, customer.city, customer.pincode].filter(Boolean).join(", ") || undefined,
+            },
             { label: "Payment terms", value: customer.paymentTerms },
             {
               label: "Accountant",

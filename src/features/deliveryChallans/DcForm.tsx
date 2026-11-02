@@ -137,6 +137,9 @@ export function DcForm({
     setValue("customerName", info.customer.name);
     setValue("customerPhone", info.customer.phone);
     setValue("customerGstin", info.customer.gstin);
+    // The consignee's address travels with the goods; it was never
+    // prefilled, so it only reached the challan when typed again.
+    setValue("customerAddress", info.customer.address ?? "");
     replace(
       info.elastics.map((e) => ({
         elastic: e.elasticId,

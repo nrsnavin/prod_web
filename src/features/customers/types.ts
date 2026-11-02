@@ -15,6 +15,12 @@ export interface Customer {
   status?: string; // "Active" | "Inactive"
   contactName?: string;
   phoneNumber?: string;
+  /** Billing address, as printed on challans and invoices. */
+  address?: string;
+  city?: string;
+  pincode?: string;
+  /** Two-digit GST state code; blank means "work it out from the GSTIN". */
+  stateCode?: string;
   purchase?: unknown[];
   accountant?: { name?: string; phoneNumber?: string };
   merchandiser?: { name?: string; phoneNumber?: string };
@@ -28,6 +34,10 @@ export interface CustomerFormValues {
   phoneNumber?: string;
   email?: string;
   gstin?: string;
+  address?: string;
+  city?: string;
+  pincode?: string;
+  stateCode?: string;
   paymentTerms?: string;
 }
 
