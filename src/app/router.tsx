@@ -76,6 +76,11 @@ const DcListPage = lazyPage(() => import("@/features/deliveryChallans/DcListPage
 const DcDetailPage = lazyPage(() => import("@/features/deliveryChallans/DcDetailPage"), "DcDetailPage");
 const InvoiceListPage = lazyPage(() => import("@/features/invoices/InvoiceListPage"), "InvoiceListPage");
 const InvoiceDetailPage = lazyPage(() => import("@/features/invoices/InvoiceDetailPage"), "InvoiceDetailPage");
+const AccountsPage = lazyPage(() => import("@/features/accounts/AccountsPage"), "AccountsPage");
+const BillDetailPage = lazyPage(() => import("@/features/accounts/DocDetailPage"), "BillDetailPage");
+const ExpenseDetailPage = lazyPage(() => import("@/features/accounts/DocDetailPage"), "ExpenseDetailPage");
+const NoteDetailPage = lazyPage(() => import("@/features/accounts/DocDetailPage"), "NoteDetailPage");
+const PaymentDetailPage = lazyPage(() => import("@/features/accounts/DocDetailPage"), "PaymentDetailPage");
 const WarpingListPage = lazyPage(() => import("@/features/warping/WarpingListPage"), "WarpingListPage");
 const WarpingDetailPage = lazyPage(() => import("@/features/warping/WarpingDetailPage"), "WarpingDetailPage");
 const CoveringListPage = lazyPage(() => import("@/features/warping/CoveringListPage"), "CoveringListPage");
@@ -143,6 +148,7 @@ const builtPages: Record<string, JSX.Element> = {
   "/jobs": withSuspense(<JobListPage />),
   "/delivery-challans": withSuspense(<DcListPage />),
   "/invoices": withSuspense(<InvoiceListPage />),
+  "/accounts": withSuspense(<AccountsPage />),
   "/samples": withSuspense(<SampleListPage />),
   "/dispatch": withSuspense(<DispatchQueuePage />),
   "/warping": withSuspense(<WarpingListPage />),
@@ -203,6 +209,11 @@ export const detailRoutes = [
   { path: "/jobs/:id/mrp", element: withSuspense(<MrpPage />) },
   { path: "/delivery-challans/:id", element: withSuspense(<DcDetailPage />) },
   { path: "/invoices/:id", element: withSuspense(<InvoiceDetailPage />) },
+  { path: "/accounts/bills/:id", element: withSuspense(<BillDetailPage />) },
+  { path: "/accounts/expenses/:id", element: withSuspense(<ExpenseDetailPage />) },
+  { path: "/accounts/notes/:id", element: withSuspense(<NoteDetailPage />) },
+  { path: "/accounts/payments/:id", element: withSuspense(<PaymentDetailPage />) },
+  { path: "/accounts/:tab", element: withSuspense(<AccountsPage />) },
   { path: "/samples/:id", element: withSuspense(<SampleDetailPage />) },
   { path: "/warping/:id", element: withSuspense(<WarpingDetailPage />) },
   { path: "/covering/:id", element: withSuspense(<CoveringDetailPage />) },

@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Truck,
   Receipt,
+  BookOpen,
   FlaskConical,
   Layers,
   Disc3,
@@ -119,6 +120,9 @@ export const navSections: NavSection[] = [
       // Tax invoices raised against an order's challans. Mirrors
       // /invoices in utils/features.js.
       { label: "Invoices", path: "/invoices", icon: Receipt, departments: ["admin", "finance"] },
+      // Bills, expenses, notes, receipts and payments, ledgers. Mirrors
+      // /accounts in utils/features.js.
+      { label: "Accounts", path: "/accounts", icon: BookOpen, departments: ["admin", "finance"] },
       // Raised by sales, worked by production — both write to the log,
       // so both departments carry it. Mirrors /samples in utils/features.js.
       { label: "Sample Requests", path: "/samples", icon: FlaskConical, departments: ["admin", "finance", "production"] },

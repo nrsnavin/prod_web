@@ -1,0 +1,237 @@
+import { useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, XCircle, Check, X, Banknote, Paperclip } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { DescriptionList } from "@/components/ui/DescriptionList";
+import { StatusChip } from "@/components/ui/StatusChip";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { TableScroll } from "@/components/ui/TableScroll";
+import { useToast } from "@/components/ui/Toast";
+import { ApiError } from "@/core/http/httpClient";
+import { formatDate } from "@/core/format/date";
+import { useAuth } from "@/core/auth/useAuth";
+import { accountsService } from "./api";
+import { ACCOUNTS_KEY, useAccountsMutations, useBill, useExpense, useNote, usePayment } from "./hooks";
+import { PayDialog } from "./ExpensesTab";
+import { billLabel, billTone, expenseLabel, expenseTone, money, qty } from "./shared";
+import type { Attachment, Fingerprint, TaxLine } from "./types";
+import type { SupplyType } from "@/features/invoices/types";
+
+type Kind = "bills" | "expenses" | "notes" | "payments";
+
+function Lines({ lines, supplyType }: { lines?: TaxLine[]; supplyType: SupplyType }) {
+  if (!lines?.length) return null;
+  const inter = supplyType === "inter";
+  return (
+    <TableScroll>
+      <table className="mt-4 w-full text-sm">
+        <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Description</th><th className="py-2 text-left font-medium">HSN</th><th className="py-2 text-right font-medium">Qty</th><th className="py-2 text-right font-medium">Rate</th><th className="py-2 text-right font-medium">Taxable</th><th className="py-2 text-right font-medium">GST</th><th className="py-2 text-right font-medium">{inter ? "IGST" : "CGST + SGST"}</th><th className="py-2 text-right font-medium">Amount</th></tr></thead>
+        <tbody className="divide-y divide-ink-100">
+          {lines.map((l, i) => <tr key={i}><td className="py-2">{l.description}</td><td className="py-2">{l.hsn || "—"}</td><td className="py-2 text-right tabular-nums">{qty(l.quantity)} {l.unit}</td><td className="py-2 text-right tabular-nums">{money(l.rate)}</td><td className="py-2 text-right tabular-nums">{money(l.taxable)}</td><td className="py-2 text-right">{l.gstPercent}%</td><td className="py-2 text-right tabular-nums">{money(inter ? l.igst : l.cgst + l.sgst)}</td><td className="py-2 text-right tabular-nums font-medium">{money(l.amount)}</td></tr>)}
+        </tbody>
+      </table>
+    </TableScroll>
+  );
+}
+
+function History({ rows }: { rows?: Fingerprint[] }) {
+  if (!rows?.length) return null;
+  return (
+    <Card className="mt-4 p-5">
+      <h3 className="font-semibold">History</h3>
+      <ul className="mt-2 divide-y divide-ink-100 text-sm">
+        {rows.map((f, i) => <li key={i} className="flex flex-wrap justify-between gap-2 py-2"><span><span className="font-medium">{f.label}</span>{f.actor?.name ? <span className="text-ink-400"> · {f.actor.name}</span> : null}{typeof f.meta?.reason === "string" ? <span className="text-ink-400"> · {f.meta.reason}</span> : null}</span><span className="text-ink-400">{formatDate(f.at)}</span></li>)}
+      </ul>
+    </Card>
+  );
+}
+
+function Attachments({ kind, id, rows }: { kind: Kind; id: string; rows?: Attachment[] }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const upload = async (file?: File) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/v2/accounts/${kind}/${id}/attachments`, { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.message || "Upload failed");
+      qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
+      toast("Attached", "success");
+    } catch (e) { toast(e instanceof Error ? e.message : "Upload failed", "error"); } finally { setBusy(false); if (ref.current) ref.current.value = ""; }
+  };
+  return (
+    <Card className="mt-4 p-5">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold">Attachments</h3>
+        <input ref={ref} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" aria-label="Attach a file" onChange={(e) => upload(e.target.files?.[0])} />
+        <Button size="sm" variant="secondary" loading={busy} onClick={() => ref.current?.click()}><Paperclip className="h-4 w-4" /> Attach</Button>
+      </div>
+      {!rows?.length ? <p className="mt-2 text-sm text-ink-400">No bill or receipt attached yet.</p> : (
+        <ul className="mt-2 divide-y divide-ink-100 text-sm">{rows.map((a) => <li key={a._id} className="py-2"><a href={accountsService.attachmentUrl(kind, id, a._id)} target="_blank" rel="noopener" className="text-brand-600 hover:underline">{a.filename || a.contentType}</a><span className="text-ink-400"> · {Math.round(a.size / 1024)} KB</span></li>)}</ul>
+      )}
+    </Card>
+  );
+}
+
+export function BillDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const { data, isLoading, isError, error } = useBill(id);
+  const { cancelBill } = useAccountsMutations();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  if (isLoading) return <Skeleton className="h-96 w-full" />;
+  if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Bill not found"}</p>;
+  const { bill, payments, notes } = data;
+  return (
+    <>
+      <Link to="/accounts/bills" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Supplier bills</Link>
+      <PageHeader title={bill.billNo} subtitle={`${bill.supplierName} · their ${bill.supplierBillNo} dated ${formatDate(bill.billDate)}`}
+        actions={bill.status !== "cancelled" && bill.paidAmount === 0 && bill.debitedAmount === 0 ? <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button> : undefined} />
+      <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={billTone[bill.status]}>{billLabel[bill.status]}</StatusChip><StatusChip tone="neutral">{bill.supplyType === "inter" ? "IGST" : "CGST + SGST"}</StatusChip>{bill.tds?.applicable && <StatusChip tone="warning">TDS {bill.tds.section} @ {bill.tds.rate}%</StatusChip>}{bill.itc?.eligible ? <StatusChip tone="success">ITC ₹{money(bill.itc.amount)}</StatusChip> : <StatusChip tone="neutral">No input credit</StatusChip>}{bill.status === "cancelled" && bill.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {bill.cancel.reason}</span>}</div>
+      <Card className="p-6">
+        <DescriptionList columns={3} items={[
+          { label: "Supplier", value: <Link to={`/suppliers/${bill.supplier}`} className="text-brand-600 hover:underline">{bill.supplierName}</Link> },
+          { label: "Supplier GSTIN", value: bill.supplierGstin || undefined },
+          { label: "Purchase order", value: bill.purchaseOrder ? <Link to={`/purchase-orders/${bill.purchaseOrder}`} className="text-brand-600 hover:underline">PO #{bill.poNo}</Link> : bill.kind === "service" ? "Service bill" : undefined },
+          { label: "Due", value: formatDate(bill.dueDate) },
+          { label: "Paid", value: `₹${money(bill.paidAmount)}${bill.tdsAmount ? ` + TDS ₹${money(bill.tdsAmount)}` : ""}` },
+          { label: "Debit notes", value: bill.debitedAmount ? `₹${money(bill.debitedAmount)}` : undefined },
+          { label: "Outstanding", value: <span className="font-semibold">₹{money(bill.outstanding)}</span> },
+          { label: "Notes", value: bill.notes || undefined },
+        ]} />
+        <Lines lines={bill.lines} supplyType={bill.supplyType} />
+        <p className="mt-3 text-right text-sm">Total <span className="font-semibold tabular-nums">₹{money(bill.totals.grand)}</span> <span className="text-ink-400">(tax ₹{money(bill.totals.tax)})</span></p>
+      </Card>
+      {(payments.length > 0 || notes.length > 0) && (
+        <Card className="mt-4 p-5">
+          <h3 className="font-semibold">Settled by</h3>
+          <ul className="mt-2 divide-y divide-ink-100 text-sm">
+            {payments.map((p) => <li key={p._id} className="flex justify-between py-2"><span><Link to={`/accounts/payments/${p._id}`} className="text-brand-600 hover:underline">{p.voucherNo}</Link> · {formatDate(p.date)} · {p.mode}{p.reference ? ` · ${p.reference}` : ""}</span><span className="tabular-nums">₹{money(p.amount)}{p.tds ? ` (TDS ₹${money(p.tds)})` : ""}</span></li>)}
+            {notes.map((n) => <li key={n._id} className="flex justify-between py-2"><span><Link to={`/accounts/notes/${n._id}`} className="text-brand-600 hover:underline">{n.noteNo}</Link> · {formatDate(n.date)} · {n.reason}</span><span className="tabular-nums">₹{money(n.totals?.grand)}</span></li>)}
+          </ul>
+        </Card>
+      )}
+      <Attachments kind="bills" id={bill._id} rows={bill.attachments} />
+      <History rows={bill.fingerprints} />
+      <ReasonDialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${bill.billNo}?`} description="It leaves the supplier's account. The receipts on it can be billed again." confirmLabel="Cancel bill" minLength={8} loading={cancelBill.isPending}
+        onConfirm={(reason) => cancelBill.mutate({ id: bill._id, reason }, { onSuccess: () => { setCancelOpen(false); toast("Bill cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
+    </>
+  );
+}
+
+export function ExpenseDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const { data, isLoading, isError, error } = useExpense(id);
+  const { approveExpense, rejectExpense, payExpense, cancelExpense } = useAccountsMutations();
+  const [dialog, setDialog] = useState<"reject" | "pay" | "cancel" | null>(null);
+  if (isLoading) return <Skeleton className="h-96 w-full" />;
+  if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Expense not found"}</p>;
+  const { expense: e, payments } = data;
+  const canApprove = user?.role === "admin" || user?.role === "accounts";
+  return (
+    <>
+      <Link to="/accounts/expenses" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Expenses</Link>
+      <PageHeader title={e.expenseNo} subtitle={`${e.categoryName} · ${e.description}`} actions={
+        <>
+          {e.status === "pending" && canApprove && <><Button onClick={() => approveExpense.mutate({ id: e._id }, { onSuccess: () => toast("Approved", "success"), onError: (err) => toast(err instanceof ApiError ? err.message : "Could not approve", "error") })} loading={approveExpense.isPending}><Check className="h-4 w-4" /> Approve</Button><Button variant="secondary" onClick={() => setDialog("reject")}><X className="h-4 w-4" /> Reject</Button></>}
+          {e.status === "approved" && <Button onClick={() => setDialog("pay")}><Banknote className="h-4 w-4" /> Pay</Button>}
+          {["pending", "approved", "rejected"].includes(e.status) && e.paidAmount === 0 && <Button variant="danger" onClick={() => setDialog("cancel")}><XCircle className="h-4 w-4" /> Cancel</Button>}
+        </>
+      } />
+      <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={expenseTone[e.status]}>{expenseLabel[e.status]}</StatusChip>{e.itc?.eligible && <StatusChip tone="success">ITC ₹{money(e.itc.amount)}</StatusChip>}{e.approval?.byName && <span className="text-sm text-ink-500">{e.status === "rejected" ? "Rejected" : "Approved"} by {e.approval.byName}{e.approval.note ? ` — ${e.approval.note}` : ""}</span>}</div>
+      <Card className="p-6">
+        <DescriptionList columns={3} items={[
+          { label: "Date", value: formatDate(e.date) }, { label: "Paid to", value: e.payeeName || undefined }, { label: "Payee GSTIN", value: e.payeeGstin || undefined },
+          { label: "Their ref", value: e.refNo || undefined }, { label: "Entered by", value: e.submittedByName || undefined },
+          { label: "Paid", value: e.paidAmount ? `₹${money(e.paidAmount)}${typeof e.paidFrom === "object" && e.paidFrom ? ` from ${e.paidFrom.name}` : ""}` : "Not yet" },
+          { label: "Notes", value: e.notes || undefined },
+        ]} />
+        <Lines lines={e.lines} supplyType={e.supplyType} />
+        <p className="mt-3 text-right text-sm">Total <span className="font-semibold tabular-nums">₹{money(e.totals.grand)}</span> <span className="text-ink-400">(tax ₹{money(e.totals.tax)})</span></p>
+      </Card>
+      {payments.length > 0 && <Card className="mt-4 p-5"><h3 className="font-semibold">Paid by</h3><ul className="mt-2 divide-y divide-ink-100 text-sm">{payments.map((p) => <li key={p._id} className="flex justify-between py-2"><span><Link to={`/accounts/payments/${p._id}`} className="text-brand-600 hover:underline">{p.voucherNo}</Link> · {formatDate(p.date)} · {p.accountName}</span><span className="tabular-nums">₹{money(p.amount)}</span></li>)}</ul></Card>}
+      <Attachments kind="expenses" id={e._id} rows={e.attachments} />
+      <History rows={e.fingerprints} />
+      <ReasonDialog open={dialog === "reject"} onClose={() => setDialog(null)} title={`Reject ${e.expenseNo}?`} confirmLabel="Reject" minLength={8} loading={rejectExpense.isPending}
+        onConfirm={(reason) => rejectExpense.mutate({ id: e._id, reason }, { onSuccess: () => { setDialog(null); toast("Rejected", "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not reject", "error") })} />
+      <ReasonDialog open={dialog === "cancel"} onClose={() => setDialog(null)} title={`Cancel ${e.expenseNo}?`} confirmLabel="Cancel expense" minLength={8} loading={cancelExpense.isPending}
+        onConfirm={(reason) => cancelExpense.mutate({ id: e._id, reason }, { onSuccess: () => { setDialog(null); toast("Cancelled", "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not cancel", "error") })} />
+      {dialog === "pay" && <PayDialog title={`Pay ${e.expenseNo}`} amount={e.totals.grand - e.paidAmount} loading={payExpense.isPending} onClose={() => setDialog(null)}
+        onConfirm={(body) => payExpense.mutate({ id: e._id, body }, { onSuccess: (r) => { setDialog(null); toast(`Paid — voucher ${r.voucher.voucherNo}`, "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not pay", "error") })} />}
+    </>
+  );
+}
+
+export function NoteDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const { data, isLoading, isError, error } = useNote(id);
+  const { cancelNote } = useAccountsMutations();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  if (isLoading) return <Skeleton className="h-96 w-full" />;
+  if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Note not found"}</p>;
+  const n = data.note;
+  const againstPath = n.against.docType === "Invoice" ? `/invoices/${n.against.doc}` : `/accounts/bills/${n.against.doc}`;
+  return (
+    <>
+      <Link to="/accounts/notes" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Credit / debit notes</Link>
+      <PageHeader title={n.noteNo} subtitle={`${n.kind === "credit" ? "Credit note to" : "Debit note to"} ${n.partyName} · ${formatDate(n.date)}`} actions={n.status === "issued" ? <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button> : undefined} />
+      <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={n.status === "issued" ? "success" : "danger"}>{n.status}</StatusChip><StatusChip tone={n.kind === "credit" ? "info" : "warning"}>{n.kind === "credit" ? "Credit note" : "Debit note"}</StatusChip>{n.status === "cancelled" && n.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {n.cancel.reason}</span>}</div>
+      <Card className="p-6">
+        <DescriptionList columns={3} items={[
+          { label: "Against", value: <Link to={againstPath} className="text-brand-600 hover:underline">{n.against.docNo}</Link> }, { label: "Reason", value: n.reason }, { label: "Party GSTIN", value: n.partyGstin || undefined }, { label: "Notes", value: n.notes || undefined },
+        ]} />
+        <Lines lines={n.lines} supplyType={n.supplyType} />
+        <p className="mt-3 text-right text-sm">Total <span className="font-semibold tabular-nums">₹{money(n.totals.grand)}</span> <span className="text-ink-400">(tax ₹{money(n.totals.tax)})</span></p>
+      </Card>
+      <History rows={n.fingerprints} />
+      <ReasonDialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${n.noteNo}?`} description="The amount goes back onto the document it was against." confirmLabel="Cancel note" minLength={8} loading={cancelNote.isPending}
+        onConfirm={(reason) => cancelNote.mutate({ id: n._id, reason }, { onSuccess: () => { setCancelOpen(false); toast("Note cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
+    </>
+  );
+}
+
+export function PaymentDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const { data, isLoading, isError, error } = usePayment(id);
+  const { cancelPayment } = useAccountsMutations();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  if (isLoading) return <Skeleton className="h-96 w-full" />;
+  if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Voucher not found"}</p>;
+  const p = data.payment;
+  const docPath = (t: string, d: string) => (t === "Invoice" ? `/invoices/${d}` : t === "SupplierBill" ? `/accounts/bills/${d}` : `/accounts/expenses/${d}`);
+  return (
+    <>
+      <Link to="/accounts/vouchers" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Receipts &amp; payments</Link>
+      <PageHeader title={p.voucherNo} subtitle={`${p.kind === "receipt" ? "Received from" : "Paid to"} ${p.partyName} · ${formatDate(p.date)}`} actions={p.status === "posted" ? <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button> : undefined} />
+      <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={p.status === "posted" ? "success" : "danger"}>{p.status}</StatusChip><StatusChip tone={p.kind === "receipt" ? "success" : "info"}>{p.kind}</StatusChip>{p.status === "cancelled" && p.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {p.cancel.reason}</span>}</div>
+      <Card className="p-6">
+        <DescriptionList columns={3} items={[
+          { label: "Amount", value: <span className="font-semibold">₹{money(p.amount)}</span> }, { label: "Through", value: `${p.accountName || "—"} · ${p.mode}` }, { label: "Reference", value: p.reference || undefined },
+          { label: "TDS", value: p.tds?.amount ? `₹${money(p.tds.amount)} (${p.tds.section} @ ${p.tds.rate}%)` : undefined }, { label: "Left on account", value: p.unallocated ? `₹${money(p.unallocated)}` : undefined }, { label: "Narration", value: p.narration || undefined },
+        ]} />
+        {p.allocations.length > 0 && (
+          <table className="mt-4 w-full text-sm">
+            <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Settles</th><th className="py-2 text-right font-medium">Gross</th><th className="py-2 text-right font-medium">TDS</th><th className="py-2 text-right font-medium">Paid</th></tr></thead>
+            <tbody className="divide-y divide-ink-100">{p.allocations.map((a) => <tr key={a.doc}><td className="py-2"><Link to={docPath(a.docType, a.doc)} className="text-brand-600 hover:underline">{a.docNo}</Link></td><td className="py-2 text-right tabular-nums">{money(a.amount)}</td><td className="py-2 text-right tabular-nums">{a.tds ? money(a.tds) : "—"}</td><td className="py-2 text-right tabular-nums font-medium">{money(a.amount - a.tds)}</td></tr>)}</tbody>
+          </table>
+        )}
+      </Card>
+      <Attachments kind="payments" id={p._id} rows={undefined} />
+      <History rows={p.fingerprints} />
+      <ReasonDialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${p.voucherNo}?`} description="Every document it settled goes back to outstanding." confirmLabel="Cancel voucher" minLength={8} loading={cancelPayment.isPending}
+        onConfirm={(reason) => cancelPayment.mutate({ id: p._id, reason }, { onSuccess: () => { setCancelOpen(false); toast("Voucher cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
+    </>
+  );
+}
