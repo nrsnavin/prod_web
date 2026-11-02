@@ -10,6 +10,7 @@ export interface AuditEntry {
     | "JobOrder"
     | "PurchaseOrder"
     | "DeliveryChallan"
+    | "Invoice"
     | "Quote"
     | "StockCount"
     | "MaterialGroup"

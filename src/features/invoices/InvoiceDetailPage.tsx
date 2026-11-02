@@ -222,6 +222,8 @@ export function InvoiceDetailPage() {
               },
               { label: "Buyer's order no.", value: inv.customerPo || undefined },
               { label: "Place of supply", value: stateName(inv.placeOfSupply) },
+              { label: "Ship to", value: inv.shipTo || undefined },
+              { label: "Total boxes", value: inv.totalBoxes ? String(inv.totalBoxes) : undefined },
               {
                 label: "Delivery challans",
                 value: inv.dcs.length
@@ -269,7 +271,10 @@ export function InvoiceDetailPage() {
                     {l.dcNumbers?.length ? <p className="text-xs text-ink-400">{l.dcNumbers.join(", ")}</p> : null}
                   </td>
                   <td className="py-2">{l.hsn || "—"}</td>
-                  <td className="py-2 text-right tabular-nums">{qty(l.quantity)} {l.unit}</td>
+                  <td className="py-2 text-right tabular-nums">
+                    {qty(l.quantity)} {l.unit}
+                    {l.boxes ? <span className="block text-xs text-ink-400">{l.boxes} box{l.boxes === 1 ? "" : "es"}</span> : null}
+                  </td>
                   <td className="py-2 text-right tabular-nums">{money(l.rate)}</td>
                   <td className="py-2 text-right tabular-nums">{money(l.taxable)}</td>
                   <td className="py-2 text-right tabular-nums">{l.gstPercent}%</td>

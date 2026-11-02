@@ -35,11 +35,13 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
   const [overrides, setOverrides] = useState<Record<string, InvoiceLineOverride>>({});
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
+  const [shipTo, setShipTo] = useState("");
   const [seeded, setSeeded] = useState(false);
 
   useEffect(() => {
     if (!info || seeded) return;
     setSelected(new Set(info.dcs.filter((d) => d.eligible).map((d) => d._id)));
+    setShipTo(info.shipTo ?? "");
     setSeeded(true);
   }, [info, seeded]);
 
@@ -70,6 +72,7 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
         dcIds: [...selected],
         invoiceDate,
         notes: notes.trim() || undefined,
+        shipTo: shipTo.trim() || undefined,
         lines: Object.values(overrides).filter((o) => selected.size && lines.some((l) => l.elastic === o.elastic)),
       },
       {
@@ -155,6 +158,7 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
                     <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
                       <th className="py-2 text-left font-medium">Product</th>
                       <th className="py-2 text-right font-medium">Qty</th>
+                      <th className="py-2 text-right font-medium">Boxes</th>
                       <th className="py-2 text-right font-medium">Rate</th>
                       <th className="py-2 text-left font-medium">HSN</th>
                       <th className="py-2 text-right font-medium">GST %</th>
@@ -172,6 +176,17 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
                         </td>
                         <td className="py-2 text-right tabular-nums">
                           {qty(l.quantity)} {l.unit}
+                        </td>
+                        <td className="py-2 text-right">
+                          <Input
+                            aria-label={`Boxes for ${l.name}`}
+                            type="number"
+                            step="1"
+                            min={0}
+                            className="w-16 text-right"
+                            value={overrides[l.elastic]?.boxes ?? l.boxes ?? ""}
+                            onChange={(e) => setOverride(l.elastic, { boxes: e.target.value === "" ? "" : Math.max(0, Math.floor(Number(e.target.value))) })}
+                          />
                         </td>
                         <td className="py-2 text-right">
                           <Input
@@ -221,7 +236,8 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-3">
               <Input label="Invoice date" type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
-              <Input label="Note on the invoice" placeholder="e.g. Payment within 30 days" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <Input label="Ship to" placeholder="Where the goods went" value={shipTo} onChange={(e) => setShipTo(e.target.value)} />
+              <Input label="Note on the invoice" placeholder="e.g. Thank you for your recent purchase." value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
             <dl className="rounded-lg bg-ink-50 p-3 text-sm" aria-label="Invoice totals">
               <div className="flex justify-between"><dt className="text-ink-500">Taxable value</dt><dd className="tabular-nums">{money(priced.totals.taxable)}</dd></div>

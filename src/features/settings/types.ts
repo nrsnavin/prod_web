@@ -21,7 +21,7 @@ export interface InvoiceSettings {
   city: string;
   pincode: string;
   stateCode: string;
-  bank: { name: string; account: string; ifsc: string; branch: string };
+  bank: { name: string; account: string; ifsc: string; branch: string; upiId: string };
   declaration: string;
   gsp: {
     provider: string;

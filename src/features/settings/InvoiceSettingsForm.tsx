@@ -19,7 +19,7 @@ const EMPTY: InvoiceSettings = {
   city: "",
   pincode: "",
   stateCode: "",
-  bank: { name: "", account: "", ifsc: "", branch: "" },
+  bank: { name: "", account: "", ifsc: "", branch: "", upiId: "" },
   declaration: "",
   gsp: { provider: "", baseUrl: "", username: "", clientId: "", clientSecret: "", password: "" },
 };
@@ -118,6 +118,8 @@ export function InvoiceSettingsForm() {
           <Input label="Branch" value={form.bank.branch} disabled={!canEdit} onChange={(e) => setBank("branch", e.target.value)} />
           <Input label="Account number" value={form.bank.account} disabled={!canEdit} onChange={(e) => setBank("account", e.target.value)} />
           <Input label="IFSC" value={form.bank.ifsc} disabled={!canEdit} onChange={(e) => setBank("ifsc", e.target.value.toUpperCase())} />
+          <Input label="UPI ID" placeholder="name@bank — printed with a scan-to-pay QR" value={form.bank.upiId} disabled={!canEdit}
+            onChange={(e) => setBank("upiId", e.target.value.trim())} />
         </div>
         <div>
           <label htmlFor="invoice-declaration" className="mb-1.5 block text-sm font-medium text-ink-600">Declaration</label>

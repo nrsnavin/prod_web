@@ -15,6 +15,7 @@ const entityMeta: Record<AuditEntry["entityType"], { label: string; path: (e: Au
   JobOrder:        { label: "Job",    path: (e) => `/jobs/${e.entityId}` },
   PurchaseOrder:   { label: "PO",     path: (e) => `/purchase-orders/${e.entityId}` },
   DeliveryChallan: { label: "DC",     path: (e) => `/delivery-challans/${e.entityId}` },
+  Invoice:         { label: "Invoice", path: (e) => `/invoices/${e.entityId}` },
   Quote:           { label: "Quote",  path: (e) => `/quotes/${e.entityId}` },
   StockCount:      { label: "Stock count", path: (e) => `/stock-counts/${e.entityId}` },
   MaterialGroup:   { label: "Material group", path: () => "/materials/groups" },

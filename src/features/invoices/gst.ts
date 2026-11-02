@@ -68,6 +68,7 @@ export function draftLines(
       rate: o.rate !== undefined && o.rate !== "" ? Number(o.rate) : row.rate,
       hsn: o.hsn !== undefined ? o.hsn : row.hsn,
       gstPercent: o.gstPercent !== undefined && o.gstPercent !== "" ? Number(o.gstPercent) : row.gstPercent,
+      boxes: o.boxes !== undefined && o.boxes !== "" ? Number(o.boxes) : row.boxes,
       rateSource: o.rate !== undefined && o.rate !== "" ? "entered" : row.rateSource,
     };
   });

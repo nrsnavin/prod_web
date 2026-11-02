@@ -38,6 +38,7 @@ beforeEach(() => {
     order: { _id: "o1", orderNo: 118, po: "PO-77" },
     seller: { ...party, name: "Balu Elastics", gstin: "33AAECB1234F1Z5" },
     buyer: party,
+    shipTo: "4 Kongu Nagar, Tiruppur - 641604",
     supplyType: "intra",
     placeOfSupply: "33",
     dcs: [

@@ -37,7 +37,11 @@ export function OrderInvoices({ orderId }: { orderId: string }) {
   }
   if (!data) return null;
 
-  const { invoices, totals, uninvoicedDcs } = data;
+  // A reply without the card's fields (an older server) renders as empty
+  // rather than taking the whole order page down with it.
+  const invoices = data.invoices ?? [];
+  const totals = data.totals ?? { count: 0, cancelled: 0, invoiced: 0, registered: 0 };
+  const uninvoicedDcs = data.uninvoicedDcs ?? [];
 
   return (
     <Card className="mt-4">

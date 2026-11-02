@@ -22,6 +22,8 @@ export interface InvoiceLine {
   hsn: string;
   unit: string;
   quantity: number;
+  /** Cartons the line went out in. */
+  boxes?: number;
   rate: number;
   taxable: number;
   gstPercent: number;
@@ -73,6 +75,9 @@ export interface Invoice {
   customerPo?: string;
   seller: InvoiceParty;
   buyer: InvoiceParty;
+  /** Where the goods went — the challans' consignee address. */
+  shipTo?: string;
+  totalBoxes?: number;
   supplyType: SupplyType;
   placeOfSupply: string;
   dcs: Array<{ dc: string; dcNumber: string; dispatchDate?: string }>;
@@ -117,6 +122,7 @@ export interface InvoiceDraftLine {
   name: string;
   unit: string;
   quantity: number;
+  boxes?: number;
   rate: number;
   hsn: string;
   gstPercent: number;
@@ -128,6 +134,8 @@ export interface InvoiceOrderInfo {
   order: { _id: string; orderNo: number; po?: string; status?: string; customer?: string };
   seller: InvoiceParty;
   buyer: InvoiceParty;
+  /** Proposed ship-to: the challans' consignee address, else the buyer's. */
+  shipTo: string;
   supplyType: SupplyType;
   placeOfSupply: string;
   dcs: InvoiceDcOption[];
@@ -141,6 +149,7 @@ export interface InvoiceLineOverride {
   rate?: number | "";
   hsn?: string;
   gstPercent?: number | "";
+  boxes?: number | "";
 }
 
 export interface InvoiceCreateBody {
@@ -148,6 +157,7 @@ export interface InvoiceCreateBody {
   dcIds: string[];
   invoiceDate?: string;
   notes?: string;
+  shipTo?: string;
   lines?: InvoiceLineOverride[];
   requestId?: string;
 }
