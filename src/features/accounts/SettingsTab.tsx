@@ -13,6 +13,7 @@ import { useAuth } from "@/core/auth/useAuth";
 import { useAccountsMutations, useBankAccounts, useCategories } from "./hooks";
 import { money } from "./shared";
 import { BooksSettings } from "./BooksSettings";
+import { AiAccuracy } from "./AiAccuracy";
 import type { AccountKind, BankAccount, ExpenseCategory } from "./types";
 
 function AccountDialog({ initial, onClose }: { initial: Partial<BankAccount> | null; onClose: () => void }) {
@@ -131,6 +132,7 @@ export function SettingsTab() {
         </ul>
       </Card>
       <BooksSettings isAdmin={isAdmin} />
+      <AiAccuracy />
       {account !== undefined && <AccountDialog initial={account} onClose={() => setAccount(undefined)} />}
       {category !== undefined && <CategoryDialog initial={category} onClose={() => setCategory(undefined)} />}
     </div>

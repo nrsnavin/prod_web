@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Download, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -57,7 +57,8 @@ export function NotesTab() {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Note no., party, document, reason…" className="w-full max-w-xs" />
         <FilterChips options={[{ value: "all", label: "All" }, { value: "credit", label: "Credit notes" }, { value: "debit", label: "Debit notes" }]} value={kind} onChange={(v) => { setKind(v); setPage(1); }} />
-        <span className="ml-auto flex gap-2">
+        <span className="ml-auto flex flex-wrap gap-2">
+          <a href={accountsService.exportUrl("notes")} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-brand-600 hover:bg-brand-50"><Download className="h-4 w-4" /> Excel</a>
           <Button variant="secondary" onClick={() => setParams({ new: "credit" })}><Plus className="h-4 w-4" /> Credit note</Button>
           <Button variant="secondary" onClick={() => setParams({ new: "debit" })}><Plus className="h-4 w-4" /> Debit note to supplier</Button>
           <Button variant="secondary" onClick={() => setParams({ new: "debit-customer" })}><Plus className="h-4 w-4" /> Debit note to customer</Button>

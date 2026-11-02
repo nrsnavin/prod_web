@@ -11,7 +11,7 @@ import { CreditsCard } from "./Credits";
 import { ShareDialog } from "./Share";
 import { accountsService } from "./api";
 import { Button } from "@/components/ui/Button";
-import { FileDown, MessageCircle } from "lucide-react";
+import { Download, FileDown, MessageCircle } from "lucide-react";
 import type { LedgerRow } from "./types";
 
 const docPath = (r: LedgerRow) =>
@@ -84,7 +84,10 @@ export function StatementsTab() {
 
       {ageing && (
         <Card className="p-5">
-          <h3 className="font-semibold">{partyType === "customer" ? "Receivables" : "Payables"} by age</h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold">{partyType === "customer" ? "Receivables" : "Payables"} by age</h3>
+            <a href={accountsService.exportUrl(partyType === "customer" ? "receivables" : "payables")} className="inline-flex items-center gap-1 text-sm text-brand-600 hover:underline"><Download className="h-4 w-4" /> Excel</a>
+          </div>
           <p className="text-sm text-ink-400">₹{money(ageing.totals.total)} outstanding · ₹{money(ageing.totals.overdue)} past due</p>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">

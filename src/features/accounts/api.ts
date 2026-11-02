@@ -5,6 +5,7 @@ import type {
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
   AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow,
   Reconciliation, StoredStatement, StoredStatementLine, TallyBatch, TallyPreview,
+  AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -159,6 +160,22 @@ export const accountsService = {
     httpClient.post<{ success: boolean; note: AccountNote }>(`/accounts/notes/${id}/irn`, body),
   shareDraft: (body: { kind: "payment" | "note" | "statement"; id?: string; partyType?: "customer" | "supplier"; party?: string; from?: string; to?: string }) =>
     httpClient.post<{ success: boolean; to: string; message: string }>("/accounts/share/draft", body),
+
+  // ── Inbox and insights ──
+  inbox: () => httpClient.get<Inbox & { success: boolean }>("/accounts/inbox"),
+  checkBill: async (body: Record<string, unknown>) => (await httpClient.post<{ success: boolean; flags: Flag[] }>("/accounts/bills/check", body)).flags,
+  checkExpense: async (body: Record<string, unknown>) => (await httpClient.post<{ success: boolean; flags: Flag[] }>("/accounts/expenses/check", body)).flags,
+  suggestCategory: async (q: { supplier?: string; payee?: string; description?: string }) =>
+    (await httpClient.get<{ success: boolean; suggestion: { category: string; name: string; confidence: number; reason: string } | null }>("/accounts/suggest/category", clean(q))).suggestion,
+  forecast: (weeks = 6) => httpClient.get<Forecast & { success: boolean }>("/accounts/forecast", { weeks }),
+  closeChecklist: (month?: string) => httpClient.get<CloseChecklist & { success: boolean }>("/accounts/close", clean({ month })),
+  aiStats: () => httpClient.get<{ success: boolean; days: number; surfaces: AiSurfaceStats[]; weakFields: Array<{ surface: string; field: string; suggestions: number }> }>("/accounts/ai/stats"),
+  recurring: async () => (await httpClient.get<{ success: boolean; rows: RecurringExpense[] }>("/accounts/recurring")).rows,
+  saveRecurring: async (id: string | undefined, body: Record<string, unknown>) =>
+    (await (id ? httpClient.put<{ success: boolean; row: RecurringExpense }>(`/accounts/recurring/${id}`, body) : httpClient.post<{ success: boolean; row: RecurringExpense }>("/accounts/recurring", body))).row,
+  runRecurring: () => httpClient.post<{ success: boolean; drafted: string[] }>("/accounts/recurring/run", {}),
+  exportUrl: (what: "bills" | "expenses" | "vouchers" | "notes" | "receivables" | "payables", range: { from?: string; to?: string } = {}) =>
+    `/api/v2/accounts/export/${what}${Object.keys(clean(range)).length ? `?${new URLSearchParams(clean(range) as Record<string, string>).toString()}` : ""}`,
 
   attachmentUrl: (kind: "bills" | "expenses" | "notes" | "payments", id: string, aid: string) => `/api/v2/accounts/${kind}/${id}/attachments/${aid}`,
 };

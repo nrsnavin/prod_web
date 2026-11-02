@@ -1,6 +1,8 @@
+import { FlagList, useFlags } from "./Flags";
+import { accountsService } from "./api";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, ScanLine } from "lucide-react";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { Plus, ScanLine, Download } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -45,7 +47,10 @@ export function BillsTab() {
   const scanOpen = params.get("scan") === "1";
   const navigate = useNavigate();
   const { data, isLoading } = useBills({ page, status, search });
-  const [draft, setDraft] = useState<{ draft: ScanDraft; as: "bill" | "expense" } | null>(null);
+  const location = useLocation();
+  // "Cancel and re-enter" comes back here with the cancelled bill as a draft.
+  const reenter = (location.state as { reenter?: ScanDraft } | null)?.reenter;
+  const [draft, setDraft] = useState<{ draft: ScanDraft; as: "bill" | "expense" } | null>(reenter ? { draft: reenter, as: "bill" } : null);
 
   return (
     <>
@@ -57,6 +62,7 @@ export function BillsTab() {
           onChange={(v) => { setStatus(v); setPage(1); }}
         />
         <span className="ml-auto flex gap-2">
+          <a href={accountsService.exportUrl("bills")} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-brand-600 hover:bg-brand-50"><Download className="h-4 w-4" /> Excel</a>
           <Button variant="secondary" onClick={() => setParams({ scan: "1" })}><ScanLine className="h-4 w-4" /> Scan a bill</Button>
           <Button onClick={() => setParams({ new: "bill" })}><Plus className="h-4 w-4" /> Enter bill</Button>
         </span>
@@ -70,7 +76,7 @@ export function BillsTab() {
         <BillForm onDone={(id) => { setParams({}); navigate(`/accounts/bills/${id}`); }} onCancel={() => setParams({})} />
       </FormScreen>
       {scanOpen && !draft && <ScanBillDialog onClose={() => setParams({})} onUse={(d, as) => setDraft({ draft: d, as })} />}
-      <FormScreen open={draft?.as === "bill"} onClose={() => { setDraft(null); setParams({}); }} title="Supplier bill from the scan — check every figure" width="max-w-5xl">
+      <FormScreen open={draft?.as === "bill"} onClose={() => { setDraft(null); setParams({}); }} title={reenter && draft?.draft === reenter ? "Re-enter the bill" : "Supplier bill from the scan — check every figure"} width="max-w-5xl">
         {draft?.as === "bill" && <BillForm key={draft.draft.aiSuggestion ?? "scan"} initialDraft={draft.draft} onDone={(id) => { setDraft(null); setParams({}); navigate(`/accounts/bills/${id}`); }} onCancel={() => { setDraft(null); setParams({}); }} />}
       </FormScreen>
       <FormScreen open={draft?.as === "expense"} onClose={() => { setDraft(null); setParams({}); }} title="Expense from the scan — check every figure" width="max-w-4xl">
@@ -134,6 +140,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
   }, [poInfo, supplier, initialDraft]);
 
   const ready = supplier && supplierBillNo.trim() && lines.every((l) => l.description.trim() && Number(l.rate) >= 0 && l.rate !== "");
+  const flags = useFlags("bill", supplier ? { supplier, supplierBillNo, billDate, lines, itcEligible, scannedGstin: initialDraft?.supplierGstin || undefined } : null);
   const categoryOptions = useMemo(() => (categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name })), [categories]);
 
   const submit = () =>
@@ -142,7 +149,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
         supplier, supplierBillNo: supplierBillNo.trim(), billDate, dueDate: dueDate || undefined,
         purchaseOrder: poId || undefined, inwards: poId ? inwards : undefined, kind, category: category || undefined,
         lines, itcEligible, tds: { applicable: tds.applicable, section: tds.section, rate: Number(tds.rate) || 0 }, notes: notes.trim() || undefined,
-        source: initialDraft ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
+        source: initialDraft?.aiSuggestion ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
         reverseCharge: reverseCharge || undefined, varianceNote: varianceNote.trim() || undefined,
       },
       {
@@ -205,6 +212,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
         )}
       </div>
       <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <FlagList flags={flags} />
       {variance && variance.lines.length > 0 && (
         <div role="alert" className="rounded-lg border border-status-warning/40 bg-status-warningBg p-3 text-sm">
           <p className="font-semibold text-status-warning">Off the PO or the receipts by ₹{money(variance.total)}</p>

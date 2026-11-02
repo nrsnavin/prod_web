@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Trash2, XCircle } from "lucide-react";
+import { Download, Plus, Trash2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -20,6 +20,7 @@ import { round2 } from "@/features/invoices/gst";
 import { useAccountsMutations, useBankAccounts, useContras, useOpenDocs, usePayments } from "./hooks";
 import { PartyPicker, money, today } from "./shared";
 import { CreditsCard } from "./Credits";
+import { accountsService } from "./api";
 import { ADJUSTMENT_KINDS, ADJUSTMENT_LABELS } from "./types";
 import type { AdjustmentKind, Contra, OpenDoc, Payment, PaymentMode, VoucherKind } from "./types";
 
@@ -52,6 +53,7 @@ export function VouchersTab() {
         {kind !== "contra" && <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Voucher no., party, reference, document…" className="w-full max-w-xs" />}
         <FilterChips options={[{ value: "all", label: "All" }, { value: "receipt", label: "Receipts" }, { value: "payment", label: "Payments" }, { value: "contra", label: "Contras" }]} value={kind} onChange={(v) => { setKind(v); setPage(1); }} />
         <span className="ml-auto flex flex-wrap gap-2">
+          <a href={accountsService.exportUrl("vouchers")} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-brand-600 hover:bg-brand-50"><Download className="h-4 w-4" /> Excel</a>
           <Button variant="secondary" onClick={() => setParams({ new: "contra" })}><Plus className="h-4 w-4" /> Contra</Button>
           <Button variant="secondary" onClick={() => setParams({ new: "receipt" })}><Plus className="h-4 w-4" /> Receipt</Button>
           <Button onClick={() => setParams({ new: "payment" })}><Plus className="h-4 w-4" /> Payment</Button>
@@ -237,8 +239,11 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
     setAdjustments((a) => [...a.filter((x) => x.kind !== k), { kind: k, amount: round2((Number(a.find((x) => x.kind === k)?.amount) || 0) + short) }]);
   };
 
+  // Keyboard entry: Ctrl+Enter posts, so a sitting of fifty vouchers needs no mouse.
+  const onKeyDown = (e: React.KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && ready) { e.preventDefault(); submit(); } };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onKeyDown={onKeyDown}>
       <div className="grid gap-3 sm:grid-cols-2">
         {other ? (
           <Input label="Paid to" value={partyName} onChange={(e) => setPartyName(e.target.value)} />
@@ -336,7 +341,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
       <Input label="Narration" value={narration} onChange={(e) => setNarration(e.target.value)} placeholder="Printed on the statement" />
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={submit} disabled={!ready} loading={createPayment.isPending}>{kind === "receipt" ? "Post receipt" : "Post payment"}</Button>
+        <Button onClick={submit} disabled={!ready} loading={createPayment.isPending} title="Ctrl+Enter">{kind === "receipt" ? "Post receipt" : "Post payment"}</Button>
       </div>
     </div>
   );

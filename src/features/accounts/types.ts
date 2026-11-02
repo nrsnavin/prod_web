@@ -591,3 +591,25 @@ export interface TallyPreview {
   sample: Array<{ type: string; number: string; date: string; party: string; lines: Array<{ ledger: string; debit: number; credit: number }> }>;
 }
 export interface TallyBatch { _id: string; batchNo: number; from: string; to: string; counts: Record<string, number>; vouchers: number; ledgers: string[]; lockedUpTo: string | null; byName: string; createdAt: string }
+
+// ── Inbox and insights ──
+export interface Flag { code: string; severity: "danger" | "warning" | "info"; message: string }
+export interface Inbox {
+  billsDue: { count: number; amount: number; top: OpenDoc[] };
+  approvals: { count: number; amount: number; top: Array<{ _id: string; expenseNo: string; date: string; categoryName: string; description: string; totals: { grand: number }; submittedByName?: string; source?: string }> };
+  claimsToPay: { count: number; amount: number; top: Array<{ _id: string; expenseNo: string; description: string; payeeName?: string; totals: { grand: number }; paidAmount?: number }> };
+  bankLines: { count: number };
+  toChase: { count: number; amount: number; top: Array<{ party: string; partyName: string; overdue: number; oldestDays: number; next?: CollectionEntry["next"] }> };
+  promisesDue: { count: number; top: Array<{ party: string; partyName: string; promise: NonNullable<CollectionEntry["promise"]> }> };
+  variances: { count: number; top: Array<{ _id: string; billNo: string; supplierName: string; billDate: string; variance: { total: number; note?: string } }> };
+}
+export interface ForecastWeek { from: string; to: string; inflow: number; outflow: number; closing: number; top: Array<{ direction: "in" | "out"; party: string; docNo: string; amount: number; basis: string }> }
+export interface Forecast { opening: number; weeks: ForecastWeek[]; firstShortWeek: string | null; later: { inflow: number; outflow: number }; habits: number }
+export interface CloseItem { key: string; label: string; detail: string; count: number; amount?: number; ok: boolean; link: string }
+export interface CloseChecklist { month: string; from: string; to: string; items: CloseItem[]; done: number; total: number }
+export interface RecurringExpense {
+  _id: string; name: string; category: string | { _id: string; name: string }; description: string; supplier?: string | { _id: string; name: string } | null;
+  payeeName?: string; amount: number; gstPercent?: number; every: 1 | 3 | 6 | 12; dayOfMonth: number; nextDate: string; endDate?: string | null; active: boolean;
+  lastDrafted?: { expense?: string; expenseNo?: string; for?: string };
+}
+export interface AiSurfaceStats { surface: string; total?: number; accepted?: number; edited?: number; rejected?: number; failed?: number; pending?: number; acceptRate?: number | null }

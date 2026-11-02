@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, XCircle, Check, X, Banknote, Paperclip, Wallet, FileDown, FileJson, BadgeCheck, ClipboardPaste, MessageCircle } from "lucide-react";
+import { ArrowLeft, XCircle, Check, X, Banknote, Paperclip, Wallet, RotateCcw, FileDown, FileJson, BadgeCheck, ClipboardPaste, MessageCircle } from "lucide-react";
 import { IrnDialog } from "@/features/invoices/IrnDialog";
 import { ShareDialog } from "./Share";
 import { useQueryClient } from "@tanstack/react-query";
@@ -96,6 +96,7 @@ export function BillDetailPage() {
   const { cancelBill } = useAccountsMutations();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [reentering, setReentering] = useState(false);
   const navigate = useNavigate();
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Bill not found"}</p>;
@@ -107,6 +108,7 @@ export function BillDetailPage() {
       <PageHeader title={bill.billNo} subtitle={`${bill.supplierName} · their ${bill.supplierBillNo} dated ${formatDate(bill.billDate)}`}
         actions={<>
           {canPay && <Button onClick={() => setPaying(true)}><Wallet className="h-4 w-4" /> Record payment</Button>}
+          {bill.status !== "cancelled" && bill.paidAmount === 0 && bill.debitedAmount === 0 && <Button variant="secondary" onClick={() => setReentering(true)}><RotateCcw className="h-4 w-4" /> Cancel and re-enter</Button>}
           {bill.status !== "cancelled" && bill.paidAmount === 0 && bill.debitedAmount === 0 && <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button>}
         </>} />
       <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={billTone[bill.status]}>{billLabel[bill.status]}</StatusChip><StatusChip tone="neutral">{bill.supplyType === "inter" ? "IGST" : "CGST + SGST"}</StatusChip>{bill.tds?.applicable && <StatusChip tone="warning">TDS {bill.tds.section} @ {bill.tds.rate}%</StatusChip>}{bill.itc?.eligible ? <StatusChip tone="success">ITC ₹{money(bill.itc.amount)}</StatusChip> : <StatusChip tone="neutral">No input credit</StatusChip>}{bill.status === "cancelled" && bill.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {bill.cancel.reason}</span>}</div>
@@ -144,6 +146,15 @@ export function BillDetailPage() {
       )}
       <Attachments kind="bills" id={bill._id} rows={bill.attachments} />
       <History rows={bill.fingerprints} />
+      <ReasonDialog open={reentering} onClose={() => setReentering(false)} title={`Cancel ${bill.billNo} and enter it again?`} description="The bill is cancelled with your reason, and the form opens with everything it had, to correct." confirmLabel="Cancel and re-enter" minLength={8} loading={cancelBill.isPending}
+        onConfirm={(reason) => cancelBill.mutate({ id: bill._id, reason }, {
+          onSuccess: () => navigate("/accounts/bills", { state: { reenter: {
+            supplier: { _id: bill.supplier, name: bill.supplierName }, supplierName: bill.supplierName, supplierGstin: bill.supplierGstin ?? "", billNo: bill.supplierBillNo,
+            billDate: bill.billDate.slice(0, 10), purchaseOrder: bill.purchaseOrder, aiSuggestion: null, kind: "bill",
+            lines: (bill.lines ?? []).map((l) => ({ rawMaterial: l.rawMaterial, description: l.description, hsn: l.hsn, unit: l.unit, quantity: l.quantity, rate: l.rate, gstPercent: l.gstPercent })),
+          } } }),
+          onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error"),
+        })} />
       <FormScreen open={paying} onClose={() => setPaying(false)} title={`Pay ${bill.supplierName}`} width="max-w-4xl">
         {paying && <VoucherForm kind="payment" initialParty={{ id: bill.supplier, name: bill.supplierName }} initialDocs={[bill._id]} onDone={(id) => { setPaying(false); navigate(`/accounts/payments/${id}`); }} onCancel={() => setPaying(false)} />}
       </FormScreen>
@@ -159,7 +170,8 @@ export function ExpenseDetailPage() {
   const { user } = useAuth();
   const { data, isLoading, isError, error } = useExpense(id);
   const { approveExpense, rejectExpense, payExpense, cancelExpense } = useAccountsMutations();
-  const [dialog, setDialog] = useState<"reject" | "pay" | "cancel" | null>(null);
+  const [dialog, setDialog] = useState<"reject" | "pay" | "cancel" | "reenter" | null>(null);
+  const navigate = useNavigate();
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Expense not found"}</p>;
   const { expense: e, payments } = data;
@@ -171,6 +183,7 @@ export function ExpenseDetailPage() {
         <>
           {e.status === "pending" && canApprove && <><Button onClick={() => approveExpense.mutate({ id: e._id }, { onSuccess: () => toast("Approved", "success"), onError: (err) => toast(err instanceof ApiError ? err.message : "Could not approve", "error") })} loading={approveExpense.isPending}><Check className="h-4 w-4" /> Approve</Button><Button variant="secondary" onClick={() => setDialog("reject")}><X className="h-4 w-4" /> Reject</Button></>}
           {e.status === "approved" && <Button onClick={() => setDialog("pay")}><Banknote className="h-4 w-4" /> Pay</Button>}
+          {["pending", "approved", "rejected"].includes(e.status) && e.paidAmount === 0 && e.source !== "claim" && <Button variant="secondary" onClick={() => setDialog("reenter")}><RotateCcw className="h-4 w-4" /> Cancel and re-enter</Button>}
           {["pending", "approved", "rejected"].includes(e.status) && e.paidAmount === 0 && <Button variant="danger" onClick={() => setDialog("cancel")}><XCircle className="h-4 w-4" /> Cancel</Button>}
         </>
       } />
@@ -190,6 +203,15 @@ export function ExpenseDetailPage() {
       <History rows={e.fingerprints} />
       <ReasonDialog open={dialog === "reject"} onClose={() => setDialog(null)} title={`Reject ${e.expenseNo}?`} confirmLabel="Reject" minLength={8} loading={rejectExpense.isPending}
         onConfirm={(reason) => rejectExpense.mutate({ id: e._id, reason }, { onSuccess: () => { setDialog(null); toast("Rejected", "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not reject", "error") })} />
+      <ReasonDialog open={dialog === "reenter"} onClose={() => setDialog(null)} title={`Cancel ${e.expenseNo} and enter it again?`} description="It is cancelled with your reason, and the form opens with everything it had." confirmLabel="Cancel and re-enter" minLength={8} loading={cancelExpense.isPending}
+        onConfirm={(reason) => cancelExpense.mutate({ id: e._id, reason }, {
+          onSuccess: () => navigate("/accounts/expenses", { state: { category: e.category, reenter: {
+            supplier: e.supplier ? { _id: e.supplier, name: e.payeeName ?? "" } : undefined, supplierName: e.payeeName ?? "", supplierGstin: e.payeeGstin ?? "", billNo: e.refNo ?? "",
+            billDate: e.date.slice(0, 10), aiSuggestion: null, kind: "bill",
+            lines: (e.lines ?? []).map((l) => ({ description: l.description, hsn: l.hsn, unit: l.unit, quantity: l.quantity, rate: l.rate, gstPercent: l.gstPercent })),
+          } } }),
+          onError: (err) => toast(err instanceof ApiError ? err.message : "Could not cancel", "error"),
+        })} />
       <ReasonDialog open={dialog === "cancel"} onClose={() => setDialog(null)} title={`Cancel ${e.expenseNo}?`} confirmLabel="Cancel expense" minLength={8} loading={cancelExpense.isPending}
         onConfirm={(reason) => cancelExpense.mutate({ id: e._id, reason }, { onSuccess: () => { setDialog(null); toast("Cancelled", "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not cancel", "error") })} />
       {dialog === "pay" && <PayDialog title={`Pay ${e.expenseNo}`} amount={e.totals.grand - e.paidAmount} loading={payExpense.isPending} onClose={() => setDialog(null)}
