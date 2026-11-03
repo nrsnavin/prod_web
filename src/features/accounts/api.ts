@@ -4,7 +4,7 @@ import type {
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
   AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow,
-  Reconciliation, StoredStatement, StoredStatementLine, TallyBatch, TallyPreview, TallyConnectorStatus, TallyReconcile, BooksHealth,
+  Reconciliation, StoredStatement, StoredStatementFull, BankFeedStatus, BankFeedRun, TallyBatch, TallyPreview, TallyConnectorStatus, TallyReconcile, BooksHealth,
   AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense,
 } from "./types";
 
@@ -88,10 +88,13 @@ export const accountsService = {
   postStatement: (account: string, rows: StatementPostRow[], statement?: string) =>
     httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; voucherNo?: string; _id?: string; error?: string }>; posted: number; failed: number }>("/accounts/bank/statement/post", { account, rows, statement }),
   statements: async (account?: string) => (await httpClient.get<{ success: boolean; statements: StoredStatement[] }>("/accounts/bank/statements", clean({ account }))).statements,
-  storedStatement: async (id: string) => (await httpClient.get<{ success: boolean; statement: StoredStatement & { lines: StoredStatementLine[] } }>(`/accounts/bank/statements/${id}`)).statement,
+  storedStatement: async (id: string) => (await httpClient.get<{ success: boolean; statement: StoredStatementFull }>(`/accounts/bank/statements/${id}`)).statement,
   ignoreLine: (statement: string, index: number, reason: string) => httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/ignore`, { reason }),
   linkLine: (statement: string, index: number, voucherType: "Payment" | "Contra", voucher: string) =>
     httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/link`, { voucherType, voucher }),
+  bankFeed: async () => (await httpClient.get<{ success: boolean; feed: BankFeedStatus }>("/accounts/bank/feed")).feed,
+  runBankFeed: async () => httpClient.post<{ success: boolean; result: BankFeedRun; feed: BankFeedStatus }>("/accounts/bank/feed/run", {}),
+  setBankFeed: async (body: { autoPost: boolean }) => (await httpClient.put<{ success: boolean; feed: BankFeedStatus }>("/accounts/bank/feed", body)).feed,
   clearEntry: (body: { voucherType: "Payment" | "Contra"; id: string; account: string; clearedOn: string | null }) => httpClient.post<{ success: boolean }>("/accounts/bank/clear", body),
   reconciliation: (account: string, asOf: string, bankBalance?: number | "") =>
     httpClient.get<Reconciliation & { success: boolean }>("/accounts/bank/reconciliation", clean({ account, asOf, bankBalance })),

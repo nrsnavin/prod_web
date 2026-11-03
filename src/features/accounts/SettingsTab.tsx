@@ -35,6 +35,7 @@ function AccountDialog({ initial, onClose }: { initial: Partial<BankAccount> | n
             <Input label="IFSC" value={form.ifsc ?? ""} onChange={(e) => set("ifsc", e.target.value.toUpperCase())} />
           </div>
         )}
+        {form.kind === "bank" && <Input label="Statements come from" type="email" value={form.statementFrom ?? ""} onChange={(e) => set("statementFrom", e.target.value)} placeholder="e.g. statements@kotak.com" hint="The address the bank emails this account's statement from. Only needed when the mail does not show the account number." />}
         {form.kind === "upi" && <Input label="UPI ID" value={form.upiId ?? ""} onChange={(e) => set("upiId", e.target.value)} />}
         <Input label="Tally ledger" value={form.tallyLedger ?? ""} onChange={(e) => set("tallyLedger", e.target.value)} placeholder={form.kind === "cash" ? "Cash" : "e.g. Kotak Bank CA"} hint="The ledger name in Tally; blank uses the account's name" />
         <div className="grid grid-cols-3 gap-3">

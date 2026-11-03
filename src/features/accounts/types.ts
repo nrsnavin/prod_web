@@ -18,6 +18,8 @@ export interface BankAccount {
   isDefault?: boolean;
   /** The ledger this account is in Tally. */
   tallyLedger?: string;
+  /** The address the bank's emailed statements for this account come from. */
+  statementFrom?: string;
   /** Server-computed: opening + money in − money out (contras both ways). */
   balance?: number;
   receipts?: number;
@@ -566,12 +568,32 @@ export interface AccountsSettings {
 
 // ── Bank reconciliation ──
 export interface StoredStatement {
-  _id: string; account: string; accountName: string; file: string; from: string; to: string; closingBalance: number | null;
+  _id: string; account: string; accountName: string; file: string; source?: "upload" | "email"; from: string; to: string; closingBalance: number | null;
   uploadedByName?: string; createdAt: string; lines: number; counts: Partial<Record<StatementRow["status"] | "posted", number>>;
 }
+/** One stored statement with its lines, as the server sends it. */
+export type StoredStatementFull = Omit<StoredStatement, "lines" | "counts"> & { lines: StoredStatementLine[] };
 export interface StoredStatementLine {
   index: number; date: string; narration: string; ref: string; amount: number; direction: "in" | "out"; balance: number | null;
   status: "recorded" | "posted" | "unmatched" | "matched" | "ignored"; voucherType: "Payment" | "Contra" | null; voucher: string | null; voucherNo: string; note: string;
+  /** What the matcher proposed when the statement came in. */
+  suggestion?: StatementSuggestion | null;
+  candidates?: StatementRow["candidates"] | null;
+}
+
+// ── Statements by email ──
+export interface BankFeedMail {
+  _id: string; from: string; subject: string; receivedAt: string | null;
+  status: "imported" | "nothing_new" | "skipped" | "failed";
+  accountName?: string; account?: string | null; statement?: string | null;
+  lines?: number; newLines?: number; posted?: number; note?: string;
+}
+export interface BankFeedRun {
+  trigger: string; at: string; checked: number; imported: number; nothingNew: number; skipped: number; failed: number; newLines: number; posted: number; error?: string;
+}
+export interface BankFeedStatus {
+  configured: boolean; mailbox: string; everyMin: number; senders: string[]; autoPost: boolean;
+  lastRunAt: string | null; lastResult: BankFeedRun | null; recent: BankFeedMail[];
 }
 export interface BookEntry { voucherType: "Payment" | "Contra"; _id: string; number: string; date: string; party: string; reference: string; direction: "in" | "out"; amount: number }
 export interface Reconciliation {
