@@ -17,6 +17,7 @@ import { money } from "./shared";
  */
 export function ForecastTab() {
   const [weeks, setWeeks] = useState<"6" | "9" | "13">("6");
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   const { data, isLoading } = useQuery({ queryKey: [ACCOUNTS_KEY, "forecast", weeks], queryFn: () => accountsService.forecast(Number(weeks)) });
   if (isLoading || !data) return <Skeleton className="h-72 w-full" />;
   const scale = Math.max(1, ...data.weeks.flatMap((w) => [w.inflow, w.outflow]));
@@ -43,7 +44,20 @@ export function ForecastTab() {
                   <td className="py-2 pr-3 align-top">
                     <div className="flex h-2 w-48 max-w-full overflow-hidden rounded bg-ink-50" aria-hidden><div className="bg-status-success" style={{ width: `${(w.inflow / scale) * 100}%` }} /></div>
                     <div className="mt-1 flex h-2 w-48 max-w-full overflow-hidden rounded bg-ink-50" aria-hidden><div className="bg-status-danger" style={{ width: `${(w.outflow / scale) * 100}%` }} /></div>
-                    <ul className="mt-1 text-xs text-ink-500">{w.top.slice(0, 3).map((x, i) => <li key={i}>{x.direction === "in" ? "+" : "−"}₹{money(x.amount)} {x.party} <span className="text-ink-400">({x.docNo}, {x.basis})</span></li>)}</ul>
+                    {(() => {
+                      const all = w.items ?? w.top;
+                      const shown = open[w.from] ? all : all.slice(0, 3);
+                      return (
+                        <>
+                          <ul className="mt-1 space-y-0.5 text-xs text-ink-500">{shown.map((x, i) => <li key={i}>{x.direction === "in" ? "+" : "−"}₹{money(x.amount)} {x.party} <span className="text-ink-400">({x.docNo}, {x.basis})</span></li>)}</ul>
+                          {all.length > 3 && (
+                            <button className="mt-1 text-xs text-brand-600 hover:underline" aria-expanded={!!open[w.from]} onClick={() => setOpen((o) => ({ ...o, [w.from]: !o[w.from] }))}>
+                              {open[w.from] ? "Show fewer" : `Show all ${all.length}`}
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </td>
                   <td className="py-2 text-right align-top tabular-nums text-status-success">{w.inflow ? money(w.inflow) : "—"}</td>
                   <td className="py-2 text-right align-top tabular-nums">{w.outflow ? money(w.outflow) : "—"}</td>
@@ -57,6 +71,8 @@ export function ForecastTab() {
       <p className="text-xs text-ink-400">
         Beyond these weeks: ₹{money(data.later.inflow)} expected in, ₹{money(data.later.outflow)} out. Receipts use how each customer has paid over the last year
         {data.habits ? ` (${data.habits} customers with a history)` : ""}; customers without one are expected on their terms. Late invoices are expected next week.
+        Out: bills and expenses as they fall due (less anything paid ahead), expenses waiting for approval a week out, salaries on the usual pay day,
+        TDS by the 7th and GST by the 20th. Figures come from what is entered here.
       </p>
     </div>
   );

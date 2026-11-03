@@ -361,13 +361,18 @@ export interface Statement {
   open: OutstandingTotals;
 }
 
+/** A party's open documents, with what it paid (or was paid) ahead beside them. */
+export type PartyWithAhead = PartyOutstanding & { paidAhead?: number };
 export interface Overview {
-  receivables: OutstandingTotals & { top: PartyOutstanding[] };
-  payables: OutstandingTotals & { top: PartyOutstanding[] };
+  receivables: OutstandingTotals & { paidAhead?: number; top: PartyWithAhead[] };
+  payables: OutstandingTotals & { paidAhead?: number; top: PartyWithAhead[] };
   accounts: Array<{ _id: string; name: string; kind: AccountKind; balance: number }>;
   pendingExpenses: number;
   month: {
     from: string;
+    to?: string;
+    /** False in the first days of a month, when the figures are last month's. */
+    current?: boolean;
     expenses: { amount: number; count: number };
     sales: { amount: number; outputTax: number; count: number };
     purchases: { amount: number; inputCredit: number; count: number };
@@ -547,6 +552,7 @@ export interface OpeningImportRow {
 
 export type TallyLedgerKey =
   | "companyName" | "sales" | "purchase" | "outputCgst" | "outputSgst" | "outputIgst" | "inputCgst" | "inputSgst" | "inputIgst"
+  | "rcmCgst" | "rcmSgst" | "rcmIgst"
   | "roundOff" | "tdsPayable" | "tdsReceivable" | "bankCharges" | "discountAllowed" | "discountReceived" | "badDebts" | "writtenBack" | "sundryExpenses"
   | "debtorsGroup" | "creditorsGroup";
 export interface AccountsSettings {
@@ -588,6 +594,8 @@ export interface TallyPreview {
   alreadySent: number;
   ledgers: string[];
   problems: string[];
+  /** Will go, but probably not as meant: a service bill with no head. */
+  warnings?: string[];
   sample: Array<{ type: string; number: string; date: string; party: string; lines: Array<{ ledger: string; debit: number; credit: number }> }>;
 }
 export interface TallyBatch { _id: string; batchNo: number; from: string; to: string; counts: Record<string, number>; vouchers: number; ledgers: string[]; lockedUpTo: string | null; byName: string; createdAt: string }
@@ -595,15 +603,16 @@ export interface TallyBatch { _id: string; batchNo: number; from: string; to: st
 // ── Inbox and insights ──
 export interface Flag { code: string; severity: "danger" | "warning" | "info"; message: string }
 export interface Inbox {
-  billsDue: { count: number; amount: number; top: OpenDoc[] };
+  billsDue: { count: number; overdue?: number; amount: number; top: OpenDoc[] };
   approvals: { count: number; amount: number; top: Array<{ _id: string; expenseNo: string; date: string; categoryName: string; description: string; totals: { grand: number }; submittedByName?: string; source?: string }> };
   claimsToPay: { count: number; amount: number; top: Array<{ _id: string; expenseNo: string; description: string; payeeName?: string; totals: { grand: number }; paidAmount?: number }> };
-  bankLines: { count: number };
+  bankLines: { count: number; amount?: number; statement?: string; account?: string; accountName?: string };
   toChase: { count: number; amount: number; top: Array<{ party: string; partyName: string; overdue: number; oldestDays: number; next?: CollectionEntry["next"] }> };
   promisesDue: { count: number; top: Array<{ party: string; partyName: string; promise: NonNullable<CollectionEntry["promise"]> }> };
   variances: { count: number; top: Array<{ _id: string; billNo: string; supplierName: string; billDate: string; variance: { total: number; note?: string } }> };
 }
-export interface ForecastWeek { from: string; to: string; inflow: number; outflow: number; closing: number; top: Array<{ direction: "in" | "out"; party: string; docNo: string; amount: number; basis: string }> }
+export interface ForecastItem { direction: "in" | "out"; party: string; docNo: string; amount: number; basis: string; date?: string }
+export interface ForecastWeek { from: string; to: string; inflow: number; outflow: number; closing: number; top: ForecastItem[]; items?: ForecastItem[] }
 export interface Forecast { opening: number; weeks: ForecastWeek[]; firstShortWeek: string | null; later: { inflow: number; outflow: number }; habits: number }
 export interface CloseItem { key: string; label: string; detail: string; count: number; amount?: number; ok: boolean; link: string }
 export interface CloseChecklist { month: string; from: string; to: string; items: CloseItem[]; done: number; total: number }

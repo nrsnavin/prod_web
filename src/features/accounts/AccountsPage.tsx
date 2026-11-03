@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Inbox, ArrowDownLeft, ArrowUpRight, BookOpen, Settings2,
@@ -70,23 +71,27 @@ export function AccountsPage() {
   const tab = (ALL_TABS.includes(raw as AccountsTab) ? raw : "inbox") as AccountsTab;
   const door = doorOf(tab);
   const go = (t: AccountsTab) => navigate(t === "inbox" ? "/accounts" : `/accounts/${t}`);
+  // On a phone the sub-tabs scroll sideways: keep the open one in view.
+  const activeTab = useRef<HTMLButtonElement>(null);
+  useEffect(() => { activeTab.current?.scrollIntoView?.({ block: "nearest", inline: "nearest" }); }, [tab]);
 
   return (
     <>
       <PageHeader title="Accounts" subtitle="Bills, expenses, receipts and payments, ledgers — Tally stays the book of record." />
-      <nav aria-label="Accounts" className="mb-2 flex gap-1 overflow-x-auto no-scrollbar">
+      {/* Five doors fit a phone's width: icon over label there, side by side above. */}
+      <nav aria-label="Accounts" className="mb-2 grid grid-cols-5 gap-1 sm:flex">
         {DOORS.map((d) => (
           <button key={d.id} onClick={() => go(d.tabs[0].id)} aria-current={door.id === d.id ? "page" : undefined}
-            className={cn("flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
+            className={cn("flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-xs font-semibold transition-colors sm:shrink-0 sm:flex-row sm:gap-2 sm:px-4 sm:text-sm",
               door.id === d.id ? "bg-brand-50 text-brand-700" : "text-ink-500 hover:bg-ink-50 hover:text-ink-800")}>
-            <d.icon className="h-4 w-4" /> {d.label}
+            <d.icon className="h-4 w-4 shrink-0" /> <span className="max-w-full truncate">{d.label}</span>
           </button>
         ))}
       </nav>
       {door.tabs.length > 1 ? (
         <div className="mb-5 flex gap-1 overflow-x-auto no-scrollbar border-b border-ink-100">
           {door.tabs.map((t) => (
-            <button key={t.id} onClick={() => go(t.id)}
+            <button key={t.id} ref={tab === t.id ? activeTab : undefined} onClick={() => go(t.id)} aria-current={tab === t.id ? "page" : undefined}
               className={cn("flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
                 tab === t.id ? "border-brand-500 text-brand-600" : "border-transparent text-ink-500 hover:text-ink-800")}>
               <t.icon className="h-4 w-4" /> {t.label}

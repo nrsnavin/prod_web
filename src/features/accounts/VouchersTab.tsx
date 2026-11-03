@@ -51,7 +51,7 @@ export function VouchersTab() {
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         {kind !== "contra" && <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Voucher no., party, reference, document…" className="w-full max-w-xs" />}
-        <FilterChips options={[{ value: "all", label: "All" }, { value: "receipt", label: "Receipts" }, { value: "payment", label: "Payments" }, { value: "contra", label: "Contras" }]} value={kind} onChange={(v) => { setKind(v); setPage(1); }} />
+        <FilterChips options={[{ value: "all", label: "Receipts & payments" }, { value: "receipt", label: "Receipts" }, { value: "payment", label: "Payments" }, { value: "contra", label: "Transfers (contras)" }]} value={kind} onChange={(v) => { setKind(v); setPage(1); }} />
         <span className="ml-auto flex flex-wrap gap-2">
           <a href={accountsService.exportUrl("vouchers")} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-brand-600 hover:bg-brand-50"><Download className="h-4 w-4" /> Excel</a>
           <Button variant="secondary" onClick={() => setParams({ new: "contra" })}><Plus className="h-4 w-4" /> Contra</Button>

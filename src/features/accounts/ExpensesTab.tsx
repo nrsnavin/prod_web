@@ -70,7 +70,7 @@ export function ExpensesTab() {
   const columns: Column<Expense>[] = [
     { key: "no", header: "Expense", render: (e) => <span className="font-medium">{e.expenseNo}</span> },
     { key: "date", header: "Date", render: (e) => formatDate(e.date) },
-    { key: "cat", header: "Head", render: (e) => e.categoryName },
+    { key: "cat", header: "Head", render: (e) => e.categoryName, cellClassName: "whitespace-normal" },
     { key: "desc", header: "Description", render: (e) => <span>{e.description}{e.payeeName ? <span className="block text-xs text-ink-400">{e.payeeName}</span> : null}</span>, cellClassName: "whitespace-normal" },
     { key: "amount", header: "Amount (₹)", align: "right", render: (e) => money(e.totals?.grand) },
     { key: "by", header: "Entered by", render: (e) => e.submittedByName || "—" },
@@ -84,7 +84,7 @@ export function ExpensesTab() {
               <Button size="sm" variant="ghost" aria-label={`Reject ${e.expenseNo}`} onClick={() => setReject(e)}><X className="h-4 w-4" /></Button>
             </>
           )}
-          {e.status === "approved" && <Button size="sm" variant="secondary" aria-label={`Pay ${e.expenseNo}`} onClick={() => setPay(e)}><Banknote className="h-4 w-4" /> Pay</Button>}
+          {e.status === "approved" && <Button size="sm" variant="secondary" aria-label={`Pay ${e.expenseNo}`} title="Pay" onClick={() => setPay(e)}><Banknote className="h-4 w-4" /><span className="hidden 2xl:inline"> Pay</span></Button>}
         </span>
       ),
     },

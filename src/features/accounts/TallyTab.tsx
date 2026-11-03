@@ -86,11 +86,13 @@ export function TallyTab() {
               </ul>
             )}
             {p.problems.map((x) => <p key={x} className="mt-2 text-sm text-status-danger">{x}</p>)}
+            {(p.warnings ?? []).map((x) => <p key={x} className="mt-2 text-sm text-status-warning">{x}</p>)}
           </Card>
           <Card className="p-5 lg:col-span-2">
             <h3 className="font-semibold">Ledgers Tally must have</h3>
             <p className="text-xs text-ink-400">Names must match Tally exactly. Change them under Settings → Tally ledgers, on each bank account and expense head.</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">{p.ledgers.map((l) => <StatusChip key={l} tone="neutral">{l}</StatusChip>)}</div>
+            {/* As typed, not upper-cased: the name has to match Tally letter for letter. */}
+            <div className="mt-2 flex flex-wrap gap-1.5">{p.ledgers.map((l) => <span key={l} className="rounded-md border border-ink-200 bg-ink-50 px-2 py-0.5 font-mono text-xs text-ink-700">{l}</span>)}</div>
           </Card>
           {p.sample.length > 0 && (
             <Card className="p-5 lg:col-span-3">

@@ -17,8 +17,26 @@ export const billLabel: Record<BillStatus, string> = { open: "Open", part_paid: 
 export const expenseTone: Record<ExpenseStatus, ChipTone> = { pending: "warning", approved: "info", rejected: "danger", paid: "success", cancelled: "neutral" };
 export const expenseLabel: Record<ExpenseStatus, string> = { pending: "To approve", approved: "Approved", rejected: "Rejected", paid: "Paid", cancelled: "Cancelled" };
 
-export const today = () => new Date().toISOString().slice(0, 10);
-export const monthStart = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10); };
+/** YYYY-MM-DD of the local date — toISOString() would give the UTC one, a day early before 05:30 in India. */
+export const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export const today = () => ymd(new Date());
+export const monthStart = () => { const d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth(), 1)); };
+
+/** Common periods, by the calendar here: the quarter and year are the financial ones (April to March). */
+export function periods(now = new Date()): Array<{ key: string; label: string; from: string; to: string }> {
+  const y = now.getFullYear(); const m = now.getMonth();
+  const q0 = m - (((m - 3) % 3) + 3) % 3; // first month of the April-based quarter
+  const fy = m >= 3 ? y : y - 1;
+  return [
+    { key: "month", label: "This month", from: ymd(new Date(y, m, 1)), to: today() },
+    { key: "last", label: "Last month", from: ymd(new Date(y, m - 1, 1)), to: ymd(new Date(y, m, 0)) },
+    { key: "quarter", label: "This quarter", from: ymd(new Date(y, q0, 1)), to: today() },
+    { key: "fy", label: "This year", from: ymd(new Date(fy, 3, 1)), to: today() },
+  ];
+}
+
+/** The period a report opens on: last month until the 10th — the first days go to closing it — then this month. */
+export const defaultPeriod = (now = new Date()) => { const p = periods(now); const x = now.getDate() < 10 ? p[1] : p[0]; return { from: x.from, to: x.to }; };
 
 /** A customer or supplier, searched on the server. */
 export function PartyPicker({ partyType, value, onChange, label, disabled }: {
@@ -135,11 +153,19 @@ export function Chip({ tone, children }: { tone: ChipTone; children: string }) {
 }
 
 /** A from/to pair for a report. */
-export function RangePicker({ from, to, onChange }: { from: string; to: string; onChange: (r: { from: string; to: string }) => void }) {
+export function RangePicker({ from, to, onChange, presets = true }: { from: string; to: string; onChange: (r: { from: string; to: string }) => void; presets?: boolean }) {
   return (
     <div className="flex flex-wrap items-end gap-2">
       <Input label="From" type="date" value={from} onChange={(e) => onChange({ from: e.target.value, to })} />
       <Input label="To" type="date" value={to} onChange={(e) => onChange({ from, to: e.target.value })} />
+      {presets && (
+        <div className="flex flex-wrap gap-1 pb-1" role="group" aria-label="Period">
+          {periods().map((p) => (
+            <button key={p.key} type="button" onClick={() => onChange({ from: p.from, to: p.to })}
+              className={`rounded-md px-2 py-1 text-xs ${from === p.from && to === p.to ? "bg-brand-50 font-semibold text-brand-700" : "text-ink-500 hover:bg-ink-50"}`}>{p.label}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

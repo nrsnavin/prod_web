@@ -10,11 +10,14 @@ import { formatDate } from "@/core/format/date";
 import { useAccountsMutations, useAccountsSettings } from "./hooks";
 import type { TallyLedgerKey } from "./types";
 
-const LEDGERS: Array<{ key: TallyLedgerKey; label: string }> = [
-  { key: "companyName", label: "Tally company (as named in Tally)" },
+const LEDGERS: Array<{ key: TallyLedgerKey; label: string; placeholder?: string; hint?: string }> = [
+  { key: "companyName", label: "Tally company (as named in Tally)", placeholder: "e.g. Balu Elastics 2026-27", hint: "Blank: the company name on your invoices" },
   { key: "sales", label: "Sales" }, { key: "purchase", label: "Purchase" },
   { key: "outputCgst", label: "Output CGST" }, { key: "outputSgst", label: "Output SGST" }, { key: "outputIgst", label: "Output IGST" },
   { key: "inputCgst", label: "Input CGST" }, { key: "inputSgst", label: "Input SGST" }, { key: "inputIgst", label: "Input IGST" },
+  { key: "rcmCgst", label: "CGST payable on reverse charge", placeholder: "e.g. RCM CGST Payable", hint: "Blank: posts with Output CGST" },
+  { key: "rcmSgst", label: "SGST payable on reverse charge", placeholder: "e.g. RCM SGST Payable", hint: "Blank: posts with Output SGST" },
+  { key: "rcmIgst", label: "IGST payable on reverse charge", placeholder: "e.g. RCM IGST Payable", hint: "Blank: posts with Output IGST" },
   { key: "tdsPayable", label: "TDS payable" }, { key: "tdsReceivable", label: "TDS receivable (deducted by customers)" },
   { key: "roundOff", label: "Round off" }, { key: "bankCharges", label: "Bank charges" },
   { key: "discountAllowed", label: "Discount allowed" }, { key: "discountReceived", label: "Discount received" },
@@ -74,7 +77,7 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
         <p className="mt-1 text-sm text-ink-500">The ledger names in your Tally company each entry posts to. Customers and suppliers post to a ledger of their own name; bank accounts and expense heads carry their own ledger name (edit them above).</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {LEDGERS.map((l) => (
-            <Input key={l.key} label={l.label} value={ledgers[l.key] ?? ""} disabled={!isAdmin} onChange={(e) => setLedgers((x) => ({ ...x, [l.key]: e.target.value }))} />
+            <Input key={l.key} label={l.label} value={ledgers[l.key] ?? ""} placeholder={l.placeholder} hint={l.hint} disabled={!isAdmin} onChange={(e) => setLedgers((x) => ({ ...x, [l.key]: e.target.value }))} />
           ))}
         </div>
         {isAdmin && (

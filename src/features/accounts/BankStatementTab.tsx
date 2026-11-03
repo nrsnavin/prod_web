@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, Check, EyeOff } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -22,8 +23,11 @@ type View = "match" | "reconcile" | "past";
 /** Bank statements: match one to the books, reconcile, or look back at what came before. */
 export function BankStatementTab() {
   const { data: accounts } = useBankAccounts();
-  const [account, setAccount] = useState("");
-  const [view, setView] = useState<View>("match");
+  // The inbox links straight to a stored statement: ?view=past&account=…&statement=…
+  const [params] = useSearchParams();
+  const asked = params.get("view");
+  const [account, setAccount] = useState(params.get("account") ?? "");
+  const [view, setView] = useState<View>(asked === "reconcile" || asked === "past" ? asked : "match");
   const bankAccounts = (accounts ?? []).filter((a) => a.active !== false && a.kind !== "cash");
   const chosen = account || bankAccounts.find((a) => a.isDefault)?._id || bankAccounts[0]?._id || "";
   return (
@@ -34,7 +38,7 @@ export function BankStatementTab() {
       </div>
       {chosen && view === "match" && <MatchView account={chosen} />}
       {chosen && view === "reconcile" && <ReconcileView account={chosen} />}
-      {chosen && view === "past" && <PastView account={chosen} />}
+      {chosen && view === "past" && <PastView key={chosen} account={chosen} initial={chosen === params.get("account") ? params.get("statement") : null} />}
     </div>
   );
 }
@@ -271,10 +275,25 @@ export function ReconcileView({ account }: { account: string }) {
 
 const LINE_TONE: Record<StoredStatementLine["status"], "success" | "info" | "warning" | "neutral"> = { recorded: "success", posted: "info", matched: "warning", unmatched: "warning", ignored: "neutral" };
 
-function PastView({ account }: { account: string }) {
-  const [open, setOpen] = useState<string | null>(null);
+function PastView({ account, initial = null }: { account: string; initial?: string | null }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [open, setOpen] = useState<string | null>(initial);
+  const [ignoring, setIgnoring] = useState<StoredStatementLine | null>(null);
   const list = useQuery({ queryKey: [ACCOUNTS_KEY, "statements", account], queryFn: () => accountsService.statements(account) });
   const one = useQuery({ queryKey: [ACCOUNTS_KEY, "statement-stored", open], queryFn: () => accountsService.storedStatement(open!), enabled: !!open });
+  const toPlace = (one.data?.lines ?? []).filter((l) => l.status === "unmatched" || l.status === "matched").length;
+  const ignore = async (reason: string) => {
+    if (!ignoring || !open) return;
+    try {
+      await accountsService.ignoreLine(open, ignoring.index, reason);
+      setIgnoring(null);
+      qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
+      toast("Set aside", "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not set it aside", "error");
+    }
+  };
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <Card className="p-5">
@@ -297,6 +316,7 @@ function PastView({ account }: { account: string }) {
           <>
             <h3 className="font-semibold">{one.data.file}</h3>
             {one.data.closingBalance !== null && <p className="text-sm text-ink-500">Bank balance at the end ₹{money(one.data.closingBalance)}</p>}
+            {toPlace > 0 && <p className="mt-1 text-sm text-ink-500">{toPlace} line{toPlace === 1 ? "" : "s"} not in the books. Set aside what is not for the books here; to post the rest, upload the statement again under "Match a statement" — lines already placed are remembered.</p>}
             <div className="mt-2 overflow-x-auto">
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-ink-100">
@@ -305,7 +325,8 @@ function PastView({ account }: { account: string }) {
                       <td className="py-1.5 pr-2 whitespace-nowrap text-ink-500">{formatDate(l.date)}</td>
                       <td className="py-1.5 pr-2"><span className="block max-w-sm truncate" title={l.narration}>{l.narration}</span></td>
                       <td className={`py-1.5 pr-2 text-right tabular-nums ${l.direction === "in" ? "text-status-success" : ""}`}>{l.direction === "in" ? "+" : "−"}{money(l.amount)}</td>
-                      <td className="py-1.5"><StatusChip tone={LINE_TONE[l.status]}>{l.voucherNo || l.status}</StatusChip>{l.note && <span className="ml-1 text-xs text-ink-400">{l.note}</span>}</td>
+                      <td className="py-1.5"><StatusChip tone={LINE_TONE[l.status]}>{l.voucherNo || (l.status === "matched" ? "suggested, not posted" : l.status === "unmatched" ? "to place" : l.status)}</StatusChip>{l.note && <span className="ml-1 text-xs text-ink-400">{l.note}</span>}</td>
+                      <td className="py-1.5 pl-2 text-right">{(l.status === "unmatched" || l.status === "matched") && <Button size="sm" variant="ghost" onClick={() => setIgnoring(l)}><EyeOff className="h-4 w-4" /> Set aside</Button>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -314,6 +335,7 @@ function PastView({ account }: { account: string }) {
           </>
         )}
       </Card>
+      <ReasonDialog open={!!ignoring} onClose={() => setIgnoring(null)} title="Set this line aside?" description="It stays out of the books, and stays set aside when the statement comes again." confirmLabel="Set aside" minLength={8} onConfirm={ignore} />
     </div>
   );
 }

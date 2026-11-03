@@ -34,7 +34,10 @@ const columns: Column<SupplierBill>[] = [
   { key: "po", header: "PO", render: (b) => (b.poNo != null ? `#${b.poNo}` : b.kind === "service" ? "Service" : "—") },
   { key: "amount", header: "Amount (₹)", align: "right", render: (b) => money(b.totals?.grand) },
   { key: "due", header: "Outstanding (₹)", align: "right", render: (b) => <span className={b.outstanding ? "font-semibold" : "text-ink-400"}>{money(b.outstanding)}</span> },
-  { key: "dueDate", header: "Due", render: (b) => formatDate(b.dueDate) },
+  { key: "dueDate", header: "Due", render: (b) => {
+    const late = (b.outstanding ?? 0) > 0.005 && b.dueDate ? Math.floor((Date.now() - new Date(b.dueDate).getTime()) / 86_400_000) : 0;
+    return <span className={late > 0 ? "text-status-danger" : ""}>{formatDate(b.dueDate)}{late > 0 && <span className="block text-xs">{late}d overdue</span>}</span>;
+  } },
   { key: "status", header: "Status", render: (b) => <StatusChip tone={billTone[b.status]}>{billLabel[b.status]}</StatusChip> },
 ];
 
@@ -139,7 +142,9 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
     }
   }, [poInfo, supplier, initialDraft]);
 
-  const ready = supplier && supplierBillNo.trim() && lines.every((l) => l.description.trim() && Number(l.rate) >= 0 && l.rate !== "");
+  // A service bill posts to its expense head; without one Tally gets it as a purchase.
+  const needsHead = kind === "service" && !category;
+  const ready = supplier && supplierBillNo.trim() && !needsHead && lines.every((l) => l.description.trim() && Number(l.rate) >= 0 && l.rate !== "");
   const flags = useFlags("bill", supplier ? { supplier, supplierBillNo, billDate, lines, itcEligible, scannedGstin: initialDraft?.supplierGstin || undefined } : null);
   const categoryOptions = useMemo(() => (categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name })), [categories]);
 
@@ -177,7 +182,8 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
           <Input label="Due date" type="date" value={dueDate} placeholder="30 days" onChange={(e) => setDueDate(e.target.value)} />
         </div>
         <Select label="Kind" value={kind} onChange={(e) => setKind(e.target.value as "goods" | "service")} options={[{ value: "goods", label: "Goods (stock)" }, { value: "service", label: "Service / job work" }]} />
-        <Select label="Expense head (for a service bill)" value={category} onChange={(e) => setCategory(e.target.value)} options={categoryOptions} placeholder="None" />
+        <Select label={kind === "service" ? "Expense head *" : "Expense head (for a service bill)"} value={category} onChange={(e) => setCategory(e.target.value)} options={categoryOptions} placeholder={kind === "service" ? "Pick the head it posts to" : "None"}
+          error={needsHead && supplier ? "A service bill needs its head — freight, job work, repairs…" : undefined} />
       </div>
 
       {poInfo && poInfo.inwards.length > 0 && (

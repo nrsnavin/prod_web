@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY, useBankAccounts } from "./hooks";
-import { RangePicker, money, monthStart, today } from "./shared";
+import { RangePicker, defaultPeriod, money, today } from "./shared";
 import type { GstRateRow } from "./types";
 
 type Report = "gst" | "tds" | "expenses" | "cashbook" | "daybook";
@@ -33,7 +33,7 @@ function RateTable({ title, rows, inter }: { title: string; rows: GstRateRow[]; 
 
 export function ReportsTab() {
   const [report, setReport] = useState<Report>("gst");
-  const [range, setRange] = useState({ from: monthStart(), to: today() });
+  const [range, setRange] = useState(defaultPeriod);
   const [account, setAccount] = useState("");
   const [day, setDay] = useState(today());
   const { data: accounts } = useBankAccounts();

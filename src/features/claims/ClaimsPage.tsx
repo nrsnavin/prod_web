@@ -17,7 +17,8 @@ import { claimsService, type Claim, type ClaimStatus } from "./api";
 
 const TONE: Record<ClaimStatus, ChipTone> = { pending: "warning", approved: "info", rejected: "danger", paid: "success", cancelled: "neutral" };
 const LABEL: Record<ClaimStatus, string> = { pending: "Waiting for approval", approved: "Approved, to be paid", rejected: "Rejected", paid: "Paid back", cancelled: "Withdrawn" };
-const todayIso = () => new Date().toISOString().slice(0, 10);
+// The local date: toISOString() gives the UTC one, a day early before 05:30 in India.
+const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
 /**
  * Money you spent for the factory, claimed back from the phone: what it
