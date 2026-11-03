@@ -55,7 +55,7 @@ export function ExpensesTab() {
   const [search, setSearch] = useState("");
   const [params, setParams] = useSearchParams();
   const location = useLocation();
-  const state = location.state as { reenter?: ScanDraft; category?: string } | null;
+  const state = location.state as { reenter?: ScanDraft; category?: string; title?: string } | null;
   const [reenter, setReenter] = useState<ScanDraft | undefined>(state?.reenter);
   const reenterCategory = state?.category;
   const navigate = useNavigate();
@@ -107,7 +107,7 @@ export function ExpensesTab() {
           emptyTitle="No expenses yet" emptyDescription="Transport, electricity, rent, repairs — with the receipt attached." />
         <Pagination page={page} totalPages={data?.pages ?? 1} total={data?.total} onChange={setPage} />
       </Card>
-      <FormScreen open={params.get("new") === "expense" || !!reenter} onClose={() => { setReenter(undefined); setParams({}); }} title={reenter ? "Re-enter the expense" : "New expense"} width="max-w-4xl">
+      <FormScreen open={params.get("new") === "expense" || !!reenter} onClose={() => { setReenter(undefined); setParams({}); }} title={reenter ? (state?.title ?? "Re-enter the expense") : "New expense"} width="max-w-4xl">
         {(params.get("new") === "expense" || reenter) && <ExpenseForm key={reenter ? "reenter" : "new"} initialDraft={reenter} initialCategory={reenterCategory} onDone={() => { setReenter(undefined); setParams({}); }} onCancel={() => { setReenter(undefined); setParams({}); }} />}
       </FormScreen>
       <ReasonDialog open={!!reject} onClose={() => setReject(null)} title={`Reject ${reject?.expenseNo ?? ""}?`} description="The person who entered it sees the reason." confirmLabel="Reject" minLength={8} loading={rejectExpense.isPending}

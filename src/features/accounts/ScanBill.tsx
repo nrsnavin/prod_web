@@ -19,6 +19,10 @@ export interface ScanDraft {
   purchaseOrder?: string;
   aiSuggestion: string | null;
   kind: "bill" | "receipt";
+  /** Set when the draft comes from elsewhere (a lorry receipt): the bill's kind, reverse charge and head. */
+  billKind?: "goods" | "service";
+  reverseCharge?: boolean;
+  category?: string;
 }
 
 export function draftFrom(r: ScanResult): ScanDraft {

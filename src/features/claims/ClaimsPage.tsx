@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, Plus } from "lucide-react";
+import { Camera, Plus, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +13,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
 import { useRequestId } from "@/core/hooks/useRequestId";
 import { money } from "@/features/invoices/gst";
-import { claimsService, type Claim, type ClaimStatus } from "./api";
+import { claimsService, type Claim, type ClaimScan, type ClaimStatus } from "./api";
 
 const TONE: Record<ClaimStatus, ChipTone> = { pending: "warning", approved: "info", rejected: "danger", paid: "success", cancelled: "neutral" };
 const LABEL: Record<ClaimStatus, string> = { pending: "Waiting for approval", approved: "Approved, to be paid", rejected: "Rejected", paid: "Paid back", cancelled: "Withdrawn" };
@@ -38,18 +38,50 @@ export function ClaimsPage() {
   const [amount, setAmount] = useState<number | "">("");
   const [date, setDate] = useState(todayIso());
   const [photo, setPhoto] = useState<File | null>(null);
+  const [refNo, setRefNo] = useState("");
+  // What the receipt said, once read: the form is filled from it and the claimant checks it.
+  const [scan, setScan] = useState<ClaimScan | null>(null);
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState("");
+
+  const pick = async (file: File | null) => {
+    setPhoto(file);
+    setScan(null); setReadNote("");
+    if (!file) return;
+    setReading(true);
+    try {
+      const r = await claimsService.scan(file);
+      if (r.problem || !r.draft) {
+        setReadNote(r.problem === "not_a_bill" ? "That does not look like a receipt — fill the claim in below." : "The receipt could not be read — fill the claim in below.");
+        return;
+      }
+      setScan(r);
+      const d = r.draft;
+      if (d.amount) setAmount(d.amount);
+      if (d.date) setDate(d.date);
+      if (d.description) setDescription(d.description);
+      if (d.category) setCategory(d.category);
+      setRefNo(d.refNo || "");
+      setReadNote("Filled in from the receipt — check each figure before sending.");
+    } catch (e) {
+      // The photo still goes with the claim; only the reading failed.
+      setReadNote(e instanceof Error ? `${e.message}` : "The receipt could not be read — fill the claim in below.");
+    } finally {
+      setReading(false);
+    }
+  };
 
   const create = useMutation({
     mutationFn: async () => {
-      const body = { category, description: description.trim(), amount: Number(amount), date };
-      const claim = await claimsService.create({ ...body, requestId: ids.for(body) });
+      const body = { category, description: description.trim(), amount: Number(amount), date, ...(refNo ? { refNo } : {}) };
+      const claim = await claimsService.create({ ...body, ...(scan?.aiSuggestion ? { aiSuggestion: scan.aiSuggestion } : {}), requestId: ids.for(body) });
       if (photo) await claimsService.photo(claim._id, photo).catch((e) => toast(e instanceof Error ? e.message : "The photo did not attach", "error"));
       return claim;
     },
     onSuccess: (c) => {
       ids.done();
       toast(`${c.expenseNo} sent for approval`, "success");
-      setOpen(false); setDescription(""); setAmount(""); setPhoto(null);
+      setOpen(false); setDescription(""); setAmount(""); setPhoto(null); setRefNo(""); setScan(null); setReadNote("");
       qc.invalidateQueries({ queryKey: ["claims"] });
     },
     onError: (e) => toast(e instanceof ApiError ? e.message : "Could not send the claim", "error"),
@@ -72,14 +104,17 @@ export function ClaimsPage() {
       )}
       {open && (
         <Card className="mb-4 space-y-3 p-4">
+          <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" aria-label="Receipt photo" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
+          <Button variant="secondary" loading={reading} onClick={() => fileRef.current?.click()}><Camera className="h-4 w-4" /> {photo ? photo.name : "Photograph the receipt first"}</Button>
+          {reading && <p className="text-sm text-ink-500">Reading the receipt…</p>}
+          {readNote && <p className={`flex items-start gap-1 text-sm ${scan ? "text-ink-600" : "text-ink-500"}`}>{scan && <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />}{readNote}{scan?.categoryName && scan.categoryReason ? ` Head: ${scan.categoryName} (${scan.categoryReason.toLowerCase()}).` : ""}</p>}
+          {scan?.alreadyClaimed && <p role="alert" className="rounded-lg bg-status-warningBg p-2 text-sm text-status-warning">This receipt looks already claimed as {scan.alreadyClaimed}. Send it only if it is a different bill.</p>}
           <Select label="What was it for? *" value={category} onChange={(e) => setCategory(e.target.value)} options={(categories ?? []).map((c) => ({ value: c._id, label: c.name }))} placeholder="Pick one" />
           <Input label="Details *" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Diesel for the genset, 10 L" />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Amount (₹) *" type="number" inputMode="decimal" min={0} value={amount} onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))} />
             <Input label="Date *" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <input ref={fileRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" aria-label="Receipt photo" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
-          <Button variant="secondary" onClick={() => fileRef.current?.click()}><Camera className="h-4 w-4" /> {photo ? photo.name : "Photograph the receipt"}</Button>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
             <Button disabled={!ready} loading={create.isPending} onClick={() => create.mutate()}>Send for approval</Button>

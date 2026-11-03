@@ -19,6 +19,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useSuppliers, useSupplierMutations } from "./hooks";
 import { Supplier, SupplierFormValues } from "./types";
+import { CardFillButton, GstinHint, SimilarParties, type SimilarParty } from "@/features/parties/PartyCardFill";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -48,9 +49,13 @@ function SupplierForm({
   onSubmit: (v: SupplierFormValues) => void;
   onCancel: () => void;
 }) {
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [seedSimilar, setSeedSimilar] = useState<SimilarParty[]>([]);
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<SupplierFormValues>({
     resolver: zodResolver(schema),
@@ -68,8 +73,22 @@ function SupplierForm({
       paymentTermsDays: initial?.paymentTermsDays ?? 30,
     },
   });
+  const [name, gstin, phone] = watch(["name", "gstin", "phoneNumber"]);
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit((v) => onSubmit({ ...v, ...(aiSuggestion && !initial ? { aiSuggestion } : {}) }))} className="space-y-4" noValidate>
+      {!initial && (
+        <CardFillButton kind="supplier" onFill={(f, ai, similar) => {
+          const opt = { shouldDirty: true };
+          if (f.name) setValue("name", f.name, opt);
+          if (f.contactName) setValue("contactPerson", f.contactName, opt);
+          if (f.phone) setValue("phoneNumber", f.phone, opt);
+          if (f.email) setValue("email", f.email, opt);
+          if (f.gstin) setValue("gstin", f.gstin, opt);
+          const addr = [f.address, f.city, f.pincode].filter(Boolean).join(", ");
+          if (addr) setValue("address", addr, opt);
+          setAiSuggestion(ai); setSeedSimilar(similar);
+        }} />
+      )}
       <Input label="Supplier name *" error={errors.name?.message} {...register("name")} />
       <div className="grid grid-cols-2 gap-3">
         <Input label="Contact person" {...register("contactPerson")} />
@@ -77,8 +96,12 @@ function SupplierForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
-        <Input label="GSTIN" {...register("gstin")} />
+        <div>
+          <Input label="GSTIN" {...register("gstin")} />
+          <GstinHint gstin={gstin ?? ""} />
+        </div>
       </div>
+      <SimilarParties kind="supplier" name={name ?? ""} gstin={gstin ?? ""} phone={phone ?? ""} excludeId={initial?._id} seed={seedSimilar} />
       <Input label="Address" {...register("address")} />
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm">

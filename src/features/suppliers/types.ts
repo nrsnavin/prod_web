@@ -23,6 +23,8 @@ export interface Supplier {
 }
 
 export interface SupplierFormValues {
+  /** Set when the form was filled from a card: the AI ledger row the save settles. */
+  aiSuggestion?: string;
   gstRegistration?: "regular" | "composition" | "unregistered";
   paymentTermsDays?: number;
   name: string;

@@ -65,6 +65,19 @@ export interface MachineIssueCreate {
   title: string;
   description: string;
   severity: string;
+  aiSuggestion?: string;
+}
+
+/** What the worker said, written up; with the machine's open issues. */
+export interface IssueIntake {
+  title: string;
+  description: string;
+  severity: string;
+  duplicateOf: string | null;
+  confidence: number;
+  openIssues: Array<{ _id: string; title: string; severity?: string; status: string; createdAt?: string }>;
+  aiGenerated: boolean;
+  aiSuggestion: string | null;
 }
 
 export interface MachineAnomaly {
@@ -86,6 +99,17 @@ export const issueService = {
     return res.data;
   },
   create: (body: MachineIssueCreate) => httpClient.post("/machine-issue/", body),
+  /** Write up what the worker said or photographed. Nothing is saved. */
+  async intake(machineId: string, text: string, photo?: File | null): Promise<IssueIntake> {
+    const fd = new FormData();
+    fd.append("machineId", machineId);
+    fd.append("text", text);
+    if (photo) fd.append("photo", photo);
+    const res = await fetch("/api/v2/machine-issue/intake", { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not write it up");
+    return body.data as IssueIntake;
+  },
   setStatus: (id: string, status: string, resolutionNotes?: string) =>
     httpClient.put(`/machine-issue/${id}/status`, { status, resolutionNotes }),
   async anomalies(days = 30, threshold = 3): Promise<{ windowDays: number; threshold: number; anomalies: MachineAnomaly[] }> {

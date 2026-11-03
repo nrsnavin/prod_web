@@ -490,7 +490,8 @@ export interface CollectionEntry {
   promise?: { date: string; amount: number; note?: string; live: boolean; broken: boolean } | null;
   recentlyContacted?: boolean;
   held?: boolean;
-  next?: { action: "remind" | "call"; tone: "gentle" | "firm"; label: string };
+  /** escalate: over 90 days — the owner calls and new orders are held. */
+  next?: { action: "remind" | "call" | "escalate"; tone: "gentle" | "firm"; label: string };
 }
 
 // ── Credits, contras, opening balances, settings ──

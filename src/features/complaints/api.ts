@@ -12,6 +12,20 @@ export interface ComplaintListResponse {
   data: ComplaintRow[];
 }
 
+/** A job the customer's message most likely means, with why. */
+export interface IntakeJob { _id: string; jobOrderNo?: number; date: string; status: string; elastics: Array<{ _id: string; name: string }>; why: string }
+export interface Intake {
+  category: ComplaintCategory;
+  reason: string;
+  jobs: IntakeJob[];
+  elastic: { _id: string; name: string } | null;
+  confidence: number;
+  aiGenerated: boolean;
+  aiSuggestion: string | null;
+  candidates: number;
+}
+export interface ReplyDraft { text: string; aiGenerated: boolean; aiSuggestion: string | null; phone: string }
+
 export const complaintService = {
   list(params: { status?: string; category?: string; page?: number; limit?: number } = {}) {
     return httpClient.get<ComplaintListResponse>("/complaint", params);
@@ -23,9 +37,29 @@ export const complaintService = {
 
   create(body: {
     customer: string; job: string; elastic?: string;
-    category: ComplaintCategory; reason: string; feedback?: string;
+    category: ComplaintCategory; reason: string; feedback?: string; aiSuggestion?: string;
   }) {
     return httpClient.post<{ success: boolean; data: ComplaintRow }>("/complaint", body);
+  },
+
+  /** What the customer sent, read into the form. Nothing is saved. */
+  async intake(customer: string, text: string, photos: File[] = []): Promise<Intake> {
+    const fd = new FormData();
+    fd.append("customer", customer);
+    fd.append("text", text);
+    for (const p of photos.slice(0, 3)) fd.append("photos", p);
+    const res = await fetch("/api/v2/complaint/intake", { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not read the message");
+    return body.data as Intake;
+  },
+
+  async replyDraft(id: string) {
+    return (await httpClient.get<{ success: boolean; data: ReplyDraft }>(`/complaint/${id}/reply-draft`)).data;
+  },
+
+  replySent(id: string, body: { text: string; aiSuggestion?: string | null }) {
+    return httpClient.post<{ success: boolean; data: { feedback: string } }>(`/complaint/${id}/reply`, body);
   },
 
   update(id: string, body: {

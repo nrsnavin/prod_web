@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Customer, CustomerFormValues } from "./types";
+import { CardFillButton, GstinHint, SimilarParties, type SimilarParty } from "@/features/parties/PartyCardFill";
+import { gstinInfo } from "@/features/parties/gstin";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -44,9 +47,14 @@ export function CustomerForm({
   onSubmit: (values: CustomerFormValues) => void;
   onCancel: () => void;
 }) {
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [seedSimilar, setSeedSimilar] = useState<SimilarParty[]>([]);
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
+    getValues,
     formState: { errors },
   } = useForm<CustomerFormValues>({
     resolver: zodResolver(schema),
@@ -66,8 +74,30 @@ export function CustomerForm({
     },
   });
 
+  const [name, gstin, phone] = watch(["name", "gstin", "phoneNumber"]);
+  // A GSTIN typed or read fills the state code when it is empty.
+  const gstinField = register("gstin");
+  const onGstin = (v: string) => {
+    const i = gstinInfo(v);
+    if (i.valid && !getValues("stateCode")) setValue("stateCode", i.stateCode);
+  };
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <form onSubmit={handleSubmit((v) => onSubmit({ ...v, ...(aiSuggestion && !initial ? { aiSuggestion } : {}) }))} className="space-y-4" noValidate>
+      {!initial && (
+        <CardFillButton kind="customer" onFill={(f, ai, similar) => {
+          const opt = { shouldDirty: true };
+          if (f.name) setValue("name", f.name, opt);
+          if (f.contactName) setValue("contactName", f.contactName, opt);
+          if (f.phone) setValue("phoneNumber", f.phone, opt);
+          if (f.email) setValue("email", f.email, opt);
+          if (f.gstin) setValue("gstin", f.gstin, opt);
+          if (f.address) setValue("address", f.address, opt);
+          if (f.city) setValue("city", f.city, opt);
+          if (f.pincode) setValue("pincode", f.pincode, opt);
+          if (f.stateCode) setValue("stateCode", f.stateCode, opt);
+          setAiSuggestion(ai); setSeedSimilar(similar);
+        }} />
+      )}
       <Input label="Company name *" error={errors.name?.message} {...register("name")} />
       <div className="grid grid-cols-2 gap-3">
         <Input label="Contact person" {...register("contactName")} />
@@ -80,8 +110,12 @@ export function CustomerForm({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
-        <Input label="GSTIN" {...register("gstin")} />
+        <div>
+          <Input label="GSTIN" {...gstinField} onChange={(e) => { gstinField.onChange(e); onGstin(e.target.value); }} />
+          <GstinHint gstin={gstin ?? ""} />
+        </div>
       </div>
+      <SimilarParties kind="customer" name={name ?? ""} gstin={gstin ?? ""} phone={phone ?? ""} excludeId={initial?._id} seed={seedSimilar} />
       <Input label="Billing address" placeholder="Street, area" {...register("address")} />
       <div className="grid grid-cols-3 gap-3">
         <Input label="City" {...register("city")} />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown, Pencil } from "lucide-react";
+import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown, Pencil, ScanLine } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,7 @@ import { dcService } from "./api";
 import { DcStatus } from "./types";
 import { dcStatusTone } from "./DcListPage";
 import { DcEditModal } from "./DcEditModal";
+import { LorryReceiptDialog } from "./LorryReceiptDialog";
 import { CompanyLetterhead, CompanyDocumentFooter } from "@/components/documents/CompanyLetterhead";
 import { formatDate } from "@/core/format/date";
 
@@ -26,6 +27,7 @@ export function DcDetailPage() {
   const { updateStatus } = useDcMutations();
   const [downloading, setDownloading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [lrOpen, setLrOpen] = useState(false);
   // Status transition awaiting confirmation.
   const [pending, setPending] = useState<
     { status: DcStatus; msg: string; title: string; body: string; label: string; danger?: boolean } | null
@@ -105,6 +107,11 @@ export function DcDetailPage() {
               {(dc.status === "draft" || dc.status === "dispatched") && (
                 <Button variant="secondary" onClick={() => setEditOpen(true)}>
                   <Pencil className="h-4 w-4" /> Edit
+                </Button>
+              )}
+              {dc.status !== "cancelled" && (
+                <Button variant="secondary" onClick={() => setLrOpen(true)}>
+                  <ScanLine className="h-4 w-4" /> Lorry receipt
                 </Button>
               )}
               {dc.status === "draft" && (
@@ -283,6 +290,7 @@ export function DcDetailPage() {
 
       {/* Keyed on the challan's own figures so reopening after a save
           starts from what was stored, not the state it was left in. */}
+      {lrOpen && <LorryReceiptDialog dc={dc} onClose={() => setLrOpen(false)} />}
       {editOpen && (
         <DcEditModal
           key={`${dc._id}-${dc.totalQuantity}-${(dc.items ?? []).length}`}

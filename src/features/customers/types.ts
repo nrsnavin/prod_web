@@ -32,6 +32,8 @@ export interface Customer {
 }
 
 export interface CustomerFormValues {
+  /** Set when the form was filled from a card: the AI ledger row the save settles. */
+  aiSuggestion?: string;
   name: string;
   contactName?: string;
   phoneNumber?: string;

@@ -59,9 +59,19 @@ export function NotesTab() {
         <FilterChips options={[{ value: "all", label: "All" }, { value: "credit", label: "Credit notes" }, { value: "debit", label: "Debit notes" }]} value={kind} onChange={(v) => { setKind(v); setPage(1); }} />
         <span className="ml-auto flex flex-wrap gap-2">
           <a href={accountsService.exportUrl("notes")} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-brand-600 hover:bg-brand-50"><Download className="h-4 w-4" /> Excel</a>
-          <Button variant="secondary" onClick={() => setParams({ new: "credit" })}><Plus className="h-4 w-4" /> Credit note</Button>
-          <Button variant="secondary" onClick={() => setParams({ new: "debit" })}><Plus className="h-4 w-4" /> Debit note to supplier</Button>
-          <Button variant="secondary" onClick={() => setParams({ new: "debit-customer" })}><Plus className="h-4 w-4" /> Debit note to customer</Button>
+          {/* On a phone the three kinds are one picker, not three stacked buttons. */}
+          <select aria-label="New note" value="" onChange={(e) => e.target.value && setParams({ new: e.target.value })}
+            className="h-10 rounded-lg border border-ink-200 bg-surface px-3 text-sm sm:hidden">
+            <option value="">+ New note…</option>
+            <option value="credit">Credit note to a customer</option>
+            <option value="debit">Debit note to a supplier</option>
+            <option value="debit-customer">Debit note to a customer</option>
+          </select>
+          <span className="hidden flex-wrap gap-2 sm:flex">
+            <Button variant="secondary" onClick={() => setParams({ new: "credit" })}><Plus className="h-4 w-4" /> Credit note</Button>
+            <Button variant="secondary" onClick={() => setParams({ new: "debit" })}><Plus className="h-4 w-4" /> Debit note to supplier</Button>
+            <Button variant="secondary" onClick={() => setParams({ new: "debit-customer" })}><Plus className="h-4 w-4" /> Debit note to customer</Button>
+          </span>
         </span>
       </div>
       <Card>

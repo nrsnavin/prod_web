@@ -14,6 +14,7 @@ import { complaintService } from "./api";
 import { BlastRadiusPanel } from "./BlastRadiusPanel";
 import { ThemesPanel } from "./ThemesPanel";
 import { FileComplaintModal } from "./FileComplaintModal";
+import { ReplyPanel } from "./ReplyPanel";
 import {
   COMPLAINT_STATUSES, type ComplaintRow, type ComplaintStatus,
 } from "./types";
@@ -192,6 +193,7 @@ export function ComplaintsPage() {
                   purpose — it is the half with a clock on it. */}
               <BlastRadiusPanel key={current._id} complaintId={current._id} />
               <Resolution key={`${current._id}-res`} complaint={current} />
+              <ReplyPanel key={`${current._id}-reply`} complaintId={current._id} />
             </>
           ) : (
             <Card className="p-8">

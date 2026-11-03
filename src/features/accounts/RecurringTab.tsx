@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, RefreshCw } from "lucide-react";
+import { Pause, Pencil, Play, Plus, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -30,6 +30,16 @@ export function RecurringTab() {
   const { data, isLoading } = useQuery({ queryKey: [ACCOUNTS_KEY, "recurring"], queryFn: accountsService.recurring });
   const [editing, setEditing] = useState<Partial<RecurringExpense> | null>(null);
   const [running, setRunning] = useState(false);
+  const [toggling, setToggling] = useState<string | null>(null);
+  // Pause and resume from the list: a rent that stops for a month, an EMI paid off.
+  const toggle = async (r: RecurringExpense) => {
+    setToggling(r._id);
+    try {
+      await accountsService.saveRecurring(r._id, { active: !r.active });
+      qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "recurring"] });
+      toast(r.active ? `${r.name} paused` : `${r.name} resumed`, "success");
+    } catch (e) { toast(e instanceof ApiError ? e.message : "Could not change it", "error"); } finally { setToggling(null); }
+  };
   const run = async () => {
     setRunning(true);
     try {
@@ -59,7 +69,8 @@ export function RecurringTab() {
                   <p className="text-xs text-ink-400">{EVERY[r.every]} on day {r.dayOfMonth} · next {formatDate(r.nextDate)}{r.lastDrafted?.expenseNo ? ` · last ${r.lastDrafted.expenseNo}` : ""}{r.payeeName || nameOf(r.supplier) ? ` · ${r.payeeName || nameOf(r.supplier)}` : ""}</p>
                 </div>
                 <span className="tabular-nums font-semibold">₹{money(r.amount * (1 + (r.gstPercent ?? 0) / 100))}</span>
-                {!r.active && <StatusChip tone="neutral">stopped</StatusChip>}
+                {!r.active && <StatusChip tone="neutral">paused</StatusChip>}
+                <Button size="sm" variant="ghost" loading={toggling === r._id} aria-label={`${r.active ? "Pause" : "Resume"} ${r.name}`} title={r.active ? "Pause" : "Resume"} onClick={() => toggle(r)}>{r.active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}</Button>
                 <Button size="sm" variant="ghost" aria-label={`Edit ${r.name}`} onClick={() => setEditing(r)}><Pencil className="h-4 w-4" /></Button>
               </li>
             ))}

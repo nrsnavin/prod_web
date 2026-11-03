@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Wrench, Plus, AlertTriangle } from "lucide-react";
+import { Wrench, Plus, AlertTriangle, Mic, MicOff, Camera, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -17,19 +17,22 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { cn } from "@/components/ui/cn";
 import { machineService } from "@/features/machines/api";
-import { issueService, MachineIssue } from "./api";
+import { issueService, MachineIssue, type IssueIntake } from "./api";
+import { useSpeech, type SpeechLang } from "@/core/hooks/useSpeech";
 import { formatDate } from "@/core/format/date";
 
 const SEVERITIES = ["low", "medium", "high", "critical"];
 const SERVICE_TYPES = ["Corrective", "Preventive", "Breakdown", "Inspection", "Other"];
 
-const STATUSES = ["open", "acknowledged", "in_progress", "resolved", "dismissed"];
+// The server calls a dismissed issue "rejected"; sending "dismissed" was refused.
+const STATUSES = ["open", "acknowledged", "in_progress", "resolved", "rejected"];
+const STATUS_LABEL: Record<string, string> = { in_progress: "in progress", rejected: "dismissed" };
 const statusTone: Record<string, ChipTone> = {
   open: "danger",
   acknowledged: "warning",
   in_progress: "info",
   resolved: "success",
-  dismissed: "neutral",
+  rejected: "neutral",
 };
 
 function UpdateModal({ issue, onClose }: { issue: MachineIssue; onClose: () => void }) {
@@ -76,7 +79,7 @@ function UpdateModal({ issue, onClose }: { issue: MachineIssue; onClose: () => v
       <div className="mt-3 space-y-3">
         <Select
           label="Status"
-          options={STATUSES.map((s) => ({ value: s, label: s.replace("_", " ") }))}
+          options={STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] ?? s }))}
           value={status}
           onChange={(e) => setStatus(e.target.value)}
         />
@@ -138,6 +141,28 @@ function ReportIssueModal({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState("medium");
+  // Said or typed in the worker's own words, then written up.
+  const [said, setSaid] = useState("");
+  const [lang, setLang] = useState<SpeechLang>("ta-IN");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [intake, setIntake] = useState<IssueIntake | null>(null);
+  const [writing, setWriting] = useState(false);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const speech = useSpeech((t) => setSaid((x) => (x ? `${x} ${t}` : t)));
+
+  const writeUp = async () => {
+    setWriting(true);
+    try {
+      const r = await issueService.intake(machineId, said, photo);
+      setIntake(r);
+      setTitle(r.title); setDescription(r.description); setSeverity(r.severity);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not write it up", "error");
+    } finally {
+      setWriting(false);
+    }
+  };
+  const dup = intake?.duplicateOf ? intake.openIssues.find((o) => o._id === intake.duplicateOf) : null;
 
   const machines = useQuery({
     queryKey: ["machines", "all"],
@@ -146,7 +171,7 @@ function ReportIssueModal({ onClose }: { onClose: () => void }) {
   });
 
   const create = useMutation({
-    mutationFn: () => issueService.create({ machineId, title: title.trim(), description: description.trim(), severity }),
+    mutationFn: () => issueService.create({ machineId, title: title.trim(), description: description.trim(), severity, ...(intake?.aiSuggestion ? { aiSuggestion: intake.aiSuggestion } : {}) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["machine-issues"] });
       qc.invalidateQueries({ queryKey: ["machine-anomalies"] });
@@ -163,8 +188,41 @@ function ReportIssueModal({ onClose }: { onClose: () => void }) {
           placeholder="Select machine"
           options={(machines.data ?? []).map((m) => ({ value: m._id, label: `Machine ${m.ID}` }))}
           value={machineId}
-          onChange={setMachineId}
+          onChange={(v) => { setMachineId(v); setIntake(null); }}
         />
+        <div className="space-y-2 rounded-lg border border-ink-100 p-3">
+          <label htmlFor="issue-said" className="block text-sm font-medium text-ink-700">What is wrong — say it or type it</label>
+          <textarea id="issue-said" rows={3} value={said} onChange={(e) => setSaid(e.target.value)}
+            className="w-full rounded-lg border border-ink-200 bg-surface p-2 text-sm" placeholder="In Tamil or English, in your own words" />
+          <div className="flex flex-wrap items-center gap-2">
+            {speech.supported && (
+              <>
+                <select aria-label="Speaking in" value={lang} onChange={(e) => setLang(e.target.value as SpeechLang)} className="h-8 rounded-lg border border-ink-200 bg-surface px-2 text-sm">
+                  <option value="ta-IN">தமிழ்</option>
+                  <option value="en-IN">English</option>
+                </select>
+                {speech.listening
+                  ? <Button size="sm" variant="secondary" onClick={speech.stop}><MicOff className="h-4 w-4" /> Stop</Button>
+                  : <Button size="sm" variant="secondary" onClick={() => speech.start(lang)}><Mic className="h-4 w-4" /> Speak</Button>}
+              </>
+            )}
+            <input ref={photoRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" aria-label="Fault photo" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
+            <Button size="sm" variant="ghost" onClick={() => photoRef.current?.click()}><Camera className="h-4 w-4" /> {photo ? "Photo added" : "Photo"}</Button>
+            <Button size="sm" loading={writing} disabled={!machineId || (!said.trim() && !photo)} onClick={writeUp}><Sparkles className="h-4 w-4" /> Write it up</Button>
+          </div>
+          {speech.listening && <p className="text-xs text-status-danger">Listening… speak now.</p>}
+          {speech.error && <p className="text-xs text-status-warning">{speech.error}</p>}
+          {intake && <p className="text-xs text-ink-500">{intake.aiGenerated ? "Written up by AI from what was said — check it before reporting." : "Filled from what was said — check it before reporting."}</p>}
+        </div>
+        {dup && (
+          <div role="alert" className="rounded-lg bg-status-warningBg p-3 text-sm text-status-warning">
+            Looks like an issue already open on this machine: <span className="font-semibold">{dup.title}</span> ({dup.status.replace("_", " ")}). Report it only if it is a different fault.
+            <div className="mt-2"><Button size="sm" variant="secondary" onClick={onClose}>It is the same — don't report</Button></div>
+          </div>
+        )}
+        {!dup && intake && intake.openIssues.length > 0 && (
+          <p className="text-xs text-ink-500">Already open on this machine: {intake.openIssues.map((o) => o.title).join("; ")}</p>
+        )}
         <Input label="Title *" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Loom stops intermittently" />
         <Input label="Description *" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's happening" />
         <Select
@@ -283,7 +341,7 @@ export function MachineIssuesPage() {
 
       <div className="mb-4">
         <FilterChips
-          options={[{ value: "all", label: "All" }, ...STATUSES.map((s) => ({ value: s, label: s.replace("_", " ") }))]}
+          options={[{ value: "all", label: "All" }, ...STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] ?? s }))]}
           value={status}
           onChange={setStatus}
         />
@@ -337,9 +395,9 @@ export function MachineIssuesPage() {
                   )}
                 </div>
                 <StatusChip tone={statusTone[i.status] ?? "neutral"}>
-                  {i.status.replace("_", " ")}
+                  {STATUS_LABEL[i.status] ?? i.status}
                 </StatusChip>
-                {i.status !== "resolved" && i.status !== "dismissed" && (
+                {i.status !== "resolved" && i.status !== "rejected" && (
                   <Button size="sm" variant="secondary" onClick={() => setEditing(i)}>
                     Update
                   </Button>

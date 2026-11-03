@@ -156,13 +156,13 @@ export function CollectionsTab() {
                   <p className="text-xs text-ink-400">{[r.contact.name, r.contact.phone && <span key="p" className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{r.contact.phone}</span>, r.contact.accountant].filter(Boolean).map((x, i) => <span key={i} className="mr-2">{x}</span>)}</p>
                   <p className="text-xs">
                     {r.lastContact ? <span className="text-ink-500">Last: {r.lastContact.kind}{r.lastContact.channel ? ` (${r.lastContact.channel})` : ""} {formatDate(r.lastContact.at)}{r.lastContact.byName ? ` by ${r.lastContact.byName}` : ""}</span> : <span className="text-ink-400">Not contacted yet</span>}
-                    {r.next && !r.held && <span className={`ml-2 font-medium ${r.recentlyContacted ? "text-ink-400" : r.next.action === "call" ? "text-status-danger" : "text-status-warning"}`}>Next: {r.recentlyContacted ? "give them the week" : r.next.label}</span>}
+                    {r.next && !r.held && <span className={`ml-2 font-medium ${r.recentlyContacted ? "text-ink-400" : r.next.action !== "remind" ? "text-status-danger" : "text-status-warning"}`}>Next: {r.recentlyContacted ? "give them the week" : r.next.label}</span>}
                   </p>
                 </div>
                 <span className="tabular-nums font-semibold text-status-danger">₹{money(r.overdue)}</span>
                 <span className="flex flex-wrap gap-1">
                   <Button size="sm" variant={r.next?.action === "remind" && !r.recentlyContacted ? "primary" : "secondary"} onClick={() => setOpen({ entry: r, what: "remind" })}><MessageSquareText className="h-4 w-4" /> Remind</Button>
-                  <Button size="sm" variant={r.next?.action === "call" && !r.recentlyContacted ? "primary" : "secondary"} onClick={() => setOpen({ entry: r, what: "call" })}><PhoneCall className="h-4 w-4" /> Called</Button>
+                  <Button size="sm" variant={(r.next?.action === "call" || r.next?.action === "escalate") && !r.recentlyContacted ? "primary" : "secondary"} onClick={() => setOpen({ entry: r, what: "call" })}><PhoneCall className="h-4 w-4" /> Called</Button>
                   <Button size="sm" variant="secondary" onClick={() => setOpen({ entry: r, what: "promise" })}><Handshake className="h-4 w-4" /> Promised</Button>
                   <Button size="sm" variant="ghost" aria-label={`History with ${r.partyName}`} onClick={() => setOpen({ entry: r, what: "history" })}><History className="h-4 w-4" /></Button>
                 </span>

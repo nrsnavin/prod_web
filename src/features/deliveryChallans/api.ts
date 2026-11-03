@@ -9,7 +9,33 @@ import {
   DeliveryChallan,
 } from "./types";
 
+/** What a lorry receipt says, the transporter on file, and anything that does not fit this challan. */
+export interface LrScan {
+  read: {
+    problem: null | "not_an_lr" | "unreadable";
+    lrNumber: string; lrDate: string | null; vehicleNo: string; transporterName: string; transporterGstin: string;
+    consignee: string; destination: string; packages: number | null; weightKg: number | null; freight: number | null;
+    paidBy: "paid" | "to_pay" | null; confidence: number;
+  };
+  transporter: { _id: string; name: string; gstin?: string; gstRegistration?: "regular" | "composition" | "unregistered" } | null;
+  checks: string[];
+  aiSuggestion: string | null;
+}
+
 export const dcService = {
+  async scanLr(id: string, file: File): Promise<LrScan> {
+    const fd = new FormData();
+    fd.append("files", file);
+    const res = await fetch(`/api/v2/dc/${id}/lr/scan`, { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not read the receipt");
+    return body as LrScan;
+  },
+
+  saveTransport(id: string, body: { lrNumber?: string; vehicleNo?: string; transporter?: string; driverName?: string; aiSuggestion?: string }) {
+    return httpClient.post<{ success: boolean }>(`/dc/${id}/transport`, body);
+  },
+
   async list(params: {
     page?: number;
     limit?: number;

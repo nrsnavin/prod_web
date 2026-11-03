@@ -52,7 +52,8 @@ export function BillsTab() {
   const { data, isLoading } = useBills({ page, status, search });
   const location = useLocation();
   // "Cancel and re-enter" comes back here with the cancelled bill as a draft.
-  const reenter = (location.state as { reenter?: ScanDraft } | null)?.reenter;
+  const routeState = location.state as { reenter?: ScanDraft; title?: string } | null;
+  const reenter = routeState?.reenter;
   const [draft, setDraft] = useState<{ draft: ScanDraft; as: "bill" | "expense" } | null>(reenter ? { draft: reenter, as: "bill" } : null);
 
   return (
@@ -79,7 +80,7 @@ export function BillsTab() {
         <BillForm onDone={(id) => { setParams({}); navigate(`/accounts/bills/${id}`); }} onCancel={() => setParams({})} />
       </FormScreen>
       {scanOpen && !draft && <ScanBillDialog onClose={() => setParams({})} onUse={(d, as) => setDraft({ draft: d, as })} />}
-      <FormScreen open={draft?.as === "bill"} onClose={() => { setDraft(null); setParams({}); }} title={reenter && draft?.draft === reenter ? "Re-enter the bill" : "Supplier bill from the scan — check every figure"} width="max-w-5xl">
+      <FormScreen open={draft?.as === "bill"} onClose={() => { setDraft(null); setParams({}); }} title={reenter && draft?.draft === reenter ? (routeState?.title ?? "Re-enter the bill") : "Supplier bill from the scan — check every figure"} width="max-w-5xl">
         {draft?.as === "bill" && <BillForm key={draft.draft.aiSuggestion ?? "scan"} initialDraft={draft.draft} onDone={(id) => { setDraft(null); setParams({}); navigate(`/accounts/bills/${id}`); }} onCancel={() => { setDraft(null); setParams({}); }} />}
       </FormScreen>
       <FormScreen open={draft?.as === "expense"} onClose={() => { setDraft(null); setParams({}); }} title="Expense from the scan — check every figure" width="max-w-4xl">
@@ -103,8 +104,8 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
   const [poId, setPoId] = useState(initialPo ?? initialDraft?.purchaseOrder ?? "");
   const [pos, setPos] = useState<Array<{ _id: string; poNo: number; status: string }>>([]);
   const { data: poInfo } = useBillPoInfo(poId || undefined);
-  const [kind, setKind] = useState<"goods" | "service">("goods");
-  const [category, setCategory] = useState("");
+  const [kind, setKind] = useState<"goods" | "service">(initialDraft?.billKind ?? "goods");
+  const [category, setCategory] = useState(initialDraft?.category ?? "");
   const [supplierBillNo, setSupplierBillNo] = useState(initialDraft?.billNo ?? "");
   const [billDate, setBillDate] = useState(initialDraft?.billDate ?? today());
   const [dueDate, setDueDate] = useState("");
@@ -113,7 +114,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
   const [itcEligible, setItcEligible] = useState(true);
   const [tds, setTds] = useState<{ applicable: boolean; section: string; rate: number | "" }>({ applicable: false, section: "194C", rate: 2 });
   const [notes, setNotes] = useState("");
-  const [reverseCharge, setReverseCharge] = useState(false);
+  const [reverseCharge, setReverseCharge] = useState(!!initialDraft?.reverseCharge);
   // The three-way match: what the server found off the PO or the receipts.
   const [variance, setVariance] = useState<BillVariance | null>(null);
   const [varianceNote, setVarianceNote] = useState("");
