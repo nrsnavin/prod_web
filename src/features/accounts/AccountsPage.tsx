@@ -32,14 +32,14 @@ type Tab = { id: AccountsTab; label: string; icon: typeof FileText };
 
 // Four doors and an inbox: money coming in, money going out, the books,
 // and settings. The URL still names the tab, so old links keep working.
-const DOORS: Array<{ id: Door; label: string; icon: typeof FileText; tabs: Tab[] }> = [
+const DOORS: Array<{ id: Door; label: string; short?: string; icon: typeof FileText; tabs: Tab[] }> = [
   { id: "inbox", label: "Inbox", icon: Inbox, tabs: [{ id: "inbox", label: "Inbox", icon: Inbox }] },
-  { id: "in", label: "Money in", icon: ArrowDownLeft, tabs: [
+  { id: "in", label: "Money in", short: "In", icon: ArrowDownLeft, tabs: [
     { id: "collections", label: "Collections", icon: BellRing },
     { id: "vouchers", label: "Receipts & payments", icon: ArrowLeftRight },
     { id: "notes", label: "Credit / debit notes", icon: FileMinus },
   ] },
-  { id: "out", label: "Money out", icon: ArrowUpRight, tabs: [
+  { id: "out", label: "Money out", short: "Out", icon: ArrowUpRight, tabs: [
     { id: "bills", label: "Supplier bills", icon: FileText },
     { id: "expenses", label: "Expenses", icon: Wallet },
     { id: "recurring", label: "Recurring", icon: Repeat },
@@ -84,7 +84,7 @@ export function AccountsPage() {
           <button key={d.id} onClick={() => go(d.tabs[0].id)} aria-current={door.id === d.id ? "page" : undefined}
             className={cn("flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-xs font-semibold transition-colors sm:shrink-0 sm:flex-row sm:gap-2 sm:px-4 sm:text-sm",
               door.id === d.id ? "bg-brand-50 text-brand-700" : "text-ink-500 hover:bg-ink-50 hover:text-ink-800")}>
-            <d.icon className="h-4 w-4 shrink-0" /> <span className="max-w-full truncate">{d.label}</span>
+            <d.icon className="h-4 w-4 shrink-0" /> {d.short ? <><span className="max-w-full truncate sm:hidden">{d.short}</span><span className="hidden sm:inline">{d.label}</span></> : <span className="max-w-full truncate">{d.label}</span>}
           </button>
         ))}
       </nav>

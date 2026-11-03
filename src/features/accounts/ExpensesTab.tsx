@@ -68,8 +68,8 @@ export function ExpensesTab() {
   const canApprove = user?.role === "admin" || user?.role === "accounts";
 
   const columns: Column<Expense>[] = [
-    { key: "no", header: "Expense", render: (e) => <span className="font-medium">{e.expenseNo}</span> },
-    { key: "date", header: "Date", render: (e) => formatDate(e.date) },
+    // The date under the number: one column fewer keeps the actions on screen.
+    { key: "no", header: "Expense", render: (e) => <span><span className="font-medium">{e.expenseNo}</span><span className="block text-xs text-ink-400">{formatDate(e.date)}</span></span> },
     { key: "cat", header: "Head", render: (e) => e.categoryName, cellClassName: "whitespace-normal" },
     { key: "desc", header: "Description", render: (e) => <span>{e.description}{e.payeeName ? <span className="block text-xs text-ink-400">{e.payeeName}</span> : null}</span>, cellClassName: "whitespace-normal" },
     { key: "amount", header: "Amount (₹)", align: "right", render: (e) => money(e.totals?.grand) },
