@@ -584,6 +584,8 @@ export interface StoredStatementLine {
 // ── Statements by email ──
 export interface BankFeedMail {
   _id: string; from: string; subject: string; receivedAt: string | null;
+  /** A mail in the statements mailbox, or a file on the bank's SFTP server. */
+  channel?: "email" | "sftp";
   status: "imported" | "nothing_new" | "skipped" | "failed";
   accountName?: string; account?: string | null; statement?: string | null;
   lines?: number; newLines?: number; posted?: number; note?: string;
@@ -593,6 +595,8 @@ export interface BankFeedRun {
 }
 export interface BankFeedStatus {
   configured: boolean; mailbox: string; everyMin: number; senders: string[]; autoPost: boolean;
+  /** The bank's SFTP folder, when one is set up; hostKeySet false means nothing is read yet. */
+  sftp?: { host: string; dir: string; hostKeySet: boolean } | null;
   lastRunAt: string | null; lastResult: BankFeedRun | null; recent: BankFeedMail[];
 }
 export interface BookEntry { voucherType: "Payment" | "Contra"; _id: string; number: string; date: string; party: string; reference: string; direction: "in" | "out"; amount: number }

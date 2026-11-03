@@ -61,7 +61,7 @@ describe("statements by email", () => {
   it("says how to set the mailbox up until it is", async () => {
     feed = { configured: false, mailbox: "", everyMin: 0, senders: [], autoPost: false, lastRunAt: null, lastResult: null, recent: [] };
     wrap();
-    expect(await screen.findByText("Get statements by email instead of uploading them")).toBeInTheDocument();
+    expect(await screen.findByText("Get statements from the bank instead of uploading them")).toBeInTheDocument();
     expect(screen.getByText("CSV or Excel")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Check the mailbox now/ })).not.toBeInTheDocument();
   });
@@ -72,7 +72,7 @@ describe("statements by email", () => {
     wrap();
     expect(await screen.findByText(/statements@acme\.in · checked every 30 min/)).toBeInTheDocument();
     expect(screen.getByText("1 statement read · 4 new lines · 1 not read")).toBeInTheDocument();
-    const mails = screen.getByLabelText("Statement mails");
+    const mails = screen.getByLabelText("Statements received");
     expect(within(mails).getByText(/A PDF statement cannot be read/)).toBeInTheDocument();
     // Only an admin turns on posting without a person.
     expect(screen.getByRole("checkbox", { name: /Post lines it is sure of/ })).toBeDisabled();
@@ -90,6 +90,22 @@ describe("statements by email", () => {
     await userEvent.click(screen.getByRole("button", { name: /Post 1 ticked/ }));
     expect(postStatement).toHaveBeenCalledWith("a1", [expect.objectContaining({ index: 0, party: "c1", requestId: "st1:0:10500", allocations: [{ docType: "Invoice", doc: "i1", amount: 10500 }] })], "st1");
     expect(await screen.findByText("REC/2026-27/0009")).toBeInTheDocument();
+  });
+});
+
+describe("statements by SFTP", () => {
+  it("names the SFTP folder, warns until its key is set, and marks files apart from mails", async () => {
+    feed = {
+      ...configured(), mailbox: "", sftp: { host: "sftp.kotak.com", dir: "/out", hostKeySet: false },
+      lastResult: { trigger: "timer", at: "2026-10-02T04:00:00Z", checked: 0, imported: 0, nothingNew: 0, skipped: 0, failed: 0, newLines: 0, posted: 0, error: "SFTP: The SFTP server offered the key SHA256:abc. Check it with the bank, then set BANK_SFTP_HOST_KEY to it — nothing is read until then." },
+      recent: [{ _id: "f1", channel: "sftp", from: "sftp://sftp.kotak.com", subject: "KOTAK_20261001.sta", receivedAt: "2026-10-01T18:00:00Z", status: "imported", accountName: "Kotak CA, Kotak OD", account: "a1", statement: "st1", newLines: 2, posted: 0, note: "" }],
+    };
+    wrap();
+    expect(await screen.findByText(/sftp:\/\/sftp\.kotak\.com\/out · checked every 30 min/)).toBeInTheDocument();
+    expect(screen.getByText(/The SFTP server's key is not set yet/)).toBeInTheDocument();
+    expect(screen.getByText(/offered the key SHA256:abc/)).toBeInTheDocument();
+    expect(within(screen.getByLabelText("Statements received")).getByLabelText("SFTP file")).toBeInTheDocument();
+    expect(screen.getByText("KOTAK_20261001.sta")).toBeInTheDocument();
   });
 });
 

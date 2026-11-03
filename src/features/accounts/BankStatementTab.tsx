@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Upload, Check, EyeOff, Mail, RefreshCw } from "lucide-react";
+import { Upload, Check, EyeOff, Mail, RefreshCw, Server } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -64,9 +64,10 @@ function runSummary(r: BankFeedRun | null): string {
 }
 
 /**
- * Statements the bank emails on a schedule, read from a mailbox: when it
- * last looked, what each mail became, and a way in to match the lines.
- * Until the mailbox is set up it says how.
+ * Statements the bank sends on a schedule — mailed to a mailbox, or put
+ * on its SFTP server as MT940 — read by the server: when it last looked,
+ * what each mail or file became, and a way in to match the lines. Until
+ * one is set up it says how.
  */
 export function BankFeedCard({ onOpen }: { onOpen: (account: string, statement: string) => void }) {
   const { toast } = useToast();
@@ -82,13 +83,16 @@ export function BankFeedCard({ onOpen }: { onOpen: (account: string, statement: 
     return (
       <Card className="p-5">
         <details>
-          <summary className="flex cursor-pointer items-center gap-2 font-semibold"><Mail className="h-4 w-4" /> Get statements by email instead of uploading them</summary>
+          <summary className="flex cursor-pointer items-center gap-2 font-semibold"><Mail className="h-4 w-4" /> Get statements from the bank instead of uploading them</summary>
+          <p className="mt-3 text-sm font-medium">By email</p>
           <ol className="mt-3 max-w-2xl list-decimal space-y-1.5 pl-5 text-sm text-ink-600">
             <li>Make a mailbox only for statements, e.g. statements@yourcompany.com, and turn on IMAP for it (Gmail and Google Workspace need an app password).</li>
             <li>In the bank's corporate net banking, schedule the account statement daily (or hourly, where the bank offers it) as <strong>CSV or Excel</strong>, mailed to that mailbox. A PDF statement cannot be read.</li>
             <li>Ask whoever runs the server to set BANK_FEED_IMAP_HOST, BANK_FEED_IMAP_USER, BANK_FEED_IMAP_PASS and BANK_FEED_SENDERS (the bank's sending address or @domain).</li>
             <li>Make sure each bank account here has its account number, or fill in "Statements come from" under Settings → Accounts.</li>
           </ol>
+          <p className="mt-3 text-sm font-medium">Or by SFTP (MT940)</p>
+          <p className="mt-1 max-w-2xl text-sm text-ink-600">If the bank's cash-management desk puts the day's statement on an SFTP server, ask whoever runs the server to set BANK_SFTP_HOST, BANK_SFTP_USER, BANK_SFTP_PASS (or a key) and BANK_SFTP_DIR. The first check reports the server's key; once it is confirmed with the bank and set as BANK_SFTP_HOST_KEY, files are read. MT940 names its account, so each line lands in the right one.</p>
           <p className="mt-2 text-xs text-ink-400">New lines then appear here on their own. Lines already in the books are marked cleared; the rest wait for you to confirm, just as with an upload.</p>
         </details>
       </Card>
@@ -122,20 +126,22 @@ export function BankFeedCard({ onOpen }: { onOpen: (account: string, statement: 
     <Card className="p-5">
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="flex items-center gap-2 font-semibold"><Mail className="h-4 w-4" /> Statements by email</h3>
-          <p className="text-sm text-ink-500">{data.mailbox} · {data.everyMin ? `checked every ${data.everyMin} min` : "checked when asked"} · last {when(data.lastRunAt)}</p>
+          <h3 className="flex items-center gap-2 font-semibold"><Mail className="h-4 w-4" /> Statements from the bank</h3>
+          <p className="text-sm text-ink-500">{[data.mailbox, data.sftp && `sftp://${data.sftp.host}${data.sftp.dir === "/" ? "" : data.sftp.dir}`].filter(Boolean).join(" and ")} · {data.everyMin ? `checked every ${data.everyMin} min` : "checked when asked"} · last {when(data.lastRunAt)}</p>
+          {data.sftp && !data.sftp.hostKeySet && <p className="text-sm text-status-warning">The SFTP server's key is not set yet, so no file is read. The last check shows the key it offered: confirm it with the bank, then set BANK_SFTP_HOST_KEY.</p>}
           <p className={`text-sm ${data.lastResult?.error ? "text-status-danger" : "text-ink-500"}`}>{runSummary(data.lastResult)}</p>
         </div>
         <Button size="sm" variant="secondary" onClick={check} loading={busy}><RefreshCw className="h-4 w-4" /> Check the mailbox now</Button>
       </div>
       <label className="mt-3 flex items-start gap-2 text-sm">
         <input type="checkbox" className="mt-0.5" checked={data.autoPost} disabled={!isAdmin} onChange={(e) => setAuto(e.target.checked)} />
-        <span>Post lines it is sure of without a person<span className="block text-xs text-ink-400">Only a line naming the invoice or bill with the amount exact, and only from the bank's own signed mail{data.senders.length ? ` (${data.senders.join(", ")})` : ""}.{!isAdmin ? " An admin can change this." : ""}</span></span>
+        <span>Post lines it is sure of without a person<span className="block text-xs text-ink-400">Only a line naming the invoice or bill with the amount exact, and only from the bank's own signed mail{data.senders.length ? ` (${data.senders.join(", ")})` : ""} or its SFTP server.{!isAdmin ? " An admin can change this." : ""}</span></span>
       </label>
       {data.recent.length > 0 && (
-        <ul className="mt-3 divide-y divide-ink-100 text-sm" aria-label="Statement mails">
+        <ul className="mt-3 divide-y divide-ink-100 text-sm" aria-label="Statements received">
           {mails.map((m) => (
             <li key={m._id} className="flex flex-wrap items-center gap-2 py-2">
+              {m.channel === "sftp" ? <Server className="h-4 w-4 shrink-0 text-ink-400" aria-label="SFTP file" /> : <Mail className="h-4 w-4 shrink-0 text-ink-400" aria-label="Mail" />}
               <StatusChip tone={MAIL_TONE[m.status]}>{MAIL_LABEL[m.status]}</StatusChip>
               <span className="min-w-0 flex-1">
                 <span className="block truncate" title={m.subject}>{m.subject || "(no subject)"}</span>
@@ -269,8 +275,8 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
     <>
       <Card className="p-5">
         <div className="flex flex-wrap items-end gap-3">
-          <input ref={ref} type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" aria-label="Bank statement file" onChange={(e) => upload(e.target.files?.[0])} />
-          <Button onClick={() => ref.current?.click()} disabled={!account} loading={busy}><Upload className="h-4 w-4" /> Upload statement (CSV / Excel)</Button>
+          <input ref={ref} type="file" accept=".csv,.xlsx,.xls,.sta,.mt940,.940,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" aria-label="Bank statement file" onChange={(e) => upload(e.target.files?.[0])} />
+          <Button onClick={() => ref.current?.click()} disabled={!account} loading={busy}><Upload className="h-4 w-4" /> Upload statement (CSV / Excel / MT940)</Button>
           <p className="text-xs text-ink-400">Export the statement from the bank's site. Lines already in the books are recognised and marked cleared; the rest are matched to open invoices and bills for you to confirm.</p>
           {statement && result && <StatusChip tone="info">Opened from the stored statement</StatusChip>}
         </div>
