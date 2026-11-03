@@ -1,6 +1,8 @@
 export interface Supplier {
   _id: string;
   name: string;
+  /** The ledger's name in Tally when it differs from `name`. */
+  tallyName?: string;
   gstin?: string;
   phoneNumber?: string;
   email?: string;
@@ -23,6 +25,8 @@ export interface Supplier {
 }
 
 export interface SupplierFormValues {
+  /** The ledger's name in Tally when it differs from `name`. */
+  tallyName?: string;
   /** Set when the form was filled from a card: the AI ledger row the save settles. */
   aiSuggestion?: string;
   gstRegistration?: "regular" | "composition" | "unregistered";

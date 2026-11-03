@@ -4,7 +4,7 @@ import type {
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
   AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow,
-  Reconciliation, StoredStatement, StoredStatementLine, TallyBatch, TallyPreview,
+  Reconciliation, StoredStatement, StoredStatementLine, TallyBatch, TallyPreview, TallyConnectorStatus, TallyReconcile, BooksHealth,
   AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense,
 } from "./types";
 
@@ -98,10 +98,18 @@ export const accountsService = {
 
   // ── Tally ──
   tallyPreview: (range: { from: string; to: string }) => httpClient.get<TallyPreview & { success: boolean }>("/accounts/tally/preview", range),
-  tallyExport: async (body: { from: string; to: string; lock?: boolean; masters?: boolean }) =>
+  tallyExport: async (body: { from: string; to: string; lock?: boolean; masters?: boolean; via?: "file" | "connector" }) =>
     (await httpClient.post<{ success: boolean; batch: TallyBatch }>("/accounts/tally/export", body)).batch,
   tallyBatches: async () => (await httpClient.get<{ success: boolean; batches: TallyBatch[] }>("/accounts/tally/batches")).batches,
   tallyXml: (id: string) => httpClient.getBlob(`/accounts/tally/batches/${id}/xml`),
+  tallyRequeue: (id: string) => httpClient.post<{ success: boolean }>(`/accounts/tally/batches/${id}/requeue`, {}),
+  tallyConnector: async () => (await httpClient.get<{ success: boolean; connector: TallyConnectorStatus }>("/accounts/tally/connector")).connector,
+  tallyConnectorKey: async () => (await httpClient.post<{ success: boolean; key: string; connector: TallyConnectorStatus }>("/accounts/tally/connector/key", {})),
+  tallyConnectorRevoke: () => httpClient.delete<{ success: boolean }>("/accounts/tally/connector/key"),
+  tallyConnectorScript: () => httpClient.getBlob("/accounts/tally/connector/script"),
+  tallyReconcile: async () => (await httpClient.get<{ success: boolean } & TallyReconcile>("/accounts/tally/reconcile")),
+  booksHealth: async () => (await httpClient.get<{ success: boolean } & BooksHealth>("/accounts/health")),
+  booksRepair: (key: "repair" | "rebuild") => httpClient.post<{ success: boolean; fixed?: number; rows?: number }>(`/accounts/health/${key}`, {}),
   collections: (held = false) => httpClient.get<{ success: boolean; rows: CollectionEntry[]; total: number; whatsapp: boolean }>("/accounts/collections", held ? { held: "true" } : undefined),
   draftReminder: (customer: string, tone: "gentle" | "firm" = "gentle") =>
     httpClient.post<{ success: boolean; message: string; byModel: boolean; to: string; entry: CollectionEntry }>("/accounts/collections/draft", { customer, tone }),

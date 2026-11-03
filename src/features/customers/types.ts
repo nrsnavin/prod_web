@@ -1,4 +1,6 @@
 export interface Customer {
+  /** The ledger's name in Tally when it differs from `name`. */
+  tallyName?: string;
   /**
    * Mongoose's document version. Sent back as `expectedVersion` when this
    * record is saved, so a save made from a stale screen is refused (409,
@@ -32,6 +34,8 @@ export interface Customer {
 }
 
 export interface CustomerFormValues {
+  /** The ledger's name in Tally when it differs from `name`. */
+  tallyName?: string;
   /** Set when the form was filled from a card: the AI ledger row the save settles. */
   aiSuggestion?: string;
   name: string;

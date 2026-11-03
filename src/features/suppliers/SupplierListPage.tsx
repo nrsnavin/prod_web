@@ -23,6 +23,7 @@ import { CardFillButton, GstinHint, SimilarParties, type SimilarParty } from "@/
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
+  tallyName: z.string().max(120).optional(),
   phoneNumber: z.string().optional(),
   gstin: z.string().optional(),
   email: z.string().email("Enter a valid email").optional().or(z.literal("")),
@@ -61,6 +62,7 @@ function SupplierForm({
     resolver: zodResolver(schema),
     defaultValues: {
       name: initial?.name ?? "",
+      tallyName: initial?.tallyName ?? "",
       phoneNumber: initial?.phoneNumber ?? "",
       gstin: initial?.gstin ?? "",
       email: initial?.email ?? "",
@@ -90,6 +92,7 @@ function SupplierForm({
         }} />
       )}
       <Input label="Supplier name *" error={errors.name?.message} {...register("name")} />
+      <Input label="Name in Tally (if different)" placeholder="Exactly as the ledger is named in Tally" {...register("tallyName")} />
       <div className="grid grid-cols-2 gap-3">
         <Input label="Contact person" {...register("contactPerson")} />
         <Input label="Phone" {...register("phoneNumber")} />

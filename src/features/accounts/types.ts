@@ -599,7 +599,24 @@ export interface TallyPreview {
   warnings?: string[];
   sample: Array<{ type: string; number: string; date: string; party: string; lines: Array<{ ledger: string; debit: number; credit: number }> }>;
 }
-export interface TallyBatch { _id: string; batchNo: number; from: string; to: string; counts: Record<string, number>; vouchers: number; ledgers: string[]; lockedUpTo: string | null; byName: string; createdAt: string }
+export interface TallyDelivery {
+  via: "file" | "connector";
+  /** file: downloaded; connector: queued → sending → sent | partial | failed */
+  status: "file" | "queued" | "sending" | "sent" | "partial" | "failed";
+  sent?: number; failed?: number; attempts?: number; finishedAt?: string;
+  errors?: Array<{ key: string; number: string; error: string }>;
+}
+export interface TallyBatch { _id: string; batchNo: number; from: string; to: string; counts: Record<string, number>; vouchers: number; cancels?: number; ledgers: string[]; lockedUpTo: string | null; byName: string; createdAt: string; delivery?: TallyDelivery }
+export interface TallyConnectorStatus { configured: boolean; keyHint?: string; createdAt?: string; lastSeenAt?: string | null; online: boolean; tallyOk?: boolean; version?: string }
+export interface TallyReconcile {
+  snapshot: null | { at: string; company: string; count: number };
+  parties: Array<{ partyType: "customer" | "supplier"; party: string; name: string; tallyName: string; inTally: boolean; app: number; appSent: number; tally: number | null; difference: number | null; unsent: number }>;
+  banks: Array<{ account: string; name: string; tallyName: string; inTally: boolean; app: number; tally: number | null; difference: number | null; unsent: number }>;
+  missing: Array<{ ledger: string; near: string[] }>;
+  onlyInTally: Array<{ name: string; parent: string; closing: number }>;
+}
+export interface HealthCheck { key: string; label: string; severity: "critical" | "warning"; explain: string; fix: "repair" | "rebuild" | null; ok: boolean; count: number; rows: Array<Record<string, unknown>>; error?: string | null }
+export interface BooksHealth { ranAt: string; checks: HealthCheck[] }
 
 // ── Inbox and insights ──
 export interface Flag { code: string; severity: "danger" | "warning" | "info"; message: string }

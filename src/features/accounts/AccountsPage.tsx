@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Inbox, ArrowDownLeft, ArrowUpRight, BookOpen, Settings2,
-  FileText, Wallet, ArrowLeftRight, FileMinus, BarChart3, Landmark, BellRing, History, Send, LineChart, ListChecks, Repeat, LayoutDashboard,
+  FileText, Wallet, ArrowLeftRight, FileMinus, BarChart3, Landmark, BellRing, History, Send, LineChart, ListChecks, Repeat, LayoutDashboard, ShieldCheck,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/components/ui/cn";
@@ -22,10 +22,11 @@ import { TallyTab } from "./TallyTab";
 import { ForecastTab } from "./ForecastTab";
 import { CloseTab } from "./CloseTab";
 import { RecurringTab } from "./RecurringTab";
+import { ChecksTab } from "./ChecksTab";
 
 export type AccountsTab =
   | "inbox" | "overview" | "collections" | "vouchers" | "notes" | "bills" | "expenses" | "recurring"
-  | "bank" | "statements" | "reports" | "forecast" | "close" | "opening" | "tally" | "settings";
+  | "bank" | "statements" | "reports" | "forecast" | "close" | "opening" | "tally" | "checks" | "settings";
 
 type Door = "inbox" | "in" | "out" | "books" | "settings";
 type Tab = { id: AccountsTab; label: string; icon: typeof FileText };
@@ -53,6 +54,7 @@ const DOORS: Array<{ id: Door; label: string; short?: string; icon: typeof FileT
     { id: "close", label: "Month end", icon: ListChecks },
     { id: "opening", label: "Opening balances", icon: History },
     { id: "tally", label: "To Tally", icon: Send },
+    { id: "checks", label: "Checks", icon: ShieldCheck },
   ] },
   { id: "settings", label: "Settings", icon: Settings2, tabs: [{ id: "settings", label: "Settings", icon: Settings2 }] },
 ];
@@ -114,6 +116,7 @@ export function AccountsPage() {
       {tab === "close" && <CloseTab />}
       {tab === "opening" && <OpeningTab />}
       {tab === "tally" && <TallyTab />}
+      {tab === "checks" && <ChecksTab />}
       {tab === "settings" && <SettingsTab />}
     </>
   );

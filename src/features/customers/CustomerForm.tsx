@@ -10,6 +10,7 @@ import { gstinInfo } from "@/features/parties/gstin";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
+  tallyName: z.string().max(120).optional(),
   contactName: z.string().optional(),
   phoneNumber: z
     .string()
@@ -60,6 +61,7 @@ export function CustomerForm({
     resolver: zodResolver(schema),
     defaultValues: {
       name: initial?.name ?? "",
+      tallyName: initial?.tallyName ?? "",
       contactName: initial?.contactName ?? "",
       phoneNumber: initial?.phoneNumber ?? "",
       email: initial?.email ?? "",
@@ -99,6 +101,7 @@ export function CustomerForm({
         }} />
       )}
       <Input label="Company name *" error={errors.name?.message} {...register("name")} />
+      <Input label="Name in Tally (if different)" placeholder="Exactly as the ledger is named in Tally" hint="Every voucher sent to Tally goes to this ledger, so renaming here never opens a second one there." {...register("tallyName")} />
       <div className="grid grid-cols-2 gap-3">
         <Input label="Contact person" {...register("contactName")} />
         <Input
