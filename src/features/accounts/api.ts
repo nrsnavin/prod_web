@@ -5,7 +5,7 @@ import type {
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
   AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow,
   Reconciliation, StoredStatement, StoredStatementFull, BankFeedStatus, BankFeedRun, TallyBatch, TallyPreview, TallyConnectorStatus, TallyReconcile, BooksHealth,
-  AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense,
+  AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense, GroupSummary,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -163,8 +163,14 @@ export const accountsService = {
   // ── Documents for the other side ──
   notePdfUrl: (id: string) => `/api/v2/accounts/notes/${id}/pdf`,
   paymentPdfUrl: (id: string) => `/api/v2/accounts/payments/${id}/pdf`,
-  statementPdfUrl: (partyType: "customer" | "supplier", party: string, range: { from?: string; to?: string } = {}) =>
-    `/api/v2/accounts/statement/pdf?${new URLSearchParams(clean({ partyType, party, ...range }) as Record<string, string>).toString()}`,
+  statementPdfUrl: (partyType: "customer" | "supplier", party: string, range: { from?: string; to?: string } = {}, detailed = false) =>
+    `/api/v2/accounts/statement/pdf?${new URLSearchParams(clean({ partyType, party, ...range, detailed: detailed ? "1" : undefined }) as Record<string, string>).toString()}`,
+  statementXlsxUrl: (partyType: "customer" | "supplier", party: string, range: { from?: string; to?: string } = {}) =>
+    `/api/v2/accounts/statement/xlsx?${new URLSearchParams(clean({ partyType, party, ...range }) as Record<string, string>).toString()}`,
+  ledgerSummary: (partyType: "customer" | "supplier", range: { from?: string; to?: string } = {}) =>
+    httpClient.get<GroupSummary & { success: boolean }>("/accounts/ledger/summary", clean({ partyType, ...range })),
+  ledgerSummaryXlsxUrl: (partyType: "customer" | "supplier", range: { from?: string; to?: string } = {}) =>
+    `/api/v2/accounts/ledger/summary?${new URLSearchParams(clean({ partyType, ...range, format: "xlsx" }) as Record<string, string>).toString()}`,
   noteEinvoiceJson: (id: string) => httpClient.getBlob(`/accounts/notes/${id}/einvoice.json`),
   registerNoteIrn: (id: string) => httpClient.post<{ success: boolean; note: AccountNote }>(`/accounts/notes/${id}/register-irn`, {}),
   pasteNoteIrn: (id: string, body: { irn: string; ackNo?: string; ackDate?: string; signedQr?: string }) =>

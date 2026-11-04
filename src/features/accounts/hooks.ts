@@ -26,6 +26,8 @@ export const useOpenDocs = (partyType?: "customer" | "supplier", party?: string)
 
 export const useStatement = (partyType?: "customer" | "supplier", party?: string, range: { from?: string; to?: string } = {}) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "statement", partyType, party, range], queryFn: () => accountsService.statement(partyType!, party!, range), enabled: !!partyType && !!party });
+export const useLedgerSummary = (partyType: "customer" | "supplier", range: { from?: string; to?: string } = {}) =>
+  useQuery({ queryKey: [ACCOUNTS_KEY, "ledger-summary", partyType, range], queryFn: () => accountsService.ledgerSummary(partyType, range) });
 export const useOutstanding = (type: "receivable" | "payable", party?: string) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "outstanding", type, party], queryFn: () => accountsService.outstanding(type, party) });
 

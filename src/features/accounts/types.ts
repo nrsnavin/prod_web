@@ -353,14 +353,36 @@ export interface LedgerRow {
   credit: number;
   narration?: string;
   balance: number;
+  /** Tally's columns: the other side of the entry ("To Sales", "By Kotak Bank") and the voucher type. */
+  toBy?: "To" | "By";
+  particulars?: string;
+  vchType?: string;
+  /** The party's own reference: their PO, the supplier's invoice number, the UTR or cheque. */
+  partyRef?: string;
+  /** Tally's detailed view: the voucher's other ledgers … */
+  lines?: Array<{ ledger: string; amount: number }>;
+  /** … and bill by bill what it settled or left on account. */
+  refs?: Array<{ type: string; name: string; amount: number }>;
+  balanceSide?: Side;
 }
+export type Side = "Dr" | "Cr" | "";
 export interface Statement {
   party: { _id: string; name: string; gstin?: string };
   partyType: "customer" | "supplier";
   opening: number;
+  openingSide?: Side;
   rows: LedgerRow[];
+  totals?: { debit: number; credit: number };
   closing: number;
+  closingSide?: Side;
   open: OutstandingTotals;
+}
+/** Tally's group summary: Sundry Debtors or Sundry Creditors, party by party. */
+export interface GroupSummary {
+  partyType: "customer" | "supplier";
+  group: string;
+  rows: Array<{ party: string; partyName: string; gstin: string; opening: number; openingSide: Side; debit: number; credit: number; closing: number; closingSide: Side }>;
+  totals: { opening: number; openingSide: Side; debit: number; credit: number; closing: number; closingSide: Side };
 }
 
 /** A party's open documents, with what it paid (or was paid) ahead beside them. */
