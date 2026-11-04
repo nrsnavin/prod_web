@@ -22,6 +22,8 @@ export interface Supplier {
   gstRegistration?: "regular" | "composition" | "unregistered";
   /** Days after the bill date its bills fall due. */
   paymentTermsDays?: number;
+  /** MSME (Udyam) status: a micro or small enterprise must be paid within 15 days, or the days agreed (≤45). */
+  msme?: { category?: "" | "micro" | "small" | "medium"; udyam?: string; agreedDays?: number };
 }
 
 export interface SupplierFormValues {
@@ -31,6 +33,7 @@ export interface SupplierFormValues {
   aiSuggestion?: string;
   gstRegistration?: "regular" | "composition" | "unregistered";
   paymentTermsDays?: number;
+  msme?: { category?: "" | "micro" | "small" | "medium"; udyam?: string; agreedDays?: number };
   name: string;
   phoneNumber?: string;
   gstin?: string;

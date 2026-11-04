@@ -16,7 +16,7 @@ import type { LedgerRow, Side } from "./types";
 
 const docPath = (r: LedgerRow) =>
   r.docType === "Invoice" ? `/invoices/${r.doc}` : r.docType === "SupplierBill" ? `/accounts/bills/${r.doc}` : r.docType === "Expense" ? `/accounts/expenses/${r.doc}`
-    : r.docType === "AccountNote" ? `/accounts/notes/${r.doc}` : r.docType === "OpeningBalance" ? "/accounts/opening" : `/accounts/payments/${r.doc}`;
+    : r.docType === "AccountNote" ? `/accounts/notes/${r.doc}` : r.docType === "OpeningBalance" ? "/accounts/opening" : r.docType === "Journal" ? `/accounts/vouchers?journal=${r.source ?? ""}` : `/accounts/payments/${r.doc}`;
 
 /** An amount with its side, the way a ledger prints a balance: 10,500.00 Dr. */
 const withSide = (amount: number, side?: Side) => `${money(Math.abs(amount))}${side ? ` ${side}` : ""}`;

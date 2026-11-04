@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, CheckCircle2, ClipboardCheck, HandCoins, Landmark, PhoneCall, Scale } from "lucide-react";
+import { CalendarClock, CheckCircle2, ClipboardCheck, HandCoins, Landmark, PhoneCall, Scale, Timer } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -75,6 +75,15 @@ export function InboxTab() {
           <Box icon={HandCoins} title="Claims to pay back" count={data.claimsToPay.count} amount={data.claimsToPay.amount} to="/accounts/expenses" empty="No approved claim is waiting">
             <ul className="space-y-2">{data.claimsToPay.top.map((e) => <Row key={e._id} to={`/accounts/expenses/${e._id}`} name={e.payeeName || e.description} meta={e.payeeName ? e.description : undefined} right={`₹${money(e.totals.grand - (e.paidAmount ?? 0))}`} />)}</ul>
           </Box>
+          {data.msmeDue && (
+            <Box icon={Timer} title="MSME bills: 45-day limit" count={data.msmeDue.count} amount={data.msmeDue.amount} to="/accounts/statutory" empty="Every micro and small supplier is within the limit"
+              badge={data.msmeDue.overdue ? <StatusChip tone="danger" className="mt-1">{data.msmeDue.overdue} past the limit</StatusChip> : null}>
+              <ul className="space-y-2">{data.msmeDue.top.map((b) => (
+                <Row key={b.id} to={b.docType === "SupplierBill" ? `/accounts/bills/${b.id}` : `/accounts/expenses/${b.id}`} name={b.partyName} right={`₹${money(b.outstanding)}`}
+                  meta={<>{b.docNo} · {b.daysLeft < 0 ? <span className="text-status-danger">{-b.daysLeft}d past the limit</span> : `pay by ${formatDate(b.dueDate)}`}</>} />
+              ))}</ul>
+            </Box>
+          )}
           <Box icon={Scale} title="Bills off their PO" count={data.variances.count} to="/accounts/bills" empty="Every recent bill matches its PO">
             <ul className="space-y-2">{data.variances.top.map((b) => <Row key={b._id} to={`/accounts/bills/${b._id}`} name={b.supplierName} meta={`${b.billNo} · ${formatDate(b.billDate)}`} right={<StatusChip tone="warning">₹{money(b.variance.total)}</StatusChip>} />)}</ul>
           </Box>

@@ -37,6 +37,11 @@ const schema = z.object({
   packSize: z.coerce.number().min(0).optional(),
   gstRegistration: z.enum(["regular", "composition", "unregistered"]).optional(),
   paymentTermsDays: z.coerce.number().min(0).max(365).optional(),
+  msme: z.object({
+    category: z.enum(["", "micro", "small", "medium"]).optional(),
+    udyam: z.string().optional(),
+    agreedDays: z.coerce.number().min(0).max(45).optional(),
+  }).optional(),
 });
 
 function SupplierForm({
@@ -73,6 +78,7 @@ function SupplierForm({
       packSize: initial?.packSize ?? 0,
       gstRegistration: initial?.gstRegistration ?? "regular",
       paymentTermsDays: initial?.paymentTermsDays ?? 30,
+      msme: { category: initial?.msme?.category ?? "", udyam: initial?.msme?.udyam ?? "", agreedDays: initial?.msme?.agreedDays ?? 0 },
     },
   });
   const [name, gstin, phone] = watch(["name", "gstin", "phoneNumber"]);
@@ -117,6 +123,24 @@ function SupplierForm({
         </label>
         <Input label="Bills fall due after (days)" type="number" min={0} {...register("paymentTermsDays")} />
       </div>
+
+      <fieldset className="rounded-md border border-ink-200 p-3">
+        <legend className="px-1 text-xs font-medium text-ink-500">MSME (Udyam) status</legend>
+        <p className="mb-3 text-xs text-ink-400">A micro or small enterprise must be paid within 15 days of its bill, or the days agreed in writing (at most 45). Unpaid past that at year end, the expense is disallowed (s.43B(h)).</p>
+        <div className="grid grid-cols-3 gap-3">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-ink-700">Category</span>
+            <select className="rounded-lg border border-ink-200 px-3 py-2" {...register("msme.category")}>
+              <option value="">Not an MSME / not known</option>
+              <option value="micro">Micro</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+            </select>
+          </label>
+          <Input label="Udyam number" placeholder="UDYAM-TN-28-0001234" {...register("msme.udyam")} />
+          <Input label="Agreed days (≤45)" type="number" min={0} max={45} {...register("msme.agreedDays")} />
+        </div>
+      </fieldset>
 
       <fieldset className="rounded-md border border-ink-200 p-3">
         <legend className="px-1 text-xs font-medium text-ink-500">Replenishment terms</legend>

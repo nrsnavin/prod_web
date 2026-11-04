@@ -100,6 +100,10 @@ export interface SupplierBill {
   lines?: TaxLine[];
   totals: InvoiceTotals;
   itc: { eligible: boolean; amount: number };
+  /** What GSTR-2B says about this bill, once the month's 2B is uploaded. */
+  gstr2b?: { status: "" | "matched" | "mismatch" | "missing"; period?: string; diff?: number; note?: string; at?: string };
+  /** Credit reversed under Rule 37 (unpaid 180 days) and re-claimed when paid. */
+  itcReversal?: { amount?: number; period?: string; at?: string; reclaimAmount?: number; reclaimPeriod?: string; reclaimAt?: string };
   tds: { applicable: boolean; section?: string; rate?: number };
   paidAmount: number;
   tdsAmount: number;
@@ -346,8 +350,10 @@ export interface OutstandingResult {
 export interface LedgerRow {
   _id: string;
   date: string;
-  docType: "Invoice" | "SupplierBill" | "Expense" | "AccountNote" | "Payment" | "OpeningBalance";
+  docType: "Invoice" | "SupplierBill" | "Expense" | "AccountNote" | "Payment" | "OpeningBalance" | "Journal";
   doc: string;
+  /** For a journal row: the journal itself (doc is the line's own id). */
+  source?: string;
   docNo: string;
   debit: number;
   credit: number;
@@ -412,6 +418,8 @@ export interface GstReport {
   input: { purchases: GstRateRow[]; debitNotes: GstRateRow[]; expenses: GstRateRow[] };
   totals: {
     output: GstRateRow; creditNotes: GstRateRow; purchases: GstRateRow; debitNotes: GstRateRow; expenses: GstRateRow;
+    /** Rule 37: credit reversed on bills unpaid 180 days, and re-claimed once paid. */
+    rule37?: { reversed: { cgst: number; sgst: number; igst: number; total: number }; reclaimed: { cgst: number; sgst: number; igst: number; total: number } };
     netOutput: { cgst: number; sgst: number; igst: number };
     netInput: { cgst: number; sgst: number; igst: number };
     payable: { cgst: number; sgst: number; igst: number };
@@ -586,6 +594,76 @@ export interface AccountsSettings {
   lockedAt?: string;
   tally: Record<TallyLedgerKey, string>;
   bills: { rateVariancePercent: number };
+  /** HSN digits GSTR-1 must carry: 4 up to ₹5 crore turnover, 6 above. */
+  gst?: { hsnDigits: 4 | 6 | 8 };
+  /** A journal above this needs an admin to post it; 0 = anyone in accounts. */
+  journals?: { approvalAbove: number };
+}
+
+// ── Statutory ──
+export interface MsmeDue {
+  docType: "SupplierBill" | "Expense"; id: string; docNo: string; refNo: string; date: string; amount: number; outstanding: number;
+  party: string; partyName: string; category: "micro" | "small"; udyam: string; days: number; dueDate: string; daysLeft: number; state: "ok" | "dueSoon" | "overdue";
+}
+export interface MsmeDues { rows: MsmeDue[]; totals: { count: number; outstanding: number; overdue: number; overdueCount: number; dueSoon: number }; suppliers: number }
+export interface MsmeYearEnd {
+  fy: string; from?: string; to?: string;
+  rows: Array<{ id: string; docNo: string; refNo: string; party: string; partyName: string; category: string; date: string; dueDate: string; amount: number; paidByDue: number; paidLate: number; disallowed: number; lastPaid: string | null; status: "allowed" | "late" | "disallowed" }>;
+  totals: { allowed: number; late: number; disallowed: number; count?: number; disallowedCount?: number };
+}
+export interface Gstr2bRow {
+  _id: string; kind: "invoice" | "creditNote" | "debitNote"; supplierGstin: string; supplierName: string; number: string; date: string | null; value: number; taxable: number; tax: number; cgst: number; sgst: number; igst: number; itcAvailable: boolean; reason: string;
+  match: { status: "matched" | "mismatch" | "notInBooks"; docType?: string; doc?: string; docNo?: string; diff?: number; by?: string };
+}
+export interface Gstr2bSummary {
+  period: string; uploaded: boolean; uploadedAt: string | null;
+  counts: { entries: number; matched: number; mismatch: number; notInBooks: number; missing: number };
+  itc: { matched: number; mismatch: number; notInBooks: number; missing: number; unavailable: number };
+  rows: Gstr2bRow[];
+  missing: Array<{ _id: string; billNo: string; supplierBillNo: string; supplierName: string; supplierGstin: string; billDate: string; tax: number; grand: number; note: string }>;
+  periods?: Array<{ period: string; entries: number; uploadedAt: string }>;
+}
+export interface ItcReversalMonth {
+  month: string;
+  toReverse: Array<{ _id: string; billNo: string; supplierBillNo: string; supplierName: string; billDate: string; day180: string; overdueDays: number; grand: number; outstanding: number; itc: number; reverse: number; inMonth: boolean }>;
+  toReclaim: Array<{ _id: string; billNo: string; supplierBillNo: string; supplierName: string; billDate: string; reversed: number; reversedPeriod: string; outstanding: number; reclaim: number; fully: boolean }>;
+  totals: { reverse: number; reclaim: number; reversed: number; reclaimed: number };
+  done: { reversed: Array<{ _id: string; billNo: string; supplierName: string; amount: number; at: string }>; reclaimed: Array<{ _id: string; billNo: string; supplierName: string; amount: number; at: string }> };
+}
+export interface Gstr1Item { num: number; itm_det: { rt: number; txval: number; iamt: number; camt: number; samt: number; csamt: number } }
+export interface Gstr1Invoice { inum: string; idt: string; val: number; pos: string; itms: Gstr1Item[]; customer?: string; irn?: string }
+export interface Gstr1Note { nt_num: string; nt_dt: string; ntty: "C" | "D"; val: number; pos: string; itms: Gstr1Item[]; against: string; party: string; reason: string; typ?: string }
+export interface Gstr1 {
+  month: string; fp: string; gstin: string; hsnDigits: number;
+  b2b: Array<{ ctin: string; name: string; inv: Gstr1Invoice[] }>;
+  b2cl: Array<{ pos: string; inv: Gstr1Invoice[] }>;
+  b2cs: Array<{ sply_ty: string; pos: string; rt: number; txval: number; iamt: number; camt: number; samt: number; count: number }>;
+  cdnr: Array<{ ctin: string; name: string; nt: Gstr1Note[] }>;
+  cdnur: Gstr1Note[];
+  hsn: Array<{ num: number; hsn_sc: string; desc: string; uqc: string; qty: number; rt: number; txval: number; iamt: number; camt: number; samt: number }>;
+  docs: Array<{ doc_num: number; doc_typ: string; docs: Array<{ from: string; to: string; totnum: number; cancel: number; net_issue: number }> }>;
+  summary: Record<"b2b" | "b2cl" | "b2cs" | "cdnr" | "cdnur", { count: number; val: number; txval: number; tax: number }>;
+  checks: Array<{ level: "error" | "warn"; doc: string; text: string }>;
+  counts: { invoices: number; cancelled: number; notes: number };
+}
+
+// ── Journal vouchers ──
+export type JournalPurpose = "setoff" | "writeoff" | "accrual" | "salary" | "depreciation" | "stock" | "reclass" | "other";
+export interface JournalLine {
+  kind: "party" | "bank" | "head" | "ledger";
+  ledger: string;
+  partyType?: "customer" | "supplier"; customer?: string; supplier?: string; account?: string; category?: string;
+  debit: number; credit: number;
+  refs: Array<{ docType: SettleDocType; doc: string; docNo: string; amount: number }>;
+  note?: string;
+}
+export interface Journal {
+  _id: string; journalNo: string; date: string; purpose: JournalPurpose; narration: string; reason: string; lines: JournalLine[]; total: number;
+  source?: string; sourceRef?: string; status: "posted" | "cancelled"; cancel?: { reason: string; at: string }; createdByName?: string; createdAt: string;
+}
+export interface JournalLineInput {
+  kind: JournalLine["kind"]; ledger?: string; partyType?: "customer" | "supplier"; party?: string; account?: string; category?: string;
+  debit?: number; credit?: number; refs?: Array<{ docType: SettleDocType; doc: string; amount: number }>; note?: string;
 }
 
 // ── Bank reconciliation ──
@@ -676,6 +754,8 @@ export interface Inbox {
   toChase: { count: number; amount: number; top: Array<{ party: string; partyName: string; overdue: number; oldestDays: number; next?: CollectionEntry["next"] }> };
   promisesDue: { count: number; top: Array<{ party: string; partyName: string; promise: NonNullable<CollectionEntry["promise"]> }> };
   variances: { count: number; top: Array<{ _id: string; billNo: string; supplierName: string; billDate: string; variance: { total: number; note?: string } }> };
+  /** Bills to micro and small suppliers past, or within a week of, their 45-day limit. */
+  msmeDue?: { count: number; overdue: number; amount: number; top: MsmeDue[] };
 }
 export interface ForecastItem { direction: "in" | "out"; party: string; docNo: string; amount: number; basis: string; date?: string }
 export interface ForecastWeek { from: string; to: string; inflow: number; outflow: number; closing: number; top: ForecastItem[]; items?: ForecastItem[] }

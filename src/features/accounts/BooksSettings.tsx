@@ -3,6 +3,7 @@ import { Lock, Unlock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -34,11 +35,15 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
   const [reopen, setReopen] = useState(false);
   const [ledgers, setLedgers] = useState<Partial<Record<TallyLedgerKey, string>>>({});
   const [variance, setVariance] = useState<number | "">("");
+  const [hsnDigits, setHsnDigits] = useState<4 | 6 | 8>(4);
+  const [journalAbove, setJournalAbove] = useState<number | "">("");
   useEffect(() => {
     if (!settings) return;
     setLockDate(settings.lockDate ? settings.lockDate.slice(0, 10) : "");
     setLedgers(settings.tally ?? {});
     setVariance(settings.bills?.rateVariancePercent ?? 2);
+    setHsnDigits(settings.gst?.hsnDigits ?? 4);
+    setJournalAbove(settings.journals?.approvalAbove ?? 0);
   }, [settings]);
   const current = settings?.lockDate ? settings.lockDate.slice(0, 10) : "";
   const goingBack = !!current && (!lockDate || lockDate < current);
@@ -70,6 +75,15 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
           {isAdmin && <Button variant="secondary" loading={saveAccountsSettings.isPending} onClick={() => saveAccountsSettings.mutate({ bills: { rateVariancePercent: Number(variance) || 0 } }, { onSuccess: () => toast("Saved", "success"), onError: fail })}>Save</Button>}
         </div>
         <p className="mt-2 text-xs text-ink-400">Beyond it, the bill needs a note from whoever enters it.</p>
+      </Card>
+
+      <Card className="p-5">
+        <h3 className="font-semibold">GSTR-1 and journals</h3>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <Select label="HSN digits in GSTR-1" value={String(hsnDigits)} disabled={!isAdmin} onChange={(e) => setHsnDigits(Number(e.target.value) as 4 | 6 | 8)} options={[{ value: "4", label: "4 (turnover up to ₹5 crore)" }, { value: "6", label: "6 (turnover above ₹5 crore)" }, { value: "8", label: "8" }]} />
+          <Input label="A journal above (₹) needs an admin" type="number" min={0} step="1000" value={journalAbove} disabled={!isAdmin} onChange={(e) => setJournalAbove(e.target.value === "" ? "" : Number(e.target.value))} hint="0: anyone in accounts may post any journal" />
+        </div>
+        {isAdmin && <div className="mt-3 flex justify-end"><Button variant="secondary" loading={saveAccountsSettings.isPending} onClick={() => saveAccountsSettings.mutate({ gst: { hsnDigits }, journals: { approvalAbove: Number(journalAbove) || 0 } }, { onSuccess: () => toast("Saved", "success"), onError: fail })}>Save</Button></div>}
       </Card>
 
       <Card className="p-5 lg:col-span-2">

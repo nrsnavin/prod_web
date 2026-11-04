@@ -33,6 +33,8 @@ export const useOutstanding = (type: "receivable" | "payable", party?: string) =
 
 export const useCredits = (partyType?: "customer" | "supplier", party?: string) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "credits", partyType, party], queryFn: () => accountsService.credits(partyType!, party!), enabled: !!partyType && !!party });
+export const useJournals = (q: Record<string, unknown>, enabled = true) =>
+  useQuery({ queryKey: [ACCOUNTS_KEY, "journals", q], queryFn: () => accountsService.journals(q), enabled });
 export const useContras = (q: Record<string, unknown>, enabled = true) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "contras", q], queryFn: () => accountsService.contras(q), placeholderData: (p) => p, enabled });
 export const useOpeningBalances = (q: Record<string, unknown>) =>
@@ -63,6 +65,8 @@ export function useAccountsMutations() {
     cancelPayment: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelPayment(id, reason), onSuccess: invalidate }),
     applyCredit: useMutation({ mutationFn: accountsService.applyCredit, onSuccess: invalidate }),
     createContra: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createContra>[0]) => accountsService.createContra(once(b)), onSuccess: done }),
+    createJournal: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createJournal>[0]) => accountsService.createJournal(once(b)), onSuccess: done }),
+    cancelJournal: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelJournal(id, reason), onSuccess: done }),
     cancelContra: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelContra(id, reason), onSuccess: invalidate }),
     createOpening: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createOpening>[0]) => accountsService.createOpening(once(b)), onSuccess: done }),
     cancelOpening: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelOpening(id, reason), onSuccess: invalidate }),

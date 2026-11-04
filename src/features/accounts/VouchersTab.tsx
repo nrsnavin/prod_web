@@ -17,12 +17,13 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
 import { round2 } from "@/features/invoices/gst";
-import { useAccountsMutations, useBankAccounts, useContras, useOpenDocs, usePayments } from "./hooks";
+import { useAccountsMutations, useBankAccounts, useContras, useJournals, useOpenDocs, usePayments } from "./hooks";
+import { JournalForm } from "./JournalForm";
 import { PartyPicker, money, today } from "./shared";
 import { CreditsCard } from "./Credits";
 import { accountsService } from "./api";
 import { ADJUSTMENT_KINDS, ADJUSTMENT_LABELS } from "./types";
-import type { AdjustmentKind, Contra, OpenDoc, Payment, PaymentMode, VoucherKind } from "./types";
+import type { AdjustmentKind, Contra, Journal, OpenDoc, Payment, PaymentMode, VoucherKind } from "./types";
 
 const columns: Column<Payment>[] = [
   { key: "no", header: "Voucher", render: (p) => <span className="font-medium">{p.voucherNo}</span> },
@@ -35,31 +36,33 @@ const columns: Column<Payment>[] = [
   { key: "status", header: "Status", render: (p) => <StatusChip tone={p.status === "posted" ? "success" : "danger"}>{p.status}</StatusChip> },
 ];
 
-type Filter = VoucherKind | "all" | "contra";
+type Filter = VoucherKind | "all" | "contra" | "journal";
 
 export function VouchersTab() {
   const [page, setPage] = useState(1);
-  const [kind, setKind] = useState<Filter>("all");
-  const [search, setSearch] = useState("");
   const [params, setParams] = useSearchParams();
+  // A journal opened from a ledger (?journal=id) lands on the journals list with it open.
+  const [kind, setKind] = useState<Filter>(params.get("journal") ? "journal" : "all");
+  const [search, setSearch] = useState("");
   const navigate = useNavigate();
-  const { data, isLoading } = usePayments({ page, kind: kind === "contra" ? "all" : kind, search });
+  const { data, isLoading } = usePayments({ page, kind: kind === "contra" || kind === "journal" ? "all" : kind, search });
   const newParam = params.get("new");
   const creating = newParam === "receipt" || newParam === "payment" ? (newParam as VoucherKind) : null;
 
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        {kind !== "contra" && <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Voucher no., party, reference, document…" className="w-full max-w-xs" />}
-        <FilterChips options={[{ value: "all", label: "Receipts & payments" }, { value: "receipt", label: "Receipts" }, { value: "payment", label: "Payments" }, { value: "contra", label: "Transfers (contras)" }]} value={kind} onChange={(v) => { setKind(v); setPage(1); }} />
+        {kind !== "contra" && kind !== "journal" && <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Voucher no., party, reference, document…" className="w-full max-w-xs" />}
+        <FilterChips options={[{ value: "all", label: "Receipts & payments" }, { value: "receipt", label: "Receipts" }, { value: "payment", label: "Payments" }, { value: "contra", label: "Transfers (contras)" }, { value: "journal", label: "Journals" }]} value={kind} onChange={(v) => { setKind(v); setPage(1); }} />
         <span className="ml-auto flex flex-wrap gap-2">
           <a href={accountsService.exportUrl("vouchers")} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-brand-600 hover:bg-brand-50"><Download className="h-4 w-4" /> Excel</a>
+          <Button variant="secondary" onClick={() => setParams({ new: "journal" })}><Plus className="h-4 w-4" /> Journal</Button>
           <Button variant="secondary" onClick={() => setParams({ new: "contra" })}><Plus className="h-4 w-4" /> Contra</Button>
           <Button variant="secondary" onClick={() => setParams({ new: "receipt" })}><Plus className="h-4 w-4" /> Receipt</Button>
           <Button onClick={() => setParams({ new: "payment" })}><Plus className="h-4 w-4" /> Payment</Button>
         </span>
       </div>
-      {kind === "contra" ? <ContrasList /> : (
+      {kind === "contra" ? <ContrasList /> : kind === "journal" ? <JournalsList open={params.get("journal")} onOpen={(id) => setParams(id ? { journal: id } : {})} /> : (
         <Card>
           <DataTable columns={columns} rows={data?.payments ?? []} rowKey={(p) => p._id} onRowClick={(p) => navigate(`/accounts/payments/${p._id}`)} loading={isLoading}
             emptyTitle="No vouchers yet" emptyDescription="Record a customer's payment as a receipt, and what you pay out as a payment." />
@@ -68,6 +71,9 @@ export function VouchersTab() {
       )}
       <FormScreen open={!!creating} onClose={() => setParams({})} title={creating === "receipt" ? "Record a receipt" : "Record a payment"} width="max-w-4xl">
         {creating && <VoucherForm kind={creating} onDone={(id) => { setParams({}); navigate(`/accounts/payments/${id}`); }} onCancel={() => setParams({})} />}
+      </FormScreen>
+      <FormScreen open={newParam === "journal"} onClose={() => setParams({})} title="Post a journal" width="max-w-4xl">
+        {newParam === "journal" && <JournalForm onDone={(id) => { setParams({ journal: id }); setKind("journal"); }} onCancel={() => setParams({})} />}
       </FormScreen>
       <FormScreen open={newParam === "contra"} onClose={() => setParams({})} title="Move money between accounts" width="max-w-2xl">
         {newParam === "contra" && <ContraForm onDone={() => { setParams({}); setKind("contra"); }} onCancel={() => setParams({})} />}
@@ -100,6 +106,58 @@ function ContrasList() {
       <Pagination page={page} totalPages={data?.pages ?? 1} total={data?.total} onChange={setPage} />
       <ReasonDialog open={!!cancelling} onClose={() => setCancelling(null)} title={`Cancel ${cancelling?.contraNo}?`} description="Both accounts go back to what they were." confirmLabel="Cancel contra" minLength={8} loading={cancelContra.isPending}
         onConfirm={(reason) => cancelling && cancelContra.mutate({ id: cancelling._id, reason }, { onSuccess: () => { setCancelling(null); toast("Contra cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
+    </Card>
+  );
+}
+
+const PURPOSE_LABEL: Record<Journal["purpose"], string> = { setoff: "Set-off", writeoff: "Write-off", accrual: "Accrual", salary: "Salary", depreciation: "Depreciation", stock: "Closing stock", reclass: "Reclassification", other: "Journal" };
+
+function JournalsList({ open, onOpen }: { open: string | null; onOpen: (id: string | null) => void }) {
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useJournals({ page });
+  const { cancelJournal } = useAccountsMutations();
+  const { toast } = useToast();
+  const [cancelling, setCancelling] = useState<Journal | null>(null);
+  const opened = open ? data?.journals.find((j) => j._id === open) : null;
+  const cols: Column<Journal>[] = [
+    { key: "no", header: "Journal", render: (j) => <span className="font-medium">{j.journalNo}</span> },
+    { key: "date", header: "Date", render: (j) => formatDate(j.date) },
+    { key: "purpose", header: "For", render: (j) => PURPOSE_LABEL[j.purpose] ?? j.purpose },
+    { key: "lines", header: "Lines", render: (j) => j.lines.map((l) => `${l.debit > 0 ? "Dr" : "Cr"} ${l.ledger}`).join(" · ") },
+    { key: "amount", header: "Amount (₹)", align: "right", render: (j) => money(j.total) },
+    { key: "status", header: "Status", render: (j) => j.status === "posted"
+      ? <span className="flex items-center gap-2"><StatusChip tone="success">posted</StatusChip><Button size="sm" variant="ghost" aria-label={`Cancel ${j.journalNo}`} onClick={(e) => { e.stopPropagation(); setCancelling(j); }}><XCircle className="h-4 w-4" /></Button></span>
+      : <StatusChip tone="danger">cancelled</StatusChip> },
+  ];
+  return (
+    <Card>
+      <DataTable columns={cols} rows={data?.journals ?? []} rowKey={(j) => j._id} loading={isLoading} onRowClick={(j) => onOpen(j._id)}
+        emptyTitle="No journals yet" emptyDescription="A set-off between a party's two sides, a write-off, an accrual, salary payable, depreciation: entries with no cash in them." />
+      <Pagination page={page} totalPages={data?.pages ?? 1} total={data?.total} onChange={setPage} />
+      <FormScreen open={!!opened} onClose={() => onOpen(null)} title={opened ? `${opened.journalNo} · ${formatDate(opened.date)}` : ""} width="max-w-3xl" confirmDirtyClose={false}>
+        {opened && (
+          <div className="space-y-3 text-sm">
+            <p><span className="text-ink-500">{PURPOSE_LABEL[opened.purpose] ?? opened.purpose}</span>{opened.narration ? ` · ${opened.narration}` : ""}</p>
+            <table className="w-full text-sm" aria-label="Journal lines">
+              <thead><tr className="border-y border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Ledger</th><th className="py-2 text-right font-medium">Debit</th><th className="py-2 text-right font-medium">Credit</th></tr></thead>
+              <tbody className="divide-y divide-ink-100">
+                {opened.lines.map((l, i) => (
+                  <tr key={i}>
+                    <td className="py-1.5">{l.debit > 0 ? "" : <span className="pl-6" />}{l.ledger}{l.refs?.length ? <span className="block text-xs text-ink-400">{l.refs.map((r) => `Agst ${r.docNo} ₹${money(r.amount)}`).join(", ")}</span> : null}</td>
+                    <td className="py-1.5 text-right tabular-nums">{l.debit > 0 ? money(l.debit) : ""}</td>
+                    <td className="py-1.5 text-right tabular-nums">{l.credit > 0 ? money(l.credit) : ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot><tr className="border-t border-ink-200 font-semibold"><td className="py-1.5">Total</td><td className="py-1.5 text-right tabular-nums">{money(opened.total)}</td><td className="py-1.5 text-right tabular-nums">{money(opened.total)}</td></tr></tfoot>
+            </table>
+            <p className="text-ink-500">Reason: {opened.reason}{opened.createdByName ? ` · ${opened.createdByName}` : ""}</p>
+            {opened.status === "cancelled" && <p className="text-status-danger">Cancelled: {opened.cancel?.reason}</p>}
+          </div>
+        )}
+      </FormScreen>
+      <ReasonDialog open={!!cancelling} onClose={() => setCancelling(null)} title={`Cancel ${cancelling?.journalNo}?`} description="The party ledgers and the documents it settled go back to what they were." confirmLabel="Cancel journal" minLength={8} loading={cancelJournal.isPending}
+        onConfirm={(reason) => cancelling && cancelJournal.mutate({ id: cancelling._id, reason }, { onSuccess: () => { setCancelling(null); toast("Journal cancelled", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error") })} />
     </Card>
   );
 }

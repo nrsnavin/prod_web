@@ -6,6 +6,7 @@ import type {
   AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow,
   Reconciliation, StoredStatement, StoredStatementFull, BankFeedStatus, BankFeedRun, TallyBatch, TallyPreview, TallyConnectorStatus, TallyReconcile, BooksHealth,
   AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense, GroupSummary,
+  MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -131,6 +132,35 @@ export const accountsService = {
 
   // ── Contras ──
   contras: (q: Record<string, unknown>) => httpClient.get<Page<"contras", Contra>>("/accounts/contras", clean(q)),
+
+  // ── Journal vouchers ──
+  journals: (q: Record<string, unknown>) => httpClient.get<Page<"journals", Journal>>("/accounts/journals", clean(q)),
+  journal: async (id: string) => (await httpClient.get<{ success: boolean; journal: Journal }>(`/accounts/journals/${id}`)).journal,
+  createJournal: async (body: { date?: string; purpose?: JournalPurpose; narration?: string; reason: string; lines: JournalLineInput[]; requestId?: string }) =>
+    (await httpClient.post<{ success: boolean; journal: Journal }>("/accounts/journals", body)).journal,
+  cancelJournal: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; journal: Journal }>(`/accounts/journals/${id}/cancel`, { reason })).journal,
+
+  // ── Statutory ──
+  msme: () => httpClient.get<MsmeDues & { success: boolean }>("/accounts/msme"),
+  msmeYearEnd: (fy?: string) => httpClient.get<MsmeYearEnd & { success: boolean }>("/accounts/msme/year-end", clean({ fy })),
+  msmeForm1Url: (asOf?: string) => `/api/v2/accounts/msme/form1?format=xlsx${asOf ? `&asOf=${asOf}` : ""}`,
+  gstr2b: (period?: string) => httpClient.get<Gstr2bSummary & { success: boolean }>("/accounts/gstr2b", clean({ period })),
+  async uploadGstr2b(file: File, period?: string): Promise<Gstr2bSummary> {
+    const fd = new FormData();
+    if (period) fd.append("period", period);
+    fd.append("file", file);
+    const res = await fetch("/api/v2/accounts/gstr2b/upload", { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not read the GSTR-2B file");
+    return body as Gstr2bSummary;
+  },
+  reconcileGstr2b: (period: string) => httpClient.post<Gstr2bSummary & { success: boolean }>("/accounts/gstr2b/reconcile", { period }),
+  itcReversal: (month?: string) => httpClient.get<ItcReversalMonth & { success: boolean }>("/accounts/itc-reversal", clean({ month })),
+  itcReverse: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number }>(`/accounts/bills/${bill}/itc-reverse`, { month }),
+  itcReclaim: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number }>(`/accounts/bills/${bill}/itc-reclaim`, { month }),
+  gstr1: (month?: string) => httpClient.get<Gstr1 & { success: boolean }>("/accounts/gstr1", clean({ month })),
+  gstr1JsonUrl: (month: string) => `/api/v2/accounts/gstr1/json?month=${month}`,
+  gstr1XlsxUrl: (month: string) => `/api/v2/accounts/gstr1/xlsx?month=${month}`,
   createContra: async (body: { from: string; to: string; amount: number; date?: string; mode?: string; reference?: string; narration?: string; requestId?: string }) =>
     (await httpClient.post<{ success: boolean; contra: Contra }>("/accounts/contras", body)).contra,
   cancelContra: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; contra: Contra }>(`/accounts/contras/${id}/cancel`, { reason })).contra,
@@ -155,7 +185,7 @@ export const accountsService = {
 
   // ── Settings and the lock ──
   accountsSettings: async () => (await httpClient.get<{ success: boolean; settings: AccountsSettings }>("/accounts/settings")).settings,
-  saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills">>) =>
+  saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills" | "gst" | "journals">>) =>
     (await httpClient.put<{ success: boolean; settings: AccountsSettings }>("/accounts/settings", body)).settings,
   lockBooks: async (lockDate: string | null, reason?: string) =>
     (await httpClient.post<{ success: boolean; settings: AccountsSettings }>("/accounts/lock", { lockDate, reason })).settings,
