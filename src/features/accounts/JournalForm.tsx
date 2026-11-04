@@ -21,14 +21,16 @@ const PURPOSES: Array<{ value: JournalPurpose; label: string }> = [
 function Refs({ line, onChange }: { line: Line; onChange: (refs: Record<string, number>) => void }) {
   const lowers = line.partyType === "customer" ? Number(line.credit) > 0 : Number(line.debit) > 0;
   const { data } = useOpenDocs(line.party ? line.partyType : undefined, line.party || undefined);
-  if (!line.party || !lowers) return null;
-  const docs = data?.docs ?? [];
-  if (!docs.length) return <p className="text-xs text-ink-400">Nothing open for this party: the amount stays on account.</p>;
+  if (!line.party) return null;
   const amount = Number(line.debit || line.credit) || 0;
+  // A journal only settles a party's open documents, in full: raising a party is a debit note (customer) or a bill / expense (supplier).
+  if (!lowers) return amount > 0 ? <p className="text-xs text-status-danger">A journal cannot raise what a party owes — issue a debit note to a customer, or enter a supplier's bill or an expense.</p> : null;
+  const docs = data?.docs ?? [];
+  if (!docs.length) return <p className="text-xs text-status-danger">Nothing open for this party — a journal can only settle open documents.</p>;
   const used = Object.values(line.refs).reduce((t, v) => t + v, 0);
   return (
     <div className="rounded-md border border-ink-100 p-2">
-      <p className="mb-1 text-xs text-ink-500">Set against ({money(used)} of {money(amount)})</p>
+      <p className={`mb-1 text-xs ${amount > 0 && Math.abs(used - amount) > 0.005 ? "text-status-danger" : "text-ink-500"}`}>Set against ({money(used)} of {money(amount)}){amount > 0 && Math.abs(used - amount) > 0.005 ? " — the whole amount must be set against documents" : ""}</p>
       <ul className="space-y-1">
         {docs.map((d: OpenDoc) => {
           const key = `${d.docType}|${d.id}`;
