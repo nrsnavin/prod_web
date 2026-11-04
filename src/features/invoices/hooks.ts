@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoiceService } from "./api";
-import type { EinvoiceStatus, InvoiceCreateBody, InvoiceStatus, IrnPasteBody } from "./types";
+import type { EinvoiceStatus, EwaybillBody, InvoiceCreateBody, InvoiceStatus, IrnPasteBody } from "./types";
 import { useRequestId } from "@/core/hooks/useRequestId";
 
 export const INVOICES_KEY = "invoices";
@@ -69,5 +69,7 @@ export function useInvoiceMutations() {
     mutationFn: ({ id, reason }: { id: string; reason: string }) => invoiceService.cancel(id, reason),
     onSuccess: invalidate,
   });
-  return { create, registerIrn, pasteIrn, cancel };
+  const ewaybill = useMutation({ mutationFn: ({ id, body }: { id: string; body: EwaybillBody }) => invoiceService.ewaybill(id, body), onSuccess: invalidate });
+  const pasteEwaybill = useMutation({ mutationFn: ({ id, body }: { id: string; body: EwaybillBody }) => invoiceService.pasteEwaybill(id, body), onSuccess: invalidate });
+  return { create, registerIrn, pasteIrn, cancel, ewaybill, pasteEwaybill };
 }

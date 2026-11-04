@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown, Pencil, ScanLine } from "lucide-react";
+import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown, Pencil, ScanLine, FileBadge } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { EwaybillDialog } from "@/features/invoices/EwaybillDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +30,9 @@ export function DcDetailPage() {
   const [downloading, setDownloading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [lrOpen, setLrOpen] = useState(false);
+  const [ewbOpen, setEwbOpen] = useState(false);
+  const qc = useQueryClient();
+  const pasteEwb = useMutation({ mutationFn: (body: Parameters<typeof dcService.pasteEwaybill>[1]) => dcService.pasteEwaybill(id!, body), onSuccess: () => qc.invalidateQueries({ queryKey: ["dcs"] }) });
   // Status transition awaiting confirmation.
   const [pending, setPending] = useState<
     { status: DcStatus; msg: string; title: string; body: string; label: string; danger?: boolean } | null
@@ -114,6 +119,11 @@ export function DcDetailPage() {
                   <ScanLine className="h-4 w-4" /> Lorry receipt
                 </Button>
               )}
+              {dc.status !== "cancelled" && dc.ewaybill?.status !== "generated" && (
+                <Button variant="secondary" onClick={() => setEwbOpen(true)}>
+                  <FileBadge className="h-4 w-4" /> E-way bill
+                </Button>
+              )}
               {dc.status === "draft" && (
                 <Button loading={updateStatus.isPending} onClick={() => setPending({
                   status: "dispatched", msg: "DC dispatched", label: "Dispatch",
@@ -148,8 +158,10 @@ export function DcDetailPage() {
             </>
           }
         />
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap gap-2">
           <StatusChip tone={dcStatusTone[dc.status]}>{dc.status}</StatusChip>
+          {dc.ewaybill?.status === "generated" && <StatusChip tone="success">E-way bill {dc.ewaybill.number}</StatusChip>}
+          {dc.status !== "cancelled" && dc.ewaybill?.status !== "generated" && (dc.totalAmount ?? 0) > 50000 && <StatusChip tone="warning">E-way bill needed (over ₹50,000)</StatusChip>}
         </div>
       </div>
 
@@ -291,6 +303,13 @@ export function DcDetailPage() {
       {/* Keyed on the challan's own figures so reopening after a save
           starts from what was stored, not the state it was left in. */}
       {lrOpen && <LorryReceiptDialog dc={dc} onClose={() => setLrOpen(false)} />}
+      {ewbOpen && (
+        <EwaybillDialog docNo={dc.dcNumber} mode="paste" defaultVehicle={dc.vehicleNo ?? ""} loading={pasteEwb.isPending} onClose={() => setEwbOpen(false)}
+          onConfirm={(body) => pasteEwb.mutate({ number: body.number ?? "", vehicleNo: body.vehicleNo, transporterId: body.transporterId, transporterName: body.transporterName, validUpto: body.validUpto, distanceKm: body.distanceKm }, {
+            onSuccess: (next) => { setEwbOpen(false); toast(`E-way bill ${next.ewaybill?.number} recorded`, "success"); },
+            onError: (e) => toast(e instanceof ApiError ? e.message : "Could not record the e-way bill", "error"),
+          })} />
+      )}
       {editOpen && (
         <DcEditModal
           key={`${dc._id}-${dc.totalQuantity}-${(dc.items ?? []).length}`}

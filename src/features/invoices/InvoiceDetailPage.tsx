@@ -4,7 +4,8 @@ import { canAccessPath } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileDown, FileJson, BadgeCheck, ClipboardPaste, XCircle, AlertTriangle, Wallet } from "lucide-react";
+import { ArrowLeft, FileDown, FileJson, BadgeCheck, ClipboardPaste, XCircle, AlertTriangle, Wallet, Truck } from "lucide-react";
+import { EwaybillDialog } from "./EwaybillDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -59,7 +60,8 @@ export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { data: inv, isLoading, isError, error } = useInvoice(id);
-  const { registerIrn, pasteIrn, cancel } = useInvoiceMutations();
+  const { registerIrn, pasteIrn, cancel, ewaybill, pasteEwaybill } = useInvoiceMutations();
+  const [ewbOpen, setEwbOpen] = useState<"generate" | "paste" | null>(null);
   const [busy, setBusy] = useState<"pdf" | "json" | null>(null);
   const [irnOpen, setIrnOpen] = useState(false);
   const [receiving, setReceiving] = useState(false);
@@ -111,6 +113,9 @@ export function InvoiceDetailPage() {
   const issued = inv.status === "issued";
   const registered = inv.einvoice.status === "registered";
   const problems = inv.einvoiceProblems ?? [];
+  const ewb = inv.ewaybill?.status === "generated" ? inv.ewaybill : null;
+  // Goods above ₹50,000 move with an e-way bill (CGST Rule 138).
+  const needsEwb = issued && !ewb && (inv.totals?.grand ?? 0) > 50000;
 
   const register = () =>
     registerIrn.mutate(inv._id, {
@@ -156,6 +161,11 @@ export function InvoiceDetailPage() {
                 </Button>
               </>
             )}
+            {issued && !ewb && (
+              <Button variant="secondary" onClick={() => setEwbOpen(registered ? "generate" : "paste")}>
+                <Truck className="h-4 w-4" /> E-way bill
+              </Button>
+            )}
             {issued && canAccessPath("/accounts", user) && (
               <Button variant="secondary" onClick={() => setReceiving(true)}>
                 <Wallet className="h-4 w-4" /> Record receipt
@@ -179,6 +189,8 @@ export function InvoiceDetailPage() {
         <StatusChip tone={invoiceStatusTone[inv.status]}>{inv.status}</StatusChip>
         <StatusChip tone={einvoiceTone[inv.einvoice.status]}>{einvoiceLabel[inv.einvoice.status]}</StatusChip>
         <StatusChip tone="neutral">{inter ? "IGST · inter-state" : "CGST + SGST · in-state"}</StatusChip>
+        {ewb && <StatusChip tone="success">E-way bill {ewb.number}</StatusChip>}
+        {needsEwb && <StatusChip tone="warning">E-way bill needed (over ₹50,000)</StatusChip>}
         {inv.status === "cancelled" && inv.cancel?.reason && (
           <span className="text-sm text-status-danger">Cancelled: {inv.cancel.reason}</span>
         )}
@@ -222,6 +234,34 @@ export function InvoiceDetailPage() {
             ]}
           />
         </Card>
+      )}
+
+      {ewb && (
+        <Card className="mb-4 p-5" aria-label="E-way bill">
+          <h3 className="font-semibold">E-way bill</h3>
+          <DescriptionList
+            columns={3}
+            items={[
+              { label: "Number", value: <span className="font-mono">{ewb.number}</span> },
+              { label: "Generated", value: when(ewb.generatedAt) },
+              { label: "Valid up to", value: ewb.validUpto ? when(ewb.validUpto) : undefined },
+              { label: "Vehicle", value: ewb.vehicleNo || undefined },
+              { label: "Transporter", value: [ewb.transporterName, ewb.transporterId].filter(Boolean).join(" · ") || undefined },
+              { label: "Distance", value: ewb.distanceKm ? `${ewb.distanceKm} km · ${ewb.mode}` : undefined },
+              { label: "Through", value: ewb.provider === "manual" ? "Pasted from the portal" : ewb.provider },
+            ]}
+          />
+        </Card>
+      )}
+      {ewbOpen && (
+        <EwaybillDialog docNo={inv.invoiceNumber} mode={ewbOpen} loading={ewaybill.isPending || pasteEwaybill.isPending} onClose={() => setEwbOpen(null)}
+          onConfirm={(body) => (ewbOpen === "generate" ? ewaybill : pasteEwaybill).mutate({ id: inv._id, body }, {
+            onSuccess: (next) => { setEwbOpen(null); toast(`E-way bill ${next.ewaybill?.number} recorded`, "success"); },
+            onError: (e) => {
+              if (e instanceof ApiError && (e.code === "EINVOICE_NOT_CONFIGURED" || e.code === "EWB_NOT_SUPPORTED")) { toast(e.message, "error"); setEwbOpen("paste"); return; }
+              toast(e instanceof ApiError ? e.message : "Could not record the e-way bill", "error");
+            },
+          })} />
       )}
 
       <Card className="p-6">

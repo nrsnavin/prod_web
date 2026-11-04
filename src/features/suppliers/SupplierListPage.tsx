@@ -37,6 +37,7 @@ const schema = z.object({
   packSize: z.coerce.number().min(0).optional(),
   gstRegistration: z.enum(["regular", "composition", "unregistered"]).optional(),
   paymentTermsDays: z.coerce.number().min(0).max(365).optional(),
+  pan: z.string().regex(/^([A-Z]{5}\d{4}[A-Z])?$/i, "A PAN is 5 letters, 4 digits, 1 letter").optional().or(z.literal("")),
   msme: z.object({
     category: z.enum(["", "micro", "small", "medium"]).optional(),
     udyam: z.string().optional(),
@@ -78,6 +79,7 @@ function SupplierForm({
       packSize: initial?.packSize ?? 0,
       gstRegistration: initial?.gstRegistration ?? "regular",
       paymentTermsDays: initial?.paymentTermsDays ?? 30,
+      pan: initial?.pan ?? "",
       msme: { category: initial?.msme?.category ?? "", udyam: initial?.msme?.udyam ?? "", agreedDays: initial?.msme?.agreedDays ?? 0 },
     },
   });
@@ -123,6 +125,7 @@ function SupplierForm({
         </label>
         <Input label="Bills fall due after (days)" type="number" min={0} {...register("paymentTermsDays")} />
       </div>
+      <Input label="PAN" placeholder="AAAPS1234F" hint="On the TDS return (26Q); without one, tax must be deducted at 20%" error={errors.pan?.message} {...register("pan")} />
 
       <fieldset className="rounded-md border border-ink-200 p-3">
         <legend className="px-1 text-xs font-medium text-ink-500">MSME (Udyam) status</legend>

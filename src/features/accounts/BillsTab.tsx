@@ -54,7 +54,21 @@ export function BillsTab() {
   // "Cancel and re-enter" comes back here with the cancelled bill as a draft.
   const routeState = location.state as { reenter?: ScanDraft; title?: string } | null;
   const reenter = routeState?.reenter;
-  const [draft, setDraft] = useState<{ draft: ScanDraft; as: "bill" | "expense" } | null>(reenter ? { draft: reenter, as: "bill" } : null);
+  const [draft, setDraft] = useState<{ draft: ScanDraft; as: "bill" | "expense"; serviceBill?: string } | null>(reenter ? { draft: reenter, as: "bill" } : null);
+  // A machine's service bill, sent here from its service log: the draft comes from the server.
+  const serviceBillId = params.get("serviceBill");
+  useEffect(() => {
+    if (!serviceBillId) return;
+    let live = true;
+    accountsService.serviceBillDraft(serviceBillId).then((r) => {
+      if (!live) return;
+      if (r.entered) { navigate(`/accounts/bills/${r.entered}`, { replace: true }); return; }
+      if (!r.draft) return;
+      setDraft({ as: "bill", serviceBill: serviceBillId, draft: { supplier: r.draft.supplier ? { _id: r.draft.supplier, name: r.draft.supplierName } : undefined, supplierName: r.draft.supplierName, supplierGstin: "", billNo: r.draft.supplierBillNo, billDate: r.draft.billDate ? String(r.draft.billDate).slice(0, 10) : null, lines: r.draft.lines.map((l) => ({ description: l.description, quantity: l.quantity, rate: l.rate, gstPercent: "" })), aiSuggestion: null, kind: "bill", billKind: "service" } });
+    }).catch(() => {});
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceBillId]);
 
   return (
     <>
@@ -80,8 +94,8 @@ export function BillsTab() {
         <BillForm onDone={(id) => { setParams({}); navigate(`/accounts/bills/${id}`); }} onCancel={() => setParams({})} />
       </FormScreen>
       {scanOpen && !draft && <ScanBillDialog onClose={() => setParams({})} onUse={(d, as) => setDraft({ draft: d, as })} />}
-      <FormScreen open={draft?.as === "bill"} onClose={() => { setDraft(null); setParams({}); }} title={reenter && draft?.draft === reenter ? (routeState?.title ?? "Re-enter the bill") : "Supplier bill from the scan — check every figure"} width="max-w-5xl">
-        {draft?.as === "bill" && <BillForm key={draft.draft.aiSuggestion ?? "scan"} initialDraft={draft.draft} onDone={(id) => { setDraft(null); setParams({}); navigate(`/accounts/bills/${id}`); }} onCancel={() => { setDraft(null); setParams({}); }} />}
+      <FormScreen open={draft?.as === "bill"} onClose={() => { setDraft(null); setParams({}); }} title={reenter && draft?.draft === reenter ? (routeState?.title ?? "Re-enter the bill") : draft?.serviceBill ? "Supplier bill from the machine's service log" : "Supplier bill from the scan — check every figure"} width="max-w-5xl">
+        {draft?.as === "bill" && <BillForm key={draft.serviceBill ?? draft.draft.aiSuggestion ?? "scan"} initialDraft={draft.draft} serviceBill={draft.serviceBill} onDone={(id) => { setDraft(null); setParams({}); navigate(`/accounts/bills/${id}`); }} onCancel={() => { setDraft(null); setParams({}); }} />}
       </FormScreen>
       <FormScreen open={draft?.as === "expense"} onClose={() => { setDraft(null); setParams({}); }} title="Expense from the scan — check every figure" width="max-w-4xl">
         {draft?.as === "expense" && <ExpenseForm key={draft.draft.aiSuggestion ?? "scan"} initialDraft={draft.draft} onDone={() => { setDraft(null); setParams({}); navigate("/accounts/expenses"); }} onCancel={() => { setDraft(null); setParams({}); }} />}
@@ -94,7 +108,7 @@ export function BillsTab() {
  * A supplier bill: against a purchase order (its unbilled receipts come
  * in as lines at the PO price) or a service bill with none.
  */
-export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone: (id: string) => void; onCancel: () => void; initialPo?: string; initialDraft?: ScanDraft }) {
+export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBill }: { onDone: (id: string) => void; onCancel: () => void; initialPo?: string; initialDraft?: ScanDraft; serviceBill?: string }) {
   const { toast } = useToast();
   const { createBill } = useAccountsMutations();
   const { data: settings } = useDocumentSettings();
@@ -157,6 +171,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft }: { onDone
         lines, itcEligible, tds: { applicable: tds.applicable, section: tds.section, rate: Number(tds.rate) || 0 }, notes: notes.trim() || undefined,
         source: initialDraft?.aiSuggestion ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
         reverseCharge: reverseCharge || undefined, varianceNote: varianceNote.trim() || undefined,
+        serviceBill: serviceBill || undefined,
       },
       {
         onSuccess: (bill) => { toast(`Bill ${bill.billNo} entered`, "success"); onDone(bill._id); },

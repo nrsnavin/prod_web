@@ -53,6 +53,8 @@ export interface ServiceBill {
   billDate?: string | null;
   partName?: string;
   notes?: string;
+  /** The supplier bill in Accounts this was entered as. */
+  supplierBill?: string | null;
   createdAt: string;
 }
 

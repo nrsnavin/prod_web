@@ -7,6 +7,7 @@ import type {
   Reconciliation, StoredStatement, StoredStatementFull, BankFeedStatus, BankFeedRun, TallyBatch, TallyPreview, TallyConnectorStatus, TallyReconcile, BooksHealth,
   AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense, GroupSummary,
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
+  TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -160,6 +161,32 @@ export const accountsService = {
   itcReclaim: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number }>(`/accounts/bills/${bill}/itc-reclaim`, { month }),
   gstr1: (month?: string) => httpClient.get<Gstr1 & { success: boolean }>("/accounts/gstr1", clean({ month })),
   gstr1JsonUrl: (month: string) => `/api/v2/accounts/gstr1/json?month=${month}`,
+  tdsRegister: (month?: string) => httpClient.get<TdsRegister & { success: boolean }>("/accounts/tds/register", clean({ month })),
+  addTdsChallan: (body: { month: string; section: string; amount: number; interest?: number; bsrCode?: string; challanNo?: string; depositedOn: string; account?: string }) =>
+    httpClient.post<{ success: boolean; register: TdsRegister }>("/accounts/tds/challans", body),
+  form26q: (fy?: string, q?: string) => httpClient.get<Form26q & { success: boolean }>("/accounts/tds/26q", clean({ fy, q })),
+  form26qXlsxUrl: (fy: string, q: string) => `/api/v2/accounts/tds/26q?fy=${fy}&q=${q}&format=xlsx`,
+  tdsCertificates: async (fy?: string) => (await httpClient.get<{ success: boolean; fy: string; rows: TdsCertificateRow[] }>("/accounts/tds/certificates", clean({ fy }))).rows,
+  addTdsCertificate: (body: { kind: "issued" | "received"; party: string; fy: string; quarter: string; certNo?: string; section?: string; amount: number; on?: string; note?: string }) =>
+    httpClient.post<{ success: boolean; certificate: TdsCertificateRow }>("/accounts/tds/certificates", body),
+  tdsReceivable: (fy?: string) => httpClient.get<TdsReceivable & { success: boolean }>("/accounts/tds/receivable", clean({ fy })),
+  async upload26as(file: File, fy: string): Promise<{ lines: number; matched: number; unmatched: Array<{ deductorName: string; tan: string; tds: number }>; receivable: TdsReceivable }> {
+    const fd = new FormData();
+    fd.append("fy", fy);
+    fd.append("file", file);
+    const res = await fetch("/api/v2/accounts/tds/26as", { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not read the 26AS file");
+    return body;
+  },
+  purchases194q: (fy?: string) => httpClient.get<Purchases194q & { success: boolean }>("/accounts/tds/194q", clean({ fy })),
+  payrollBooks: (month?: string) => httpClient.get<PayrollBooks & { success: boolean }>("/accounts/payroll-books", clean({ month })),
+  postPayrollSalary: (month: string) => httpClient.post<{ success: boolean; journal: Journal; summary: PayrollBooks }>("/accounts/payroll-books/salary", { month }),
+  postPayrollPaid: (month: string) => httpClient.post<{ success: boolean; journal: Journal; summary: PayrollBooks }>("/accounts/payroll-books/paid", { month }),
+  addStatutoryDeposit: (body: { kind: "pf" | "esi" | "pt"; month: string; amount: number; challanNo?: string; depositedOn: string }) =>
+    httpClient.post<{ success: boolean; deposit: StatutoryDepositRow; summary: PayrollBooks }>("/accounts/payroll-books/deposits", body),
+  serviceBillDraft: (id: string) => httpClient.get<{ success: boolean; entered: string | null; draft: ServiceBillDraft | null }>(`/accounts/service-bills/${id}/draft`),
+  creditNoteLimit: (invoice: string) => httpClient.get<CreditNoteLimit & { success: boolean }>("/accounts/credit-note-limit", { invoice }),
   gstr1XlsxUrl: (month: string) => `/api/v2/accounts/gstr1/xlsx?month=${month}`,
   createContra: async (body: { from: string; to: string; amount: number; date?: string; mode?: string; reference?: string; narration?: string; requestId?: string }) =>
     (await httpClient.post<{ success: boolean; contra: Contra }>("/accounts/contras", body)).contra,
@@ -185,7 +212,7 @@ export const accountsService = {
 
   // ── Settings and the lock ──
   accountsSettings: async () => (await httpClient.get<{ success: boolean; settings: AccountsSettings }>("/accounts/settings")).settings,
-  saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills" | "gst" | "journals">>) =>
+  saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills" | "gst" | "journals" | "tds">>) =>
     (await httpClient.put<{ success: boolean; settings: AccountsSettings }>("/accounts/settings", body)).settings,
   lockBooks: async (lockDate: string | null, reason?: string) =>
     (await httpClient.post<{ success: boolean; settings: AccountsSettings }>("/accounts/lock", { lockDate, reason })).settings,

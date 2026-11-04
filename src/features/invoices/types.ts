@@ -57,6 +57,13 @@ export interface InvoiceEinvoice {
   cancelledAt?: string;
 }
 
+/** The e-way bill for the goods' movement (CGST Rule 138). */
+export interface Ewaybill {
+  status: "" | "generated" | "cancelled";
+  number?: string; generatedAt?: string; validUpto?: string; vehicleNo?: string; transporterId?: string; transporterName?: string; transDocNo?: string; distanceKm?: number; mode?: "road" | "rail" | "air" | "ship"; provider?: string;
+}
+export interface EwaybillBody { vehicleNo?: string; transporterId?: string; transporterName?: string; transDocNo?: string; distanceKm?: number; mode?: Ewaybill["mode"]; number?: string; validUpto?: string }
+
 export interface InvoiceFingerprint {
   code: string;
   label: string;
@@ -88,6 +95,7 @@ export interface Invoice {
   status: InvoiceStatus;
   cancel?: { reason?: string; at?: string };
   einvoice: InvoiceEinvoice;
+  ewaybill?: Ewaybill;
   /** What the e-invoice portal would refuse; empty when it can be registered. */
   einvoiceProblems?: string[];
   fingerprints?: InvoiceFingerprint[];

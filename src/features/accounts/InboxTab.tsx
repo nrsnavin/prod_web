@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, CheckCircle2, ClipboardCheck, HandCoins, Landmark, PhoneCall, Scale, Timer } from "lucide-react";
+import { CalendarClock, CheckCircle2, ClipboardCheck, HandCoins, Landmark, PhoneCall, Scale, Timer, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -82,6 +82,11 @@ export function InboxTab() {
                 <Row key={b.id} to={b.docType === "SupplierBill" ? `/accounts/bills/${b.id}` : `/accounts/expenses/${b.id}`} name={b.partyName} right={`₹${money(b.outstanding)}`}
                   meta={<>{b.docNo} · {b.daysLeft < 0 ? <span className="text-status-danger">{-b.daysLeft}d past the limit</span> : `pay by ${formatDate(b.dueDate)}`}</>} />
               ))}</ul>
+            </Box>
+          )}
+          {data.serviceBills && (
+            <Box icon={Wrench} title="Machine service bills to enter" count={data.serviceBills.count} amount={data.serviceBills.amount} to="/machines" empty="Every service bill is in the books">
+              <ul className="space-y-2">{data.serviceBills.top.map((b) => <Row key={b._id} to={`/accounts/bills?serviceBill=${b._id}`} name={b.vendor || b.filename || "Service bill"} meta={`${b.kind === "spare_bill" ? "Spare" : "Service"}${b.billNo ? ` · #${b.billNo}` : ""} · ${formatDate(b.billDate || b.createdAt)}`} right={`₹${money(b.amount)}`} />)}</ul>
             </Box>
           )}
           <Box icon={Scale} title="Bills off their PO" count={data.variances.count} to="/accounts/bills" empty="Every recent bill matches its PO">

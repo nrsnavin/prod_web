@@ -24,6 +24,8 @@ export interface Supplier {
   paymentTermsDays?: number;
   /** MSME (Udyam) status: a micro or small enterprise must be paid within 15 days, or the days agreed (≤45). */
   msme?: { category?: "" | "micro" | "small" | "medium"; udyam?: string; agreedDays?: number };
+  /** For the TDS return (26Q); without one, 20% applies (s.206AA). */
+  pan?: string;
 }
 
 export interface SupplierFormValues {
@@ -34,6 +36,8 @@ export interface SupplierFormValues {
   gstRegistration?: "regular" | "composition" | "unregistered";
   paymentTermsDays?: number;
   msme?: { category?: "" | "micro" | "small" | "medium"; udyam?: string; agreedDays?: number };
+  /** For the TDS return (26Q); without one, 20% applies (s.206AA). */
+  pan?: string;
   name: string;
   phoneNumber?: string;
   gstin?: string;

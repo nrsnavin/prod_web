@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileJson, Upload, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Download, FileJson, Upload, RefreshCw, AlertTriangle, CheckCircle2, Send } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -14,9 +15,10 @@ import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
 import { money } from "./shared";
-import type { Gstr2bRow, MsmeDue } from "./types";
+import type { Gstr2bRow, MsmeDue, TdsRegister } from "./types";
 
-type Section = "msme" | "gstr1" | "gstr2b" | "rule37";
+type Section = "msme" | "gstr1" | "gstr2b" | "rule37" | "tds" | "payroll";
+const SECTIONS: Section[] = ["msme", "gstr1", "gstr2b", "rule37", "tds", "payroll"];
 
 const lastMonth = () => { const d = new Date(); const p = new Date(d.getFullYear(), d.getMonth() - 1, 1); return `${p.getFullYear()}-${String(p.getMonth() + 1).padStart(2, "0")}`; };
 const thisFy = () => { const d = new Date(); const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; return `${y}-${String(y + 1).slice(2)}`; };
@@ -32,18 +34,216 @@ const num = "py-2 text-right tabular-nums";
  * unpaid 180 days reversed (Rule 37).
  */
 export function StatutoryTab() {
-  const [section, setSection] = useState<Section>("msme");
-  const [month, setMonth] = useState(lastMonth());
+  // Other screens link straight to a section: ?section=payroll&month=2026-10
+  const [params] = useSearchParams();
+  const asked = params.get("section") as Section | null;
+  const [section, setSection] = useState<Section>(asked && SECTIONS.includes(asked) ? asked : "msme");
+  const [month, setMonth] = useState(/^\d{4}-\d{2}$/.test(params.get("month") ?? "") ? params.get("month")! : lastMonth());
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <FilterChips options={[{ value: "msme", label: "MSME 45 days" }, { value: "gstr1", label: "GSTR-1" }, { value: "gstr2b", label: "GSTR-2B" }, { value: "rule37", label: "ITC unpaid 180 days" }]} value={section} onChange={setSection} />
+        <FilterChips options={[{ value: "msme", label: "MSME 45 days" }, { value: "gstr1", label: "GSTR-1" }, { value: "gstr2b", label: "GSTR-2B" }, { value: "rule37", label: "ITC unpaid 180 days" }, { value: "tds", label: "TDS" }, { value: "payroll", label: "Payroll" }]} value={section} onChange={setSection} />
         {section !== "msme" && <Input label="Month" type="month" value={month} onChange={(e) => setMonth(e.target.value || lastMonth())} />}
       </div>
       {section === "msme" && <MsmeSection />}
       {section === "gstr1" && <Gstr1Section month={month} />}
       {section === "gstr2b" && <Gstr2bSection month={month} />}
       {section === "rule37" && <Rule37Section month={month} />}
+      {section === "tds" && <TdsSection month={month} />}
+      {section === "payroll" && <PayrollSection month={month} />}
+    </div>
+  );
+}
+
+const fyOfMonth = (m: string) => { const [y, mm] = m.split("-").map(Number); const fy = mm >= 4 ? y : y - 1; return `${fy}-${String(fy + 1).slice(2)}`; };
+const quarterOfMonth = (m: string) => { const mm = Number(m.split("-")[1]); return mm >= 4 && mm <= 6 ? "Q1" : mm >= 7 && mm <= 9 ? "Q2" : mm >= 10 ? "Q3" : "Q4"; };
+
+function ChallanForm({ month, sections, onDone }: { month: string; sections: string[]; onDone: (r: TdsRegister) => void }) {
+  const { toast } = useToast();
+  const [section, setSection] = useState(sections[0] ?? "194C");
+  const [amount, setAmount] = useState<number | "">("");
+  const [interest, setInterest] = useState<number | "">("");
+  const [bsrCode, setBsrCode] = useState("");
+  const [challanNo, setChallanNo] = useState("");
+  const [depositedOn, setDepositedOn] = useState("");
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try { const r = await accountsService.addTdsChallan({ month, section, amount: Number(amount), interest: Number(interest) || 0, bsrCode, challanNo, depositedOn }); toast("Challan recorded", "success"); setAmount(""); setInterest(""); setBsrCode(""); setChallanNo(""); onDone(r.register); }
+    catch (e) { toast(e instanceof ApiError ? e.message : "Could not record it", "error"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <Input label="Section" value={section} onChange={(e) => setSection(e.target.value.toUpperCase())} className="w-24" list="tds-sections" />
+      <datalist id="tds-sections">{[...new Set([...sections, "194C", "194I", "194J", "194Q", "194H"])].map((s) => <option key={s} value={s} />)}</datalist>
+      <Input label="Amount" type="number" step="0.01" min={0} value={amount} onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))} className="w-32" />
+      <Input label="Interest" type="number" step="0.01" min={0} value={interest} onChange={(e) => setInterest(e.target.value === "" ? "" : Number(e.target.value))} className="w-28" />
+      <Input label="BSR code" value={bsrCode} onChange={(e) => setBsrCode(e.target.value)} className="w-28" />
+      <Input label="Challan serial" value={challanNo} onChange={(e) => setChallanNo(e.target.value)} className="w-28" />
+      <Input label="Deposited on" type="date" value={depositedOn} onChange={(e) => setDepositedOn(e.target.value)} />
+      <Button size="sm" disabled={!(Number(amount) > 0) || !depositedOn || !section} loading={busy} onClick={save}>Record challan</Button>
+    </div>
+  );
+}
+
+function TdsSection({ month }: { month: string }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const fy = fyOfMonth(month);
+  const q = quarterOfMonth(month);
+  const [view, setView] = useState<"register" | "26q" | "receivable" | "194q">("register");
+  const reg = useQuery({ queryKey: [ACCOUNTS_KEY, "tds-register", month], queryFn: () => accountsService.tdsRegister(month), enabled: view === "register" });
+  const f26 = useQuery({ queryKey: [ACCOUNTS_KEY, "tds-26q", fy, q], queryFn: () => accountsService.form26q(fy, q), enabled: view === "26q" });
+  const rec = useQuery({ queryKey: [ACCOUNTS_KEY, "tds-receivable", fy], queryFn: () => accountsService.tdsReceivable(fy), enabled: view === "receivable" });
+  const p194 = useQuery({ queryKey: [ACCOUNTS_KEY, "tds-194q", fy], queryFn: () => accountsService.purchases194q(fy), enabled: view === "194q" });
+  const asRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const upload26as = async (file?: File) => {
+    if (!file) return;
+    setBusy(true);
+    try { const r = await accountsService.upload26as(file, fy); qc.setQueryData([ACCOUNTS_KEY, "tds-receivable", fy], r.receivable); toast(`${r.lines} lines read, ${r.matched} matched to customers${r.unmatched.length ? `; ${r.unmatched.length} not matched` : ""}`, r.unmatched.length ? "info" : "success"); }
+    catch (e) { toast(e instanceof Error ? e.message : "Could not read the file", "error"); }
+    finally { setBusy(false); if (asRef.current) asRef.current.value = ""; }
+  };
+  return (
+    <div className="space-y-4">
+      <FilterChips options={[{ value: "register", label: "Deposit register" }, { value: "26q", label: `26Q · ${fy} ${q}` }, { value: "receivable", label: "Deducted by customers" }, { value: "194q", label: "194Q purchases" }]} value={view} onChange={setView} />
+      {view === "register" && (reg.isLoading || !reg.data ? <Skeleton className="h-48 w-full" /> : (
+        <Card className="p-5">
+          <h3 className="font-semibold">TDS deducted in {monthLabel(month)} · deposit by {formatDate(reg.data.due)}</h3>
+          <p className="text-sm text-ink-500">Deducted ₹{money(reg.data.totals.deducted)} · deposited ₹{money(reg.data.totals.deposited)}{reg.data.totals.balance > 0 && <span className="text-status-danger"> · ₹{money(reg.data.totals.balance)} still to deposit{reg.data.totals.interestDue > 0 ? `, interest running ₹${money(reg.data.totals.interestDue)} (1.5% a month)` : ""}</span>}</p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full max-w-3xl text-sm" aria-label="TDS register">
+              <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Section</th><th className={`${th} text-right`}>Vouchers</th><th className={`${th} text-right`}>Deducted</th><th className={`${th} text-right`}>Deposited</th><th className={`${th} text-right`}>Balance</th><th className={`${th} text-right`}>Interest due</th><th className={`${th} text-left pl-3`}>Challans</th></tr></thead>
+              <tbody className="divide-y divide-ink-100">
+                {reg.data.rows.map((r) => <tr key={r.section}><td className="py-1.5 font-medium">{r.section}</td><td className={num}>{r.count}</td><td className={num}>{money(r.deducted)}</td><td className={num}>{money(r.deposited)}</td><td className={`${num} ${r.balance > 0 ? "text-status-danger font-medium" : ""}`}>{money(r.balance)}</td><td className={num}>{r.interestDue ? money(r.interestDue) : ""}</td><td className="py-1.5 pl-3 text-xs text-ink-500">{r.challans.map((c) => `${c.bsrCode}/${c.challanNo} ${formatDate(c.depositedOn)} ₹${money(c.amount)}`).join("; ") || "—"}</td></tr>)}
+                {reg.data.rows.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={7}>No TDS deducted in {monthLabel(month)}.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4"><ChallanForm month={month} sections={reg.data.rows.map((r) => r.section)} onDone={(r) => qc.setQueryData([ACCOUNTS_KEY, "tds-register", month], r)} /></div>
+        </Card>
+      ))}
+      {view === "26q" && (f26.isLoading || !f26.data ? <Skeleton className="h-48 w-full" /> : (
+        <Card className="p-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div><h3 className="font-semibold">Form 26Q · {f26.data.fy} {f26.data.quarter}</h3><p className="text-sm text-ink-500">{f26.data.totals.deductees} deductee{f26.data.totals.deductees === 1 ? "" : "s"} · ₹{money(f26.data.totals.tds)} deducted on ₹{money(f26.data.totals.amountPaid)} · {f26.data.certificates.length} Form 16A issued</p></div>
+            <a href={accountsService.form26qXlsxUrl(f26.data.fy, f26.data.quarter)} className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-2.5 py-1.5 text-sm font-medium text-ink-700 hover:bg-ink-50"><Download className="h-4 w-4" /> Excel for the return</a>
+          </div>
+          {f26.data.checks.length > 0 && <div className="mt-3 rounded-lg bg-status-warningBg p-3 text-sm" aria-label="26Q checks"><ul className="space-y-0.5">{f26.data.checks.map((c, i) => <li key={i}><StatusChip tone={c.level === "error" ? "danger" : "warning"}>{c.doc}</StatusChip> <span className="ml-1">{c.text}</span></li>)}</ul></div>}
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm" aria-label="26Q rows">
+              <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Deductee</th><th className={`${th} text-left`}>PAN</th><th className={`${th} text-left`}>Section</th><th className={`${th} text-left`}>Paid on</th><th className={`${th} text-right`}>Amount</th><th className={`${th} text-right`}>TDS</th><th className={`${th} text-left pl-3`}>Challan</th></tr></thead>
+              <tbody className="divide-y divide-ink-100">
+                {f26.data.rows.map((r) => <tr key={r.voucherNo}><td className="py-1.5">{r.deductee}<span className="block text-xs text-ink-400">{r.voucherNo} · {r.docs.join(", ")}</span></td><td className={`py-1.5 font-mono text-xs ${r.pan ? "" : "text-status-danger"}`}>{r.pan || "missing"}</td><td className="py-1.5">{r.section} @ {r.rate}%</td><td className="py-1.5 whitespace-nowrap">{formatDate(r.date)}</td><td className={num}>{money(r.amountPaid)}</td><td className={num}>{money(r.tds)}</td><td className="py-1.5 pl-3 text-xs">{r.challan || <span className="text-status-warning">not deposited</span>}</td></tr>)}
+                {f26.data.rows.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={7}>No TDS deducted this quarter.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ))}
+      {view === "receivable" && (rec.isLoading || !rec.data ? <Skeleton className="h-48 w-full" /> : (
+        <Card className="p-5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div><h3 className="font-semibold">TDS customers deducted from us · {rec.data.fy}</h3><p className="text-sm text-ink-500">₹{money(rec.data.totals.deducted)} kept back on receipts · certificates received ₹{money(rec.data.totals.certificates)} · in Form 26AS ₹{money(rec.data.totals.in26as)}{rec.data.unmatched26as > 0 ? ` (₹${money(rec.data.unmatched26as)} in 26AS from deductors not on file)` : ""}</p></div>
+            <div><input ref={asRef} type="file" accept=".csv,.xlsx,.xls,text/csv" className="hidden" aria-label="Form 26AS file" onChange={(e) => upload26as(e.target.files?.[0])} /><Button variant="secondary" loading={busy} onClick={() => asRef.current?.click()}><Upload className="h-4 w-4" /> Upload Form 26AS</Button></div>
+          </div>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full max-w-4xl text-sm" aria-label="TDS receivable">
+              <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Customer</th><th className={`${th} text-right`}>Deducted (books)</th><th className={`${th} text-right`}>Certificates</th><th className={`${th} text-right`}>In 26AS</th><th className={`${th} text-left pl-3`}>Position</th></tr></thead>
+              <tbody className="divide-y divide-ink-100">
+                {rec.data.rows.map((r) => <tr key={r.customer}><td className="py-1.5">{r.customerName}</td><td className={num}>{money(r.deducted)}</td><td className={num}>{money(r.certificates)}</td><td className={num}>{money(r.in26as)}</td><td className="py-1.5 pl-3"><StatusChip tone={r.state === "matched" ? "success" : r.state === "no26as" ? "neutral" : r.state === "short" ? "danger" : "warning"}>{r.state === "matched" ? "matches 26AS" : r.state === "no26as" ? "no 26AS yet" : r.state === "short" ? `₹${money(r.short26as)} short in 26AS` : "more in 26AS"}</StatusChip></td></tr>)}
+                {rec.data.rows.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={5}>No customer kept TDS back this year.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs text-ink-400">Short in 26AS: the customer deducted but did not deposit or file it against our PAN; the credit is lost until they do. Chase them for the certificate and the correction.</p>
+        </Card>
+      ))}
+      {view === "194q" && (p194.isLoading || !p194.data ? <Skeleton className="h-48 w-full" /> : (
+        <Card className="p-5">
+          <h3 className="font-semibold">s.194Q · goods bought from each supplier in {p194.data.fy}</h3>
+          <p className="text-sm text-ink-500">{p194.data.settings.enabled ? `On: ${p194.data.settings.rate}% on purchases beyond ₹${money(p194.data.settings.limit)} from one seller. ${p194.data.totals.crossed} supplier${p194.data.totals.crossed === 1 ? "" : "s"} past the limit; ₹${money(p194.data.totals.tdsDeducted)} deducted of ₹${money(p194.data.totals.tdsDue)} due.` : "Off. Turn it on under Settings → Books once last year's turnover crossed ₹10 crore."}</p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full max-w-4xl text-sm" aria-label="194Q purchases">
+              <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Supplier</th><th className={`${th} text-left`}>PAN</th><th className={`${th} text-right`}>Purchases (taxable)</th><th className={`${th} text-right`}>Over the limit</th><th className={`${th} text-right`}>TDS due</th><th className={`${th} text-right`}>Deducted</th></tr></thead>
+              <tbody className="divide-y divide-ink-100">
+                {p194.data.rows.map((r) => <tr key={r.supplier} className={r.crossed ? "" : "text-ink-500"}><td className="py-1.5">{r.supplierName}</td><td className="py-1.5 font-mono text-xs">{r.pan || "—"}</td><td className={num}>{money(r.purchases)}</td><td className={num}>{r.over ? money(r.over) : ""}</td><td className={num}>{r.tdsDue ? money(r.tdsDue) : ""}</td><td className={num}>{r.tdsDeducted ? money(r.tdsDeducted) : ""}</td></tr>)}
+                {p194.data.rows.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={6}>No goods bought this year.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function PayrollSection({ month }: { month: string }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: [ACCOUNTS_KEY, "payroll-books", month], queryFn: () => accountsService.payrollBooks(month) });
+  const [busy, setBusy] = useState<string | null>(null);
+  const [dep, setDep] = useState<{ kind: "pf" | "esi" | "pt"; amount: number | ""; challanNo: string; depositedOn: string }>({ kind: "pf", amount: "", challanNo: "", depositedOn: "" });
+  const run = async (key: string, fn: () => Promise<{ summary: unknown }>, done: string) => {
+    setBusy(key);
+    try { const r = await fn(); qc.setQueryData([ACCOUNTS_KEY, "payroll-books", month], r.summary); qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] }); toast(done, "success"); }
+    catch (e) { toast(e instanceof ApiError ? e.message : "Could not post", "error"); }
+    finally { setBusy(null); }
+  };
+  if (q.isLoading || !q.data) return <Skeleton className="h-64 w-full" />;
+  const d = q.data;
+  const t = d.totals;
+  return (
+    <div className="space-y-4">
+      <Card className="p-5">
+        <h3 className="font-semibold">Payroll for {monthLabel(month)} in the books</h3>
+        <p className="text-sm text-ink-500">{t.people} slip{t.people === 1 ? "" : "s"} finalised{d.drafts ? `, ${d.drafts} still draft` : ""}. The salary journal charges the month's wages and sets up what is owed; the paid journal clears it as cash goes out.</p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full max-w-xl text-sm" aria-label="Payroll month">
+            <tbody className="divide-y divide-ink-100">
+              <tr><td className="py-1">Gross earnings</td><td className={num}>{money(t.gross)}</td></tr>
+              <tr><td className="py-1">Bonuses</td><td className={num}>{money(t.bonuses)}</td></tr>
+              <tr><td className="py-1">Penalties and other deductions</td><td className={num}>− {money(t.other)}</td></tr>
+              <tr className="font-semibold"><td className="py-1">Salaries &amp; Wages (expense)</td><td className={num}>{money(t.expense)}</td></tr>
+              <tr><td className="py-1 pl-4 text-ink-500">PF payable (employees' share)</td><td className={num}>{money(t.pf)}</td></tr>
+              <tr><td className="py-1 pl-4 text-ink-500">ESI payable</td><td className={num}>{money(t.esi)}</td></tr>
+              <tr><td className="py-1 pl-4 text-ink-500">Advances recovered</td><td className={num}>{money(t.advances)}</td></tr>
+              <tr className="font-semibold"><td className="py-1 pl-4">Salary payable (net)</td><td className={num}>{money(t.net)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button size="sm" variant={d.journals.salary && !d.journals.salaryStale ? "secondary" : "primary"} disabled={!t.people} loading={busy === "salary"} onClick={() => run("salary", () => accountsService.postPayrollSalary(month), "Salary journal posted")}><Send className="h-4 w-4" /> {d.journals.salary ? (d.journals.salaryStale ? "Re-post salary journal (slips changed)" : "Re-post salary journal") : "Post salary journal"}</Button>
+          {d.journals.salary && <span className="text-sm text-ink-500">{d.journals.salary.journalNo} · ₹{money(d.journals.salary.total)}</span>}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Button size="sm" variant={d.journals.paid && !d.journals.paidStale ? "secondary" : "primary"} disabled={!(d.paid > 0)} loading={busy === "paid"} onClick={() => run("paid", () => accountsService.postPayrollPaid(month), "Paid journal posted")}><Send className="h-4 w-4" /> {d.journals.paid ? "Re-post paid journal" : `Post cash paid out (₹${money(d.paid)})`}</Button>
+          {d.journals.paid && <span className="text-sm text-ink-500">{d.journals.paid.journalNo} · ₹{money(d.journals.paid.total)}</span>}
+        </div>
+      </Card>
+      <Card className="p-5">
+        <h3 className="font-semibold">PF and ESI · due by {formatDate(d.statutory.due)}</h3>
+        <p className="text-sm text-ink-500">The employees' share deposited after the due day is not an expense of the year (s.36(1)(va)).</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          {(["pf", "esi"] as const).map((k) => { const x = d.statutory[k]; const left = Math.max(0, x.due - x.deposited); return (
+            <div key={k} className={`rounded-lg px-3 py-2 ${x.late ? "bg-status-dangerBg" : left > 0.005 ? "bg-status-warningBg" : "bg-status-successBg"}`}>
+              <span className="text-xs uppercase text-ink-500">{k}</span>
+              <span className="block font-semibold tabular-nums">₹{money(x.deposited)} of ₹{money(x.due)}</span>
+              <span className="block text-xs text-ink-500">{x.late ? "deposited late: disallowed" : left > 0.005 ? `₹${money(left)} to deposit` : "deposited in time"}</span>
+            </div>
+          ); })}
+          <div className="rounded-lg bg-canvas px-3 py-2"><span className="text-xs uppercase text-ink-500">Professional tax</span><span className="block font-semibold tabular-nums">₹{money(d.statutory.pt.deposited)}</span></div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <Select label="Deposit" value={dep.kind} onChange={(e) => setDep({ ...dep, kind: e.target.value as "pf" | "esi" | "pt" })} options={[{ value: "pf", label: "PF" }, { value: "esi", label: "ESI" }, { value: "pt", label: "Professional tax" }]} />
+          <Input label="Amount" type="number" step="0.01" min={0} value={dep.amount} onChange={(e) => setDep({ ...dep, amount: e.target.value === "" ? "" : Number(e.target.value) })} className="w-32" />
+          <Input label="Challan / TRRN" value={dep.challanNo} onChange={(e) => setDep({ ...dep, challanNo: e.target.value })} className="w-40" />
+          <Input label="Deposited on" type="date" value={dep.depositedOn} onChange={(e) => setDep({ ...dep, depositedOn: e.target.value })} />
+          <Button size="sm" disabled={!(Number(dep.amount) > 0) || !dep.depositedOn} loading={busy === "dep"} onClick={() => run("dep", () => accountsService.addStatutoryDeposit({ kind: dep.kind, month, amount: Number(dep.amount), challanNo: dep.challanNo, depositedOn: dep.depositedOn }), "Deposit recorded").then(() => setDep({ ...dep, amount: "", challanNo: "" }))}>Record deposit</Button>
+        </div>
+      </Card>
     </div>
   );
 }

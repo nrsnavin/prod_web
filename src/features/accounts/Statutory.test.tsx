@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatutoryTab } from "./StatutoryTab";
 import { JournalForm } from "./JournalForm";
-import type { Gstr1, Gstr2bSummary, ItcReversalMonth, MsmeDues, MsmeYearEnd } from "./types";
+import type { Gstr1, Gstr2bSummary, ItcReversalMonth, MsmeDues, MsmeYearEnd, PayrollBooks, TdsRegister } from "./types";
 
 // The statutory tab: MSME dues with days left, GSTR-1 tables with the
 // preparer's checks, the GSTR-2B position after an upload, and the
@@ -41,12 +41,30 @@ const rule37: ItcReversalMonth = {
   toReclaim: [], totals: { reverse: 500, reclaim: 0, reversed: 0, reclaimed: 0 }, done: { reversed: [], reclaimed: [] },
 };
 const itcReverse = vi.fn().mockResolvedValue({ success: true, billNo: "PB/2026-27/0002", amount: 500 });
+const tdsRegister: TdsRegister = {
+  month: "2026-10", due: "2026-11-07",
+  rows: [{ section: "194C", deducted: 1000, count: 2, deposited: 0, interestPaid: 0, balance: 1000, interestDue: 15, late: true, challans: [] }],
+  totals: { deducted: 1000, deposited: 0, balance: 1000, interestDue: 15 }, vouchers: [],
+};
+const addTdsChallan = vi.fn().mockResolvedValue({ success: true, register: { ...tdsRegister, rows: [{ ...tdsRegister.rows[0], deposited: 1000, balance: 0, interestDue: 0, late: false, challans: [{ _id: "c1", amount: 1000, interest: 15, bsrCode: "0510308", challanNo: "00412", depositedOn: "2026-11-10" }] }], totals: { deducted: 1000, deposited: 1000, balance: 0, interestDue: 0 } } });
+const payrollBooks: PayrollBooks = {
+  month: "2026-10", drafts: 0, paid: 17100,
+  totals: { people: 2, gross: 35000, bonuses: 500, pf: 4200, esi: 150, advances: 500, other: 350, net: 30300, expense: 35150 },
+  journals: { salary: null, paid: null, salaryStale: false, paidStale: false },
+  statutory: { due: "2026-11-15", pf: { due: 4200, deposited: 0, late: false, rows: [] }, esi: { due: 150, deposited: 150, late: false, rows: [] }, pt: { deposited: 0, rows: [] } },
+};
+const postedPayroll: PayrollBooks = { ...payrollBooks, journals: { ...payrollBooks.journals, salary: { _id: "j1", journalNo: "JV/2026-27/0003", date: "2026-10-31", total: 35150 } } };
+// The section refetches the month after posting, so the mock has to remember the post.
+let payrollNow: PayrollBooks = payrollBooks;
+const postPayrollSalary = vi.fn().mockImplementation(async () => { payrollNow = postedPayroll; return { success: true, journal: { journalNo: "JV/2026-27/0003" }, summary: postedPayroll }; });
 const createJournal = vi.fn();
 vi.mock("./api", () => ({
   accountsService: {
     msme: async () => msme, msmeYearEnd: async () => yearEnd, msmeForm1Url: () => "/api/v2/accounts/msme/form1?format=xlsx",
     gstr1: async () => gstr1, gstr1JsonUrl: (m: string) => `/api/v2/accounts/gstr1/json?month=${m}`, gstr1XlsxUrl: (m: string) => `/api/v2/accounts/gstr1/xlsx?month=${m}`,
     gstr2b: async () => gstr2b, itcReversal: async () => rule37, itcReverse: (...a: unknown[]) => itcReverse(...a),
+    tdsRegister: async () => tdsRegister, addTdsChallan: (...a: unknown[]) => addTdsChallan(...a),
+    payrollBooks: async () => payrollNow, postPayrollSalary: (...a: unknown[]) => postPayrollSalary(...a),
   },
 }));
 vi.mock("./hooks", () => ({
@@ -106,6 +124,40 @@ describe("the statutory tab", () => {
     expect(within(table).getByText("PB/2026-27/0002").closest("tr")).toHaveTextContent("500.00");
     await userEvent.click(screen.getByRole("button", { name: "Record reversal" }));
     expect(itcReverse).toHaveBeenCalledWith("b3", "2026-10");
+  });
+});
+
+describe("TDS and payroll on the statutory tab", () => {
+  it("shows the deposit register with the due day and records a challan", async () => {
+    wrap(<StatutoryTab />);
+    await userEvent.click(screen.getByRole("button", { name: "TDS" }));
+    expect(await screen.findByText(/deposit by 7 Nov 2026/)).toBeInTheDocument();
+    const table = screen.getByRole("table", { name: "TDS register" });
+    expect(within(table).getByText("194C").closest("tr")).toHaveTextContent("1,000.00");
+    expect(screen.getByText(/₹1,000.00 still to deposit, interest running ₹15.00/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Amount"), "1000");
+    await userEvent.type(screen.getByLabelText("Deposited on"), "2026-11-10");
+    await userEvent.click(screen.getByRole("button", { name: "Record challan" }));
+    expect(addTdsChallan).toHaveBeenCalledWith(expect.objectContaining({ month: "2026-10", section: "194C", amount: 1000, depositedOn: "2026-11-10" }));
+    expect(await screen.findByText(/0510308\/00412/)).toBeInTheDocument();
+  });
+
+  it("totals the payroll month and posts the salary journal", async () => {
+    wrap(<StatutoryTab />);
+    await userEvent.click(screen.getByRole("button", { name: "Payroll" }));
+    const table = await screen.findByRole("table", { name: "Payroll month" });
+    expect(within(table).getByText("Salaries & Wages (expense)").closest("tr")).toHaveTextContent("35,150.00");
+    expect(within(table).getByText("Salary payable (net)").closest("tr")).toHaveTextContent("30,300.00");
+    expect(screen.getByText(/PF and ESI · due by 15 Nov 2026/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Post salary journal/ }));
+    expect(postPayrollSalary).toHaveBeenCalledWith("2026-10");
+    expect(await screen.findByText(/JV\/2026-27\/0003/)).toBeInTheDocument();
+  });
+
+  it("opens on the section and month the link asks for", async () => {
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={["/accounts/statutory?section=payroll&month=2026-10"]}><StatutoryTab /></MemoryRouter></QueryClientProvider>);
+    expect(await screen.findByRole("table", { name: "Payroll month" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Month")).toHaveValue("2026-10");
   });
 });
 

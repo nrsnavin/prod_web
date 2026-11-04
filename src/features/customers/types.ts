@@ -26,6 +26,9 @@ export interface Customer {
   /** Credit control: 0 = no limit. */
   creditLimit?: number;
   maxOverdueDays?: number;
+  /** For TDS the customer deducts from us: their TAN matches Form 26AS; PAN for the record. */
+  tan?: string;
+  pan?: string;
   purchase?: unknown[];
   accountant?: { name?: string; phoneNumber?: string };
   merchandiser?: { name?: string; phoneNumber?: string };
@@ -50,6 +53,8 @@ export interface CustomerFormValues {
   paymentTerms?: string;
   creditLimit?: number;
   maxOverdueDays?: number;
+  tan?: string;
+  pan?: string;
 }
 
 export interface CustomerListResult {

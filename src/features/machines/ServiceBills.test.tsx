@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { ServiceBills } from "./ServiceBills";
 import { ServiceBill } from "./types";
 
@@ -44,9 +45,12 @@ const bill = (over: Partial<ServiceBill> = {}): ServiceBill => ({
   ...over,
 });
 
+// "Enter as bill" navigates to accounts, so the component needs a router.
 const renderBills = (bills: ServiceBill[] = []) =>
   render(
-    <ServiceBills machineId="m1" serviceLogId="log1" bills={bills} loading={false} />
+    <MemoryRouter>
+      <ServiceBills machineId="m1" serviceLogId="log1" bills={bills} loading={false} />
+    </MemoryRouter>
   );
 
 describe("ServiceBills", () => {

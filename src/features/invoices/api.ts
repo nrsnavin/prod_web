@@ -1,5 +1,6 @@
 import { httpClient } from "@/core/http/httpClient";
 import type {
+  EwaybillBody,
   CustomerInvoices,
   EinvoiceStatus,
   Invoice,
@@ -49,6 +50,16 @@ export const invoiceService = {
     const res = await httpClient.post<{ success: boolean; invoice: Invoice }>(`/invoice/${id}/irn`, body);
     return res.invoice;
   },
+
+  /** The e-way bill from the IRN, through the connected GSP. */
+  async ewaybill(id: string, body: EwaybillBody): Promise<Invoice> {
+    return (await httpClient.post<{ success: boolean; invoice: Invoice }>(`/invoice/${id}/ewaybill`, body)).invoice;
+  },
+  /** The number from the portal, pasted in. */
+  async pasteEwaybill(id: string, body: EwaybillBody): Promise<Invoice> {
+    return (await httpClient.post<{ success: boolean; invoice: Invoice }>(`/invoice/${id}/ewaybill/paste`, body)).invoice;
+  },
+  ewaybillJsonUrl: (id: string) => `/api/v2/invoice/${id}/ewaybill.json`,
 
   async cancel(id: string, reason: string): Promise<{ invoice: Invoice; portalNote: string }> {
     const res = await httpClient.post<{ success: boolean; invoice: Invoice; portalNote: string }>(`/invoice/${id}/cancel`, { reason });

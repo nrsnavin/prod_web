@@ -19,7 +19,7 @@ import type { SupplyType } from "@/features/invoices/types";
 import { accountsService } from "./api";
 import { useAccountsMutations, useNotes } from "./hooks";
 import { LinesEditor, PartyPicker, blankLine, money, today } from "./shared";
-import type { AccountNote, LineInput, NoteKind } from "./types";
+import type { AccountNote, CreditNoteLimit, LineInput, NoteKind } from "./types";
 
 /** Which of the three notes this is. */
 export type NoteFormKind = "credit" | "debit" | "debit-customer";
@@ -104,6 +104,15 @@ export function NoteForm({ form, onDone, onCancel }: { form: NoteFormKind; onDon
   const [reason, setReason] = useState("");
   const [lines, setLines] = useState<LineInput[]>([blankLine(5)]);
   const [notes, setNotes] = useState("");
+  // s.34(2): a GST credit note is allowed until 30 November of the year after the invoice's.
+  const [limit, setLimit] = useState<CreditNoteLimit | null>(null);
+  const [financial, setFinancial] = useState(false);
+  useEffect(() => {
+    if (kind !== "credit" || !doc) { setLimit(null); setFinancial(false); return; }
+    let live = true;
+    accountsService.creditNoteLimit(doc).then((l) => { if (live) { setLimit(l); setFinancial(l.past); } }).catch(() => { if (live) setLimit(null); });
+    return () => { live = false; };
+  }, [kind, doc]);
 
   useEffect(() => {
     if (!party) { setDocs([]); setDoc(""); return; }
@@ -120,7 +129,7 @@ export function NoteForm({ form, onDone, onCancel }: { form: NoteFormKind; onDon
 
   const submit = () =>
     createNote.mutate(
-      { kind, partyType, against: { doc }, reason: reason.trim(), date, lines, notes: notes.trim() || undefined, partyNoteNo: partyNoteNo.trim() || undefined },
+      { kind, partyType, against: { doc }, reason: reason.trim(), date, lines, notes: notes.trim() || undefined, partyNoteNo: partyNoteNo.trim() || undefined, financial: kind === "credit" && financial ? true : undefined },
       {
         onSuccess: (n) => { toast(`${n.noteNo} issued`, "success"); onDone(n._id); },
         onError: (e) => toast(e instanceof ApiError ? e.message : "Could not issue the note", "error"),
@@ -136,7 +145,16 @@ export function NoteForm({ form, onDone, onCancel }: { form: NoteFormKind; onDon
         <Input label="Reason *" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={form === "credit" ? "e.g. Rate difference agreed, 200 m returned" : form === "debit" ? "e.g. Short supply 4 kg, rejected lot" : "e.g. Freight billed later, rate revision"} />
         {partyType === "supplier" && <Input label="Their credit note no." value={partyNoteNo} onChange={(e) => setPartyNoteNo(e.target.value)} placeholder="When the supplier sent one" />}
       </div>
+      {limit && (limit.past || limit.soon) && (
+        <div role="alert" className={`rounded-lg px-3 py-2 text-sm ${limit.past ? "bg-status-dangerBg text-status-danger" : "bg-status-warningBg text-status-warning"}`}>
+          {limit.past
+            ? <>A GST credit note against {limit.invoiceNumber} could be declared only until {formatDate(limit.limit)} (s.34(2)). This one goes as a <strong>financial credit note</strong>: the customer's account comes down, no GST moves, nothing is reported in GSTR-1.</>
+            : <>GST on a credit note against {limit.invoiceNumber} can be declared only until {formatDate(limit.limit)} ({limit.daysLeft} days left).</>}
+          {!limit.past && <label className="mt-1 flex items-center gap-2 text-xs"><input type="checkbox" checked={financial} onChange={(e) => setFinancial(e.target.checked)} /> Issue as a financial credit note anyway (no GST)</label>}
+        </div>
+      )}
       <LinesEditor lines={lines} onChange={setLines} supplyType={chosen?.supplyType ?? "intra"} />
+      {financial && <p className="text-xs text-ink-500">GST on the lines is ignored: the note is for the taxable value only.</p>}
       {form !== "debit-customer" && <p className="text-xs text-ink-400">Whatever the document no longer owes stays as credit on the party's account, to apply to another document.</p>}
       <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
       <div className="flex justify-end gap-2">

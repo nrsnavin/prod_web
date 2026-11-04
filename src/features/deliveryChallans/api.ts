@@ -96,6 +96,10 @@ export const dcService = {
     httpClient.patch("/dc/update-status", { id, status }),
 
   remove: (id: string) => httpClient.delete("/dc/delete", { id }),
+  /** The e-way bill number from the portal, pasted onto a challan. */
+  async pasteEwaybill(id: string, body: { number: string; vehicleNo?: string; transporterId?: string; transporterName?: string; validUpto?: string; distanceKm?: number }): Promise<DeliveryChallan> {
+    return (await httpClient.post<{ success: boolean; dc: DeliveryChallan }>(`/dc/${id}/ewaybill/paste`, body)).dc;
+  },
 
   // Several at once, from the list's selection. Each challan moves on its
   // own; one that cannot (already delivered, cancelled) says why.

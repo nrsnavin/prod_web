@@ -35,6 +35,8 @@ const schema = z.object({
   // 0 = no limit: nothing is held until the office sets one.
   creditLimit: z.coerce.number().min(0, "0 or more").optional(),
   maxOverdueDays: z.coerce.number().min(0, "0 or more").optional(),
+  tan: z.string().regex(/^([A-Z]{4}\d{5}[A-Z])?$/i, "A TAN is 4 letters, 5 digits, 1 letter").optional().or(z.literal("")),
+  pan: z.string().regex(/^([A-Z]{5}\d{4}[A-Z])?$/i, "A PAN is 5 letters, 4 digits, 1 letter").optional().or(z.literal("")),
 });
 
 export function CustomerForm({
@@ -73,6 +75,8 @@ export function CustomerForm({
       paymentTerms: initial?.paymentTerms ?? "",
       creditLimit: initial?.creditLimit ?? 0,
       maxOverdueDays: initial?.maxOverdueDays ?? 0,
+      tan: initial?.tan ?? "",
+      pan: initial?.pan ?? "",
     },
   });
 
@@ -135,6 +139,10 @@ export function CustomerForm({
         <Input label="Payment terms" placeholder="e.g. 30 days" {...register("paymentTerms")} />
         <Input label="Credit limit (₹)" type="number" min={0} hint="0 = no limit" error={errors.creditLimit?.message} {...register("creditLimit")} />
         <Input label="Hold when overdue beyond (days)" type="number" min={0} hint="0 = never" error={errors.maxOverdueDays?.message} {...register("maxOverdueDays")} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Input label="TAN" placeholder="CHEC12345A" hint="Matches the TDS they deduct to Form 26AS" error={errors.tan?.message} {...register("tan")} />
+        <Input label="PAN" placeholder="AAAPC1234F" error={errors.pan?.message} {...register("pan")} />
       </div>
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>

@@ -102,6 +102,9 @@ export interface SupplierBill {
   itc: { eligible: boolean; amount: number };
   /** What GSTR-2B says about this bill, once the month's 2B is uploaded. */
   gstr2b?: { status: "" | "matched" | "mismatch" | "missing"; period?: string; diff?: number; note?: string; at?: string };
+  /** Entered from a machine's service log. */
+  machine?: string;
+  serviceBill?: string;
   /** Credit reversed under Rule 37 (unpaid 180 days) and re-claimed when paid. */
   itcReversal?: { amount?: number; period?: string; at?: string; reclaimAmount?: number; reclaimPeriod?: string; reclaimAt?: string };
   tds: { applicable: boolean; section?: string; rate?: number };
@@ -150,6 +153,8 @@ export interface BillCreateBody {
   itcEligible?: boolean;
   tds?: { applicable: boolean; section?: string; rate?: number };
   notes?: string;
+  /** The machine service bill this is entered from (the file comes along). */
+  serviceBill?: string;
   source?: string;
   aiSuggestion?: string;
   requestId?: string;
@@ -231,6 +236,8 @@ export interface AccountNote {
   cancel?: { reason?: string; at?: string };
   notes?: string;
   fingerprints?: Fingerprint[];
+  /** A financial credit note: past the GST time limit, no tax, not in GSTR-1. */
+  financial?: boolean;
 }
 
 export interface NoteCreateBody {
@@ -241,6 +248,8 @@ export interface NoteCreateBody {
   against: { doc: string };
   reason: string;
   date?: string;
+  /** Past the GST time limit: a financial credit note, no tax. */
+  financial?: boolean;
   lines: LineInput[];
   notes?: string;
   requestId?: string;
@@ -598,7 +607,50 @@ export interface AccountsSettings {
   gst?: { hsnDigits: 4 | 6 | 8 };
   /** A journal above this needs an admin to post it; 0 = anyone in accounts. */
   journals?: { approvalAbove: number };
+  /** s.194Q: TDS on purchases of goods from one seller beyond the limit in a year. */
+  tds?: { purchase194q: { enabled: boolean; limit: number; rate: number } };
 }
+
+// ── TDS after the deduction ──
+export interface TdsRegister {
+  month: string; due: string;
+  rows: Array<{ section: string; deducted: number; count: number; deposited: number; interestPaid: number; balance: number; interestDue: number; late: boolean; challans: Array<{ _id: string; amount: number; interest: number; bsrCode: string; challanNo: string; depositedOn: string }> }>;
+  totals: { deducted: number; deposited: number; balance: number; interestDue: number };
+  vouchers: Array<{ _id: string; voucherNo: string; date: string; partyName: string; section: string; rate: number; base: number; tds: number; docs: string[] }>;
+}
+export interface Form26q {
+  fy: string; quarter: "Q1" | "Q2" | "Q3" | "Q4"; from: string; to: string;
+  rows: Array<{ voucherNo: string; date: string; supplier: string; deductee: string; pan: string; section: string; rate: number; amountPaid: number; tds: number; docs: string[]; challan: string }>;
+  checks: Array<{ level: "error" | "warn"; doc: string; text: string }>;
+  totals: { amountPaid: number; tds: number; deductees: number };
+  certificates: TdsCertificateRow[];
+}
+export interface TdsCertificateRow { _id: string; kind: "issued" | "received"; partyType: "customer" | "supplier"; party: string; partyName: string; fy: string; quarter: string; certNo: string; section: string; amount: number; on: string; note?: string }
+export interface TdsReceivable {
+  fy: string; has26as: boolean; unmatched26as: number;
+  rows: Array<{ customer: string; customerName: string; deducted: number; receipts: Array<{ voucherNo: string; date: string; amount: number }>; certificates: number; in26as: number; short26as: number; state: "no26as" | "matched" | "short" | "more" }>;
+  totals: { deducted: number; certificates: number; in26as: number };
+}
+export interface Purchases194q {
+  fy: string; settings: { enabled: boolean; limit: number; rate: number };
+  rows: Array<{ supplier: string; supplierName: string; pan: string; purchases: number; bills: number; billsFlagged: number; over: number; crossed: boolean; tdsDue: number; tdsDeducted: number }>;
+  totals: { crossed: number; tdsDue: number; tdsDeducted: number };
+}
+
+// ── Payroll into the books ──
+export interface PayrollBooks {
+  month: string; drafts: number; paid: number;
+  totals: { people: number; gross: number; bonuses: number; pf: number; esi: number; advances: number; other: number; net: number; expense: number };
+  journals: { salary: { _id: string; journalNo: string; date: string; total: number } | null; paid: { _id: string; journalNo: string; date: string; total: number } | null; salaryStale: boolean; paidStale: boolean };
+  statutory: { due: string; pf: { due: number; deposited: number; late: boolean; rows: StatutoryDepositRow[] }; esi: { due: number; deposited: number; late: boolean; rows: StatutoryDepositRow[] }; pt: { deposited: number; rows: StatutoryDepositRow[] } };
+}
+export interface StatutoryDepositRow { _id: string; kind: "pf" | "esi" | "pt"; month: string; amount: number; challanNo: string; depositedOn: string }
+
+export interface ServiceBillDraft {
+  serviceBill: string; machine: string; kind: "service"; supplier: string | null; supplierName: string; vendor: string;
+  supplierBillNo: string; billDate: string; amount: number; filename?: string; lines: Array<{ description: string; quantity: number; rate: number }>;
+}
+export interface CreditNoteLimit { invoiceNumber: string; limit: string; daysLeft: number; past: boolean; soon: boolean }
 
 // ── Statutory ──
 export interface MsmeDue {
@@ -756,6 +808,8 @@ export interface Inbox {
   variances: { count: number; top: Array<{ _id: string; billNo: string; supplierName: string; billDate: string; variance: { total: number; note?: string } }> };
   /** Bills to micro and small suppliers past, or within a week of, their 45-day limit. */
   msmeDue?: { count: number; overdue: number; amount: number; top: MsmeDue[] };
+  /** Bills on machines' service logs not yet entered as supplier bills. */
+  serviceBills?: { count: number; amount: number; top: Array<{ _id: string; machine: string; serviceLog: string; kind: "service_bill" | "spare_bill"; vendor?: string; billNo?: string; billDate?: string | null; amount: number; filename?: string; createdAt: string }> };
 }
 export interface ForecastItem { direction: "in" | "out"; party: string; docNo: string; amount: number; basis: string; date?: string }
 export interface ForecastWeek { from: string; to: string; inflow: number; outflow: number; closing: number; top: ForecastItem[]; items?: ForecastItem[] }

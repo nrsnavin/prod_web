@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { FileText, Image as ImageIcon, Paperclip, Trash2, Upload } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { FileText, Image as ImageIcon, Paperclip, Trash2, Upload, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -193,6 +194,7 @@ export function ServiceBills({
   bills: ServiceBill[];
   loading: boolean;
 }) {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { deleteServiceBill } = useMachineMutations();
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -249,6 +251,18 @@ export function ServiceBills({
                 </StatusChip>
                 {b.amount > 0 && (
                   <span className="text-sm font-semibold tabular-nums">{inr(b.amount)}</span>
+                )}
+                {b.supplierBill ? (
+                  <StatusChip tone="success">in the books</StatusChip>
+                ) : (
+                  <button
+                    onClick={() => navigate(`/accounts/bills?serviceBill=${b._id}`)}
+                    className="rounded-md p-1 text-ink-400 hover:bg-ink-100 hover:text-brand-600"
+                    aria-label={`Enter ${b.filename || "bill"} as a supplier bill`}
+                    title="Enter as a supplier bill in Accounts"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                  </button>
                 )}
                 <button
                   onClick={() => setPendingDelete(b)}

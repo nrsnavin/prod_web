@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, FileText, Check, X, Printer, Plus, FileDown, Settings2, Wallet } from "lucide-react";
@@ -773,6 +774,9 @@ export function PayrollPage() {
 
       {tab === "payroll" && (
         <>
+          <p className="mb-3 text-sm text-ink-500">
+            Finalised slips reach the books from <Link to={`/accounts/statutory?section=payroll&month=${year}-${String(month).padStart(2, "0")}`} className="text-brand-600 hover:underline">Accounts → Statutory → Payroll</Link>: the salary journal, the cash paid out, and PF / ESI deposits by the 15th.
+          </p>
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div className="flex gap-1 rounded-lg bg-ink-100 p-1">
               {(["month", "range"] as const).map((m) => (

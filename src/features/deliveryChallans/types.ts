@@ -14,6 +14,8 @@ export interface DcItem {
 
 export interface DeliveryChallan {
   _id: string;
+  /** The e-way bill for the goods' movement, when one was recorded. */
+  ewaybill?: { status: "" | "generated" | "cancelled"; number?: string; validUpto?: string; vehicleNo?: string; transporterName?: string; provider?: string };
   /** Document version; sent back as `expectedVersion` so a stale edit is a 409, not an overwrite. */
   __v?: number;
   dcNumber: string;

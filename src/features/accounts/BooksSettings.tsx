@@ -37,6 +37,7 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
   const [variance, setVariance] = useState<number | "">("");
   const [hsnDigits, setHsnDigits] = useState<4 | 6 | 8>(4);
   const [journalAbove, setJournalAbove] = useState<number | "">("");
+  const [q194, setQ194] = useState<{ enabled: boolean; limit: number; rate: number }>({ enabled: false, limit: 5000000, rate: 0.1 });
   useEffect(() => {
     if (!settings) return;
     setLockDate(settings.lockDate ? settings.lockDate.slice(0, 10) : "");
@@ -44,6 +45,7 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
     setVariance(settings.bills?.rateVariancePercent ?? 2);
     setHsnDigits(settings.gst?.hsnDigits ?? 4);
     setJournalAbove(settings.journals?.approvalAbove ?? 0);
+    setQ194(settings.tds?.purchase194q ?? { enabled: false, limit: 5000000, rate: 0.1 });
   }, [settings]);
   const current = settings?.lockDate ? settings.lockDate.slice(0, 10) : "";
   const goingBack = !!current && (!lockDate || lockDate < current);
@@ -83,7 +85,11 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
           <Select label="HSN digits in GSTR-1" value={String(hsnDigits)} disabled={!isAdmin} onChange={(e) => setHsnDigits(Number(e.target.value) as 4 | 6 | 8)} options={[{ value: "4", label: "4 (turnover up to ₹5 crore)" }, { value: "6", label: "6 (turnover above ₹5 crore)" }, { value: "8", label: "8" }]} />
           <Input label="A journal above (₹) needs an admin" type="number" min={0} step="1000" value={journalAbove} disabled={!isAdmin} onChange={(e) => setJournalAbove(e.target.value === "" ? "" : Number(e.target.value))} hint="0: anyone in accounts may post any journal" />
         </div>
-        {isAdmin && <div className="mt-3 flex justify-end"><Button variant="secondary" loading={saveAccountsSettings.isPending} onClick={() => saveAccountsSettings.mutate({ gst: { hsnDigits }, journals: { approvalAbove: Number(journalAbove) || 0 } }, { onSuccess: () => toast("Saved", "success"), onError: fail })}>Save</Button></div>}
+        <div className="mt-4 border-t border-ink-100 pt-3">
+          <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={q194.enabled} disabled={!isAdmin} onChange={(e) => setQ194({ ...q194, enabled: e.target.checked })} /><span>Deduct TDS under s.194Q on purchases of goods<span className="block text-xs text-ink-400">Applies once last year's turnover crossed ₹10 crore: 0.1% on what is bought from one seller beyond ₹50 lakh in the year. A goods bill that takes a supplier past the limit carries the TDS automatically.</span></span></label>
+          {q194.enabled && <div className="mt-2 grid max-w-md grid-cols-2 gap-3"><Input label="Limit per seller (₹)" type="number" min={0} value={q194.limit} disabled={!isAdmin} onChange={(e) => setQ194({ ...q194, limit: Number(e.target.value) || 0 })} /><Input label="Rate (%)" type="number" min={0} step="0.1" value={q194.rate} disabled={!isAdmin} onChange={(e) => setQ194({ ...q194, rate: Number(e.target.value) || 0 })} /></div>}
+        </div>
+        {isAdmin && <div className="mt-3 flex justify-end"><Button variant="secondary" loading={saveAccountsSettings.isPending} onClick={() => saveAccountsSettings.mutate({ gst: { hsnDigits }, journals: { approvalAbove: Number(journalAbove) || 0 }, tds: { purchase194q: q194 } }, { onSuccess: () => toast("Saved", "success"), onError: fail })}>Save</Button></div>}
       </Card>
 
       <Card className="p-5 lg:col-span-2">
