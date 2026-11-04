@@ -178,7 +178,8 @@ function FixedAssetsSection({ fy }: { fy: string }) {
         </div>
       </Card>
       <Card className="p-5">
-        <div className="overflow-x-auto">
+        {r.rows.length === 0 && <p className="text-sm text-ink-400">No asset on the register for {fy}. Add the looms, the compressor, the computers — each with the day it was put to use.</p>}
+        <div className={r.rows.length === 0 ? "hidden" : "overflow-x-auto"}>
           <table className="w-full text-sm" aria-label="Fixed asset register">
             <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Asset</th><th className={`${th} text-left`}>Block</th><th className={`${th} text-left`}>Put to use</th><th className={`${th} text-right`}>Cost</th><th className={`${th} text-right`}>Opening WDV</th><th className={`${th} text-right`}>Dep. (Cos. Act)</th><th className={`${th} text-right`}>Closing WDV</th><th className={`${th} text-right`}>Dep. (IT)</th><th className={`${th} text-right`}>IT WDV</th><th className={th} /></tr></thead>
             <tbody className="divide-y divide-ink-100">
@@ -191,7 +192,6 @@ function FixedAssetsSection({ fy }: { fy: string }) {
                   <td className="py-1.5 text-right">{a.status === "active" ? <Button size="sm" variant="ghost" onClick={() => setDisposing(a)}>Sold / scrapped</Button> : <StatusChip tone="neutral">{a.status}{a.year.disposal ? ` · ${a.year.disposal.gainLoss >= 0 ? "gain" : "loss"} ₹${money(Math.abs(a.year.disposal.gainLoss))}` : ""}</StatusChip>}</td>
                 </tr>
               ))}
-              {r.rows.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={10}>No asset on the register for {fy}. Add the looms, the compressor, the computers — each with the day it was put to use.</td></tr>}
             </tbody>
           </table>
         </div>

@@ -18,7 +18,7 @@ import { formatDate } from "@/core/format/date";
 import { invoiceService } from "@/features/invoices/api";
 import type { SupplyType } from "@/features/invoices/types";
 import { accountsService } from "./api";
-import { ACCOUNTS_KEY, useAccountsMutations, useNotes } from "./hooks";
+import { useAccountsMutations, useNotes } from "./hooks";
 import { LinesEditor, PartyPicker, blankLine, money, today } from "./shared";
 import type { AccountNote, CreditNoteLimit, InterestDraft, LineInput, NoteKind } from "./types";
 
@@ -55,7 +55,8 @@ export function NotesTab() {
   // Sent here from the interest register: the debit note comes drafted.
   const interestFor = params.get("interest");
   const asOf = params.get("asOf") ?? undefined;
-  const draft = useQuery({ queryKey: [ACCOUNTS_KEY, "interest-draft", interestFor, asOf], queryFn: () => accountsService.interestDraft(interestFor!, asOf), enabled: !!interestFor && creating === "debit-customer" });
+  // Not under the accounts key: once the note is issued the draft is gone, and a refetch would only 409.
+  const draft = useQuery({ queryKey: ["interest-draft", interestFor, asOf], queryFn: () => accountsService.interestDraft(interestFor!, asOf), enabled: !!interestFor && creating === "debit-customer", retry: false, staleTime: Infinity });
 
   return (
     <>

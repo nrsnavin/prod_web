@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useMachines } from "@/features/machines/hooks";
@@ -18,10 +19,12 @@ function MachinePicker({ value, onChange }: { value: string; onChange: (id: stri
  * purchases carry none.
  */
 export function CostCentreField({ value, onChange }: { value: CostCentreInput | undefined; onChange: (v: CostCentreInput | undefined) => void }) {
-  const kind = kindOf(value);
+  // The kind is its own state: an order picked with no number typed yet
+  // must stay "order", not snap back to none.
+  const [kind, setKind] = useState<Kind>(() => kindOf(value));
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Select label="Cost centre" value={kind} onChange={(e) => { const k = e.target.value as Kind; onChange(k === "" ? undefined : k === "order" ? { orderNo: undefined } : k === "machine" ? { machine: "" } : { department: "" }); }}
+      <Select label="Cost centre" value={kind} onChange={(e) => { const k = e.target.value as Kind; setKind(k); onChange(k === "" ? undefined : k === "order" ? { orderNo: undefined } : k === "machine" ? { machine: "" } : { department: "" }); }}
         options={[{ value: "", label: "None" }, { value: "order", label: "A customer order" }, { value: "machine", label: "A machine" }, { value: "department", label: "A department" }]} />
       {kind === "order" && <Input label="Order number" type="number" min={1} value={value?.orderNo ?? ""} onChange={(e) => onChange({ orderNo: e.target.value === "" ? undefined : Number(e.target.value) })} hint="Shows on that order's P&L" />}
       {kind === "machine" && <MachinePicker value={value?.machine ?? ""} onChange={(id) => onChange({ machine: id })} />}

@@ -135,7 +135,7 @@ function LetterDialog({ row, asOf, onClose, onChanged }: { row: ConfirmationRow;
     w.document.close(); w.print();
   };
   return (
-    <Modal open onClose={onClose} title={`${c.confirmationNo} · ${row.partyName} · as on ${formatDate(asOf)}`} width="max-w-3xl">
+    <Modal open onClose={onClose} confirmDirtyClose={false} title={`${c.confirmationNo} · ${row.partyName} · as on ${formatDate(asOf)}`} width="max-w-3xl">
       {letter.isLoading || !letter.data ? <Skeleton className="h-64 w-full" /> : (
         <div className="space-y-4">
           <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg bg-ink-50 p-3 font-serif text-sm" aria-label="Letter">{letter.data.text}</pre>
