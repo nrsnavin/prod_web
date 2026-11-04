@@ -333,7 +333,7 @@ function MsmeSection() {
 
 function Gstr1Section({ month }: { month: string }) {
   const q = useQuery({ queryKey: [ACCOUNTS_KEY, "gstr1", month], queryFn: () => accountsService.gstr1(month) });
-  const [table, setTable] = useState<"b2b" | "b2cs" | "cdn" | "hsn" | "docs">("b2b");
+  const [table, setTable] = useState<"b2b" | "b2cs" | "exp" | "cdn" | "hsn" | "docs">("b2b");
   if (q.isLoading || !q.data) return <Skeleton className="h-64 w-full" />;
   const r = q.data;
   const errors = r.checks.filter((c) => c.level === "error");
@@ -355,7 +355,7 @@ function Gstr1Section({ month }: { month: string }) {
           <table className="w-full max-w-2xl text-sm" aria-label="GSTR-1 summary">
             <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Table</th><th className={`${th} text-right`}>Documents</th><th className={`${th} text-right`}>Taxable</th><th className={`${th} text-right`}>Tax</th><th className={`${th} text-right`}>Value</th></tr></thead>
             <tbody className="divide-y divide-ink-100">
-              {([["b2b", "4 · B2B (registered)"], ["b2cl", "5 · B2C large (inter-state, over ₹1 lakh)"], ["b2cs", "7 · B2C small"], ["cdnr", "9B · Notes to registered"], ["cdnur", "9B · Notes to unregistered"]] as const).map(([k, label]) => (
+              {([["b2b", "4 · B2B (registered, SEZ, deemed export)"], ["b2cl", "5 · B2C large (inter-state, over ₹1 lakh)"], ["exp", "6A · Exports"], ["b2cs", "7 · B2C small"], ["cdnr", "9B · Notes to registered"], ["cdnur", "9B · Notes to unregistered"]] as const).map(([k, label]) => (
                 <tr key={k}><td className="py-1.5">{label}</td><td className={num}>{sum(k).count}</td><td className={num}>{money(sum(k).txval)}</td><td className={num}>{money(sum(k).tax)}</td><td className={num}>{money(sum(k).val)}</td></tr>
               ))}
             </tbody>
@@ -369,14 +369,14 @@ function Gstr1Section({ month }: { month: string }) {
         ) : <p className="mt-3 flex items-center gap-2 text-sm text-status-success"><CheckCircle2 className="h-4 w-4" /> Every invoice has a GSTIN where one is on file, an HSN of {r.hsnDigits} digits, and every note its invoice.</p>}
       </Card>
       <Card className="p-5">
-        <FilterChips options={[{ value: "b2b", label: "B2B" }, { value: "b2cs", label: "B2C" }, { value: "cdn", label: "Credit / debit notes" }, { value: "hsn", label: "HSN summary" }, { value: "docs", label: "Documents issued" }]} value={table} onChange={setTable} />
+        <FilterChips options={[{ value: "b2b", label: "B2B" }, { value: "b2cs", label: "B2C" }, { value: "exp", label: "Exports" }, { value: "cdn", label: "Credit / debit notes" }, { value: "hsn", label: "HSN summary" }, { value: "docs", label: "Documents issued" }]} value={table} onChange={setTable} />
         <div className="mt-3 overflow-x-auto">
           {table === "b2b" && (
             <table className="w-full text-sm" aria-label="B2B invoices">
               <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Customer</th><th className={`${th} text-left`}>Invoice</th><th className={`${th} text-left`}>Date</th><th className={`${th} text-left`}>POS</th><th className={`${th} text-right`}>Rate</th><th className={`${th} text-right`}>Taxable</th><th className={`${th} text-right`}>IGST</th><th className={`${th} text-right`}>CGST</th><th className={`${th} text-right`}>SGST</th><th className={`${th} text-right`}>Value</th></tr></thead>
               <tbody className="divide-y divide-ink-100">
                 {[...r.b2b, ...r.b2cl.map((g) => ({ ctin: "", name: `B2C large · ${g.pos}`, inv: g.inv }))].flatMap((g) => g.inv.flatMap((i) => i.itms.map((it, k) => (
-                  <tr key={`${i.inum}-${k}`}><td className="py-1.5">{k === 0 ? <>{g.name}<span className="block text-xs text-ink-400">{g.ctin}</span></> : ""}</td><td className="py-1.5">{k === 0 ? i.inum : ""}</td><td className="py-1.5 whitespace-nowrap">{k === 0 ? i.idt : ""}</td><td className="py-1.5">{i.pos}</td><td className={num}>{it.itm_det.rt}%</td><td className={num}>{money(it.itm_det.txval)}</td><td className={num}>{money(it.itm_det.iamt)}</td><td className={num}>{money(it.itm_det.camt)}</td><td className={num}>{money(it.itm_det.samt)}</td><td className={`${num} font-medium`}>{k === 0 ? money(i.val) : ""}</td></tr>
+                  <tr key={`${i.inum}-${k}`}><td className="py-1.5">{k === 0 ? <>{g.name}<span className="block text-xs text-ink-400">{g.ctin}{i.inv_typ && i.inv_typ !== "R" ? ` · ${i.inv_typ}` : ""}</span></> : ""}</td><td className="py-1.5">{k === 0 ? i.inum : ""}</td><td className="py-1.5 whitespace-nowrap">{k === 0 ? i.idt : ""}</td><td className="py-1.5">{i.pos}</td><td className={num}>{it.itm_det.rt}%</td><td className={num}>{money(it.itm_det.txval)}</td><td className={num}>{money(it.itm_det.iamt)}</td><td className={num}>{money(it.itm_det.camt)}</td><td className={num}>{money(it.itm_det.samt)}</td><td className={`${num} font-medium`}>{k === 0 ? money(i.val) : ""}</td></tr>
                 ))))}
                 {r.b2b.length + r.b2cl.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={10}>No invoice to a registered customer this month.</td></tr>}
               </tbody>
@@ -388,6 +388,17 @@ function Gstr1Section({ month }: { month: string }) {
               <tbody className="divide-y divide-ink-100">
                 {r.b2cs.map((g) => <tr key={`${g.pos}-${g.rt}`}><td className="py-1.5">{g.sply_ty}</td><td className="py-1.5">{g.pos}</td><td className={num}>{g.rt}%</td><td className={num}>{money(g.txval)}</td><td className={num}>{money(g.iamt)}</td><td className={num}>{money(g.camt)}</td><td className={num}>{money(g.samt)}</td><td className={num}>{g.count}</td></tr>)}
                 {r.b2cs.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={8}>No unregistered sale this month.</td></tr>}
+              </tbody>
+            </table>
+          )}
+          {table === "exp" && (
+            <table className="w-full text-sm" aria-label="Exports">
+              <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Type</th><th className={`${th} text-left`}>Customer</th><th className={`${th} text-left`}>Invoice</th><th className={`${th} text-left`}>Shipping bill</th><th className={`${th} text-right`}>Rate</th><th className={`${th} text-right`}>Taxable</th><th className={`${th} text-right`}>IGST</th><th className={`${th} text-right`}>Value</th></tr></thead>
+              <tbody className="divide-y divide-ink-100">
+                {r.exp.flatMap((g) => g.inv.flatMap((i) => i.itms.map((it, k) => (
+                  <tr key={`${i.inum}-${k}`}><td className="py-1.5">{k === 0 ? (g.exp_typ === "WPAY" ? "With IGST" : "Under LUT") : ""}</td><td className="py-1.5">{k === 0 ? i.customer : ""}</td><td className="py-1.5">{k === 0 ? <>{i.inum}<span className="block text-xs text-ink-400">{i.idt}</span></> : ""}</td><td className="py-1.5 text-xs">{k === 0 ? (i.sbnum ? `${i.sbnum} · ${i.sbdt}${i.sbpcode ? ` · ${i.sbpcode}` : ""}` : <span className="text-status-warning">not yet</span>) : ""}</td><td className={num}>{it.rt}%</td><td className={num}>{money(it.txval)}</td><td className={num}>{money(it.iamt)}</td><td className={`${num} font-medium`}>{k === 0 ? money(i.val) : ""}</td></tr>
+                ))))}
+                {r.exp.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={8}>No export this month.</td></tr>}
               </tbody>
             </table>
           )}

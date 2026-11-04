@@ -4,7 +4,8 @@ import { canAccessPath } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileDown, FileJson, BadgeCheck, ClipboardPaste, XCircle, AlertTriangle, Wallet, Truck } from "lucide-react";
+import { ArrowLeft, FileDown, FileJson, BadgeCheck, ClipboardPaste, XCircle, AlertTriangle, Wallet, Truck, Ship } from "lucide-react";
+import { Input } from "@/components/ui/Input";
 import { EwaybillDialog } from "./EwaybillDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -60,7 +61,9 @@ export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { data: inv, isLoading, isError, error } = useInvoice(id);
-  const { registerIrn, pasteIrn, cancel, ewaybill, pasteEwaybill } = useInvoiceMutations();
+  const { registerIrn, pasteIrn, cancel, ewaybill, pasteEwaybill, updateExport } = useInvoiceMutations();
+  const [sbNo, setSbNo] = useState("");
+  const [sbDate, setSbDate] = useState("");
   const [ewbOpen, setEwbOpen] = useState<"generate" | "paste" | null>(null);
   const [busy, setBusy] = useState<"pdf" | "json" | null>(null);
   const [irnOpen, setIrnOpen] = useState(false);
@@ -109,7 +112,10 @@ export function InvoiceDetailPage() {
     );
   }
 
-  const inter = inv.supplyType === "inter";
+  const inter = inv.supplyType !== "intra";
+  const exp = inv.export?.kind ? inv.export : null;
+  const zero = exp?.kind === "EXPWOP" || exp?.kind === "SEZWOP";
+  const taxLabel = zero ? `Zero-rated under LUT${exp?.lut?.number ? ` ${exp.lut.number}` : ""}` : inv.supplyType === "export" ? "IGST · export" : inv.supplyType === "sez" ? "IGST · SEZ unit" : inter ? "IGST · inter-state" : "CGST + SGST · in-state";
   const issued = inv.status === "issued";
   const registered = inv.einvoice.status === "registered";
   const problems = inv.einvoiceProblems ?? [];
@@ -188,7 +194,8 @@ export function InvoiceDetailPage() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <StatusChip tone={invoiceStatusTone[inv.status]}>{inv.status}</StatusChip>
         <StatusChip tone={einvoiceTone[inv.einvoice.status]}>{einvoiceLabel[inv.einvoice.status]}</StatusChip>
-        <StatusChip tone="neutral">{inter ? "IGST · inter-state" : "CGST + SGST · in-state"}</StatusChip>
+        <StatusChip tone="neutral">{taxLabel}</StatusChip>
+        {exp?.kind === "DEXP" && <StatusChip tone="info">Deemed export</StatusChip>}
         {ewb && <StatusChip tone="success">E-way bill {ewb.number}</StatusChip>}
         {needsEwb && <StatusChip tone="warning">E-way bill needed (over ₹50,000)</StatusChip>}
         {inv.status === "cancelled" && inv.cancel?.reason && (
@@ -218,6 +225,33 @@ export function InvoiceDetailPage() {
             ))}
           </ul>
         </div>
+      )}
+
+      {exp && (
+        <Card className="mb-4 p-5" aria-label="Export">
+          <h3 className="flex items-center gap-2 font-semibold"><Ship className="h-4 w-4" /> {inv.supplyType === "export" ? "Export" : inv.supplyType === "sez" ? "Supply to SEZ unit" : "Deemed export"}</h3>
+          <DescriptionList
+            columns={3}
+            items={[
+              { label: "Kind", value: exp.kind },
+              { label: "Under LUT", value: exp.lut?.number || undefined },
+              { label: "Destination", value: exp.countryCode || undefined },
+              { label: "Currency", value: exp.currency && exp.currency !== "INR" ? `${exp.currency} @ ₹${exp.exchangeRate} · ${exp.currency} ${money((inv.totals?.grand ?? 0) / (exp.exchangeRate || 1))}` : exp.currency || undefined },
+              { label: "Port", value: exp.portCode || undefined },
+              { label: "Shipping bill", value: exp.shippingBill?.number ? `${exp.shippingBill.number}${exp.shippingBill.date ? ` · ${formatDate(exp.shippingBill.date)}` : ""}` : undefined },
+            ]}
+          />
+          {inv.supplyType === "export" && issued && (
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <Input label={exp.shippingBill?.number ? "Correct the shipping bill no." : "Shipping bill no. (from customs)"} value={sbNo} onChange={(e) => setSbNo(e.target.value)} className="w-44" />
+              <Input label="Dated" type="date" value={sbDate} onChange={(e) => setSbDate(e.target.value)} />
+              <Button variant="secondary" size="sm" disabled={!sbNo.trim()} loading={updateExport.isPending}
+                onClick={() => updateExport.mutate({ id: inv._id, body: { shippingBill: { number: sbNo.trim(), date: sbDate || undefined } } }, { onSuccess: () => { toast("Shipping bill recorded", "success"); setSbNo(""); setSbDate(""); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not record it", "error") })}>
+                Record shipping bill
+              </Button>
+            </div>
+          )}
+        </Card>
       )}
 
       {registered && (

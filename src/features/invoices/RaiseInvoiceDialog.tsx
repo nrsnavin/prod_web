@@ -4,6 +4,7 @@ import { AlertTriangle } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -13,7 +14,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
 import { useInvoiceMutations, useInvoiceOrderInfo } from "./hooks";
 import { draftLines, money, priceLines, qty } from "./gst";
-import type { InvoiceLineOverride } from "./types";
+import type { ExportKind, InvoiceLineOverride, SupplyType } from "./types";
 
 /**
  * Raise a tax invoice for an order.
@@ -37,23 +38,36 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
   const [shipTo, setShipTo] = useState("");
+  // Export / SEZ: the kind, and what the portal and customs want with it.
+  const [exportKind, setExportKind] = useState<ExportKind | "">("");
+  const [currency, setCurrency] = useState("");
+  const [exchangeRate, setExchangeRate] = useState<number | "">("");
+  const [countryCode, setCountryCode] = useState("");
+  const [portCode, setPortCode] = useState("");
   const [seeded, setSeeded] = useState(false);
 
   useEffect(() => {
     if (!info || seeded) return;
     setSelected(new Set(info.dcs.filter((d) => d.eligible).map((d) => d._id)));
     setShipTo(info.shipTo ?? "");
+    setExportKind(info.export?.suggested ?? "");
+    setCurrency(info.export?.currency || "");
     setSeeded(true);
   }, [info, seeded]);
+  const kindInfo = info?.export?.kinds.find((k) => k.kind === exportKind);
+  const abroad = exportKind === "EXPWP" || exportKind === "EXPWOP";
+  const lutOk = !kindInfo?.needsLut || !!info?.export?.lut.number;
 
   const lines = useMemo(
     () => (info ? draftLines(info.dcs, selected, info.lines, overrides, info.defaults) : []),
     [info, selected, overrides]
   );
-  const priced = useMemo(() => priceLines(lines, info?.supplyType ?? "intra"), [lines, info?.supplyType]);
-  const inter = info?.supplyType === "inter";
+  const supplyType: SupplyType = abroad ? "export" : exportKind === "SEZWP" || exportKind === "SEZWOP" ? "sez" : (info?.supplyType ?? "intra");
+  const priced = useMemo(() => priceLines(lines, supplyType, !!kindInfo?.zeroRated), [lines, supplyType, kindInfo?.zeroRated]);
+  const inter = supplyType !== "intra";
   const unpriced = priced.lines.filter((l) => !(l.rate > 0));
-  const canRaise = !!info && selected.size > 0 && lines.length > 0 && unpriced.length === 0 && !create.isPending;
+  const exportReady = !exportKind || (lutOk && (!abroad || (countryCode.trim().length === 2 && (!currency || currency === "INR" || Number(exchangeRate) > 0))));
+  const canRaise = !!info && selected.size > 0 && lines.length > 0 && unpriced.length === 0 && exportReady && !create.isPending;
 
   const setOverride = (elastic: string, patch: Partial<InvoiceLineOverride>) =>
     setOverrides((o) => ({ ...o, [elastic]: { ...(o[elastic] ?? { elastic }), ...patch } }));
@@ -77,6 +91,7 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
         notes: notes.trim() || undefined,
         shipTo: shipTo.trim() || undefined,
         lines: Object.values(overrides).filter((o) => selected.size && lines.some((l) => l.elastic === o.elastic)),
+        export: exportKind ? { kind: exportKind, currency: abroad ? (currency.trim().toUpperCase() || "INR") : undefined, exchangeRate: abroad && currency && currency.toUpperCase() !== "INR" ? Number(exchangeRate) : undefined, countryCode: abroad ? countryCode.trim().toUpperCase() : undefined, portCode: abroad ? portCode.trim().toUpperCase() || undefined : undefined } : undefined,
       },
       {
         onSuccess: (inv) => {
@@ -103,9 +118,34 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
               <span className="text-ink-400"> · {info.buyer.name}</span>
             </p>
             <StatusChip tone={inter ? "info" : "neutral"}>
-              {inter ? `IGST — inter-state (${info.placeOfSupply})` : "CGST + SGST — in-state"}
+              {kindInfo?.zeroRated ? "Zero-rated under LUT — no IGST" : abroad ? "IGST — export (with payment)" : supplyType === "sez" ? "IGST — SEZ unit (with payment)" : inter ? `IGST — inter-state (${info.placeOfSupply})` : "CGST + SGST — in-state"}
             </StatusChip>
           </div>
+
+          {info.export && (info.export.suggested || exportKind || info.export.kinds.length > 0) && (
+            <div className="rounded-lg border border-ink-200 p-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Select label="Export / SEZ" value={exportKind} onChange={(e) => setExportKind(e.target.value as ExportKind | "")}
+                  options={[{ value: "", label: "Domestic sale" }, ...info.export.kinds.map((k) => ({ value: k.kind, label: k.label }))]} />
+                {kindInfo?.needsLut && (
+                  <p className={`self-end text-sm ${lutOk ? "text-ink-500" : "text-status-danger"}`}>{lutOk ? `Under LUT ${info.export.lut.number}` : "No LUT on file — enter it in Accounts → Settings, or raise with IGST."}</p>
+                )}
+                {abroad && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input label="Country code *" value={countryCode} onChange={(e) => setCountryCode(e.target.value.toUpperCase().slice(0, 2))} placeholder="DE, US, AE" />
+                      <Input label="Port code" value={portCode} onChange={(e) => setPortCode(e.target.value.toUpperCase())} placeholder="INMAA1" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input label="Currency" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))} placeholder="INR" />
+                      {currency && currency.toUpperCase() !== "INR" && <Input label={`₹ per ${currency.toUpperCase()} *`} type="number" min={0} step="0.0001" value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value === "" ? "" : Number(e.target.value))} />}
+                    </div>
+                  </>
+                )}
+              </div>
+              {exportKind && <p className="mt-2 text-xs text-ink-400">{abroad ? "The buyer goes on the e-invoice as unregistered abroad (place of supply 96); the shipping bill is added once customs issue it." : exportKind === "DEXP" ? "Taxed like a domestic sale, reported apart in GSTR-1 (DE)." : "The SEZ unit's GSTIN goes on the e-invoice; GSTR-1 marks it SEWP / SEWOP."}</p>}
+            </div>
+          )}
 
           {info.problems.length > 0 && (
             <div role="alert" className="rounded-lg bg-status-warningBg px-3 py-2 text-sm text-status-warning">
@@ -246,7 +286,9 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
             </div>
             <dl className="rounded-lg bg-ink-50 p-3 text-sm" aria-label="Invoice totals">
               <div className="flex justify-between"><dt className="text-ink-500">Taxable value</dt><dd className="tabular-nums">{money(priced.totals.taxable)}</dd></div>
-              {inter ? (
+              {kindInfo?.zeroRated ? (
+                <div className="flex justify-between"><dt className="text-ink-500">IGST (zero-rated)</dt><dd className="tabular-nums">0.00</dd></div>
+              ) : inter ? (
                 <div className="flex justify-between"><dt className="text-ink-500">IGST</dt><dd className="tabular-nums">{money(priced.totals.igst)}</dd></div>
               ) : (
                 <>

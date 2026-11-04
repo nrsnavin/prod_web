@@ -24,6 +24,10 @@ const LEDGERS: Array<{ key: TallyLedgerKey; label: string; placeholder?: string;
   { key: "discountAllowed", label: "Discount allowed" }, { key: "discountReceived", label: "Discount received" },
   { key: "badDebts", label: "Bad debts written off" }, { key: "writtenBack", label: "Supplier balances written back" }, { key: "sundryExpenses", label: "Expenses with no head ledger" },
   { key: "debtorsGroup", label: "Group for new customers" }, { key: "creditorsGroup", label: "Group for new suppliers" },
+  { key: "salaries", label: "Salaries & wages" }, { key: "salaryPayable", label: "Salary payable" }, { key: "pfPayable", label: "PF payable" }, { key: "esiPayable", label: "ESI payable" }, { key: "staffAdvances", label: "Staff advances" },
+  { key: "depreciation", label: "Depreciation" }, { key: "accumulatedDepreciation", label: "Accumulated depreciation" },
+  { key: "stockInHand", label: "Stock-in-hand (closing stock asset)" }, { key: "closingStock", label: "Closing stock (P&L side)" },
+  { key: "exportSales", label: "Export / SEZ sales" }, { key: "interestReceived", label: "Interest received" }, { key: "chequeCharges", label: "Cheque return charges" },
 ];
 
 /** The books lock, and the Tally ledger each kind of entry posts to. */
@@ -38,6 +42,9 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
   const [hsnDigits, setHsnDigits] = useState<4 | 6 | 8>(4);
   const [journalAbove, setJournalAbove] = useState<number | "">("");
   const [q194, setQ194] = useState<{ enabled: boolean; limit: number; rate: number }>({ enabled: false, limit: 5000000, rate: 0.1 });
+  const [ccTally, setCcTally] = useState(false);
+  const [interest, setInterest] = useState<{ interestRate: number | ""; graceDays: number | "" }>({ interestRate: "", graceDays: "" });
+  const [lut, setLut] = useState<{ number: string; validFrom: string; validTo: string }>({ number: "", validFrom: "", validTo: "" });
   useEffect(() => {
     if (!settings) return;
     setLockDate(settings.lockDate ? settings.lockDate.slice(0, 10) : "");
@@ -46,6 +53,9 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
     setHsnDigits(settings.gst?.hsnDigits ?? 4);
     setJournalAbove(settings.journals?.approvalAbove ?? 0);
     setQ194(settings.tds?.purchase194q ?? { enabled: false, limit: 5000000, rate: 0.1 });
+    setCcTally(!!settings.costCentres?.tally);
+    setInterest({ interestRate: settings.receivables?.interestRate ?? 0, graceDays: settings.receivables?.graceDays ?? 0 });
+    setLut({ number: settings.lut?.number ?? "", validFrom: settings.lut?.validFrom ? settings.lut.validFrom.slice(0, 10) : "", validTo: settings.lut?.validTo ? settings.lut.validTo.slice(0, 10) : "" });
   }, [settings]);
   const current = settings?.lockDate ? settings.lockDate.slice(0, 10) : "";
   const goingBack = !!current && (!lockDate || lockDate < current);
@@ -90,6 +100,21 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
           {q194.enabled && <div className="mt-2 grid max-w-md grid-cols-2 gap-3"><Input label="Limit per seller (₹)" type="number" min={0} value={q194.limit} disabled={!isAdmin} onChange={(e) => setQ194({ ...q194, limit: Number(e.target.value) || 0 })} /><Input label="Rate (%)" type="number" min={0} step="0.1" value={q194.rate} disabled={!isAdmin} onChange={(e) => setQ194({ ...q194, rate: Number(e.target.value) || 0 })} /></div>}
         </div>
         {isAdmin && <div className="mt-3 flex justify-end"><Button variant="secondary" loading={saveAccountsSettings.isPending} onClick={() => saveAccountsSettings.mutate({ gst: { hsnDigits }, journals: { approvalAbove: Number(journalAbove) || 0 }, tds: { purchase194q: q194 } }, { onSuccess: () => toast("Saved", "success"), onError: fail })}>Save</Button></div>}
+      </Card>
+
+      <Card className="p-5">
+        <h3 className="font-semibold">Interest, exports and cost centres</h3>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <Input label="Interest on overdue invoices (% a year)" type="number" min={0} max={100} step="0.5" value={interest.interestRate} disabled={!isAdmin} onChange={(e) => setInterest({ ...interest, interestRate: e.target.value === "" ? "" : Number(e.target.value) })} hint="0: none. A customer's own rate wins." />
+          <Input label="Grace days past due" type="number" min={0} max={365} value={interest.graceDays} disabled={!isAdmin} onChange={(e) => setInterest({ ...interest, graceDays: e.target.value === "" ? "" : Number(e.target.value) })} />
+          <Input label="LUT number (exports without IGST)" value={lut.number} disabled={!isAdmin} onChange={(e) => setLut({ ...lut, number: e.target.value.toUpperCase() })} placeholder="AD330326000123K" hint="The Letter of Undertaking on the GST portal, one a year" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Valid from" type="date" value={lut.validFrom} disabled={!isAdmin} onChange={(e) => setLut({ ...lut, validFrom: e.target.value })} />
+            <Input label="Valid to" type="date" value={lut.validTo} disabled={!isAdmin} onChange={(e) => setLut({ ...lut, validTo: e.target.value })} />
+          </div>
+        </div>
+        <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={ccTally} disabled={!isAdmin} onChange={(e) => setCcTally(e.target.checked)} /><span>Send cost centres to Tally<span className="block text-xs text-ink-400">Each bill's and expense's cost centre (an order, a machine, a department) goes on the voucher as a cost-centre allocation. Switch on cost centres in the Tally company first.</span></span></label>
+        {isAdmin && <div className="mt-3 flex justify-end"><Button variant="secondary" loading={saveAccountsSettings.isPending} onClick={() => saveAccountsSettings.mutate({ costCentres: { tally: ccTally }, receivables: { interestRate: Number(interest.interestRate) || 0, graceDays: Number(interest.graceDays) || 0 }, lut: { number: lut.number, validFrom: lut.validFrom || null, validTo: lut.validTo || null } }, { onSuccess: () => toast("Saved", "success"), onError: fail })}>Save</Button></div>}
       </Card>
 
       <Card className="p-5 lg:col-span-2">

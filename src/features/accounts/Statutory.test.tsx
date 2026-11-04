@@ -20,9 +20,9 @@ const yearEnd: MsmeYearEnd = { fy: "2026-27", rows: [], totals: { allowed: 50000
 const gstr1: Gstr1 = {
   month: "2026-10", fp: "102026", gstin: "33AAECB1234F1Z5", hsnDigits: 4,
   b2b: [{ ctin: "33AAEPS1001F1Z2", name: "Sunrise Garments", inv: [{ inum: "INV/2026-27/0001", idt: "05-10-2026", val: 10500, pos: "33", itms: [{ num: 1, itm_det: { rt: 5, txval: 10000, iamt: 0, camt: 250, samt: 250, csamt: 0 } }] }] }],
-  b2cl: [], b2cs: [], cdnr: [], cdnur: [], hsn: [{ num: 1, hsn_sc: "5806", desc: "20mm", uqc: "MTR", qty: 1000, rt: 5, txval: 10000, iamt: 0, camt: 250, samt: 250 }],
+  b2cl: [], b2cs: [], exp: [], cdnr: [], cdnur: [], hsn: [{ num: 1, hsn_sc: "5806", desc: "20mm", uqc: "MTR", qty: 1000, rt: 5, txval: 10000, iamt: 0, camt: 250, samt: 250 }],
   docs: [{ doc_num: 1, doc_typ: "Invoices for outward supply", docs: [{ from: "INV/2026-27/0001", to: "INV/2026-27/0001", totnum: 1, cancel: 0, net_issue: 1 }] }],
-  summary: { b2b: { count: 1, val: 10500, txval: 10000, tax: 500 }, b2cl: { count: 0, val: 0, txval: 0, tax: 0 }, b2cs: { count: 0, val: 0, txval: 0, tax: 0 }, cdnr: { count: 0, val: 0, txval: 0, tax: 0 }, cdnur: { count: 0, val: 0, txval: 0, tax: 0 } },
+  summary: { b2b: { count: 1, val: 10500, txval: 10000, tax: 500 }, b2cl: { count: 0, val: 0, txval: 0, tax: 0 }, exp: { count: 0, val: 0, txval: 0, tax: 0 }, b2cs: { count: 0, val: 0, txval: 0, tax: 0 }, cdnr: { count: 0, val: 0, txval: 0, tax: 0 }, cdnur: { count: 0, val: 0, txval: 0, tax: 0 } },
   checks: [{ level: "error", doc: "INV/2026-27/0002", text: "Kumar Knits has GSTIN 33AAEPS1002F1Z2 on file but the invoice carries none: it would go as B2C" }],
   counts: { invoices: 2, cancelled: 0, notes: 0 },
 };
@@ -96,7 +96,7 @@ describe("the statutory tab", () => {
     await userEvent.click(screen.getByRole("button", { name: "GSTR-1" }));
     expect(await screen.findByText(/2 invoices, 0 notes · HSN at 4 digits/)).toBeInTheDocument();
     const summary = screen.getByRole("table", { name: "GSTR-1 summary" });
-    expect(within(summary).getByText("4 · B2B (registered)").closest("tr")).toHaveTextContent("10,000.00500.0010,500.00");
+    expect(within(summary).getByText("4 · B2B (registered, SEZ, deemed export)").closest("tr")).toHaveTextContent("10,000.00500.0010,500.00");
     expect(screen.getByLabelText("GSTR-1 checks")).toHaveTextContent("1 to fix before filing");
     expect(screen.getByLabelText("GSTR-1 checks")).toHaveTextContent("Kumar Knits has GSTIN");
     expect(screen.getByRole("link", { name: /JSON for the offline tool/ })).toHaveAttribute("href", "/api/v2/accounts/gstr1/json?month=2026-10");

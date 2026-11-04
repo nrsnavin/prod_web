@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarClock, CheckCircle2, ClipboardCheck, HandCoins, Landmark, PhoneCall, Scale, Timer, Wrench } from "lucide-react";
+import { Banknote, CalendarClock, CheckCircle2, ClipboardCheck, HandCoins, Landmark, PhoneCall, Scale, Timer, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -82,6 +82,12 @@ export function InboxTab() {
                 <Row key={b.id} to={b.docType === "SupplierBill" ? `/accounts/bills/${b.id}` : `/accounts/expenses/${b.id}`} name={b.partyName} right={`₹${money(b.outstanding)}`}
                   meta={<>{b.docNo} · {b.daysLeft < 0 ? <span className="text-status-danger">{-b.daysLeft}d past the limit</span> : `pay by ${formatDate(b.dueDate)}`}</>} />
               ))}</ul>
+            </Box>
+          )}
+          {data.chequesDue && (
+            <Box icon={Banknote} title="Cheques to deposit" count={data.chequesDue.count} amount={data.chequesDue.amount} to="/accounts/registers?section=cheques" empty="No cheque in the drawer falls due this week"
+              badge={data.chequesDue.overdue ? <StatusChip tone="warning" className="mt-1">{data.chequesDue.overdue} past their date</StatusChip> : null}>
+              <ul className="space-y-2">{data.chequesDue.top.map((c) => <Row key={c._id} to={`/accounts/payments/${c._id}`} name={c.partyName} meta={`Cheque ${c.cheque.number || ""}${c.cheque.bank ? ` · ${c.cheque.bank}` : ""} · dated ${formatDate(c.cheque.date)} · ${c.kind === "receipt" ? "received" : "issued"}`} right={`₹${money(c.amount)}`} />)}</ul>
             </Box>
           )}
           {data.serviceBills && (

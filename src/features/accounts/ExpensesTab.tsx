@@ -1,5 +1,6 @@
 import { FlagList, useFlags } from "./Flags";
 import { accountsService } from "./api";
+import { CostCentreField, costCentreBody } from "./CostCentreField";
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Plus, Check, X, Banknote, Download } from "lucide-react";
@@ -24,7 +25,7 @@ import { stateCodeFromGstin } from "@/features/invoices/gst";
 import type { SupplyType } from "@/features/invoices/types";
 import { useAccountsMutations, useBankAccounts, useCategories, useExpenses } from "./hooks";
 import { LinesEditor, PartyPicker, blankLine, expenseLabel, expenseTone, money, priceInputs, today } from "./shared";
-import type { Expense, ExpenseStatus, LineInput } from "./types";
+import type { Expense, ExpenseStatus, LineInput, CostCentreInput } from "./types";
 import type { ScanDraft } from "./ScanBill";
 
 /** Which account the money goes from, for paying an expense. */
@@ -146,6 +147,7 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
   const [payNow, setPayNow] = useState(false);
   const [account, setAccount] = useState("");
   const [notes, setNotes] = useState("");
+  const [costCentre, setCostCentre] = useState<CostCentreInput | undefined>(undefined);
 
   const cat = useMemo(() => (categories ?? []).find((c) => c._id === category), [categories, category]);
   const sellerState = settings?.invoice?.stateCode || stateCodeFromGstin(settings?.gstin);
@@ -176,6 +178,7 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
         ...(itemised ? { lines } : { amount: Number(amount), gstPercent: Number(gstPercent) || 0 }),
         payNow: payNow && !needsApproval && chosenAccount ? { account: chosenAccount } : undefined, notes: notes.trim() || undefined,
         source: initialDraft?.aiSuggestion ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
+        costCentre: costCentreBody(costCentre),
       },
       {
         onSuccess: (r) => { toast(r.voucher ? `${r.expense.expenseNo} paid — voucher ${r.voucher.voucherNo}` : r.expense.status === "pending" ? `${r.expense.expenseNo} sent for approval` : `${r.expense.expenseNo} recorded`, "success"); onDone(); },
@@ -194,6 +197,7 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
         <PartyPicker partyType="supplier" label="Supplier on file (optional)" value={supplier} onChange={(id, name) => { setSupplier(id); if (name) setPayeeName(name); }} />
         <Input label="Paid to" value={payeeName} onChange={(e) => setPayeeName(e.target.value)} placeholder="Name on the receipt" />
         <Input label="Payee GSTIN (for input credit)" value={payeeGstin} onChange={(e) => setPayeeGstin(e.target.value.toUpperCase())} />
+        <CostCentreField value={costCentre} onChange={setCostCentre} />
       </div>
 
       {suggestion && !category && (

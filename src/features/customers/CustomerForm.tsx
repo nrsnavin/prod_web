@@ -37,6 +37,12 @@ const schema = z.object({
   maxOverdueDays: z.coerce.number().min(0, "0 or more").optional(),
   tan: z.string().regex(/^([A-Z]{4}\d{5}[A-Z])?$/i, "A TAN is 4 letters, 5 digits, 1 letter").optional().or(z.literal("")),
   pan: z.string().regex(/^([A-Z]{5}\d{4}[A-Z])?$/i, "A PAN is 5 letters, 4 digits, 1 letter").optional().or(z.literal("")),
+  // Blank: the rate in accounts settings applies.
+  interestRate: z.union([z.literal(""), z.coerce.number().min(0, "0 or more").max(100, "At most 100")]).optional(),
+  interestGraceDays: z.union([z.literal(""), z.coerce.number().min(0, "0 or more").max(365, "At most 365")]).optional(),
+  country: z.string().max(60).optional(),
+  sez: z.boolean().optional(),
+  currency: z.string().regex(/^([A-Z]{3})?$/i, "Three letters: USD, EUR, GBP").optional().or(z.literal("")),
 });
 
 export function CustomerForm({
@@ -77,6 +83,11 @@ export function CustomerForm({
       maxOverdueDays: initial?.maxOverdueDays ?? 0,
       tan: initial?.tan ?? "",
       pan: initial?.pan ?? "",
+      interestRate: initial?.interestRate ?? "",
+      interestGraceDays: initial?.interestGraceDays ?? "",
+      country: initial?.country ?? "",
+      sez: initial?.sez ?? false,
+      currency: initial?.currency ?? "",
     },
   });
 
@@ -143,6 +154,15 @@ export function CustomerForm({
       <div className="grid grid-cols-2 gap-3">
         <Input label="TAN" placeholder="CHEC12345A" hint="Matches the TDS they deduct to Form 26AS" error={errors.tan?.message} {...register("tan")} />
         <Input label="PAN" placeholder="AAAPC1234F" error={errors.pan?.message} {...register("pan")} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Input label="Interest on overdue (% a year)" type="number" min={0} max={100} step="0.5" hint="Blank: the rate in accounts settings" error={errors.interestRate?.message} {...register("interestRate")} />
+        <Input label="Grace days before interest" type="number" min={0} max={365} hint="Blank: as in settings" error={errors.interestGraceDays?.message} {...register("interestGraceDays")} />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <Input label="Country" placeholder="India" hint="Abroad: invoices go as exports" {...register("country")} />
+        <Input label="Invoice currency" placeholder="INR" hint="USD, EUR… for an export customer" error={errors.currency?.message} {...register("currency")} />
+        <label className="flex items-center gap-2 self-end pb-2 text-sm"><input type="checkbox" {...register("sez")} /> SEZ unit (zero-rated)</label>
       </div>
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>

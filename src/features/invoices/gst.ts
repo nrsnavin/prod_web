@@ -74,12 +74,15 @@ export function draftLines(
   });
 }
 
-/** Price the lines and split the tax the way the server will. */
-export function priceLines(lines: InvoiceDraftLine[], supplyType: SupplyType): { lines: PricedLine[]; totals: InvoiceTotals } {
-  const inter = supplyType === "inter";
+/**
+ * Price the lines and split the tax the way the server will. An export
+ * or SEZ supply is IGST, or nothing at all when zero-rated under LUT.
+ */
+export function priceLines(lines: InvoiceDraftLine[], supplyType: SupplyType, zeroRated = false): { lines: PricedLine[]; totals: InvoiceTotals } {
+  const inter = supplyType !== "intra";
   const priced = lines.map((l) => {
     const taxable = round2(l.quantity * l.rate);
-    const tax = round2((taxable * l.gstPercent) / 100);
+    const tax = zeroRated ? 0 : round2((taxable * l.gstPercent) / 100);
     const half = round2(tax / 2);
     return {
       ...l,

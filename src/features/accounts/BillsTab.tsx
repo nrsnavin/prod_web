@@ -1,5 +1,6 @@
 import { FlagList, useFlags } from "./Flags";
 import { accountsService } from "./api";
+import { CostCentreField, costCentreBody } from "./CostCentreField";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Plus, ScanLine, Download } from "lucide-react";
@@ -23,7 +24,7 @@ import { stateCodeFromGstin } from "@/features/invoices/gst";
 import type { SupplyType } from "@/features/invoices/types";
 import { useAccountsMutations, useBillPoInfo, useBills, useCategories } from "./hooks";
 import { LinesEditor, PartyPicker, billLabel, billTone, blankLine, money, today } from "./shared";
-import type { BillStatus, BillVariance, LineInput, SupplierBill } from "./types";
+import type { BillStatus, BillVariance, LineInput, SupplierBill, CostCentreInput } from "./types";
 import { ScanBillDialog, type ScanDraft } from "./ScanBill";
 import { ExpenseForm } from "./ExpensesTab";
 
@@ -128,6 +129,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
   const [itcEligible, setItcEligible] = useState(true);
   const [tds, setTds] = useState<{ applicable: boolean; section: string; rate: number | "" }>({ applicable: false, section: "194C", rate: 2 });
   const [notes, setNotes] = useState("");
+  const [costCentre, setCostCentre] = useState<CostCentreInput | undefined>(undefined);
   const [reverseCharge, setReverseCharge] = useState(!!initialDraft?.reverseCharge);
   // The three-way match: what the server found off the PO or the receipts.
   const [variance, setVariance] = useState<BillVariance | null>(null);
@@ -172,6 +174,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
         source: initialDraft?.aiSuggestion ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
         reverseCharge: reverseCharge || undefined, varianceNote: varianceNote.trim() || undefined,
         serviceBill: serviceBill || undefined,
+        costCentre: costCentreBody(costCentre),
       },
       {
         onSuccess: (bill) => { toast(`Bill ${bill.billNo} entered`, "success"); onDone(bill._id); },
@@ -200,6 +203,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
         <Select label="Kind" value={kind} onChange={(e) => setKind(e.target.value as "goods" | "service")} options={[{ value: "goods", label: "Goods (stock)" }, { value: "service", label: "Service / job work" }]} />
         <Select label={kind === "service" ? "Expense head *" : "Expense head (for a service bill)"} value={category} onChange={(e) => setCategory(e.target.value)} options={categoryOptions} placeholder={kind === "service" ? "Pick the head it posts to" : "None"}
           error={needsHead && supplier ? "A service bill needs its head — freight, job work, repairs…" : undefined} />
+        <CostCentreField value={costCentre} onChange={setCostCentre} />
       </div>
 
       {poInfo && poInfo.inwards.length > 0 && (

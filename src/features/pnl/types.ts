@@ -14,6 +14,8 @@ export interface PnlRevenueLine {
 
 export interface PnlCosts {
   material: number;
+  /** Supplier bills and expenses booked to the order as their cost centre, net of GST claimed. */
+  booked?: number;
   labour: number;
   jobWork: number;
   finishing: number;
@@ -83,6 +85,8 @@ export interface OrderPnl {
   };
   rateCard: CostRateCard & { configured: boolean };
   materialLines: PnlMaterialLine[];
+  /** The bills and expenses behind `costs.booked`. */
+  bookedLines?: Array<{ docType: "SupplierBill" | "Expense"; id: string; docNo: string; refNo?: string; date: string; party: string; what: string; amount: number }>;
   warnings: string[];
 }
 

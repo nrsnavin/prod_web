@@ -60,6 +60,10 @@ export const invoiceService = {
     return (await httpClient.post<{ success: boolean; invoice: Invoice }>(`/invoice/${id}/ewaybill/paste`, body)).invoice;
   },
   ewaybillJsonUrl: (id: string) => `/api/v2/invoice/${id}/ewaybill.json`,
+  /** The shipping bill customs issued after the export invoice, and the port. */
+  async updateExport(id: string, body: { shippingBill: { number: string; date?: string }; portCode?: string }): Promise<Invoice> {
+    return (await httpClient.post<{ success: boolean; invoice: Invoice }>(`/invoice/${id}/export`, body)).invoice;
+  },
 
   async cancel(id: string, reason: string): Promise<{ invoice: Invoice; portalNote: string }> {
     const res = await httpClient.post<{ success: boolean; invoice: Invoice; portalNote: string }>(`/invoice/${id}/cancel`, { reason });

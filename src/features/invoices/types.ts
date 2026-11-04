@@ -2,7 +2,11 @@
 
 export type InvoiceStatus = "issued" | "cancelled";
 export type EinvoiceStatus = "pending" | "registered" | "cancelled";
-export type SupplyType = "intra" | "inter";
+export type SupplyType = "intra" | "inter" | "export" | "sez";
+export type ExportKind = "EXPWP" | "EXPWOP" | "SEZWP" | "SEZWOP" | "DEXP";
+/** An export, SEZ or deemed-export supply: the kind, the LUT, the currency, port and shipping bill. */
+export interface InvoiceExport { kind: ExportKind | ""; currency?: string; exchangeRate?: number; countryCode?: string; portCode?: string; shippingBill?: { number?: string; date?: string }; lut?: { number?: string; validFrom?: string; validTo?: string } }
+export interface ExportBody { kind: ExportKind; currency?: string; exchangeRate?: number | ""; countryCode?: string; portCode?: string; shippingBill?: { number?: string; date?: string } }
 
 export interface InvoiceParty {
   name: string;
@@ -87,6 +91,7 @@ export interface Invoice {
   totalBoxes?: number;
   supplyType: SupplyType;
   placeOfSupply: string;
+  export?: InvoiceExport;
   dcs: Array<{ dc: string; dcNumber: string; dispatchDate?: string }>;
   lines: InvoiceLine[];
   totals: InvoiceTotals;
@@ -150,6 +155,8 @@ export interface InvoiceOrderInfo {
   lines: InvoiceDraftLine[];
   defaults: { hsn: string; gstPercent: number };
   problems: string[];
+  /** Export / SEZ: what the customer file suggests, the kinds, and the LUT on file. */
+  export?: { suggested: ExportKind | ""; kinds: Array<{ kind: ExportKind; label: string; zeroRated: boolean; needsLut: boolean }>; lut: { number: string; validFrom: string | null; validTo: string | null }; currency: string; country: string; sez: boolean };
 }
 
 export interface InvoiceLineOverride {
@@ -170,6 +177,8 @@ export interface InvoiceCreateBody {
   shipTo?: string;
   lines?: InvoiceLineOverride[];
   requestId?: string;
+  /** An export, SEZ or deemed-export supply. */
+  export?: ExportBody;
 }
 
 export interface OrderInvoices {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Download, Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -17,9 +18,9 @@ import { formatDate } from "@/core/format/date";
 import { invoiceService } from "@/features/invoices/api";
 import type { SupplyType } from "@/features/invoices/types";
 import { accountsService } from "./api";
-import { useAccountsMutations, useNotes } from "./hooks";
+import { ACCOUNTS_KEY, useAccountsMutations, useNotes } from "./hooks";
 import { LinesEditor, PartyPicker, blankLine, money, today } from "./shared";
-import type { AccountNote, CreditNoteLimit, LineInput, NoteKind } from "./types";
+import type { AccountNote, CreditNoteLimit, InterestDraft, LineInput, NoteKind } from "./types";
 
 /** Which of the three notes this is. */
 export type NoteFormKind = "credit" | "debit" | "debit-customer";
@@ -51,6 +52,10 @@ export function NotesTab() {
   const { data, isLoading } = useNotes({ page, kind, search });
   const raw = params.get("new");
   const creating: NoteFormKind | null = raw === "credit" || raw === "debit" || raw === "debit-customer" ? raw : null;
+  // Sent here from the interest register: the debit note comes drafted.
+  const interestFor = params.get("interest");
+  const asOf = params.get("asOf") ?? undefined;
+  const draft = useQuery({ queryKey: [ACCOUNTS_KEY, "interest-draft", interestFor, asOf], queryFn: () => accountsService.interestDraft(interestFor!, asOf), enabled: !!interestFor && creating === "debit-customer" });
 
   return (
     <>
@@ -80,7 +85,8 @@ export function NotesTab() {
         <Pagination page={page} totalPages={data?.pages ?? 1} total={data?.total} onChange={setPage} />
       </Card>
       <FormScreen open={!!creating} onClose={() => setParams({})} title={creating ? FORM_TITLES[creating] : ""} width="max-w-4xl">
-        {creating && <NoteForm form={creating} onDone={(id) => { setParams({}); navigate(`/accounts/notes/${id}`); }} onCancel={() => setParams({})} />}
+        {creating && (!interestFor || draft.data) && <NoteForm key={draft.data?.customer ?? "blank"} form={creating} initial={interestFor ? draft.data : undefined} onDone={(id) => { setParams({}); navigate(`/accounts/notes/${id}`); }} onCancel={() => setParams({})} />}
+        {creating && interestFor && draft.isError && <p className="text-sm text-status-danger">{(draft.error as Error).message}</p>}
       </FormScreen>
     </>
   );
@@ -91,18 +97,18 @@ export function NotesTab() {
  * the customer more) or one of a supplier's bills (a debit note), with
  * its own GST lines.
  */
-export function NoteForm({ form, onDone, onCancel }: { form: NoteFormKind; onDone: (id: string) => void; onCancel: () => void }) {
+export function NoteForm({ form, initial, onDone, onCancel }: { form: NoteFormKind; initial?: InterestDraft; onDone: (id: string) => void; onCancel: () => void }) {
   const { toast } = useToast();
   const { createNote } = useAccountsMutations();
   const kind: NoteKind = form === "credit" ? "credit" : "debit";
   const partyType = form === "debit" ? "supplier" : "customer";
   const [partyNoteNo, setPartyNoteNo] = useState("");
-  const [party, setParty] = useState("");
+  const [party, setParty] = useState(initial?.customer ?? "");
   const [docs, setDocs] = useState<Array<{ id: string; label: string; supplyType: SupplyType; gstPercent: number }>>([]);
-  const [doc, setDoc] = useState("");
-  const [date, setDate] = useState(today());
-  const [reason, setReason] = useState("");
-  const [lines, setLines] = useState<LineInput[]>([blankLine(5)]);
+  const [doc, setDoc] = useState(initial?.body.against.doc ?? "");
+  const [date, setDate] = useState(initial?.body.date ?? today());
+  const [reason, setReason] = useState(initial?.body.reason ?? "");
+  const [lines, setLines] = useState<LineInput[]>(initial ? initial.body.lines.map((l) => ({ description: l.description, hsn: l.hsn ?? "", unit: l.unit ?? "", quantity: l.quantity, rate: l.rate, gstPercent: l.gstPercent })) : [blankLine(5)]);
   const [notes, setNotes] = useState("");
   // s.34(2): a GST credit note is allowed until 30 November of the year after the invoice's.
   const [limit, setLimit] = useState<CreditNoteLimit | null>(null);
@@ -129,7 +135,7 @@ export function NoteForm({ form, onDone, onCancel }: { form: NoteFormKind; onDon
 
   const submit = () =>
     createNote.mutate(
-      { kind, partyType, against: { doc }, reason: reason.trim(), date, lines, notes: notes.trim() || undefined, partyNoteNo: partyNoteNo.trim() || undefined, financial: kind === "credit" && financial ? true : undefined },
+      { kind, partyType, against: { doc }, reason: reason.trim(), date, lines, notes: notes.trim() || undefined, partyNoteNo: partyNoteNo.trim() || undefined, financial: kind === "credit" && financial ? true : undefined, interest: initial?.body.interest },
       {
         onSuccess: (n) => { toast(`${n.noteNo} issued`, "success"); onDone(n._id); },
         onError: (e) => toast(e instanceof ApiError ? e.message : "Could not issue the note", "error"),
@@ -138,6 +144,7 @@ export function NoteForm({ form, onDone, onCancel }: { form: NoteFormKind; onDon
 
   return (
     <div className="space-y-4">
+      {initial && <p className="rounded-lg bg-ink-50 px-3 py-2 text-sm">Interest of ₹{money(initial.total)} on {initial.rows.length} overdue invoice{initial.rows.length === 1 ? "" : "s"} of {initial.partyName}, to {formatDate(initial.asOf)}. The note remembers the days it charged, so the next one starts after them.</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         <PartyPicker partyType={partyType} value={party} onChange={(id) => { setParty(id); setDoc(""); }} />
         <Select label={partyType === "customer" ? "Against invoice *" : "Against bill *"} value={doc} onChange={(e) => setDoc(e.target.value)} disabled={!party} options={docs.map((d) => ({ value: d.id, label: d.label }))} placeholder={party ? "Pick the document" : "Pick the party first"} />

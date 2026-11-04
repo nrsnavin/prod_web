@@ -227,6 +227,8 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   const [mode, setMode] = useState<PaymentMode>("bank");
   const [account, setAccount] = useState("");
   const [reference, setReference] = useState("");
+  const [chequeBank, setChequeBank] = useState("");
+  const [chequeDate, setChequeDate] = useState("");
   const [tdsRate, setTdsRate] = useState<number | "">("");
   const [tdsSection, setTdsSection] = useState("194C");
   const [amount, setAmount] = useState<number | "">("");
@@ -279,6 +281,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
       {
         kind, date, partyType: other ? "other" : partyType, ...(other ? { partyName: partyName.trim() } : partyType === "customer" ? { customer: party } : { supplier: party }),
         amount: cash, mode, account: chosenAccount, reference: reference.trim() || undefined,
+        cheque: mode === "cheque" ? { number: reference.trim() || undefined, bank: chequeBank.trim() || undefined, date: chequeDate || undefined } : undefined,
         tds: kind === "payment" && rate > 0 ? { section: tdsSection.trim(), rate } : undefined,
         adjustments: adjustments.filter((a) => Number(a.amount) > 0).map((a) => ({ kind: a.kind, amount: Number(a.amount) })),
         allocations: allocs.map((a) => ({ docType: a.doc.docType, doc: a.doc.id, amount: a.gross })),
@@ -315,6 +318,12 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
         <Select label="Through account" value={chosenAccount} onChange={(e) => setAccount(e.target.value)} options={accountList.map((a) => ({ value: a._id, label: `${a.name} (₹${money(a.balance)})` }))} />
         <Select label="Mode" value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)} options={[{ value: "bank", label: "Bank transfer (NEFT / RTGS / IMPS)" }, { value: "upi", label: "UPI" }, { value: "cheque", label: "Cheque" }, { value: "cash", label: "Cash" }]} />
         <Input label="Reference (UTR / cheque no.)" value={reference} onChange={(e) => setReference(e.target.value)} />
+        {mode === "cheque" && (
+          <div className="grid grid-cols-2 gap-2">
+            <Input label="Drawn on (bank)" value={chequeBank} onChange={(e) => setChequeBank(e.target.value)} placeholder="Kotak, SBI…" />
+            <Input label="Cheque date" type="date" value={chequeDate} onChange={(e) => setChequeDate(e.target.value)} hint="Dated ahead: held in the cheque register" />
+          </div>
+        )}
         {kind === "payment" && (
           <div className="grid grid-cols-2 gap-2">
             <Input label="TDS section" value={tdsSection} onChange={(e) => setTdsSection(e.target.value)} />

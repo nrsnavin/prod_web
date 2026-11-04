@@ -29,6 +29,13 @@ export interface Customer {
   /** For TDS the customer deducts from us: their TAN matches Form 26AS; PAN for the record. */
   tan?: string;
   pan?: string;
+  /** Interest on overdue invoices (% a year) and grace days; null takes the books' setting. */
+  interestRate?: number | null;
+  interestGraceDays?: number | null;
+  /** Export: the country and currency; an SEZ unit is zero-rated too. */
+  country?: string;
+  sez?: boolean;
+  currency?: string;
   purchase?: unknown[];
   accountant?: { name?: string; phoneNumber?: string };
   merchandiser?: { name?: string; phoneNumber?: string };
@@ -55,6 +62,11 @@ export interface CustomerFormValues {
   maxOverdueDays?: number;
   tan?: string;
   pan?: string;
+  interestRate?: number | "" | null;
+  interestGraceDays?: number | "" | null;
+  country?: string;
+  sez?: boolean;
+  currency?: string;
 }
 
 export interface CustomerListResult {

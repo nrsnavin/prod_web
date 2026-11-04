@@ -20,6 +20,7 @@ import type { OrderPnl, PnlJobRow } from "./types";
 
 const COST_LINES = [
   { key: "material", label: "Yarn issued", hint: "At the price captured when it was issued" },
+  { key: "booked", label: "Bought for this order", hint: "Dyeing, job work, transport billed to it (cost centre), net of GST claimed" },
   { key: "labour", label: "Wages", hint: "Scheduled shift hours × the operator's rate" },
   { key: "jobWork", label: "Outsourced job-work", hint: "Vendor rate × meters returned" },
   { key: "finishing", label: "Finishing", hint: "Rate card, or the job's own figure" },
@@ -140,7 +141,7 @@ function CostCard({ pnl }: { pnl: OrderPnl }) {
       <h2 className="text-base font-semibold">Cost</h2>
       <div className="mt-4 space-y-2.5">
         {COST_LINES.map(({ key, label, hint }) => {
-          const amount = pnl.costs[key];
+          const amount = pnl.costs[key] ?? 0;
           const share = total > 0 ? Math.round((amount / total) * 100) : 0;
           return (
             <div key={key}>
@@ -428,6 +429,32 @@ export function OrderPnlDetailPage() {
           </table>
         </div>
       </Card>
+
+      {(pnl.bookedLines?.length ?? 0) > 0 && (
+        <Card className="mt-5 overflow-hidden">
+          <div className="px-5 pt-5">
+            <h2 className="text-base font-semibold">Bought for this order</h2>
+            <p className="mt-0.5 text-sm text-ink-400">Supplier bills and expenses booked to this order as their cost centre.</p>
+          </div>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-y border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+                <tr><th className="px-4 py-3 font-medium">Document</th><th className="px-4 py-3 font-medium">Party</th><th className="px-4 py-3 font-medium">What</th><th className="px-4 py-3 text-right font-medium">Amount</th></tr>
+              </thead>
+              <tbody className="divide-y divide-ink-100">
+                {pnl.bookedLines!.map((b) => (
+                  <tr key={b.id}>
+                    <td className="px-4 py-3"><Link to={b.docType === "SupplierBill" ? `/accounts/bills/${b.id}` : `/accounts/expenses/${b.id}`} className="text-brand-600 hover:underline">{b.docNo}</Link>{b.refNo ? <span className="block text-xs text-ink-400">{b.refNo}</span> : null}</td>
+                    <td className="px-4 py-3">{b.party}</td>
+                    <td className="px-4 py-3">{b.what}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{rupee(b.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {pnl.materialLines.length > 0 && (
         <Card className="mt-5 overflow-hidden">

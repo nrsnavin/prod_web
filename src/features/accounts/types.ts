@@ -107,6 +107,8 @@ export interface SupplierBill {
   serviceBill?: string;
   /** Credit reversed under Rule 37 (unpaid 180 days) and re-claimed when paid. */
   itcReversal?: { amount?: number; period?: string; at?: string; reclaimAmount?: number; reclaimPeriod?: string; reclaimAt?: string };
+  /** Booked to an order, a machine or a department. */
+  costCentre?: CostCentre;
   tds: { applicable: boolean; section?: string; rate?: number };
   paidAmount: number;
   tdsAmount: number;
@@ -138,6 +140,8 @@ export interface BillVariance {
 }
 
 export interface BillCreateBody {
+  /** Booked to an order (by number), a machine or a department. */
+  costCentre?: CostCentreInput;
   reverseCharge?: boolean;
   /** Why a bill off the PO or the receipts is right (the three-way match). */
   varianceNote?: string;
@@ -173,6 +177,8 @@ export interface Expense {
   payeeName?: string;
   payeeGstin?: string;
   refNo?: string;
+  /** Booked to an order, a machine or a department. */
+  costCentre?: CostCentre;
   supplyType: SupplyType;
   lines?: TaxLine[];
   totals: InvoiceTotals;
@@ -190,6 +196,7 @@ export interface Expense {
 }
 
 export interface ExpenseCreateBody {
+  costCentre?: CostCentreInput;
   date?: string;
   category: string;
   description: string;
@@ -238,6 +245,8 @@ export interface AccountNote {
   fingerprints?: Fingerprint[];
   /** A financial credit note: past the GST time limit, no tax, not in GSTR-1. */
   financial?: boolean;
+  /** A debit note charging interest on overdue invoices: the days each covered. */
+  interest?: InterestMarker[];
 }
 
 export interface NoteCreateBody {
@@ -253,7 +262,10 @@ export interface NoteCreateBody {
   lines: LineInput[];
   notes?: string;
   requestId?: string;
+  /** A debit note charging interest: which invoices and days it covers. */
+  interest?: InterestMarker[];
 }
+export interface InterestMarker { invoice: string; docNo?: string; from: string; to: string; days: number; rate: number; amount: number }
 
 export type VoucherKind = "receipt" | "payment";
 export type PaymentMode = "cash" | "bank" | "upi" | "cheque";
@@ -297,12 +309,16 @@ export interface Payment {
   allocations: Allocation[];
   unallocated: number;
   clearedOn?: string;
+  /** A cheque: held (post-dated), deposited, cleared or bounced. */
+  cheque?: ChequeDetails;
   status: "posted" | "cancelled";
   cancel?: { reason?: string; at?: string };
   narration?: string;
   source?: string;
   fingerprints?: Fingerprint[];
 }
+export type ChequeStatus = "" | "held" | "deposited" | "cleared" | "bounced";
+export interface ChequeDetails { number?: string; bank?: string; date?: string; status: ChequeStatus; depositedOn?: string; bouncedOn?: string; bounceReason?: string; charges?: number }
 
 export interface PaymentCreateBody {
   kind: VoucherKind;
@@ -322,6 +338,8 @@ export interface PaymentCreateBody {
   source?: string;
   statementLine?: string;
   requestId?: string;
+  /** When the mode is cheque: its number, bank and date (dated ahead: held). */
+  cheque?: { number?: string; bank?: string; date?: string };
 }
 
 export type AgeingBucket = "current" | "d30" | "d60" | "d90" | "over90";
@@ -596,7 +614,9 @@ export type TallyLedgerKey =
   | "companyName" | "sales" | "purchase" | "outputCgst" | "outputSgst" | "outputIgst" | "inputCgst" | "inputSgst" | "inputIgst"
   | "rcmCgst" | "rcmSgst" | "rcmIgst"
   | "roundOff" | "tdsPayable" | "tdsReceivable" | "bankCharges" | "discountAllowed" | "discountReceived" | "badDebts" | "writtenBack" | "sundryExpenses"
-  | "debtorsGroup" | "creditorsGroup";
+  | "debtorsGroup" | "creditorsGroup"
+  | "salaries" | "salaryPayable" | "pfPayable" | "esiPayable" | "staffAdvances"
+  | "depreciation" | "accumulatedDepreciation" | "stockInHand" | "closingStock" | "exportSales" | "interestReceived" | "chequeCharges";
 export interface AccountsSettings {
   lockDate: string | null;
   lockedBy?: string;
@@ -609,6 +629,12 @@ export interface AccountsSettings {
   journals?: { approvalAbove: number };
   /** s.194Q: TDS on purchases of goods from one seller beyond the limit in a year. */
   tds?: { purchase194q: { enabled: boolean; limit: number; rate: number } };
+  /** Send each bill's and expense's cost centre to Tally as an allocation. */
+  costCentres?: { tally: boolean };
+  /** Interest on overdue invoices, % a year, past the grace days; 0 = none. */
+  receivables?: { interestRate: number; graceDays: number };
+  /** The Letter of Undertaking exports go under, and the year it covers. */
+  lut?: { number: string; validFrom: string | null; validTo: string | null };
 }
 
 // ── TDS after the deduction ──
@@ -683,7 +709,7 @@ export interface ItcReversalMonth {
   done: { reversed: Array<{ _id: string; billNo: string; supplierName: string; amount: number; at: string }>; reclaimed: Array<{ _id: string; billNo: string; supplierName: string; amount: number; at: string }> };
 }
 export interface Gstr1Item { num: number; itm_det: { rt: number; txval: number; iamt: number; camt: number; samt: number; csamt: number } }
-export interface Gstr1Invoice { inum: string; idt: string; val: number; pos: string; itms: Gstr1Item[]; customer?: string; irn?: string }
+export interface Gstr1Invoice { inum: string; idt: string; val: number; pos: string; inv_typ?: string; itms: Gstr1Item[]; customer?: string; irn?: string }
 export interface Gstr1Note { nt_num: string; nt_dt: string; ntty: "C" | "D"; val: number; pos: string; itms: Gstr1Item[]; against: string; party: string; reason: string; typ?: string }
 export interface Gstr1 {
   month: string; fp: string; gstin: string; hsnDigits: number;
@@ -694,7 +720,9 @@ export interface Gstr1 {
   cdnur: Gstr1Note[];
   hsn: Array<{ num: number; hsn_sc: string; desc: string; uqc: string; qty: number; rt: number; txval: number; iamt: number; camt: number; samt: number }>;
   docs: Array<{ doc_num: number; doc_typ: string; docs: Array<{ from: string; to: string; totnum: number; cancel: number; net_issue: number }> }>;
-  summary: Record<"b2b" | "b2cl" | "b2cs" | "cdnr" | "cdnur", { count: number; val: number; txval: number; tax: number }>;
+  /** Table 6A: exports, with (WPAY) or without (WOPAY) payment of tax. */
+  exp: Array<{ exp_typ: "WPAY" | "WOPAY"; inv: Array<{ inum: string; idt: string; val: number; sbpcode: string; sbnum: string; sbdt: string; customer: string; irn: string; itms: Array<{ txval: number; rt: number; iamt: number; csamt: number }> }> }>;
+  summary: Record<"b2b" | "b2cl" | "b2cs" | "exp" | "cdnr" | "cdnur", { count: number; val: number; txval: number; tax: number }>;
   checks: Array<{ level: "error" | "warn"; doc: string; text: string }>;
   counts: { invoices: number; cancelled: number; notes: number };
 }
@@ -810,6 +838,8 @@ export interface Inbox {
   msmeDue?: { count: number; overdue: number; amount: number; top: MsmeDue[] };
   /** Bills on machines' service logs not yet entered as supplier bills. */
   serviceBills?: { count: number; amount: number; top: Array<{ _id: string; machine: string; serviceLog: string; kind: "service_bill" | "spare_bill"; vendor?: string; billNo?: string; billDate?: string | null; amount: number; filename?: string; createdAt: string }> };
+  /** Cheques in the drawer whose date has come, or comes this week. */
+  chequesDue?: { count: number; amount: number; overdue: number; top: Array<{ _id: string; kind: VoucherKind; voucherNo: string; partyName: string; amount: number; cheque: { number?: string; bank?: string; date: string } }> };
 }
 export interface ForecastItem { direction: "in" | "out"; party: string; docNo: string; amount: number; basis: string; date?: string }
 export interface ForecastWeek { from: string; to: string; inflow: number; outflow: number; closing: number; top: ForecastItem[]; items?: ForecastItem[] }
@@ -822,3 +852,78 @@ export interface RecurringExpense {
   lastDrafted?: { expense?: string; expenseNo?: string; for?: string };
 }
 export interface AiSurfaceStats { surface: string; total?: number; accepted?: number; edited?: number; rejected?: number; failed?: number; pending?: number; acceptRate?: number | null }
+
+// ── Cost centres ──
+export interface CostCentre { kind: "order" | "machine" | "department"; order?: string; orderNo?: number | null; machine?: string; department?: string; name: string }
+export interface CostCentreInput { order?: string; orderNo?: number; machine?: string; department?: string }
+export interface CostCentreGroup { key: string; name: string; ref: string | null; orderNo: number | null; total: number; count: number; docs: Array<{ docType: "SupplierBill" | "Expense"; id: string; docNo: string; date: string; party: string; kind: string; amount: number }> }
+export interface CostCentreReport { from: string; to: string; orders: CostCentreGroup[]; machines: CostCentreGroup[]; departments: CostCentreGroup[]; allocated: number; unallocated: number; unallocatedCount: number; count: number }
+
+// ── Fixed assets ──
+export type AssetBlock = "building" | "plant" | "furniture" | "computer" | "server" | "vehicle" | "office" | "electrical" | "intangible";
+export interface AssetYear {
+  fy: string; days: number; fraction: number; halfRate: boolean;
+  companiesAct: { opening: number; depreciation: number; closing: number; rate: number | null; method: "wdv" | "slm" };
+  incomeTax: { opening: number; depreciation: number; closing: number; rate: number };
+  disposal: { date: string; amount: number; wdv: number; gainLoss: number; itBlockAfter: number; itGain: number } | null;
+}
+export interface FixedAsset {
+  _id: string; assetNo: string; name: string; description?: string; block: AssetBlock; method: "wdv" | "slm"; residualPercent: number; lifeYears?: number;
+  purchaseDate: string; putToUse: string; cost: number; supplier?: string; supplierName?: string; supplierBill?: string; billNo?: string; machine?: string; location?: string; identifier?: string;
+  openingWdv?: { fy?: string; companiesAct?: number; incomeTax?: number };
+  status: "active" | "sold" | "scrapped"; disposal?: { date?: string; amount?: number; reason?: string };
+}
+export interface FixedAssetRow extends FixedAsset { year: AssetYear; blockLabel: string; addedThisYear: boolean }
+export interface AssetBlockTotals { block: AssetBlock; label: string; itRate: number; count: number; cost: number; caOpening: number; caDep: number; caClosing: number; itOpening: number; itDep: number; itClosing: number }
+export interface FixedAssetRegister {
+  fy: string; from: string; to: string; rows: FixedAssetRow[]; blocks: AssetBlockTotals[];
+  totals: { cost: number; caOpening: number; caDep: number; caClosing: number; itOpening: number; itDep: number; itClosing: number; additions: number; disposals: number };
+  journal: { _id: string; journalNo: string; date: string; total: number } | null; journalStale: boolean; timingDifference: number;
+  blockTable: Array<{ key: AssetBlock; label: string; itRate: number; life: number }>;
+}
+export interface FixedAssetBody { name: string; block: AssetBlock; method?: "wdv" | "slm"; residualPercent?: number; lifeYears?: number | ""; purchaseDate: string; putToUse?: string; cost: number; supplier?: string; supplierBill?: string; supplierName?: string; machine?: string; location?: string; identifier?: string; description?: string; openingWdv?: { fy: string; companiesAct: number; incomeTax?: number }; requestId?: string }
+
+// ── Closing stock ──
+export interface ClosingStock {
+  asOf: string;
+  rawMaterials: { rows: Array<{ id: string; name: string; category: string; unit: string; quantity: number; rate: number; basis: "average" | "price"; value: number }>; byCategory: Array<{ category: string; quantity: number; value: number; items: number }>; total: number };
+  finishedGoods: { rows: Array<{ id: string; name: string; quantity: number; unit: string; rate: number; value: number; costingStatus: string }>; total: number };
+  total: number; warnings: string[];
+  journals: { closing: { journalNo: string; date: string; total: number } | null; opening: { journalNo: string; date: string; total: number } | null; stale: boolean };
+  history: Array<{ _id: string; journalNo: string; date: string; total: number; asOf: string }>;
+}
+
+// ── Budgets ──
+export interface BudgetRow { category: string; name: string; ledger: string; active: boolean; budget: number[]; actual: number[]; budgetTotal: number; actualTotal: number; ytdBudget: number; ytdActual: number; variance: number; used: number | null; overMonths: string[]; state: "over" | "near" | "ok" | "unbudgeted"; projected: number; note: string; count: number }
+export interface BudgetCompare { fy: string; from: string; to: string; months: string[]; elapsed: number; rows: BudgetRow[]; totals: { budgetTotal: number; actualTotal: number; ytdBudget: number; ytdActual: number; variance: number; over: number; near: number; unbudgeted: number } }
+
+// ── Balance confirmations ──
+export type ConfirmationStatus = "draft" | "sent" | "confirmed" | "disputed";
+export interface Confirmation {
+  _id: string; confirmationNo: string; asOf: string; partyType: "customer" | "supplier"; customer?: string; supplier?: string; partyName: string; partyGstin?: string; balance: number; openCount: number; status: ConfirmationStatus;
+  sent?: { at?: string; channel?: "" | "email" | "whatsapp" | "print"; to?: string; result?: string };
+  reply?: { at?: string; theirBalance?: number; difference?: number; note?: string };
+}
+export interface ConfirmationRow { partyType: "customer" | "supplier"; party: string; partyName: string; gstin: string; email: string; phone: string; balance: number; confirmation: Confirmation | null }
+export interface ConfirmationList { asOf: string; rows: ConfirmationRow[]; totals: { parties: number; none: number; draft: number; sent: number; confirmed: number; disputed: number; customers: number; suppliers: number } }
+export interface ConfirmationLetter { confirmation: Confirmation; company: string; text: string; statement: { from: string; to: string; opening: number; closing: number; rows: Array<{ _id: string; date: string; docType: string; docNo: string; debit: number; credit: number; narration?: string; balance: number }> } }
+
+// ── Cheques ──
+export interface PdcRow { _id: string; kind: VoucherKind; voucherNo: string; date: string; partyType: string; partyName: string; amount: number; accountName?: string; reference?: string; cheque: ChequeDetails; allocations?: Array<{ docNo: string }>; status: "posted" | "cancelled"; cancel?: { reason?: string } }
+export interface PdcRegister { status: string; rows: PdcRow[]; totals: { held: { count: number; received: number; issued: number }; dueToday: { count: number; amount: number }; dueThisWeek: { count: number; amount: number } } }
+
+// ── Interest on overdue receivables ──
+export interface InterestRow { invoice: string; docNo: string; date: string; dueDate: string; outstanding: number; overdueDays: number; from: string; to: string; days: number; rate: number; interest: number; gstPercent: number; chargedTo: string | null }
+export interface InterestDue { asOf: string; settings: { rate: number; graceDays: number }; groups: Array<{ party: string; partyName: string; rate: number; grace: number; rows: InterestRow[]; total: number; outstanding: number }>; total: number }
+export interface InterestDraft { customer: string; partyName: string; asOf: string; total: number; rows: InterestRow[]; body: NoteCreateBody & { against: { doc: string; docNo: string } } }
+
+// ── Sales and purchase registers ──
+export interface RegisterRow {
+  docType: "Invoice" | "AccountNote" | "SupplierBill" | "Expense"; id: string; kind: string; docNo: string; refNo?: string; date: string; party?: string; partyName: string; gstin: string; state: string; supplyType: string; exportKind?: string;
+  orderNo?: number | null; poNo?: number | null; against?: string; head?: string; description?: string; costCentre?: string; financial?: boolean; interest?: boolean;
+  taxable: number; cgst: number; sgst: number; igst: number; tax: number; roundOff: number; grand: number; byRate: Record<string, number>;
+  irn?: string; ewaybill?: string; itc?: boolean; itcAmount?: number; reverseCharge?: boolean; rcmTax?: number; tds?: string; gstr2b?: string; itcReversed?: number;
+  cancelled: boolean; sign: 1 | -1; outstanding: number;
+}
+export interface RegisterTotals { count: number; cancelled: number; taxable: number; cgst: number; sgst: number; igst: number; tax: number; grand: number; byRate: Record<string, number>; itc?: number; reverseCharge?: number }
+export interface Register { from: string; to: string; rows: RegisterRow[]; totals: RegisterTotals; counts: Record<string, number> }

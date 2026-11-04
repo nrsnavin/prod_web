@@ -116,6 +116,8 @@ export function CustomerDetailPage() {
               value: [customer.address, customer.city, customer.pincode].filter(Boolean).join(", ") || undefined,
             },
             { label: "Payment terms", value: customer.paymentTerms },
+            { label: "Export", value: customer.sez ? "SEZ unit (zero-rated)" : customer.country && customer.country.toLowerCase() !== "india" ? `${customer.country}${customer.currency ? ` · invoiced in ${customer.currency}` : ""}` : undefined },
+            { label: "Interest on overdue", value: customer.interestRate !== null && customer.interestRate !== undefined ? `${customer.interestRate}% a year${customer.interestGraceDays ? ` after ${customer.interestGraceDays} days` : ""}` : undefined },
             {
               label: "Accountant",
               value: customer.accountant?.name

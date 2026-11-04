@@ -8,6 +8,8 @@ import type {
   AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense, GroupSummary,
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
   TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
+  FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
+  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -188,6 +190,32 @@ export const accountsService = {
   serviceBillDraft: (id: string) => httpClient.get<{ success: boolean; entered: string | null; draft: ServiceBillDraft | null }>(`/accounts/service-bills/${id}/draft`),
   creditNoteLimit: (invoice: string) => httpClient.get<CreditNoteLimit & { success: boolean }>("/accounts/credit-note-limit", { invoice }),
   gstr1XlsxUrl: (month: string) => `/api/v2/accounts/gstr1/xlsx?month=${month}`,
+
+  // ── Registers: fixed assets, closing stock, budgets, cost centres ──
+  fixedAssets: (fy?: string) => httpClient.get<FixedAssetRegister & { success: boolean }>("/accounts/fixed-assets", clean({ fy })),
+  fixedAssetsXlsxUrl: (fy: string) => `/api/v2/accounts/fixed-assets/register.xlsx?fy=${fy}`,
+  fixedAsset: (id: string) => httpClient.get<{ success: boolean; asset: FixedAsset; years: AssetYear[] }>(`/accounts/fixed-assets/${id}`),
+  addFixedAsset: (body: FixedAssetBody) => httpClient.post<{ success: boolean; asset: FixedAsset; year: AssetYear }>("/accounts/fixed-assets", body),
+  disposeFixedAsset: (id: string, body: { how: "sold" | "scrapped"; date: string; amount?: number; reason?: string }) => httpClient.post<{ success: boolean; asset: FixedAsset; year: AssetYear }>(`/accounts/fixed-assets/${id}/dispose`, body),
+  postDepreciation: (fy: string) => httpClient.post<{ success: boolean; journal: Journal; register: FixedAssetRegister }>("/accounts/fixed-assets/depreciation", { fy }),
+  closingStock: (asOf?: string) => httpClient.get<ClosingStock & { success: boolean }>("/accounts/closing-stock", clean({ asOf })),
+  postClosingStock: (asOf: string) => httpClient.post<{ success: boolean; closing: Journal; opening: Journal; valuation: ClosingStock }>("/accounts/closing-stock", { asOf }),
+  budgets: (fy?: string) => httpClient.get<BudgetCompare & { success: boolean }>("/accounts/budgets", clean({ fy })),
+  saveBudgets: (fy: string, rows: Array<{ category: string; amounts?: number[]; annual?: number; note?: string }>) => httpClient.put<BudgetCompare & { success: boolean }>("/accounts/budgets", { fy, rows }),
+  costCentres: (from?: string, to?: string) => httpClient.get<CostCentreReport & { success: boolean }>("/accounts/cost-centres", clean({ from, to })),
+
+  // ── Confirmations, cheques, interest ──
+  confirmations: (asOf?: string) => httpClient.get<ConfirmationList & { success: boolean }>("/accounts/confirmations", clean({ asOf })),
+  createConfirmations: (body: { asOf: string; partyType?: "customer" | "supplier" | "both"; parties?: string[]; all?: boolean }) => httpClient.post<ConfirmationList & { success: boolean; made: Confirmation[]; skipped: number }>("/accounts/confirmations", body),
+  confirmationLetter: (id: string) => httpClient.get<ConfirmationLetter & { success: boolean }>(`/accounts/confirmations/${id}/letter`),
+  sendConfirmation: async (id: string, body: { channel: "email" | "whatsapp" | "print"; to?: string }) => (await httpClient.post<{ success: boolean; confirmation: Confirmation }>(`/accounts/confirmations/${id}/send`, body)).confirmation,
+  replyConfirmation: async (id: string, body: { status: "confirmed" | "disputed"; theirBalance?: number | ""; note?: string }) => (await httpClient.post<{ success: boolean; confirmation: Confirmation }>(`/accounts/confirmations/${id}/reply`, body)).confirmation,
+  pdc: (status?: string) => httpClient.get<PdcRegister & { success: boolean }>("/accounts/pdc", clean({ status })),
+  chequeAction: (id: string, body: { action: "deposited" | "cleared" | "bounced"; on?: string; reason?: string; charges?: number }) => httpClient.post<{ success: boolean; payment: PaymentDoc; bounced?: boolean }>(`/accounts/payments/${id}/cheque`, body),
+  interest: (asOf?: string, customer?: string) => httpClient.get<InterestDue & { success: boolean }>("/accounts/interest", clean({ asOf, customer })),
+  interestDraft: (customer: string, asOf?: string) => httpClient.get<InterestDraft & { success: boolean }>("/accounts/interest/draft", clean({ customer, asOf })),
+  register: (kind: "sales" | "purchase", from?: string, to?: string) => httpClient.get<Register & { success: boolean }>(`/accounts/registers/${kind}`, clean({ from, to })),
+  registerXlsxUrl: (kind: "sales" | "purchase", from: string, to: string) => `/api/v2/accounts/registers/${kind}?from=${from}&to=${to}&format=xlsx`,
   createContra: async (body: { from: string; to: string; amount: number; date?: string; mode?: string; reference?: string; narration?: string; requestId?: string }) =>
     (await httpClient.post<{ success: boolean; contra: Contra }>("/accounts/contras", body)).contra,
   cancelContra: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; contra: Contra }>(`/accounts/contras/${id}/cancel`, { reason })).contra,
@@ -212,7 +240,7 @@ export const accountsService = {
 
   // ── Settings and the lock ──
   accountsSettings: async () => (await httpClient.get<{ success: boolean; settings: AccountsSettings }>("/accounts/settings")).settings,
-  saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills" | "gst" | "journals" | "tds">>) =>
+  saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills" | "gst" | "journals" | "tds" | "costCentres" | "receivables" | "lut">>) =>
     (await httpClient.put<{ success: boolean; settings: AccountsSettings }>("/accounts/settings", body)).settings,
   lockBooks: async (lockDate: string | null, reason?: string) =>
     (await httpClient.post<{ success: boolean; settings: AccountsSettings }>("/accounts/lock", { lockDate, reason })).settings,

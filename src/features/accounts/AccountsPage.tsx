@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Inbox, ArrowDownLeft, ArrowUpRight, BookOpen, Settings2,
-  FileText, Wallet, ArrowLeftRight, FileMinus, BarChart3, Landmark, BellRing, History, Send, LineChart, ListChecks, Repeat, LayoutDashboard, ShieldCheck, Scale,
+  FileText, Wallet, ArrowLeftRight, FileMinus, BarChart3, Landmark, BellRing, History, Send, LineChart, ListChecks, Repeat, LayoutDashboard, ShieldCheck, Scale, Library,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/components/ui/cn";
@@ -24,10 +24,11 @@ import { CloseTab } from "./CloseTab";
 import { RecurringTab } from "./RecurringTab";
 import { ChecksTab } from "./ChecksTab";
 import { StatutoryTab } from "./StatutoryTab";
+import { RegistersTab } from "./RegistersTab";
 
 export type AccountsTab =
   | "inbox" | "overview" | "collections" | "vouchers" | "notes" | "bills" | "expenses" | "recurring"
-  | "bank" | "statements" | "reports" | "statutory" | "forecast" | "close" | "opening" | "tally" | "checks" | "settings";
+  | "bank" | "statements" | "reports" | "statutory" | "registers" | "forecast" | "close" | "opening" | "tally" | "checks" | "settings";
 
 type Door = "inbox" | "in" | "out" | "books" | "settings";
 type Tab = { id: AccountsTab; label: string; icon: typeof FileText };
@@ -52,6 +53,7 @@ const DOORS: Array<{ id: Door; label: string; short?: string; icon: typeof FileT
     { id: "statements", label: "Statements", icon: BookOpen },
     { id: "reports", label: "Reports", icon: BarChart3 },
     { id: "statutory", label: "Statutory", icon: Scale },
+    { id: "registers", label: "Registers", icon: Library },
     { id: "forecast", label: "Cash forecast", icon: LineChart },
     { id: "close", label: "Month end", icon: ListChecks },
     { id: "opening", label: "Opening balances", icon: History },
@@ -115,6 +117,7 @@ export function AccountsPage() {
       {tab === "statements" && <StatementsTab />}
       {tab === "reports" && <ReportsTab />}
       {tab === "statutory" && <StatutoryTab />}
+      {tab === "registers" && <RegistersTab />}
       {tab === "forecast" && <ForecastTab />}
       {tab === "close" && <CloseTab />}
       {tab === "opening" && <OpeningTab />}
