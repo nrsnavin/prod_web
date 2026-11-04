@@ -33,7 +33,8 @@ type Kind = "bills" | "expenses" | "notes" | "payments";
 
 function Lines({ lines, supplyType }: { lines?: TaxLine[]; supplyType: SupplyType }) {
   if (!lines?.length) return null;
-  const inter = supplyType === "inter";
+  // IGST columns for anything that is not an in-state supply (an export note carries IGST or nothing).
+  const inter = supplyType !== "intra";
   return (
     <TableScroll>
       <table className="mt-4 w-full text-sm">

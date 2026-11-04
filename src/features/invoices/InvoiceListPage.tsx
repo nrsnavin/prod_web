@@ -20,7 +20,7 @@ const columns: Column<InvoiceSummary>[] = [
   { key: "buyer", header: "Buyer", render: (i) => i.buyer?.name ?? "—" },
   { key: "order", header: "Order", render: (i) => (i.orderNo != null ? `#${i.orderNo}` : "—") },
   { key: "dcs", header: "Challans", render: (i) => i.dcs.map((d) => d.dcNumber).join(", ") || "—", cellClassName: "whitespace-normal" },
-  { key: "tax", header: "Tax", render: (i) => (i.supplyType === "inter" ? "IGST" : "CGST+SGST") },
+  { key: "tax", header: "Tax", render: (i) => (i.supplyType === "intra" ? "CGST+SGST" : i.supplyType === "export" ? "Export" : i.supplyType === "sez" ? "SEZ" : "IGST") },
   { key: "amount", header: "Total (₹)", align: "right", render: (i) => money(i.totals?.grand) },
   {
     key: "einvoice",
