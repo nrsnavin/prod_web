@@ -179,8 +179,8 @@ export function FloorPage() {
               toast("Draft started with this loom — press Create shift plan when every machine is entered", "info");
               void refresh();
             }}
-            onSaved={({ machine: m, plan }) => {
-              toast(`${m.ID} saved — ${m.detail?.submitted?.production ?? 0} m/head`, "success");
+            onSaved={({ machine: m, plan, autoVerified }) => {
+              toast(`${m.ID} saved — ${m.detail?.submitted?.production ?? 0} m/head${autoVerified ? " · verified: the photo and the loom's rate agree" : ""}`, "success");
               setState((s) => s ? { ...s, plan: plan ?? s.plan, machines: s.machines.map((x) => (x.id === m.id ? m : x)) } : s);
               setPhase({ kind: "scan" });
               void refresh();

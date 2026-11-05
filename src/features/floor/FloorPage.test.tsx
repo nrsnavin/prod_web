@@ -222,6 +222,26 @@ describe("scanning and entering", () => {
     expect(screen.queryByText(/filled from the run time/i)).not.toBeInTheDocument();
   });
 
+  it("fills from the loom's own learned rate when it has one, and says when the save was verified by the rule", async () => {
+    const learned = { ...ready, rate: { metresPerHeadHour: 60, basis: "machine" as const, shifts: 30, pick: 12 } };
+    await start([learned]);
+    svc.machine.mockResolvedValue(learned);
+    await userEvent.type(screen.getByLabelText(/type the machine ID/i), "L1");
+    await userEvent.click(screen.getByRole("button", { name: /find/i }));
+    const metres = await screen.findByLabelText(/production per head/i);
+    expect(screen.getByText(/at this loom's rate, 60 m a head an hour at pick 12 \(from 30 shifts\)/)).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Run time"), "7:30");
+    expect(metres).toHaveValue(450);
+    expect(screen.getByText(/filled from the run time at this loom's rate/i)).toBeInTheDocument();
+
+    const entered = { ...learned, entry: "verified" as const, detail: { ...ready.detail!, status: "closed", submitted: { production: 450, timer: "7:30:00", feedback: "", at: null, byName: "Kumar" } } };
+    svc.enter.mockResolvedValue({ ...saved(entered), autoVerified: true });
+    svc.shift.mockResolvedValue(stateOf([entered], planned));
+    await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringMatching(/L1 saved — 450 m\/head.*verified: the photo and the loom's rate agree/), "success"));
+  });
+
   it("refuses a job label before asking the server, and shows the server's words for an unknown one", async () => {
     await start();
     await userEvent.type(screen.getByLabelText(/type the machine ID/i), "J-12");

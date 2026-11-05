@@ -18,6 +18,7 @@ import { PendingShift } from "./types";
 import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
 import { TimerPhotos } from "./TimerPhotos";
 import { PreviousShiftReading } from "./PreviousShiftReading";
+import { AutoVerifiedList, AutoVerifySettings } from "./AutoVerify";
 import { formatDate } from "@/core/format/date";
 
 // A shift's job hangs off either the machine's running order or the
@@ -143,6 +144,7 @@ export function ShiftVerificationPage() {
       />
 
       {isError && <ErrorBanner message={(error as Error).message} />}
+      <AutoVerifySettings />
 
       {isLoading ? (
         <div className="space-y-3">
@@ -214,6 +216,8 @@ export function ShiftVerificationPage() {
           })}
         </div>
       )}
+
+      <AutoVerifiedList />
 
       {verifying && <VerifyModal shift={verifying} onClose={() => setVerifying(null)} />}
     </>

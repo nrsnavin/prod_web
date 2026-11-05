@@ -1,5 +1,6 @@
 import { httpClient } from "@/core/http/httpClient";
 import {
+  ProductionSettings, AutoVerifiedRow,
   PendingShift,
   ProductionDay,
   ProductionShiftSlice,
@@ -62,6 +63,10 @@ export const shiftService = {
   confirmPlan: (id: string) => httpClient.post<{ success: boolean; status: string }>("/shift/confirm-shift-plan", { id }),
   deletePlan: (id: string) => httpClient.delete("/shift/deletePlan", { id }),
 
+  productionSettings: async () => (await httpClient.get<{ success: boolean; settings: ProductionSettings }>("/shift/production-settings")).settings,
+  saveProductionSettings: async (body: { autoVerify?: Partial<ProductionSettings["autoVerify"]>; shiftEndNudge?: Partial<Omit<ProductionSettings["shiftEndNudge"], "phones">> & { phones?: string[] | string } }) =>
+    (await httpClient.put<{ success: boolean; settings: ProductionSettings }>("/shift/production-settings", body)).settings,
+  autoVerified: async (days = 2) => (await httpClient.get<{ success: boolean; rows: AutoVerifiedRow[] }>("/shift/auto-verified", { days })).rows,
   async pendingVerification(): Promise<{ count: number; shifts: PendingShift[] }> {
     const res = await httpClient.get<{
       success: boolean;

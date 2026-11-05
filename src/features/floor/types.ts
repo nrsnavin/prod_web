@@ -49,6 +49,8 @@ export interface FloorMachine {
   detail: FloorDetail | null;
   entry: EntryState;
   why: string | null;
+  /** What a head of this loom weaves an hour, learned from its own verified shifts (or the plant's, `basis`). */
+  rate?: { metresPerHeadHour: number; basis: "machine" | "plant"; shifts: number; pick: number } | null;
 }
 
 export interface FloorOperator {
@@ -98,6 +100,10 @@ export interface FloorState {
 export interface EntrySaved {
   machine: FloorMachine;
   plan: FloorPlan | null;
+  /** Verified by the rule: the photo and the loom's own rate agreed. */
+  autoVerified?: boolean;
+  /** Why it waits for the office, when it was not. */
+  waitsBecause?: string[];
 }
 
 /** What Create shift plan gives back. */

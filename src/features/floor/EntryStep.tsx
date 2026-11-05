@@ -125,9 +125,14 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
   const [filled, setFilled] = useState<string | null>(null);
   const [feedback, setFeedback] = useState(prior?.feedback ?? "");
 
+  // This loom's own rate when it has been learned, else the plant's 30 cm a minute.
+  const cmPerMin = machine.rate ? (machine.rate.metresPerHeadHour * 100) / 60 : DEFAULT_CM_PER_MIN;
+  const rateWords = machine.rate
+    ? `this loom's rate, ${machine.rate.metresPerHeadHour} m a head an hour at pick ${machine.rate.pick}${machine.rate.basis === "machine" ? ` (from ${machine.rate.shifts} shifts)` : " (the plant's, until it has its own)"}`
+    : `${DEFAULT_CM_PER_MIN} cm/min`;
   const changeRunTime = (next: string) => {
     setTimer(next);
-    const auto = perHeadText(next);
+    const auto = perHeadText(next, cmPerMin);
     if (auto && (production === "" || production === filled)) {
       setProduction(auto);
       setFilled(auto);
@@ -297,7 +302,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
               value={timer}
               onChange={(e) => changeRunTime(e.target.value)}
               onBlur={() => changeRunTime(tidyRunTime(timer))}
-              hint={`Hours and minutes the loom ran this shift. Fills the metres a head at ${DEFAULT_CM_PER_MIN} cm a minute.`}
+              hint={`Hours and minutes the loom ran this shift. Fills the metres a head at ${machine.rate ? rateWords : `${DEFAULT_CM_PER_MIN} cm a minute`}.`}
             />
           </section>
 
@@ -310,7 +315,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
             onChange={(e) => setProduction(e.target.value)}
             hint={
               total != null
-                ? `${production === filled ? `Filled from the run time at ${DEFAULT_CM_PER_MIN} cm/min — change it if the counter says otherwise. ` : ""}× ${machine.headsRunning} heads running = ${total.toLocaleString("en-IN")} m`
+                ? `${production === filled ? `Filled from the run time at ${rateWords} — change it if the counter says otherwise. ` : ""}× ${machine.headsRunning} heads running = ${total.toLocaleString("en-IN")} m`
                 : `Counted on the ${machine.headsRunning} heads running.`
             }
           />

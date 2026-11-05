@@ -103,7 +103,7 @@ export const floorService = {
 
   async enter(input: EntryInput): Promise<EntrySaved> {
     const { data } = await http().post<EntrySaved>("/floor/entry", input);
-    return { machine: data.machine, plan: data.plan ?? null };
+    return { machine: data.machine, plan: data.plan ?? null, autoVerified: !!data.autoVerified, waitsBecause: data.waitsBecause };
   },
 
   /** Create shift plan: the looms noted become the plan. `force` with looms still to enter. */

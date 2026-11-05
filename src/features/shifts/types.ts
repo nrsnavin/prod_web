@@ -173,3 +173,14 @@ export interface RunningMachineOption {
   /** Being loaded for its job: its shift will be a loading shift. */
   loading?: boolean;
 }
+
+/** Auto-verification and the shift-end reminder (models/ProductionSettings.js). */
+export interface ProductionSettings {
+  autoVerify: { enabled: boolean; tolerancePct: number; minShifts: number };
+  shiftEndNudge: { enabled: boolean; minutesBefore: number; phones: string[] };
+}
+/** An entry the rule verified, and what it was checked against. */
+export interface AutoVerifiedRow {
+  _id: string; date: string; shift: "DAY" | "NIGHT"; machine: string; operator: string; perHead: number; timer: string;
+  at: string; expected: number; low: number; high: number; tolerancePct: number; shifts: number; photo?: string;
+}
