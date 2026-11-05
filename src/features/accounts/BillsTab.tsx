@@ -187,7 +187,11 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
   // A service bill posts to its expense head; without one Tally gets it as a purchase.
   const needsHead = kind === "service" && !category;
   const ready = supplier && supplierBillNo.trim() && !needsHead && lines.every((l) => l.description.trim() && Number(l.rate) >= 0 && l.rate !== "");
-  const flags = useFlags("bill", supplier ? { supplier, supplierBillNo, billDate, lines, itcEligible, scannedGstin: initialDraft?.supplierGstin || undefined } : null);
+  const flags = useFlags("bill", supplier ? {
+    supplier, supplierBillNo, billDate, lines, itcEligible, scannedGstin: initialDraft?.supplierGstin || undefined,
+    // For the GST and TDS coding checks.
+    kind, category: category || undefined, reverseCharge, tds: { applicable: tds.applicable, section: tds.section, rate: Number(tds.rate) || 0 },
+  } : null);
   const categoryOptions = useMemo(() => (categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name })), [categories]);
 
   const submit = () =>
