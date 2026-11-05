@@ -113,7 +113,10 @@ export interface CompleteResult {
 export interface PreviousTimerPhoto {
   shift: { dateKey: string; shift: Shift; label: string };
   operator: string | null;
+  /** The verified run time once the office signed it off, else what the floor submitted. */
   runTime: string | null;
+  verified?: boolean;
+  entryId?: string | null;
   photo: {
     id: string;
     takenAt: string;

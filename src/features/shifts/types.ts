@@ -77,8 +77,31 @@ export interface ShiftDaySummary {
   nightShift: TodayShiftSummary;
 }
 
+/**
+ * What the same loom's timer read the shift before an entry — verified,
+ * or still pending like the entry itself — with the photo it was read
+ * from when one was taken. From /shift/pending-verification.
+ */
+export interface PreviousReading {
+  shift: { dateKey: string; shift: "DAY" | "NIGHT"; label: string };
+  operator: string | null;
+  runTime: string | null;
+  verified: boolean;
+  entryId: string | null;
+  photo: {
+    id: string;
+    takenAt: string;
+    byName: string;
+    readText: string | null;
+    runTimeUsed: string | null;
+    used: boolean;
+  } | null;
+}
+
 export interface PendingShift {
   _id: string;
+  /** The reading on this loom the shift before; null when it had no plan or loom. */
+  previous?: PreviousReading | null;
   productionMeters?: number;
   // The values the worker/OCR submitted — populated while status is
   // pending_verification. `productionMeters` stays 0 until an admin verifies.

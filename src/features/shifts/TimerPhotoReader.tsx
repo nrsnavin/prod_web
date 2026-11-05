@@ -99,6 +99,7 @@ export function TimerPhotoReader({
   shiftHours = 12,
   shiftId,
   service = timerOcrService,
+  prompt,
 }: {
   onUse: (runTime: string) => void;
   shiftHours?: number;
@@ -106,6 +107,12 @@ export function TimerPhotoReader({
   shiftId?: string;
   /** Where the photo is sent; the signed-in OCR route unless told otherwise. */
   service?: TimerOcrService;
+  /**
+   * Given, the photo is asked for rather than offered: a full-width
+   * button with these words (the floor, where every entry should come
+   * with a photo of the display) instead of the small link.
+   */
+  prompt?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ phase: "idle" });
@@ -165,9 +172,15 @@ export function TimerPhotoReader({
     return (
       <div>
         {fileInput}
-        <button type="button" onClick={pick} className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
-          <Camera className="h-4 w-4" aria-hidden /> Read the timer from a photo
-        </button>
+        {prompt ? (
+          <Button type="button" size="lg" className="w-full" onClick={pick}>
+            <Camera className="h-5 w-5" aria-hidden /> {prompt}
+          </Button>
+        ) : (
+          <button type="button" onClick={pick} className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700">
+            <Camera className="h-4 w-4" aria-hidden /> Read the timer from a photo
+          </button>
+        )}
       </div>
     );
   }

@@ -58,7 +58,7 @@ function takenAt(iso: string): string {
 }
 
 /** An object URL for a kept photo, fetched with the session like any API read. */
-function usePhotoUrl(photoId: string) {
+export function usePhotoUrl(photoId: string) {
   const { data: blob, isError } = useQuery({
     queryKey: ["timer-photo-file", photoId],
     queryFn: () => timerPhotoService.file(photoId),

@@ -39,9 +39,11 @@ const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
 
 /**
- * The timer photo from the shift before, beside the camera: what the
- * display read when the last shift on this loom ended, so the figure
- * about to be read (or typed) can be checked against it.
+ * What the display read when the last shift on this loom ended — the
+ * run time that shift submitted (verified by the office or not yet) and
+ * the photo it was read from — shown first, above the camera, so the
+ * figure about to be photographed can be checked against where the
+ * display started.
  */
 function PreviousTimer({ machineId }: { machineId: string }) {
   const [previous, setPrevious] = useState<PreviousTimerPhoto | null | "loading">("loading");
@@ -54,9 +56,13 @@ function PreviousTimer({ machineId }: { machineId: string }) {
     return () => { live = false; };
   }, [machineId]);
 
-  if (previous === "loading" || previous === null) return null;
+  if (previous === "loading") {
+    return <p className="text-sm text-ink-400" aria-label="Timer the shift before">Looking up the shift before…</p>;
+  }
+  if (previous === null) return null;
   const p = previous;
-  const figure = p.photo?.runTimeUsed ?? p.runTime ?? p.photo?.readText ?? null;
+  const figure = p.runTime ?? p.photo?.runTimeUsed ?? p.photo?.readText ?? null;
+  const status = p.runTime == null ? null : p.verified ? "verified" : "not verified yet";
   return (
     <div className="flex gap-3 rounded-lg border border-ink-200 bg-surface-muted p-3 text-sm" aria-label="Timer the shift before">
       {p.photo ? (
@@ -70,23 +76,26 @@ function PreviousTimer({ machineId }: { machineId: string }) {
       )}
       <div className="min-w-0 space-y-0.5">
         <p className="font-medium text-ink-700">Shift before · {p.shift.label}</p>
-        {p.photo ? (
-          <>
-            <p className="text-ink-600">
-              Timer read <span className="font-semibold tabular-nums text-ink-900">{figure ?? "—"}</span>
-              {p.operator ? ` · ${p.operator}` : ""}
-            </p>
-            <p className="text-xs text-ink-400">
-              Photo{p.photo.byName ? ` by ${p.photo.byName}` : ""}{p.photo.takenAt ? ` at ${when(p.photo.takenAt)}` : ""}
-              {p.photo.used ? " · used for the run time" : ""}
-            </p>
-          </>
-        ) : (
-          <p className="text-ink-500">
-            {p.operator
-              ? `No timer photo was taken${p.runTime ? ` (run time ${p.runTime}` : ""}${p.operator ? `${p.runTime ? " · " : " ("}${p.operator})` : p.runTime ? ")" : ""}.`
-              : "This loom was not on that shift."}
+        {figure ? (
+          <p className="text-ink-600">
+            Timer read <span className="text-lg font-semibold tabular-nums text-ink-900">{figure}</span>
+            {p.operator ? ` · ${p.operator}` : ""}
           </p>
+        ) : (
+          <p className="text-ink-500">{p.operator ? `No run time was entered (${p.operator}).` : "This loom was not on that shift."}</p>
+        )}
+        {status && (
+          <p className={`text-xs ${status === "verified" ? "text-status-success" : "text-status-warning"}`}>
+            {status === "verified" ? "Verified by the office." : "Not verified yet — as the floor entered it."}
+          </p>
+        )}
+        {p.photo ? (
+          <p className="text-xs text-ink-400">
+            Photo{p.photo.byName ? ` by ${p.photo.byName}` : ""}{p.photo.takenAt ? ` at ${when(p.photo.takenAt)}` : ""}
+            {p.photo.used ? " · used for the run time" : ""}
+          </p>
+        ) : (
+          p.operator && <p className="text-xs text-ink-400">No timer photo was taken.</p>
         )}
       </div>
     </div>
@@ -271,7 +280,16 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
             />
           )}
 
-          <div className="space-y-2">
+          {/* The timer: where the display stood when the shift before
+              ended, then a photo of it now — the run time is read off
+              the photo, and can still be typed or corrected below. */}
+          <section className="space-y-3 rounded-xl border border-ink-200 bg-surface p-3" aria-label="The loom's timer">
+            <h3 className="text-sm font-semibold text-ink-700">The loom's timer</h3>
+            <PreviousTimer machineId={machine.id} />
+            <div className="space-y-1.5">
+              <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} prompt="Take a photo of this shift's timer" />
+              {!detailId && <p className="text-xs text-ink-400">Choose the operator first, so the photo is kept with this entry for the office.</p>}
+            </div>
             <Input
               label="Run time"
               inputMode="decimal"
@@ -281,9 +299,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
               onBlur={() => changeRunTime(tidyRunTime(timer))}
               hint={`Hours and minutes the loom ran this shift. Fills the metres a head at ${DEFAULT_CM_PER_MIN} cm a minute.`}
             />
-            <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} />
-            <PreviousTimer machineId={machine.id} />
-          </div>
+          </section>
 
           <Input
             label="Production per head (m)"

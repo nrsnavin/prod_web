@@ -17,6 +17,7 @@ import { usePendingVerification, useShiftMutations } from "./hooks";
 import { PendingShift } from "./types";
 import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
 import { TimerPhotos } from "./TimerPhotos";
+import { PreviousShiftReading } from "./PreviousShiftReading";
 import { formatDate } from "@/core/format/date";
 
 // A shift's job hangs off either the machine's running order or the
@@ -88,6 +89,9 @@ function VerifyModal({
         />
         {/* The display the run time was read from, to check it against. */}
         <TimerPhotos shiftId={shift._id} />
+        {/* …and where the display stood when the shift before ended on
+            this loom, verified or not, so the two can be compared. */}
+        <PreviousShiftReading previous={shift.previous} />
         <Input
           label="Note"
           placeholder="Optional — reason for correction"
@@ -175,6 +179,7 @@ export function ShiftVerificationPage() {
                       <OutsourcedTag productionMode="outsource" outsourceVendor={jobVendor(s)} />
                     </div>
                   )}
+                  <PreviousShiftReading previous={s.previous} compact />
                 </div>
                 <StatusChip tone={s.shiftPlan?.shift === "DAY" ? "info" : "neutral"}>
                   <span className="inline-flex items-center gap-1">

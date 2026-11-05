@@ -285,31 +285,59 @@ describe("scanning and entering", () => {
     }
   });
 
-  it("shows the loom's timer photo from the shift before, beside the camera", async () => {
+  it("on a scanned loom, shows what its timer read the shift before — even unverified — and asks for a photo of this shift's timer", async () => {
     svc.previousTimerPhoto.mockResolvedValue({
-      shift: { dateKey: "2026-10-20", shift: "NIGHT", label: "Night shift · 20 Oct 2026" }, operator: "Ravi", runTime: "7:45:00",
+      shift: { dateKey: "2026-10-20", shift: "NIGHT", label: "Night shift · 20 Oct 2026" }, operator: "Ravi", runTime: "7:45:00", verified: false, entryId: "d0",
       photo: { id: "ph9", takenAt: "2026-10-21T02:10:00Z", byName: "Night Sup", readText: "07:45:12", runTimeUsed: "7:45:00", used: true },
     });
     await start();
     await userEvent.click(screen.getByRole("button", { name: /L1/ }));
-    const card = await screen.findByLabelText("Timer the shift before");
+    const timer = await screen.findByRole("region", { name: "The loom's timer" });
+    const card = await within(timer).findByLabelText("Timer the shift before");
     expect(svc.previousTimerPhoto).toHaveBeenCalledWith("id-L1");
     expect(card).toHaveTextContent("Shift before · Night shift · 20 Oct 2026");
     expect(card).toHaveTextContent("Timer read 7:45:00 · Ravi");
+    expect(card).toHaveTextContent("Not verified yet — as the floor entered it.");
     expect(card).toHaveTextContent(/Photo by Night Sup at .* · used for the run time/);
     expect(within(card).getByRole("img")).toHaveAttribute("src", "/api/floor/timer-photo/ph9/file?floorToken=t");
     expect(within(card).getByRole("link", { name: /timer photo from the night shift/i })).toHaveAttribute("href", "/api/floor/timer-photo/ph9/file?floorToken=t");
+
+    // The photo is asked for, right under the reading before, and the run time field follows it.
+    const ask = within(timer).getByRole("button", { name: /take a photo of this shift's timer/i });
+    expect(card.compareDocumentPosition(ask) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(ask.compareDocumentPosition(within(timer).getByLabelText("Run time")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The loom is on the shift, so the photo is kept with the entry: no reminder to choose the operator.
+    expect(within(timer).queryByText(/choose the operator first/i)).not.toBeInTheDocument();
   });
 
-  it("says when the shift before took no photo, or did not run this loom", async () => {
-    svc.previousTimerPhoto.mockResolvedValueOnce({ shift: { dateKey: "2026-10-21", shift: "DAY", label: "Day shift · 21 Oct 2026" }, operator: "Sita", runTime: "6:30:00", photo: null });
+  it("marks the shift before's reading verified once the office has signed it off", async () => {
+    svc.previousTimerPhoto.mockResolvedValue({ shift: { dateKey: "2026-10-20", shift: "NIGHT", label: "Night shift · 20 Oct 2026" }, operator: "Ravi", runTime: "7:45:00", verified: true, entryId: "d0", photo: null });
     await start();
     await userEvent.click(screen.getByRole("button", { name: /L1/ }));
-    expect(await screen.findByLabelText("Timer the shift before")).toHaveTextContent("No timer photo was taken (run time 6:30:00 · Sita).");
+    const card = await screen.findByLabelText("Timer the shift before");
+    await within(card).findByText(/Timer read/);
+    expect(card).toHaveTextContent("Timer read 7:45:00 · Ravi");
+    expect(card).toHaveTextContent("Verified by the office.");
+    expect(card).toHaveTextContent("No timer photo was taken.");
+  });
+
+  it("says when the shift before entered nothing, or did not run this loom", async () => {
+    svc.previousTimerPhoto.mockResolvedValueOnce({ shift: { dateKey: "2026-10-21", shift: "DAY", label: "Day shift · 21 Oct 2026" }, operator: "Sita", runTime: null, photo: null });
+    await start();
+    await userEvent.click(screen.getByRole("button", { name: /L1/ }));
+    expect(await screen.findByText("No run time was entered (Sita).")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /back to scanning/i }));
 
     await userEvent.click(screen.getByRole("button", { name: /L1/ }));
-    expect(await screen.findByLabelText("Timer the shift before")).toHaveTextContent("This loom was not on that shift.");
+    expect(await screen.findByText("This loom was not on that shift.")).toBeInTheDocument();
+  });
+
+  it("reminds that the photo is kept with the entry only once the operator puts the loom on the shift", async () => {
+    await start([ready, loom({ ID: "L7" })]);
+    await userEvent.click(screen.getByRole("button", { name: /L7/ }));
+    const timer = await screen.findByRole("region", { name: "The loom's timer" });
+    expect(within(timer).getByRole("button", { name: /take a photo of this shift's timer/i })).toBeInTheDocument();
+    expect(within(timer).getByText(/choose the operator first, so the photo is kept/i)).toBeInTheDocument();
   });
 
   it("shows the office's operator on a loom it planned, and does not let the floor change it", async () => {
