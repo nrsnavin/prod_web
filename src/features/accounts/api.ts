@@ -9,7 +9,7 @@ import type {
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
   TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
-  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult,
+  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult, Gstr2bFollowUp,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -189,6 +189,7 @@ export const accountsService = {
     if (!res.ok) throw new Error(body?.message || "Could not read the GSTR-2B file");
     return body as Gstr2bSummary;
   },
+  gstr2bFollowUps: async (period: string) => (await httpClient.get<{ success: boolean; suppliers: Gstr2bFollowUp[] }>("/accounts/gstr2b/follow-ups", { period })).suppliers,
   reconcileGstr2b: (period: string) => httpClient.post<Gstr2bSummary & { success: boolean }>("/accounts/gstr2b/reconcile", { period }),
   itcReversal: (month?: string) => httpClient.get<ItcReversalMonth & { success: boolean }>("/accounts/itc-reversal", clean({ month })),
   itcReverse: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number }>(`/accounts/bills/${bill}/itc-reverse`, { month }),

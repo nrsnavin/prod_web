@@ -504,7 +504,9 @@ function Gstr2bSection({ month }: { month: string }) {
                   {d.missing.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={6}>Every bill of the month with credit is in GSTR-2B.</td></tr>}
                 </tbody>
               </table>
-            ) : (
+            ) : null}
+            {show === "missing" && (d.counts.missing > 0 || d.counts.mismatch > 0) && <Gstr2bFollowUps month={month} />}
+            {show !== "missing" && (
               <table className="w-full text-sm" aria-label="GSTR-2B lines">
                 <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Supplier</th><th className={`${th} text-left`}>Their document</th><th className={`${th} text-left`}>Date</th><th className={`${th} text-right`}>Taxable</th><th className={`${th} text-right`}>Tax</th><th className={`${th} text-left pl-3`}>In the books</th></tr></thead>
                 <tbody className="divide-y divide-ink-100">
@@ -515,7 +517,7 @@ function Gstr2bSection({ month }: { month: string }) {
                       <td className="py-1.5 whitespace-nowrap">{r.date ? formatDate(r.date) : "—"}</td>
                       <td className={num}>{money(r.taxable)}</td>
                       <td className={num}>{money(r.tax)}</td>
-                      <td className="py-1.5 pl-3"><StatusChip tone={MATCH_TONE[r.match.status]}>{MATCH_LABEL[r.match.status]}</StatusChip>{r.match.docNo && <span className="ml-2">{r.match.docType === "SupplierBill" ? <Link to={`/accounts/bills/${r.match.doc}`} className="text-brand-600 hover:underline">{r.match.docNo}</Link> : r.match.docNo}{r.match.status === "mismatch" && <span className="text-xs text-ink-500"> · books {r.match.diff! > 0 ? "higher" : "lower"} by ₹{money(Math.abs(r.match.diff ?? 0))}</span>}{r.match.by === "amount" && <span className="text-xs text-ink-400"> · by amount and date</span>}</span>}</td>
+                      <td className="py-1.5 pl-3"><StatusChip tone={MATCH_TONE[r.match.status]}>{MATCH_LABEL[r.match.status]}</StatusChip>{r.match.docNo && <span className="ml-2">{r.match.docType === "SupplierBill" ? <Link to={`/accounts/bills/${r.match.doc}`} className="text-brand-600 hover:underline">{r.match.docNo}</Link> : r.match.docNo}{r.match.status === "mismatch" && <span className="text-xs text-ink-500"> · books {r.match.diff! > 0 ? "higher" : "lower"} by ₹{money(Math.abs(r.match.diff ?? 0))}</span>}{r.match.note ? <span className="block text-xs text-ink-500">{r.match.note}</span> : r.match.by === "amount" && <span className="text-xs text-ink-400"> · by amount and date</span>}</span>}</td>
                     </tr>
                   ))}
                   {rows.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={6}>Nothing here.</td></tr>}
@@ -591,5 +593,37 @@ function Rule37Section({ month }: { month: string }) {
         </Card>
       )}
     </div>
+  );
+}
+
+/** Per supplier, a message asking them to report or amend what our 2B is missing — to copy, WhatsApp or mail. */
+function Gstr2bFollowUps({ month }: { month: string }) {
+  const { toast } = useToast();
+  const q = useQuery({ queryKey: [ACCOUNTS_KEY, "gstr2b-follow-ups", month], queryFn: () => accountsService.gstr2bFollowUps(month) });
+  const [open, setOpen] = useState<string | null>(null);
+  if (!q.data?.length) return null;
+  const wa = (phone: string, text: string) => {
+    const digits = phone.replace(/\D/g, "");
+    return `https://wa.me/${digits.length === 10 ? `91${digits}` : digits}?text=${encodeURIComponent(text)}`;
+  };
+  return (
+    <section className="mt-4 space-y-2" aria-label="Follow up with suppliers">
+      <h4 className="font-semibold">Ask the suppliers to report them</h4>
+      {q.data.map((f) => (
+        <div key={f.supplier} className="rounded-lg border border-ink-200 p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{f.name}</span>
+            <span className="text-xs text-ink-400">{f.bills.length} bill{f.bills.length === 1 ? "" : "s"} · GST ₹{money(f.tax)} held</span>
+            <span className="ml-auto flex flex-wrap gap-1">
+              <Button size="sm" variant="ghost" onClick={() => setOpen(open === f.supplier ? null : f.supplier)}>{open === f.supplier ? "Hide" : "Show"} the message</Button>
+              <Button size="sm" variant="ghost" onClick={() => { void navigator.clipboard?.writeText(f.message).then(() => toast("Copied", "success"), () => undefined); }}>Copy</Button>
+              {f.phone && <a className="rounded-lg px-2 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50" href={wa(f.phone, f.message)} target="_blank" rel="noreferrer">WhatsApp</a>}
+              {f.email && <a className="rounded-lg px-2 py-1.5 text-xs font-medium text-brand-600 hover:bg-brand-50" href={`mailto:${f.email}?subject=${encodeURIComponent(f.subject)}&body=${encodeURIComponent(f.message)}`}>Email</a>}
+            </span>
+          </div>
+          {open === f.supplier && <pre className="mt-2 whitespace-pre-wrap rounded bg-ink-50 p-2 font-sans text-xs text-ink-700">{f.message}</pre>}
+        </div>
+      ))}
+    </section>
   );
 }

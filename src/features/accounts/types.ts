@@ -726,7 +726,12 @@ export interface MsmeYearEnd {
 }
 export interface Gstr2bRow {
   _id: string; kind: "invoice" | "creditNote" | "debitNote"; supplierGstin: string; supplierName: string; number: string; date: string | null; value: number; taxable: number; tax: number; cgst: number; sgst: number; igst: number; itcAvailable: boolean; reason: string;
-  match: { status: "matched" | "mismatch" | "notInBooks"; docType?: string; doc?: string; docNo?: string; diff?: number; by?: string };
+  match: { status: "matched" | "mismatch" | "notInBooks"; docType?: string; doc?: string; docNo?: string; diff?: number; by?: string; note?: string };
+}
+/** A supplier to ask to report or amend invoices missing from our GSTR-2B. */
+export interface Gstr2bFollowUp {
+  supplier: string; name: string; gstin: string; phone: string; email: string; tax: number; subject: string; message: string;
+  bills: Array<{ _id: string; billNo: string; supplierBillNo: string; billDate: string; grand: number; tax: number; status: "missing" | "mismatch"; note: string }>;
 }
 export interface Gstr2bSummary {
   period: string; uploaded: boolean; uploadedAt: string | null;

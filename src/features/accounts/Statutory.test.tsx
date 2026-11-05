@@ -35,6 +35,11 @@ const gstr2b: Gstr2bSummary = {
   ],
   missing: [{ _id: "b2", billNo: "PB/2026-27/0008", supplierBillNo: "SD/78", supplierName: "Sri Dyers", supplierGstin: "33AAAPS0001F1Z5", billDate: "2026-10-20", tax: 500, grand: 10500, note: "Not in GSTR-2B" }],
 };
+const followUps = [{
+  supplier: "s1", name: "Sri Dyers", gstin: "33AAAPS0001F1Z5", phone: "9840000011", email: "acc@sridyers.in", tax: 500, subject: "GSTR-1: invoices not in our GSTR-2B for October 2026",
+  message: "Dear Sri Dyers,\n\nOur GSTR-2B for October 2026 does not show these invoices of yours correctly:\n• SD/78 …",
+  bills: [{ _id: "b2", billNo: "PB/2026-27/0008", supplierBillNo: "SD/78", billDate: "2026-10-20", grand: 10500, tax: 500, status: "missing" as const, note: "" }],
+}];
 const rule37: ItcReversalMonth = {
   month: "2026-10",
   toReverse: [{ _id: "b3", billNo: "PB/2026-27/0002", supplierBillNo: "SY/1", supplierName: "Sri Yarn", billDate: "2026-04-01", day180: "2026-09-28", overdueDays: 3, grand: 21000, outstanding: 10500, itc: 1000, reverse: 500, inMonth: true }],
@@ -62,7 +67,7 @@ vi.mock("./api", () => ({
   accountsService: {
     msme: async () => msme, msmeYearEnd: async () => yearEnd, msmeForm1Url: () => "/api/v2/accounts/msme/form1?format=xlsx",
     gstr1: async () => gstr1, gstr1JsonUrl: (m: string) => `/api/v2/accounts/gstr1/json?month=${m}`, gstr1XlsxUrl: (m: string) => `/api/v2/accounts/gstr1/xlsx?month=${m}`,
-    gstr2b: async () => gstr2b, itcReversal: async () => rule37, itcReverse: (...a: unknown[]) => itcReverse(...a),
+    gstr2b: async () => gstr2b, gstr2bFollowUps: async () => followUps, itcReversal: async () => rule37, itcReverse: (...a: unknown[]) => itcReverse(...a),
     tdsRegister: async () => tdsRegister, addTdsChallan: (...a: unknown[]) => addTdsChallan(...a),
     payrollBooks: async () => payrollNow, postPayrollSalary: (...a: unknown[]) => postPayrollSalary(...a),
   },
@@ -115,6 +120,13 @@ describe("the statutory tab", () => {
     expect(within(lines).getByText("not in books")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Ours, not in 2B 1/ }));
     expect(within(screen.getByRole("table", { name: "Bills not in GSTR-2B" })).getByText("PB/2026-27/0008")).toBeInTheDocument();
+    // A message for each supplier to report them, to send by WhatsApp or mail.
+    const ask = await screen.findByLabelText("Follow up with suppliers");
+    expect(ask).toHaveTextContent("Sri Dyers1 bill · GST ₹500.00 held");
+    expect(within(ask).getByRole("link", { name: "WhatsApp" }).getAttribute("href")).toMatch(/^https:\/\/wa\.me\/919840000011\?text=Dear%20Sri%20Dyers/);
+    expect(within(ask).getByRole("link", { name: "Email" }).getAttribute("href")).toMatch(/^mailto:acc@sridyers\.in\?subject=GSTR-1/);
+    await userEvent.click(within(ask).getByRole("button", { name: /show the message/i }));
+    expect(ask).toHaveTextContent("does not show these invoices of yours");
   });
 
   it("lists the credit to reverse under Rule 37 and records it", async () => {
