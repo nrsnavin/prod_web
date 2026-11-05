@@ -27,7 +27,7 @@ vi.mock("./shared", async (importOriginal) => {
 });
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 const readAdvice = vi.fn();
-const checkPayment = vi.fn(async () => [] as unknown[]);
+const checkPayment = vi.fn(async (..._a: unknown[]) => [] as unknown[]);
 vi.mock("./api", () => ({ accountsService: { readAdvice: (...a: unknown[]) => readAdvice(...a), checkPayment: (...a: unknown[]) => checkPayment(...a) } }));
 
 const doc = (over: Partial<OpenDoc>): OpenDoc => ({ docType: "SupplierBill", id: "b1", docNo: "PB/2026-27/0001", date: "2026-07-04", dueDate: "2026-08-03", party: "s1", partyName: "Sri Yarn", amount: 52500, outstanding: 52500, overdueDays: 0, bucket: "current", tds: { section: "194C", rate: 2 }, ...over });
