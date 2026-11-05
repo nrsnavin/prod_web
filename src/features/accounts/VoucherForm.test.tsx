@@ -25,6 +25,8 @@ vi.mock("./shared", async (importOriginal) => {
   return { ...actual, PartyPicker: ({ onChange }: { onChange: (id: string, name: string) => void }) => <button onClick={() => onChange("s1", "Sri Yarn")}>pick party</button> };
 });
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
+const readAdvice = vi.fn();
+vi.mock("./api", () => ({ accountsService: { readAdvice: (...a: unknown[]) => readAdvice(...a) } }));
 
 const doc = (over: Partial<OpenDoc>): OpenDoc => ({ docType: "SupplierBill", id: "b1", docNo: "PB/2026-27/0001", date: "2026-07-04", dueDate: "2026-08-03", party: "s1", partyName: "Sri Yarn", amount: 52500, outstanding: 52500, overdueDays: 0, bucket: "current", tds: { section: "194C", rate: 2 }, ...over });
 
@@ -150,5 +152,52 @@ describe("adjustments settle documents", () => {
     await userEvent.type(against, "10000");
     expect(screen.getByText(/₹500.00 would be left on account/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /post receipt/i })).toBeDisabled();
+  });
+});
+
+describe("a receipt from the customer's payment advice", () => {
+  it("reads the advice and fills the receipt: the customer, the invoices it settles, the TDS and discount they took", async () => {
+    docs = [
+      doc({ docType: "Invoice", id: "i701", docNo: "INV/2026-27/0701", party: "c1", partyName: "Sunrise", amount: 52500, outstanding: 52500, tds: null }),
+      doc({ docType: "Invoice", id: "i702", docNo: "INV/2026-27/0702", party: "c1", partyName: "Sunrise", amount: 21000, outstanding: 21000, tds: null }),
+      doc({ docType: "Invoice", id: "i703", docNo: "INV/2026-27/0703", party: "c1", partyName: "Sunrise", amount: 5000, outstanding: 5000, tds: null }),
+    ];
+    readAdvice.mockResolvedValue({
+      read: { problem: null, payerName: "Sunrise Garments", payerGstin: "", amount: 72345, date: "2026-10-28", reference: "UTR HDFC000123456", lines: [], confidence: 0.9 },
+      placed: {
+        customer: { _id: "c1", name: "Sunrise Garments", gstin: "", matchedBy: "gstin" }, amount: 72345, date: "2026-10-28", reference: "UTR HDFC000123456",
+        allocations: [
+          { docType: "Invoice", doc: "i701", docNo: "INV/2026-27/0701", amount: 52500, outstanding: 52500, paid: 51450, tds: 500, discount: 550, other: 0 },
+          { docType: "Invoice", doc: "i702", docNo: "INV/2026-27/0702", amount: 21000, outstanding: 21000, paid: 20895, tds: 105, discount: 0, other: 0 },
+        ],
+        adjustments: [{ kind: "tds_by_customer", amount: 605 }, { kind: "discount", amount: 550 }],
+        unmatched: [], notes: ['"701" taken as INV/2026-27/0701'], difference: 0, statementLine: null,
+      },
+      aiSuggestion: "ai9",
+    });
+    render(<VoucherForm kind="receipt" onDone={() => {}} onCancel={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /read a payment advice/i }));
+    await userEvent.type(screen.getByPlaceholderText(/We have remitted/), "We have remitted Rs 72,345 …");
+    await userEvent.click(screen.getByRole("button", { name: "Read the text" }));
+    const said = await screen.findByLabelText("What the advice says");
+    expect(said).toHaveTextContent("Sunrise Garments");
+    expect(said).toHaveTextContent("by GSTIN");
+    expect(said).toHaveTextContent('"701" taken as INV/2026-27/0701');
+    await userEvent.click(within(said).getByRole("button", { name: "Fill the receipt" }));
+
+    expect(await screen.findByLabelText("Amount for INV/2026-27/0701")).toHaveValue(52500);
+    expect(screen.getByLabelText("Amount for INV/2026-27/0702")).toHaveValue(21000);
+    expect(screen.getByLabelText("Settle INV/2026-27/0703")).not.toBeChecked();
+    expect(screen.getByLabelText("Settle INV/2026-27/0701")).toBeChecked();
+    expect(screen.getByLabelText("Amount received *")).toHaveValue(72345);
+    expect(screen.getByLabelText("Reference (UTR / cheque no.)")).toHaveValue("UTR HDFC000123456");
+    expect(screen.getByText(/Filled from the customer's payment advice/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /post receipt/i }));
+    expect(createMutate.mock.calls[0][0]).toMatchObject({
+      kind: "receipt", customer: "c1", amount: 72345, date: "2026-10-28", reference: "UTR HDFC000123456", adviceSuggestion: "ai9",
+      allocations: [{ docType: "Invoice", doc: "i701", amount: 52500 }, { docType: "Invoice", doc: "i702", amount: 21000 }],
+      adjustments: [{ kind: "tds_by_customer", amount: 605 }, { kind: "discount", amount: 550 }],
+    });
   });
 });

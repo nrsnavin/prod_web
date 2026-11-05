@@ -9,7 +9,7 @@ import type {
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
   TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
-  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill,
+  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -79,6 +79,17 @@ export const accountsService = {
   readBillMailbox: () => httpClient.post<{ success: boolean; mails: number; bills: number; errors: string[] }>("/accounts/bill-inbox/run", {}),
 
   // ── AI ──
+  /** A customer's payment advice — files, or its text pasted — read and placed on the books. */
+  async readAdvice(input: { files?: File[]; text?: string; customer?: string }): Promise<AdviceResult> {
+    const fd = new FormData();
+    for (const f of input.files ?? []) fd.append("files", f);
+    if (input.text) fd.append("text", input.text);
+    if (input.customer) fd.append("customer", input.customer);
+    const res = await fetch("/api/v2/accounts/advice/read", { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not read the advice");
+    return body as AdviceResult;
+  },
   async scan(files: File[]): Promise<ScanResult> {
     const fd = new FormData();
     for (const f of files) fd.append("files", f);

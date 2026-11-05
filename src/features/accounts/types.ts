@@ -337,6 +337,8 @@ export interface PaymentCreateBody {
   tds?: { section?: string; rate?: number };
   adjustments?: Array<{ kind: AdjustmentKind; amount: number; note?: string }>;
   allocations: Array<{ docType: Allocation["docType"]; doc: string; amount: number }>;
+  /** Entered from a payment advice: the reading it scores. */
+  adviceSuggestion?: string;
   narration?: string;
   source?: string;
   statementLine?: string;
@@ -988,3 +990,28 @@ export interface MailedBill {
   kind: "bill" | "receipt" | null;
   bill: string | null;
 }
+
+/** A customer's payment advice, read and placed on the books (POST /accounts/advice/read). */
+export interface AdviceRead {
+  problem: "not_an_advice" | "unreadable" | null;
+  payerName: string;
+  payerGstin: string;
+  amount: number | null;
+  date: string | null;
+  reference: string;
+  lines: Array<{ invoiceNo: string; invoiceDate: string | null; invoiceAmount: number | null; paid: number | null; tds: number | null; discount: number | null; other: number | null }>;
+  confidence: number;
+}
+export interface AdvicePlaced {
+  customer: { _id: string; name: string; gstin: string; matchedBy: "chosen" | "gstin" | "name" } | null;
+  amount: number | null;
+  date: string | null;
+  reference: string;
+  allocations: Array<{ docType: Allocation["docType"]; doc: string; docNo: string; amount: number; outstanding: number; paid: number | null; tds: number; discount: number; other: number }>;
+  adjustments: Array<{ kind: AdjustmentKind; amount: number }>;
+  unmatched: Array<{ invoiceNo: string; why: string; paid: number | null }>;
+  notes: string[];
+  difference: number | null;
+  statementLine: { statement: string; account: string; accountName: string; key: string; date: string; narration: string; byReference: boolean } | null;
+}
+export interface AdviceResult { read: AdviceRead; placed: AdvicePlaced | null; aiSuggestion: string | null }

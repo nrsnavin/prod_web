@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AdviceReader } from "./AdviceReader";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Download, Plus, Trash2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -23,7 +24,7 @@ import { PartyPicker, money, today } from "./shared";
 import { CreditsCard } from "./Credits";
 import { accountsService } from "./api";
 import { ADJUSTMENT_KINDS, ADJUSTMENT_LABELS } from "./types";
-import type { AdjustmentKind, Contra, Journal, OpenDoc, Payment, PaymentMode, VoucherKind } from "./types";
+import type { AdjustmentKind, AdvicePlaced, Contra, Journal, OpenDoc, Payment, PaymentMode, VoucherKind } from "./types";
 
 const columns: Column<Payment>[] = [
   { key: "no", header: "Voucher", render: (p) => <span className="font-medium">{p.voucherNo}</span> },
@@ -238,6 +239,9 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   const [narration, setNarration] = useState("");
   const [adjustments, setAdjustments] = useState<Array<{ kind: AdjustmentKind; amount: number | "" }>>([]);
   const seeded = useRef(false);
+  // A payment advice read: applied once the customer's open documents are in.
+  const [advice, setAdvice] = useState<{ placed: AdvicePlaced; aiSuggestion: string | null } | null>(null);
+  const [adviceSuggestion, setAdviceSuggestion] = useState<string | null>(null);
 
   const firstRun = useRef(true);
   useEffect(() => {
@@ -251,6 +255,28 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
     seeded.current = true;
     setPicked(Object.fromEntries(docs.filter((d) => initialDocs === "all" || initialDocs.includes(d.id)).map((d) => [d.id, d.outstanding])));
   }, [docs, initialDocs]);
+
+  useEffect(() => {
+    if (!advice || other || party !== advice.placed.customer?._id || loadingDocs || !open) return;
+    const p = advice.placed;
+    const ids = new Set(docs.map((d) => d.id));
+    // The list may still be the last customer's for a moment: wait for this one's.
+    if (p.allocations.length && !p.allocations.some((a) => ids.has(a.doc))) return;
+    setPicked(Object.fromEntries(p.allocations.filter((a) => ids.has(a.doc)).map((a) => [a.doc, a.amount])));
+    setAdjustments(p.adjustments.map((a) => ({ kind: a.kind, amount: a.amount })));
+    if (p.amount != null) { setAmount(p.amount); setAmountTouched(true); }
+    setAdviceSuggestion(advice.aiSuggestion);
+    setAdvice(null);
+  }, [advice, party, other, docs, loadingDocs, open]);
+  const applyAdvice = (placed: AdvicePlaced, aiSuggestion: string | null) => {
+    if (!placed.customer) return;
+    setOther(false);
+    setParty(placed.customer._id); setPartyName(placed.customer.name);
+    if (placed.date) setDate(placed.date);
+    if (placed.reference) setReference(placed.reference);
+    if (placed.statementLine?.account) setAccount(placed.statementLine.account);
+    setAdvice({ placed, aiSuggestion });
+  };
 
   const rate = kind === "payment" ? Number(tdsRate) || 0 : 0;
   // Per allocation: gross settled, the TDS on it, and the cash it takes.
@@ -290,6 +316,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
         adjustments: adjustments.filter((a) => Number(a.amount) > 0).map((a) => ({ kind: a.kind, amount: Number(a.amount) })),
         allocations: allocs.map((a) => ({ docType: a.doc.docType, doc: a.doc.id, amount: a.gross })),
         narration: narration.trim() || undefined,
+        adviceSuggestion: adviceSuggestion ?? undefined,
       },
       {
         onSuccess: (p) => { toast(`${p.voucherNo} posted`, "success"); onDone(p._id); },
@@ -309,6 +336,12 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
 
   return (
     <div className="space-y-4" onKeyDown={onKeyDown}>
+      {kind === "receipt" && (
+        <div className="flex flex-wrap items-center gap-2">
+          <AdviceReader customer={party || undefined} onUse={applyAdvice} />
+          {adviceSuggestion && <span className="text-xs text-ink-500">Filled from the customer's payment advice — check it before posting.</span>}
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         {other ? (
           <Input label="Paid to" value={partyName} onChange={(e) => setPartyName(e.target.value)} />
