@@ -6,6 +6,7 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { accountsService } from "./api";
 import { VoucherForm } from "./VouchersTab";
 import { ShareDialog } from "./Share";
+import { SupplierRecon } from "./SupplierRecon";
 
 /**
  * The money buttons on a customer's or supplier's own page: take a
@@ -21,6 +22,7 @@ export function PartyActions({ partyType, party, name }: { partyType: "customer"
       <Button variant="secondary" onClick={() => setPaying(true)}><Wallet className="h-4 w-4" /> {partyType === "customer" ? "Record receipt" : "Pay all due"}</Button>
       <a href={accountsService.statementPdfUrl(partyType, party)} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"><FileDown className="h-4 w-4" /> Statement</a>
       <Button variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> Send statement</Button>
+      {partyType === "supplier" && <SupplierRecon supplier={party} name={name} />}
       <FormScreen open={paying} onClose={() => setPaying(false)} title={partyType === "customer" ? `Receipt from ${name}` : `Pay ${name}`} width="max-w-4xl">
         {paying && (
           <VoucherForm kind={partyType === "customer" ? "receipt" : "payment"} initialParty={{ id: party, name }} initialDocs={partyType === "supplier" ? "all" : []}

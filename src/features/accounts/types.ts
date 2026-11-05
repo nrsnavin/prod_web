@@ -1015,3 +1015,17 @@ export interface AdvicePlaced {
   statementLine: { statement: string; account: string; accountName: string; key: string; date: string; narration: string; byReference: boolean } | null;
 }
 export interface AdviceResult { read: AdviceRead; placed: AdvicePlaced | null; aiSuggestion: string | null }
+
+/** A supplier's statement of our account, read and set beside our books (POST /accounts/supplier-recon). */
+export interface TheirEntry { date: string | null; docNo: string; kind: "invoice" | "payment" | "tds" | "credit_note" | "debit_note" | "opening" | "other"; debit: number; credit: number; narration: string }
+export interface OurEntry { docType: string; doc: string; docNo: string; theirNo: string; date: string; debit: number; credit: number; narration: string }
+export interface SupplierRecon {
+  supplier: { _id: string; name: string; gstin: string };
+  period: { from: string; to: string };
+  matched: Array<{ theirs: TheirEntry; alsoTheirs?: TheirEntry; ours: OurEntry[]; by: string; difference: number; timing?: boolean }>;
+  onlyTheirs: Array<TheirEntry & { likely: string }>;
+  onlyOurs: Array<OurEntry & { likely: string }>;
+  balances: { ours: number; theirs: number | null; difference: number | null; explained: number; unexplained: number | null };
+  gstinDiffers: boolean;
+}
+export interface SupplierReconResult { read: { problem: string | null; partyName: string; from: string | null; to: string | null; entries: TheirEntry[] }; recon: SupplierRecon | null }

@@ -9,7 +9,7 @@ import type {
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
   TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
-  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult,
+  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -89,6 +89,16 @@ export const accountsService = {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body?.message || "Could not read the advice");
     return body as AdviceResult;
+  },
+  /** A supplier's statement of our account set beside our books. */
+  async reconcileSupplier(supplier: string, files: File[]): Promise<SupplierReconResult> {
+    const fd = new FormData();
+    fd.append("supplier", supplier);
+    for (const f of files) fd.append("files", f);
+    const res = await fetch("/api/v2/accounts/supplier-recon", { method: "POST", body: fd, credentials: "include" });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body?.message || "Could not read their statement");
+    return body as SupplierReconResult;
   },
   async scan(files: File[]): Promise<ScanResult> {
     const fd = new FormData();
