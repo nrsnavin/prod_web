@@ -131,3 +131,24 @@ describe("a receipt voucher", () => {
     expect(createMutate.mock.calls[0][0]).toMatchObject({ kind: "receipt", partyType: "customer", customer: "s1", amount: 12000, allocations: [{ docType: "Invoice", doc: "i1", amount: 10500 }] });
   });
 });
+
+describe("adjustments settle documents", () => {
+  it("refuses a discount that would leave money on account, and allows it once the document absorbs it", async () => {
+    docs = [{ docType: "Invoice", id: "i1", docNo: "INV/2026-27/0001", date: "2026-06-01", dueDate: "2026-07-01", party: "c1", partyName: "Sunrise", amount: 10500, outstanding: 10500, overdueDays: 0, bucket: "current" }];
+    render(<VoucherForm kind="receipt" onDone={() => {}} onCancel={() => {}} />);
+    await userEvent.click(screen.getByText("pick party"));
+    await userEvent.click(await screen.findByLabelText("Settle INV/2026-27/0001"));
+    const received = screen.getByLabelText("Amount received *");
+    await userEvent.clear(received);
+    await userEvent.type(received, "10000");
+    await userEvent.click(screen.getByRole("button", { name: "Discount" }));
+    expect(screen.getByLabelText("Adjustment 1 amount")).toHaveValue(500);
+    expect(screen.getByRole("button", { name: /post receipt/i })).toBeEnabled();
+    // Only part of the invoice ticked: the discount has nothing to settle.
+    const against = screen.getByLabelText("Amount for INV/2026-27/0001");
+    await userEvent.clear(against);
+    await userEvent.type(against, "10000");
+    expect(screen.getByText(/₹500.00 would be left on account/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /post receipt/i })).toBeDisabled();
+  });
+});

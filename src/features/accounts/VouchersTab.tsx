@@ -271,6 +271,8 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
     ...allocs.filter((a) => a.over).map((a) => `${a.doc.docNo} has only ₹${money(a.doc.outstanding)} outstanding`),
     ...(cash + 0.005 < cashNeeded ? [`The ticked documents need ₹${money(cashNeeded)}; the voucher is for ₹${money(cash)}`] : []),
     ...(adjTotal > 0 && adjTotal > gross + 0.005 ? ["Adjustments settle documents — tick the documents they settle"] : []),
+    // A discount, write-off or round-off explains why a document was settled short; with money left on account there was nothing to explain. (Bank charges and TDS really left the payment, whatever it settles.)
+    ...(adjTotal > 0 && adjTotal <= gross + 0.005 && unallocated > 0.005 && adjustments.some((a) => ["discount", "write_off", "round_off"].includes(a.kind) && Number(a.amount) > 0) ? [`Adjustments settle documents — ₹${money(unallocated)} would be left on account. Tick what they settle, or take them off`] : []),
   ];
   const ready = (other ? partyName.trim() : party) && chosenAccount && cash > 0 && problems.length === 0 && !createPayment.isPending;
 
