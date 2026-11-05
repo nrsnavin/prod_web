@@ -1,4 +1,5 @@
 import { PartyActions } from "@/features/accounts/PartyActions";
+import { PartyOpening } from "@/features/accounts/PartyOpening";
 import { canAccessPath } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -116,6 +117,9 @@ export function SupplierDetailPage() {
           ]}
         />
       </Card>
+
+      {/* What we owed them on the day the books started here, and the button to enter it. */}
+      {canMoney && <PartyOpening partyType="supplier" party={s._id} name={s.name} />}
 
       <Card className="mt-4 p-5">
         <h3 className="flex items-center gap-2 font-semibold">

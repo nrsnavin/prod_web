@@ -19,7 +19,7 @@ import { useAccountsMutations, useOpeningBalances } from "./hooks";
 import { PartyPicker, money } from "./shared";
 import type { OpeningBalance, OpeningImportRow } from "./types";
 
-const kindLabel = (o: Pick<OpeningBalance, "partyType" | "kind">) =>
+export const kindLabel = (o: Pick<OpeningBalance, "partyType" | "kind">) =>
   o.kind === "due" ? (o.partyType === "customer" ? "They owe us" : "We owe them") : o.partyType === "customer" ? "They paid ahead" : "We paid ahead";
 
 /**
@@ -85,11 +85,21 @@ export function OpeningTab() {
   );
 }
 
-function OpeningForm({ onClose }: { onClose: () => void }) {
+/**
+ * One opening balance, typed in. From the Opening tab any party is
+ * picked; from a customer's or supplier's own page (`fixed`) the party
+ * is that one, and the form says so instead of asking.
+ */
+export function OpeningForm({ onClose, fixed, onPosted }: {
+  onClose: () => void;
+  /** The party this balance is for, when opened from their page. */
+  fixed?: { partyType: "customer" | "supplier"; id: string; name: string };
+  onPosted?: (o: OpeningBalance) => void;
+}) {
   const { toast } = useToast();
   const { createOpening } = useAccountsMutations();
-  const [partyType, setPartyType] = useState<"customer" | "supplier">("customer");
-  const [party, setParty] = useState("");
+  const [partyType, setPartyType] = useState<"customer" | "supplier">(fixed?.partyType ?? "customer");
+  const [party, setParty] = useState(fixed?.id ?? "");
   const [kind, setKind] = useState<"due" | "advance">("due");
   const [refNo, setRefNo] = useState("");
   const [date, setDate] = useState("");
@@ -97,10 +107,20 @@ function OpeningForm({ onClose }: { onClose: () => void }) {
   const [amount, setAmount] = useState<number | "">("");
   const ready = party && date && Number(amount) > 0;
   return (
-    <Modal open onClose={onClose} title="Add an opening balance" width="max-w-2xl">
+    <Modal open onClose={onClose} title={fixed ? `Opening balance for ${fixed.name}` : "Add an opening balance"} width="max-w-2xl">
+      <p className="mb-3 text-sm text-ink-500">What was owed on the day the books start here — one row per open bill, as in the old ledger, so ageing is right from day one. Nothing else moves: the first invoice or bill after this date is entered as usual.</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Select label="Party type" value={partyType} onChange={(e) => { setPartyType(e.target.value as "customer" | "supplier"); setParty(""); }} options={[{ value: "customer", label: "Customer" }, { value: "supplier", label: "Supplier" }]} />
-        <PartyPicker partyType={partyType} value={party} onChange={(id) => setParty(id)} />
+        {fixed ? (
+          <div className="rounded-lg bg-surface-muted px-3 py-2 text-sm sm:col-span-2" aria-label="Party">
+            <span className="text-ink-500">{fixed.partyType === "customer" ? "Customer" : "Supplier"} </span>
+            <span className="font-semibold">{fixed.name}</span>
+          </div>
+        ) : (
+          <>
+            <Select label="Party type" value={partyType} onChange={(e) => { setPartyType(e.target.value as "customer" | "supplier"); setParty(""); }} options={[{ value: "customer", label: "Customer" }, { value: "supplier", label: "Supplier" }]} />
+            <PartyPicker partyType={partyType} value={party} onChange={(id) => setParty(id)} />
+          </>
+        )}
         <Select label="Balance" value={kind} onChange={(e) => setKind(e.target.value as "due" | "advance")} options={[
           { value: "due", label: partyType === "customer" ? "They owe us (Dr)" : "We owe them (Cr)" },
           { value: "advance", label: partyType === "customer" ? "They paid ahead (Cr)" : "We paid ahead (Dr)" },
@@ -114,7 +134,7 @@ function OpeningForm({ onClose }: { onClose: () => void }) {
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
         <Button disabled={!ready} loading={createOpening.isPending} onClick={() => createOpening.mutate(
           { partyType, party, kind, refNo: refNo.trim() || undefined, date, dueDate: dueDate || undefined, amount: Number(amount) },
-          { onSuccess: (o) => { toast(`${o.docNo} posted`, "success"); onClose(); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not post", "error") }
+          { onSuccess: (o) => { toast(`${o.docNo} posted`, "success"); onPosted?.(o); onClose(); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not post", "error") }
         )}>Post balance</Button>
       </div>
     </Modal>

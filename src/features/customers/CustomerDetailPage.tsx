@@ -1,4 +1,5 @@
 import { PartyActions } from "@/features/accounts/PartyActions";
+import { PartyOpening } from "@/features/accounts/PartyOpening";
 import { canAccessPath } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { CreditBand } from "@/features/customers/credit";
@@ -139,6 +140,9 @@ export function CustomerDetailPage() {
           ]}
         />
       </Card>
+
+      {/* What they owed on the day the books started here, and the button to enter it. */}
+      {canAccessPath("/accounts", user) && <PartyOpening partyType="customer" party={customer._id} name={customer.name} />}
 
       <CustomerOrdersCard customerId={customer._id} />
 

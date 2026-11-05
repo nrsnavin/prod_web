@@ -22,6 +22,7 @@ import { ACCOUNTS_KEY, useAccountsMutations, useBill, useExpense, useNote, usePa
 import { PayDialog } from "./ExpensesTab";
 import { VoucherForm } from "./VouchersTab";
 import { ApplyCreditDialog } from "./Credits";
+import { ChequeCard } from "./Cheque";
 import { noteKindLabel } from "./NotesTab";
 import { billLabel, billTone, expenseLabel, expenseTone, money, qty } from "./shared";
 import type { Attachment, Credit, Fingerprint, TaxLine } from "./types";
@@ -329,6 +330,8 @@ export function PaymentDetailPage() {
           </table>
         )}
       </Card>
+      {/* A cheque: where it stands — received, deposited, cleared — and the next step. */}
+      {p.mode === "cheque" && p.cheque?.status && <ChequeCard row={{ ...p, cheque: p.cheque }} />}
       <Attachments kind="payments" id={p._id} rows={undefined} />
       <History rows={p.fingerprints} />
       {applying && credit && party && <ApplyCreditDialog credit={credit} partyType={p.partyType as "customer" | "supplier"} party={party} onClose={() => setApplying(false)} />}

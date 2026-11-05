@@ -317,8 +317,9 @@ export interface Payment {
   source?: string;
   fingerprints?: Fingerprint[];
 }
+/** held: received and in the drawer (a post-dated one until its date); deposited: with the bank; cleared: credited; bounced: returned. */
 export type ChequeStatus = "" | "held" | "deposited" | "cleared" | "bounced";
-export interface ChequeDetails { number?: string; bank?: string; date?: string; status: ChequeStatus; depositedOn?: string; bouncedOn?: string; bounceReason?: string; charges?: number }
+export interface ChequeDetails { number?: string; bank?: string; date?: string; status: ChequeStatus; receivedOn?: string; depositedOn?: string; clearedOn?: string; bouncedOn?: string; bounceReason?: string; charges?: number }
 
 export interface PaymentCreateBody {
   kind: VoucherKind;
@@ -338,8 +339,8 @@ export interface PaymentCreateBody {
   source?: string;
   statementLine?: string;
   requestId?: string;
-  /** When the mode is cheque: its number, bank and date (dated ahead: held). */
-  cheque?: { number?: string; bank?: string; date?: string };
+  /** When the mode is cheque: its number, bank and date (dated ahead: held). A receipt's cheque is in hand until deposited, unless `deposited` says it already is. */
+  cheque?: { number?: string; bank?: string; date?: string; deposited?: boolean };
 }
 
 export type AgeingBucket = "current" | "d30" | "d60" | "d90" | "over90";
@@ -909,7 +910,7 @@ export interface ConfirmationList { asOf: string; rows: ConfirmationRow[]; total
 export interface ConfirmationLetter { confirmation: Confirmation; company: string; text: string; statement: { from: string; to: string; opening: number; closing: number; rows: Array<{ _id: string; date: string; docType: string; docNo: string; debit: number; credit: number; narration?: string; balance: number }> } }
 
 // ── Cheques ──
-export interface PdcRow { _id: string; kind: VoucherKind; voucherNo: string; date: string; partyType: string; partyName: string; amount: number; accountName?: string; reference?: string; cheque: ChequeDetails; allocations?: Array<{ docNo: string }>; status: "posted" | "cancelled"; cancel?: { reason?: string } }
+export interface PdcRow { _id: string; kind: VoucherKind; voucherNo: string; date: string; partyType: string; partyName: string; amount: number; account?: string; accountName?: string; reference?: string; cheque: ChequeDetails; allocations?: Array<{ docNo: string }>; status: "posted" | "cancelled"; cancel?: { reason?: string } }
 export interface PdcRegister { status: string; rows: PdcRow[]; totals: { held: { count: number; received: number; issued: number }; dueToday: { count: number; amount: number }; dueThisWeek: { count: number; amount: number } } }
 
 // ── Interest on overdue receivables ──

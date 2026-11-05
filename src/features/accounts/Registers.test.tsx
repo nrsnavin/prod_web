@@ -36,7 +36,11 @@ vi.mock("./api", () => ({
     budgets: async () => budgets, saveBudgets: (...a: unknown[]) => saveBudgets(...a),
   },
 }));
-vi.mock("./hooks", () => ({ ACCOUNTS_KEY: "accounts", useCategories: () => ({ data: [{ _id: "c1", name: "Electricity" }, { _id: "c2", name: "Rent" }] }) }));
+vi.mock("./hooks", () => ({
+  ACCOUNTS_KEY: "accounts",
+  useCategories: () => ({ data: [{ _id: "c1", name: "Electricity" }, { _id: "c2", name: "Rent" }] }),
+  useBankAccounts: () => ({ data: [{ _id: "cash", name: "Cash box", kind: "cash", active: true }, { _id: "b1", name: "Kotak CA", kind: "bank", active: true, isDefault: true }, { _id: "b2", name: "SBI CA", kind: "bank", active: true }] }),
+}));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 
 const wrap = (ui: React.ReactNode) => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>);
@@ -57,17 +61,24 @@ describe("the registers tab", () => {
     expect(screen.getByRole("link", { name: /Register \(Excel\)/ })).toHaveAttribute("href", "/api/v2/accounts/fixed-assets/register.xlsx?fy=2026-27");
   });
 
-  it("lists cheques in hand and marks one deposited", async () => {
+  it("lists cheques received, and deposits one on a day into a bank", async () => {
     wrap(<RegistersTab />);
     await userEvent.click(screen.getByRole("button", { name: "Cheques" }));
     const table = await screen.findByRole("table", { name: "Cheque register" });
     const row = within(table).getByText("000412").closest("tr")!;
     expect(row).toHaveTextContent("Sunrise Garments");
     expect(row).toHaveTextContent("50,000.00");
-    expect(row).toHaveTextContent("in hand");
-    expect(screen.getByText(/In the drawer: 1 cheque · received ₹50,000.00/)).toBeInTheDocument();
-    await userEvent.click(within(row).getByRole("button", { name: "Deposited" }));
-    expect(chequeAction).toHaveBeenCalledWith("p1", expect.objectContaining({ action: "deposited" }));
+    expect(row).toHaveTextContent("received, in hand");
+    expect(screen.getByText(/In hand: 1 cheque · received ₹50,000.00/)).toBeInTheDocument();
+    // Each stage is a step with its date: deposit asks for the day and the bank.
+    await userEvent.click(within(row).getByRole("button", { name: "Deposit" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Deposit the cheque");
+    await userEvent.clear(within(dialog).getByLabelText("Deposited on"));
+    await userEvent.type(within(dialog).getByLabelText("Deposited on"), "2026-11-12");
+    await userEvent.selectOptions(within(dialog).getByLabelText("Into account"), "b2");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Mark deposited" }));
+    expect(chequeAction).toHaveBeenCalledWith("p1", { action: "deposited", on: "2026-11-12", account: "b2" });
   });
 
   it("compares budget with actual per head and saves a year's figure", async () => {

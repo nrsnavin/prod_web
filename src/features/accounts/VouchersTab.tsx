@@ -229,6 +229,8 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   const [reference, setReference] = useState("");
   const [chequeBank, setChequeBank] = useState("");
   const [chequeDate, setChequeDate] = useState("");
+  // A cheque received is in hand until it is deposited — unless it already was.
+  const [chequeDeposited, setChequeDeposited] = useState(false);
   const [tdsRate, setTdsRate] = useState<number | "">("");
   const [tdsSection, setTdsSection] = useState("194C");
   const [amount, setAmount] = useState<number | "">("");
@@ -283,7 +285,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
       {
         kind, date, partyType: other ? "other" : partyType, ...(other ? { partyName: partyName.trim() } : partyType === "customer" ? { customer: party } : { supplier: party }),
         amount: cash, mode, account: chosenAccount, reference: reference.trim() || undefined,
-        cheque: mode === "cheque" ? { number: reference.trim() || undefined, bank: chequeBank.trim() || undefined, date: chequeDate || undefined } : undefined,
+        cheque: mode === "cheque" ? { number: reference.trim() || undefined, bank: chequeBank.trim() || undefined, date: chequeDate || undefined, ...(kind === "receipt" && chequeDeposited ? { deposited: true } : {}) } : undefined,
         tds: kind === "payment" && rate > 0 ? { section: tdsSection.trim(), rate } : undefined,
         adjustments: adjustments.filter((a) => Number(a.amount) > 0).map((a) => ({ kind: a.kind, amount: Number(a.amount) })),
         allocations: allocs.map((a) => ({ docType: a.doc.docType, doc: a.doc.id, amount: a.gross })),
@@ -323,7 +325,13 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
         {mode === "cheque" && (
           <div className="grid grid-cols-2 gap-2">
             <Input label="Drawn on (bank)" value={chequeBank} onChange={(e) => setChequeBank(e.target.value)} placeholder="Kotak, SBI…" />
-            <Input label="Cheque date" type="date" value={chequeDate} onChange={(e) => setChequeDate(e.target.value)} hint="Dated ahead: held in the cheque register" />
+            <Input label="Cheque date" type="date" value={chequeDate} onChange={(e) => setChequeDate(e.target.value)} hint={kind === "receipt" ? "Dated ahead: held until its date" : "Dated ahead: held in the cheque register"} />
+            {kind === "receipt" && (
+              <label className="col-span-2 flex items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-0.5" checked={chequeDeposited} onChange={(e) => setChequeDeposited(e.target.checked)} />
+                <span>Already deposited at the bank<span className="block text-xs text-ink-400">Otherwise it is recorded as received and in hand; deposit it, and mark it cleared, from the cheque register or the voucher.</span></span>
+              </label>
+            )}
           </div>
         )}
         {kind === "payment" && (

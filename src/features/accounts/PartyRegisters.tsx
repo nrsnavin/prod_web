@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Printer, Mail, MessageCircle, FileMinus } from "lucide-react";
+import { CHEQUE_TONE, ChequeActions, chequeStageLabel } from "./Cheque";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -16,85 +17,55 @@ import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
 import { money, today } from "./shared";
-import type { ChequeStatus, ConfirmationRow, ConfirmationStatus, PdcRow } from "./types";
+import type { ConfirmationRow, ConfirmationStatus } from "./types";
 
 const th = "py-2 text-xs font-medium uppercase tracking-wide text-ink-400";
 const num = "py-2 text-right tabular-nums";
 
 // ── Cheques ──────────────────────────────────────────────────────────
-const CHEQUE_TONE: Record<ChequeStatus, "neutral" | "warning" | "info" | "success" | "danger"> = { "": "neutral", held: "warning", deposited: "info", cleared: "success", bounced: "danger" };
-function BounceForm({ row, onDone, onCancel }: { row: PdcRow; onDone: () => void; onCancel: () => void }) {
-  const { toast } = useToast();
-  const [on, setOn] = useState(today());
-  const [reason, setReason] = useState("");
-  const [charges, setCharges] = useState<number | "">("");
-  const [busy, setBusy] = useState(false);
-  const save = async () => {
-    setBusy(true);
-    try { await accountsService.chequeAction(row._id, { action: "bounced", on, reason, charges: Number(charges) || 0 }); toast(`${row.voucherNo} cancelled — cheque ${row.cheque.number || ""} returned`, "success"); onDone(); }
-    catch (e) { toast(e instanceof ApiError ? e.message : "Could not record it", "error"); }
-    finally { setBusy(false); }
-  };
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-ink-500">The {row.kind} {row.voucherNo} for ₹{money(row.amount)} is cancelled: what it settled is open again on {row.partyName}'s account.</p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Input label="Returned on" type="date" value={on} onChange={(e) => setOn(e.target.value)} />
-        <Input label="Bank's charges (₹)" type="number" min={0} value={charges} onChange={(e) => setCharges(e.target.value === "" ? "" : Number(e.target.value))} />
-        <Input label="Reason on the memo *" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Funds insufficient, signature differs…" className="sm:col-span-2" />
-      </div>
-      <div className="flex justify-end gap-2"><Button variant="secondary" onClick={onCancel}>Back</Button><Button variant="danger" disabled={reason.trim().length < 3} loading={busy} onClick={save}>Record the return</Button></div>
-    </div>
-  );
-}
-
 export function ChequesSection() {
-  const { toast } = useToast();
   const qc = useQueryClient();
   const [status, setStatus] = useState<"held" | "deposited" | "cleared" | "bounced" | "all">("held");
   const q = useQuery({ queryKey: [ACCOUNTS_KEY, "pdc", status], queryFn: () => accountsService.pdc(status) });
-  const [bouncing, setBouncing] = useState<PdcRow | null>(null);
   const refresh = () => { qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "pdc"] }); qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "payments"] }); qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "inbox"] }); };
-  const act = async (row: PdcRow, action: "deposited" | "cleared") => {
-    try { await accountsService.chequeAction(row._id, { action, on: today() }); toast(`Cheque ${row.cheque.number || ""} ${action}`, "success"); refresh(); }
-    catch (e) { toast(e instanceof ApiError ? e.message : "Could not update it", "error"); }
-  };
   const todayStart = new Date(); todayStart.setHours(23, 59, 59, 999);
   return (
     <div className="space-y-4">
-      <Modal open={!!bouncing} onClose={() => setBouncing(null)} title="Cheque returned" width="max-w-lg">{bouncing && <BounceForm row={bouncing} onDone={() => { setBouncing(null); refresh(); }} onCancel={() => setBouncing(null)} />}</Modal>
       <Card className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h3 className="font-semibold">Cheques</h3>
-            {q.data && <p className="text-sm text-ink-500">In the drawer: {q.data.totals.held.count} cheque{q.data.totals.held.count === 1 ? "" : "s"} · received ₹{money(q.data.totals.held.received)} · issued ₹{money(q.data.totals.held.issued)}{q.data.totals.dueToday.count ? <span className="text-status-warning"> · {q.data.totals.dueToday.count} due to deposit (₹{money(q.data.totals.dueToday.amount)})</span> : null}</p>}
+            <p className="text-xs text-ink-400">Received, in hand → deposited at the bank → cleared when the bank credits it. A returned cheque cancels its voucher.</p>
+            {q.data && <p className="mt-1 text-sm text-ink-500">In hand: {q.data.totals.held.count} cheque{q.data.totals.held.count === 1 ? "" : "s"} · received ₹{money(q.data.totals.held.received)} · issued ₹{money(q.data.totals.held.issued)}{q.data.totals.dueToday.count ? <span className="text-status-warning"> · {q.data.totals.dueToday.count} to deposit (₹{money(q.data.totals.dueToday.amount)})</span> : null}</p>}
           </div>
-          <FilterChips options={[{ value: "held", label: "In hand" }, { value: "deposited", label: "Deposited" }, { value: "cleared", label: "Cleared" }, { value: "bounced", label: "Returned" }, { value: "all", label: "All" }]} value={status} onChange={setStatus} />
+          <FilterChips options={[{ value: "held", label: "Received" }, { value: "deposited", label: "Deposited" }, { value: "cleared", label: "Cleared" }, { value: "bounced", label: "Returned" }, { value: "all", label: "All" }]} value={status} onChange={setStatus} />
         </div>
         <div className="mt-3 overflow-x-auto">
           {q.isLoading || !q.data ? <Skeleton className="h-32 w-full" /> : (
             <table className="w-full text-sm" aria-label="Cheque register">
-              <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Cheque date</th><th className={`${th} text-left`}>Cheque</th><th className={`${th} text-left`}>Party</th><th className={`${th} text-left`}>Voucher</th><th className={`${th} text-right`}>Amount</th><th className={`${th} text-left pl-3`}>Status</th><th className={th} /></tr></thead>
+              <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Cheque date</th><th className={`${th} text-left`}>Cheque</th><th className={`${th} text-left`}>Party</th><th className={`${th} text-left`}>Voucher</th><th className={`${th} text-right`}>Amount</th><th className={`${th} text-left pl-3`}>Stage</th><th className={th} /></tr></thead>
               <tbody className="divide-y divide-ink-100">
                 {q.data.rows.map((r) => {
                   const due = r.cheque.date ? new Date(r.cheque.date) <= todayStart : false;
                   return (
                     <tr key={r._id}>
-                      <td className="py-1.5 whitespace-nowrap">{r.cheque.date ? formatDate(r.cheque.date) : "—"}{r.cheque.status === "held" && due && <StatusChip tone="warning" className="ml-1">deposit</StatusChip>}</td>
+                      <td className="py-1.5 whitespace-nowrap">{r.cheque.date ? formatDate(r.cheque.date) : "—"}{r.cheque.status === "held" && due && r.kind === "receipt" && <StatusChip tone="warning" className="ml-1">deposit</StatusChip>}</td>
                       <td className="py-1.5">{r.cheque.number || "—"}<span className="block text-xs text-ink-400">{r.cheque.bank || ""}</span></td>
                       <td className="py-1.5">{r.partyName}<span className="block text-xs text-ink-400">{r.kind === "receipt" ? "received" : "issued"} · {r.accountName || ""}</span></td>
                       <td className="py-1.5"><Link to={`/accounts/payments/${r._id}`} className="text-brand-600 hover:underline">{r.voucherNo}</Link><span className="block text-xs text-ink-400">{(r.allocations ?? []).map((a) => a.docNo).join(", ")}</span></td>
                       <td className={`${num} font-medium`}>{money(r.amount)}</td>
-                      <td className="py-1.5 pl-3"><StatusChip tone={CHEQUE_TONE[r.cheque.status]}>{r.cheque.status === "held" ? "in hand" : r.cheque.status}</StatusChip>{r.cheque.status === "bounced" && <span className="block text-xs text-status-danger">{r.cheque.bounceReason}{r.cheque.charges ? ` · charges ₹${money(r.cheque.charges)}` : ""}</span>}</td>
-                      <td className="py-1.5 text-right whitespace-nowrap">
-                        {r.status === "posted" && r.cheque.status === "held" && <Button size="sm" variant="ghost" onClick={() => act(r, "deposited")}>Deposited</Button>}
-                        {r.status === "posted" && (r.cheque.status === "held" || r.cheque.status === "deposited") && <Button size="sm" variant="ghost" onClick={() => act(r, "cleared")}>Cleared</Button>}
-                        {r.status === "posted" && (r.cheque.status === "held" || r.cheque.status === "deposited") && <Button size="sm" variant="ghost" onClick={() => setBouncing(r)}>Returned</Button>}
+                      <td className="py-1.5 pl-3">
+                        <StatusChip tone={CHEQUE_TONE[r.cheque.status]}>{chequeStageLabel(r.cheque.status, r.kind)}</StatusChip>
+                        <span className="block text-xs text-ink-400">
+                          {r.cheque.status === "bounced" ? <span className="text-status-danger">{r.cheque.bounceReason}{r.cheque.charges ? ` · charges ₹${money(r.cheque.charges)}` : ""}</span>
+                            : [r.cheque.receivedOn || r.date ? `${r.kind === "receipt" ? "received" : "written"} ${formatDate(r.cheque.receivedOn || r.date)}` : "", r.cheque.depositedOn ? `deposited ${formatDate(r.cheque.depositedOn)}` : "", r.cheque.clearedOn ? `cleared ${formatDate(r.cheque.clearedOn)}` : ""].filter(Boolean).join(" · ")}
+                        </span>
                       </td>
+                      <td className="py-1.5 text-right whitespace-nowrap"><ChequeActions row={r} onDone={refresh} /></td>
                     </tr>
                   );
                 })}
-                {q.data.rows.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={7}>{status === "held" ? "No cheque in hand. A receipt or payment by cheque dated ahead is held here until it is deposited." : "Nothing here."}</td></tr>}
+                {q.data.rows.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={7}>{status === "held" ? "No cheque in hand. A cheque received is here until it is deposited; one issued and dated ahead, until its date." : "Nothing here."}</td></tr>}
               </tbody>
             </table>
           )}
