@@ -69,8 +69,8 @@ export function ForecastTab() {
         </div>
       </Card>
       <p className="text-xs text-ink-400">
-        Beyond these weeks: ₹{money(data.later.inflow)} expected in, ₹{money(data.later.outflow)} out. Receipts use how each customer has paid over the last year
-        {data.habits ? ` (${data.habits} customers with a history)` : ""}; customers without one are expected on their terms. Late invoices are expected next week.
+        Beyond these weeks: ₹{money(data.later.inflow)} expected in, ₹{money(data.later.outflow)} out. Receipts use how each customer has paid over the last two years, recent payments counting more
+        {data.habits ? ` (${data.habits} customers with a history)` : ""}; one with little history is expected as the whole book pays past its terms. Each invoice's money is spread over the weeks it is likely to come, an invoice already later than they ever pay is expected within three weeks, and a promise to pay sets its day.
         Out: bills and expenses as they fall due (less anything paid ahead), expenses waiting for approval a week out, salaries on the usual pay day,
         TDS by the 7th and GST by the 20th. Figures come from what is entered here.
       </p>
