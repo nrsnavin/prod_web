@@ -2,15 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AutoVerifiedList, AutoVerifySettings } from "./AutoVerify";
+import { AutoVerifiedList, AutoVerifySettings, ShiftEndReminderSettings } from "./AutoVerify";
 
 // Verified by the rule: the admin turns it on, and the office sees what it verified.
 
 const productionSettings = vi.fn();
 const saveProductionSettings = vi.fn();
 const autoVerified = vi.fn();
+const sendShiftEndNudge = vi.fn();
 vi.mock("./api", () => ({
   shiftService: {
+    sendShiftEndNudge: (...a: unknown[]) => sendShiftEndNudge(...a),
     productionSettings: (...a: unknown[]) => productionSettings(...a),
     saveProductionSettings: (...a: unknown[]) => saveProductionSettings(...a),
     autoVerified: (...a: unknown[]) => autoVerified(...a),
@@ -85,5 +87,40 @@ describe("auto-verification", () => {
     const { container } = wrap(<AutoVerifiedList />);
     await vi.waitFor(() => expect(autoVerified).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("the shift-end reminder", () => {
+  it("is turned on by an admin, with the minutes and numbers, and can be sent now", async () => {
+    productionSettings.mockResolvedValue(settings());
+    saveProductionSettings.mockResolvedValueOnce({ ...settings(), shiftEndNudge: { enabled: true, minutesBefore: 30, phones: [] } });
+    wrap(<ShiftEndReminderSettings />);
+    const box = await screen.findByLabelText("Remind before the shift ends");
+    expect(box).not.toBeChecked();
+    expect(screen.getByText(/30 minutes before 8 AM and 8 PM, once a shift, to the notification recipients/)).toBeInTheDocument();
+    await userEvent.click(box);
+    expect(saveProductionSettings).toHaveBeenCalledWith({ shiftEndNudge: { enabled: true } });
+
+    saveProductionSettings.mockResolvedValueOnce({ ...settings(), shiftEndNudge: { enabled: true, minutesBefore: 45, phones: ["+919840000001"] } });
+    const mins = screen.getByLabelText("Minutes before");
+    await userEvent.clear(mins);
+    await userEvent.type(mins, "45");
+    await userEvent.type(screen.getByLabelText("WhatsApp numbers (comma between)"), "98400 00001");
+    const card = screen.getByLabelText("Shift-end reminder");
+    await userEvent.click(within(card).getByRole("button", { name: "Save" }));
+    expect(saveProductionSettings).toHaveBeenLastCalledWith({ shiftEndNudge: { minutesBefore: 45, phones: "98400 00001" } });
+    expect(await screen.findByText(/45 minutes before .* to \+919840000001/)).toBeInTheDocument();
+
+    sendShiftEndNudge.mockResolvedValueOnce({ success: true, sent: true, looms: ["L1", "L2"] });
+    await userEvent.click(screen.getByRole("button", { name: "Send now" }));
+    expect(toast).toHaveBeenCalledWith("Sent — 2 looms to enter", "success");
+  });
+
+  it("is shown, not changed, for anyone but an admin", async () => {
+    role = "production";
+    productionSettings.mockResolvedValue(settings());
+    wrap(<ShiftEndReminderSettings />);
+    expect(await screen.findByLabelText("Remind before the shift ends")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Send now" })).not.toBeInTheDocument();
   });
 });

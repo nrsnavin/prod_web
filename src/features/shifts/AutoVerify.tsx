@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Settings2 } from "lucide-react";
+import { BadgeCheck, BellRing, Settings2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -60,6 +60,64 @@ export function AutoVerifySettings() {
           <Input label="Within ± %" type="number" min={1} max={50} className="w-28" value={tolerance ?? String(a.tolerancePct)} onChange={(e) => setTolerance(e.target.value)} />
           <Input label="Loom's own shifts, at least" type="number" min={1} max={200} className="w-40" value={minShifts ?? String(a.minShifts)} onChange={(e) => setMinShifts(e.target.value)} />
           <Button size="sm" variant="secondary" loading={busy} disabled={tolerance === null && minShifts === null} onClick={() => save({ ...(tolerance !== null ? { tolerancePct: Number(tolerance) } : {}), ...(minShifts !== null ? { minShifts: Number(minShifts) } : {}) })}>Save</Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * Before each shift ends, a WhatsApp message naming the looms not
+ * entered yet (services/shiftEndNudge.js on the server).
+ */
+export function ShiftEndReminderSettings() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["production-settings"], queryFn: shiftService.productionSettings });
+  const [minutes, setMinutes] = useState<string | null>(null);
+  const [phones, setPhones] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
+  if (!data) return null;
+  const isAdmin = user?.role === "admin";
+  const n = data.shiftEndNudge;
+  const save = async (shiftEndNudge: Parameters<typeof shiftService.saveProductionSettings>[0]["shiftEndNudge"]) => {
+    setBusy(true);
+    try {
+      qc.setQueryData(["production-settings"], await shiftService.saveProductionSettings({ shiftEndNudge }));
+      setMinutes(null); setPhones(null);
+      toast("Saved", "success");
+    } catch (e) { toast(e instanceof ApiError ? e.message : "Could not save", "error"); }
+    finally { setBusy(false); }
+  };
+  const sendNow = async () => {
+    setSending(true);
+    try {
+      const r = await shiftService.sendShiftEndNudge();
+      toast(r.sent ? `Sent — ${r.looms?.length ?? 0} loom${r.looms?.length === 1 ? "" : "s"} to enter` : r.why === "every loom is entered" ? "Every loom on this shift is entered — nothing to send" : `Not sent: ${r.why ?? "unknown"}`, r.sent ? "success" : "info");
+    } catch (e) { toast(e instanceof ApiError ? e.message : "Could not send", "error"); }
+    finally { setSending(false); }
+  };
+  return (
+    <Card className="mb-4 p-4" aria-label="Shift-end reminder">
+      <div className="flex flex-wrap items-center gap-3">
+        <BellRing className="h-4 w-4 text-ink-400" aria-hidden />
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input type="checkbox" checked={n.enabled} disabled={!isAdmin || busy} onChange={(e) => save({ enabled: e.target.checked })} aria-label="Remind before the shift ends" />
+          Remind on WhatsApp before the shift ends, naming the looms not entered
+        </label>
+        <StatusChip tone={n.enabled ? "success" : "neutral"}>{n.enabled ? "on" : "off"}</StatusChip>
+      </div>
+      <p className="mt-1 text-xs text-ink-400">
+        {n.minutesBefore} minutes before 8 AM and 8 PM, once a shift, to {n.phones.length ? n.phones.join(", ") : "the notification recipients"}. Nothing is sent when every loom is in.{!isAdmin ? " An admin can change this." : ""}
+      </p>
+      {isAdmin && (
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <Input label="Minutes before" type="number" min={5} max={240} className="w-28" value={minutes ?? String(n.minutesBefore)} onChange={(e) => setMinutes(e.target.value)} />
+          <Input label="WhatsApp numbers (comma between)" className="w-72" placeholder="Empty: the notification recipients" value={phones ?? n.phones.join(", ")} onChange={(e) => setPhones(e.target.value)} />
+          <Button size="sm" variant="secondary" loading={busy} disabled={minutes === null && phones === null} onClick={() => save({ ...(minutes !== null ? { minutesBefore: Number(minutes) } : {}), ...(phones !== null ? { phones } : {}) })}>Save</Button>
+          <Button size="sm" variant="ghost" loading={sending} onClick={sendNow}>Send now</Button>
         </div>
       )}
     </Card>
