@@ -24,7 +24,8 @@ import { PartyPicker, money, today } from "./shared";
 import { CreditsCard } from "./Credits";
 import { accountsService } from "./api";
 import { ADJUSTMENT_KINDS, ADJUSTMENT_LABELS } from "./types";
-import type { AdjustmentKind, AdvicePlaced, Contra, Journal, OpenDoc, Payment, PaymentMode, VoucherKind } from "./types";
+import type { AdjustmentKind, AdvicePlaced, Contra, Flag, Journal, OpenDoc, Payment, PaymentMode, VoucherKind } from "./types";
+import { FlagList, useFlags } from "./Flags";
 
 const columns: Column<Payment>[] = [
   { key: "no", header: "Voucher", render: (p) => <span className="font-medium">{p.voucherNo}</span> },
@@ -304,9 +305,19 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   ];
   const ready = (other ? partyName.trim() : party) && chosenAccount && cash > 0 && problems.length === 0 && !createPayment.isPending;
 
+  // Before money goes out: the checks as it is typed, and — when the
+  // server stops it (a bank account changed lately, or shared) — how it
+  // was confirmed, before it goes.
+  const payFlags = useFlags("payment", kind === "payment" && (other ? partyName.trim() : party) && cash > 0 ? {
+    kind, partyType: other ? "other" : partyType, ...(other ? { partyName: partyName.trim() } : { supplier: party }), amount: cash,
+    allocations: allocs.map((a) => ({ docType: a.doc.docType, doc: a.doc.id, amount: a.gross })),
+  } : null);
+  const [risk, setRisk] = useState<Flag[] | null>(null);
+  const [riskNote, setRiskNote] = useState("");
+
   const tick = (d: OpenDoc, on: boolean) => setPicked((p) => { const next = { ...p }; if (on) next[d.id] = d.outstanding; else delete next[d.id]; return next; });
 
-  const submit = () =>
+  const submit = (confirmed = false) =>
     createPayment.mutate(
       {
         kind, date, partyType: other ? "other" : partyType, ...(other ? { partyName: partyName.trim() } : partyType === "customer" ? { customer: party } : { supplier: party }),
@@ -317,10 +328,17 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
         allocations: allocs.map((a) => ({ docType: a.doc.docType, doc: a.doc.id, amount: a.gross })),
         narration: narration.trim() || undefined,
         adviceSuggestion: adviceSuggestion ?? undefined,
+        ...(confirmed ? { confirmRisk: true, riskNote: riskNote.trim() } : {}),
       },
       {
         onSuccess: (p) => { toast(`${p.voucherNo} posted`, "success"); onDone(p._id); },
-        onError: (e) => toast(e instanceof ApiError ? e.message : "Could not post the voucher", "error"),
+        onError: (e) => {
+          if (e instanceof ApiError && e.code === "PAYMENT_RISK") {
+            setRisk(((e.data?.details as { flags?: Flag[] } | undefined)?.flags) ?? []);
+            return;
+          }
+          toast(e instanceof ApiError ? e.message : "Could not post the voucher", "error");
+        },
       }
     );
 
@@ -332,7 +350,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   };
 
   // Keyboard entry: Ctrl+Enter posts, so a sitting of fifty vouchers needs no mouse.
-  const onKeyDown = (e: React.KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && ready) { e.preventDefault(); submit(); } };
+  const onKeyDown = (e: React.KeyboardEvent) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && ready && !risk) { e.preventDefault(); submit(); } };
 
   return (
     <div className="space-y-4" onKeyDown={onKeyDown}>
@@ -449,9 +467,21 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
       )}
       {problems.map((p) => <p key={p} className="text-sm text-status-danger">{p}</p>)}
       <Input label="Narration" value={narration} onChange={(e) => setNarration(e.target.value)} placeholder="Printed on the statement" />
+      {kind === "payment" && !risk && <FlagList flags={payFlags} />}
+      {risk && (
+        <div role="alert" aria-label="Payment stopped" className="space-y-2 rounded-lg border border-status-danger/40 bg-status-dangerBg p-3 text-sm">
+          <p className="font-semibold text-status-danger">Stopped before the money goes</p>
+          <FlagList flags={risk} />
+          <Input label="How you confirmed it *" value={riskNote} onChange={(e) => setRiskNote(e.target.value)} placeholder="e.g. Called Mr. Raju on the number on file; he confirmed the new account" />
+          <div className="flex justify-end gap-2">
+            <Button size="sm" variant="secondary" onClick={() => { setRisk(null); setRiskNote(""); }}>Don't pay</Button>
+            <Button size="sm" variant="danger" disabled={riskNote.trim().length < 8} loading={createPayment.isPending} onClick={() => submit(true)}>Confirmed — pay</Button>
+          </div>
+        </div>
+      )}
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button onClick={submit} disabled={!ready} loading={createPayment.isPending} title="Ctrl+Enter">{kind === "receipt" ? "Post receipt" : "Post payment"}</Button>
+        <Button onClick={() => submit()} disabled={!ready || !!risk} loading={createPayment.isPending} title="Ctrl+Enter">{kind === "receipt" ? "Post receipt" : "Post payment"}</Button>
       </div>
     </div>
   );

@@ -38,6 +38,11 @@ const schema = z.object({
   gstRegistration: z.enum(["regular", "composition", "unregistered"]).optional(),
   paymentTermsDays: z.coerce.number().min(0).max(365).optional(),
   pan: z.string().regex(/^([A-Z]{5}\d{4}[A-Z])?$/i, "A PAN is 5 letters, 4 digits, 1 letter").optional().or(z.literal("")),
+  bank: z.object({
+    accountNo: z.string().regex(/^[\d\s-]{0,24}$/, "Digits only").refine((v) => !v || /^\d{6,18}$/.test(v.replace(/[\s-]/g, "")), "6 to 18 digits").optional(),
+    ifsc: z.string().regex(/^([A-Za-z]{4}0[A-Za-z0-9]{6})?$/, "11 characters, like HDFC0001234").optional(),
+    holder: z.string().max(120).optional(),
+  }).optional(),
   msme: z.object({
     category: z.enum(["", "micro", "small", "medium"]).optional(),
     udyam: z.string().optional(),
@@ -80,6 +85,7 @@ function SupplierForm({
       gstRegistration: initial?.gstRegistration ?? "regular",
       paymentTermsDays: initial?.paymentTermsDays ?? 30,
       pan: initial?.pan ?? "",
+      bank: { accountNo: initial?.bank?.accountNo ?? "", ifsc: initial?.bank?.ifsc ?? "", holder: initial?.bank?.holder ?? "" },
       msme: { category: initial?.msme?.category ?? "", udyam: initial?.msme?.udyam ?? "", agreedDays: initial?.msme?.agreedDays ?? 0 },
     },
   });
@@ -126,6 +132,19 @@ function SupplierForm({
         <Input label="Bills fall due after (days)" type="number" min={0} {...register("paymentTermsDays")} />
       </div>
       <Input label="PAN" placeholder="AAAPS1234F" hint="On the TDS return (26Q); without one, tax must be deducted at 20%" error={errors.pan?.message} {...register("pan")} />
+
+      <fieldset className="rounded-md border border-ink-200 p-3">
+        <legend className="px-1 text-xs font-medium text-ink-500">Bank account they are paid in</legend>
+        <p className="mb-3 text-xs text-ink-400">Change it only after calling them on the number already on file — never on a mail alone. A payment within 30 days of a change has to be confirmed before it goes.</p>
+        {initial?.bank?.changedAt && (
+          <p className="mb-3 text-xs text-status-warning">Changed on {new Date(initial.bank.changedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}{initial.bank.changedByName ? ` by ${initial.bank.changedByName}` : ""}{initial.bank.previousAccountNo ? ` (was …${initial.bank.previousAccountNo.slice(-4)})` : ""}.</p>
+        )}
+        <div className="grid grid-cols-3 gap-3">
+          <Input label="Account number" inputMode="numeric" error={errors.bank?.accountNo?.message} {...register("bank.accountNo")} />
+          <Input label="IFSC" placeholder="HDFC0001234" error={errors.bank?.ifsc?.message} {...register("bank.ifsc")} />
+          <Input label="Account holder" {...register("bank.holder")} />
+        </div>
+      </fieldset>
 
       <fieldset className="rounded-md border border-ink-200 p-3">
         <legend className="px-1 text-xs font-medium text-ink-500">MSME (Udyam) status</legend>

@@ -26,6 +26,8 @@ export interface Supplier {
   msme?: { category?: "" | "micro" | "small" | "medium"; udyam?: string; agreedDays?: number };
   /** For the TDS return (26Q); without one, 20% applies (s.206AA). */
   pan?: string;
+  /** Where they are paid; a change in the last 30 days stops a payment until confirmed. */
+  bank?: { accountNo?: string; ifsc?: string; holder?: string; changedAt?: string | null; changedByName?: string; previousAccountNo?: string };
 }
 
 export interface SupplierFormValues {
@@ -38,6 +40,7 @@ export interface SupplierFormValues {
   msme?: { category?: "" | "micro" | "small" | "medium"; udyam?: string; agreedDays?: number };
   /** For the TDS return (26Q); without one, 20% applies (s.206AA). */
   pan?: string;
+  bank?: { accountNo?: string; ifsc?: string; holder?: string };
   name: string;
   phoneNumber?: string;
   gstin?: string;

@@ -309,6 +309,8 @@ export const accountsService = {
   // ── Inbox and insights ──
   inbox: () => httpClient.get<Inbox & { success: boolean }>("/accounts/inbox"),
   checkBill: async (body: Record<string, unknown>) => (await httpClient.post<{ success: boolean; flags: Flag[] }>("/accounts/bills/check", body)).flags,
+  /** Before money goes out: a changed or shared bank account, a payment twice, and the like. */
+  checkPayment: async (body: Record<string, unknown>) => (await httpClient.post<{ success: boolean; flags: Flag[] }>("/accounts/payments/check", body)).flags,
   checkExpense: async (body: Record<string, unknown>) => (await httpClient.post<{ success: boolean; flags: Flag[] }>("/accounts/expenses/check", body)).flags,
   suggestCategory: async (q: { supplier?: string; payee?: string; description?: string }) =>
     (await httpClient.get<{ success: boolean; suggestion: { category: string; name: string; confidence: number; reason: string } | null }>("/accounts/suggest/category", clean(q))).suggestion,

@@ -8,7 +8,7 @@ import type { Flag } from "./types";
  * — the same amount twice, a GSTIN not the supplier's, a rate off the
  * last bills — asked of the server a moment after the figures settle.
  */
-export function useFlags(kind: "bill" | "expense", body: Record<string, unknown> | null) {
+export function useFlags(kind: "bill" | "expense" | "payment", body: Record<string, unknown> | null) {
   const [flags, setFlags] = useState<Flag[]>([]);
   const key = body ? JSON.stringify(body) : "";
   const seq = useRef(0);
@@ -16,7 +16,7 @@ export function useFlags(kind: "bill" | "expense", body: Record<string, unknown>
     if (!body) { setFlags([]); return; }
     const mine = ++seq.current;
     const t = setTimeout(() => {
-      (kind === "bill" ? accountsService.checkBill(body) : accountsService.checkExpense(body))
+      (kind === "bill" ? accountsService.checkBill(body) : kind === "payment" ? accountsService.checkPayment(body) : accountsService.checkExpense(body))
         .then((f) => { if (mine === seq.current) setFlags(f); })
         .catch(() => { /* a check that fails never blocks the form */ });
     }, 600);

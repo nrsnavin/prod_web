@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import { ApiError } from "@/core/http/httpClient";
 import userEvent from "@testing-library/user-event";
 import { VoucherForm } from "./VouchersTab";
 import type { OpenDoc } from "./types";
@@ -26,7 +27,8 @@ vi.mock("./shared", async (importOriginal) => {
 });
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 const readAdvice = vi.fn();
-vi.mock("./api", () => ({ accountsService: { readAdvice: (...a: unknown[]) => readAdvice(...a) } }));
+const checkPayment = vi.fn(async () => [] as unknown[]);
+vi.mock("./api", () => ({ accountsService: { readAdvice: (...a: unknown[]) => readAdvice(...a), checkPayment: (...a: unknown[]) => checkPayment(...a) } }));
 
 const doc = (over: Partial<OpenDoc>): OpenDoc => ({ docType: "SupplierBill", id: "b1", docNo: "PB/2026-27/0001", date: "2026-07-04", dueDate: "2026-08-03", party: "s1", partyName: "Sri Yarn", amount: 52500, outstanding: 52500, overdueDays: 0, bucket: "current", tds: { section: "194C", rate: 2 }, ...over });
 
@@ -199,5 +201,28 @@ describe("a receipt from the customer's payment advice", () => {
       allocations: [{ docType: "Invoice", doc: "i701", amount: 52500 }, { docType: "Invoice", doc: "i702", amount: 21000 }],
       adjustments: [{ kind: "tds_by_customer", amount: 605 }, { kind: "discount", amount: 550 }],
     });
+  });
+});
+
+describe("before money goes out", () => {
+  it("shows the checks as it is typed, and when the server stops it, asks how it was confirmed before paying", async () => {
+    checkPayment.mockResolvedValue([{ code: "DUPLICATE", severity: "warning", message: "₹1,050 was paid to Sri Yarn on 01 Nov 2026 (PV/2026-27/0003) — the same payment twice?" }]);
+    render(<VoucherForm kind="payment" onDone={() => {}} onCancel={() => {}} />);
+    await userEvent.click(screen.getByText("pick party"));
+    await userEvent.click(await screen.findByLabelText("Settle PB/2026-27/0002"));
+    expect(await screen.findByText(/the same payment twice\?/, {}, { timeout: 2000 })).toBeInTheDocument();
+    await waitFor(() => expect(checkPayment).toHaveBeenCalledWith(expect.objectContaining({ kind: "payment", partyType: "supplier", supplier: "s1", amount: 1050 })));
+
+    const flag = { code: "BANK_CHANGED", severity: "danger", message: "Sri Yarn's bank account was changed on 03 Nov 2026 by Meena (was …4567, now …6655) — call them on the number on file" };
+    createMutate.mockImplementationOnce((_b: unknown, o: { onError: (e: unknown) => void }) => o.onError(new ApiError("stopped", 409, undefined, "PAYMENT_RISK", { details: { flags: [flag] } })));
+    await userEvent.click(screen.getByRole("button", { name: /post payment/i }));
+    const box = await screen.findByLabelText("Payment stopped");
+    expect(box).toHaveTextContent("was changed on 03 Nov 2026 by Meena");
+    expect(screen.getByRole("button", { name: /post payment/i })).toBeDisabled();
+    const go = within(box).getByRole("button", { name: /confirmed — pay/i });
+    expect(go).toBeDisabled();
+    await userEvent.type(within(box).getByLabelText("How you confirmed it *"), "Called Mr. Raju on the number on file");
+    await userEvent.click(go);
+    expect(createMutate.mock.calls[1][0]).toMatchObject({ confirmRisk: true, riskNote: "Called Mr. Raju on the number on file" });
   });
 });
