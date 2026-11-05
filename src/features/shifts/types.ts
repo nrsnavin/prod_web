@@ -1,3 +1,5 @@
+import type { RemarkClass } from "./remark";
+
 export interface ShiftPlanMachineRow {
   machineId: string;
   machineName: string;
@@ -105,6 +107,8 @@ export interface PreviousReading {
 
 export interface PendingShift {
   _id: string;
+  /** The floor remark, classed: downtime, minutes, and whether the fitter should look. */
+  remark?: RemarkClass | null;
   /** The reading on this loom the shift before; null when it had no plan or loom. */
   previous?: PreviousReading | null;
   productionMeters?: number;

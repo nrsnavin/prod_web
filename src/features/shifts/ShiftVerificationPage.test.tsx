@@ -65,6 +65,15 @@ describe("verifying a shift", () => {
     expect(within(block).getByRole("button", { name: /open the timer photo from the night shift/i })).toBeInTheDocument();
   });
 
+  it("shows the remark's class on the card, and when it is one for the fitter", async () => {
+    pending.remark = { kind: "mechanical", minutes: 60, machineFault: true, issue: null };
+    pending.submittedFeedback = "motor noise, stopped 1 hr";
+    render(<MemoryRouter><ShiftVerificationPage /></MemoryRouter>);
+    expect(screen.getByLabelText("Remark")).toHaveTextContent("Mechanical fault · 1 h · for the fitter · “motor noise, stopped 1 hr”");
+    delete pending.remark;
+    delete pending.submittedFeedback;
+  });
+
   it("asks for the figure per head and shows what to expect beside it", async () => {
     render(<MemoryRouter><ShiftVerificationPage /></MemoryRouter>);
     await userEvent.click(screen.getByRole("button", { name: /^verify$/i }));

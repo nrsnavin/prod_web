@@ -20,6 +20,7 @@ import { TimerPhotos } from "./TimerPhotos";
 import { PreviousShiftReading } from "./PreviousShiftReading";
 import { AutoVerifiedList, AutoVerifySettings } from "./AutoVerify";
 import { formatDate } from "@/core/format/date";
+import { remarkWords } from "./remark";
 
 // A shift's job hangs off either the machine's running order or the
 // shift's own job ref — the same fallback the job number uses, so the
@@ -180,6 +181,13 @@ export function ShiftVerificationPage() {
                     <div className="mt-1">
                       <OutsourcedTag productionMode="outsource" outsourceVendor={jobVendor(s)} />
                     </div>
+                  )}
+                  {s.remark && (
+                    <p className="mt-1 text-xs text-ink-500" aria-label="Remark" title={s.submittedFeedback || s.feedback || undefined}>
+                      <span className={s.remark.machineFault ? "font-medium text-status-warning" : "font-medium text-ink-700"}>{remarkWords(s.remark)}</span>
+                      {s.remark.machineFault && (s.remark.issue ? " · raised for the fitter" : " · for the fitter")}
+                      {(s.submittedFeedback || s.feedback) && <> · “{s.submittedFeedback || s.feedback}”</>}
+                    </p>
                   )}
                   <PreviousShiftReading previous={s.previous} compact />
                 </div>

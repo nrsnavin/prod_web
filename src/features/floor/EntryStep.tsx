@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, History, Info, UserCheck } from "lucide-react";
+import { ArrowLeft, Check, History, Info, Mic, MicOff, UserCheck } from "lucide-react";
+import { useSpeech, type SpeechLang } from "@/core/hooks/useSpeech";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -130,6 +131,8 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
   // their own figure, it is theirs and stays.
   const [filled, setFilled] = useState<string | null>(null);
   const [feedback, setFeedback] = useState(prior?.feedback ?? "");
+  const [lang, setLang] = useState<SpeechLang>("ta-IN");
+  const speech = useSpeech((t) => setFeedback((x) => (x ? `${x} ${t}` : t).slice(0, 500)));
   // Where the display stood when the shift before ended: shown above the
   // camera, and the start of a total-hours meter.
   const previous = usePreviousTimer(machine.id);
@@ -352,16 +355,32 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
             }
           />
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-ink-600">Remarks</span>
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value.slice(0, 500))}
-              rows={2}
-              placeholder="Beam change, breakdown, yarn short…"
-              className="w-full rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            />
-          </label>
+          <div>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-ink-600">Remarks</span>
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value.slice(0, 500))}
+                rows={2}
+                placeholder="Beam change 40 min, motor noise, yarn short… — say it or type it"
+                className="w-full rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            </label>
+            {/* Spoken, in Tamil or English: the browser turns it into words. */}
+            {speech.supported && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <select aria-label="Speaking in" value={lang} onChange={(e) => setLang(e.target.value as SpeechLang)} className="h-8 rounded-lg border border-ink-200 bg-surface px-2 text-sm">
+                  <option value="ta-IN">தமிழ்</option>
+                  <option value="en-IN">English</option>
+                </select>
+                {speech.listening
+                  ? <Button type="button" size="sm" variant="secondary" onClick={speech.stop}><MicOff className="h-4 w-4" aria-hidden /> Stop</Button>
+                  : <Button type="button" size="sm" variant="secondary" onClick={() => speech.start(lang)}><Mic className="h-4 w-4" aria-hidden /> Say the remark</Button>}
+                {speech.listening && <span className="text-xs text-status-danger">Listening…</span>}
+              </div>
+            )}
+            {speech.error && <p className="mt-1 text-xs text-status-warning">{speech.error}</p>}
+          </div>
 
           {error && <p role="alert" className="rounded-lg bg-status-dangerBg px-3 py-2 text-sm text-status-danger">{error}</p>}
 

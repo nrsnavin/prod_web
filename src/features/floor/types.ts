@@ -1,3 +1,5 @@
+import type { RemarkClass } from "@/features/shifts/remark";
+
 // ══════════════════════════════════════════════════════════════════
 //  THE FLOOR-ENTRY SCREEN — what the server says (api/floor.js)
 // ══════════════════════════════════════════════════════════════════
@@ -106,6 +108,15 @@ export interface EntrySaved {
   autoVerified?: boolean;
   /** Why it waits for the office, when it was not. */
   waitsBecause?: string[];
+  /** The remark, classed; a fault is offered to the fitter. */
+  remark?: RemarkClass | null;
+}
+
+/** The remark raised as a machine issue, or the open one it repeats. */
+export interface RemarkIssue {
+  issue: { id: string; title: string; severity: string; status: string };
+  duplicate: boolean;
+  already: boolean;
 }
 
 /** What Create shift plan gives back. */

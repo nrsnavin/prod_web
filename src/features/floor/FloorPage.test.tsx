@@ -14,6 +14,7 @@ import type { EntrySaved, FloorMachine, FloorPlan, FloorState } from "./types";
 // ══════════════════════════════════════════════════════════════════
 
 const svc = {
+  raiseRemarkIssue: vi.fn(),
   open: vi.fn(),
   shift: vi.fn(),
   machine: vi.fn(),
@@ -261,6 +262,40 @@ describe("scanning and entering", () => {
     svc.shift.mockResolvedValue(stateOf([entered], planned));
     await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringMatching(/L1 saved — 450 m\/head.*verified: the photo and the loom's rate agree/), "success"));
+  });
+
+  it("a remark that sounds like a fault is offered to the fitter after saving, one tap", async () => {
+    await start();
+    svc.machine.mockResolvedValue(ready);
+    await userEvent.type(screen.getByLabelText(/type the machine ID/i), "L1");
+    await userEvent.click(screen.getByRole("button", { name: /find/i }));
+    await userEvent.type(await screen.findByLabelText(/production per head/i), "300");
+    await userEvent.type(screen.getByLabelText("Remarks"), "motor noise, stopped 1 hr");
+    const entered = { ...ready, entry: "entered" as const, detail: { ...ready.detail!, status: "pending_verification", submitted: { production: 300, timer: null, feedback: "motor noise, stopped 1 hr", at: null, byName: "Kumar" } } };
+    svc.enter.mockResolvedValue({ ...saved(entered), remark: { kind: "mechanical", minutes: 60, machineFault: true, summary: "", issue: null } });
+    svc.raiseRemarkIssue.mockResolvedValue({ issue: { id: "mi1", title: "Motor noise, loom stopped", severity: "high", status: "open" }, duplicate: false, already: false });
+    await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
+
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringMatching(/L1 saved — 300 m\/head · Mechanical fault · 1 h/), "success"));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("A fault on L1?");
+    expect(dialog).toHaveTextContent("“motor noise, stopped 1 hr” — sounds like mechanical fault · 1 h");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Raise for the fitter" }));
+    expect(svc.raiseRemarkIssue).toHaveBeenCalledWith("d1");
+    await waitFor(() => expect(toast).toHaveBeenCalledWith("Raised for the fitter: Motor noise, loom stopped", "success"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("a remark that is not a fault, or one already raised, is not offered", async () => {
+    await start();
+    svc.machine.mockResolvedValue(ready);
+    await userEvent.type(screen.getByLabelText(/type the machine ID/i), "L1");
+    await userEvent.click(screen.getByRole("button", { name: /find/i }));
+    await userEvent.type(await screen.findByLabelText(/production per head/i), "300");
+    svc.enter.mockResolvedValue({ ...saved({ ...ready, entry: "entered" }), remark: { kind: "beam_change", minutes: 40, machineFault: false, issue: null } });
+    await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringMatching(/· Beam change · 40 min$/), "success"));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("one photo of the label and the timer: finds the loom from the label and reads the timer in the same photo", async () => {

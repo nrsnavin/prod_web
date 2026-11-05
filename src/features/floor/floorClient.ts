@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import { config } from "@/app/config";
 import { toApiError } from "@/core/http/httpClient";
-import type { CompleteResult, EntryInput, EntrySaved, FloorMachine, FloorSession, FloorState, PreviousTimerPhoto, Shift } from "./types";
+import type { CompleteResult, EntryInput, EntrySaved, FloorMachine, FloorSession, FloorState, PreviousTimerPhoto, RemarkIssue, Shift } from "./types";
 import type { TimerReading } from "@/features/shifts/timerReading";
 
 // ══════════════════════════════════════════════════════════════════
@@ -103,7 +103,13 @@ export const floorService = {
 
   async enter(input: EntryInput): Promise<EntrySaved> {
     const { data } = await http().post<EntrySaved>("/floor/entry", input);
-    return { machine: data.machine, plan: data.plan ?? null, autoVerified: !!data.autoVerified, waitsBecause: data.waitsBecause };
+    return { machine: data.machine, plan: data.plan ?? null, autoVerified: !!data.autoVerified, waitsBecause: data.waitsBecause, remark: data.remark ?? null };
+  },
+
+  /** The entry's remark, raised as a machine issue for the fitter (or linked to the open one it repeats). */
+  async raiseRemarkIssue(detailId: string): Promise<RemarkIssue> {
+    const { data } = await http().post<RemarkIssue>("/floor/remark-issue", { detailId });
+    return data;
   },
 
   /** Create shift plan: the looms noted become the plan. `force` with looms still to enter. */

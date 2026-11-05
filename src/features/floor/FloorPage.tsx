@@ -12,6 +12,8 @@ import { OpenStep } from "./OpenStep";
 import { ScanStep } from "./ScanStep";
 import { EntryStep } from "./EntryStep";
 import type { FloorMachine, FloorSession, FloorState } from "./types";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { remarkWords, type RemarkClass } from "@/features/shifts/remark";
 
 // ══════════════════════════════════════════════════════════════════
 //  THE FLOOR-ENTRY SCREEN — /floor, no login
@@ -45,6 +47,23 @@ export function FloorPage() {
   const [phase, setPhase] = useState<Phase>(() => (floorTokenStore.read() ? { kind: "booting" } : { kind: "open" }));
   const [pinAgain, setPinAgain] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // A saved entry whose remark sounds like a fault on the loom: offered to the fitter.
+  const [fault, setFault] = useState<{ detailId: string; machine: string; said: string; remark: RemarkClass } | null>(null);
+  const [raising, setRaising] = useState(false);
+  const raise = async () => {
+    if (!fault) return;
+    setRaising(true);
+    try {
+      const r = await floorService.raiseRemarkIssue(fault.detailId);
+      toast(r.duplicate ? `Already reported on ${fault.machine}: ${r.issue.title} — this entry is linked to it` : `Raised for the fitter: ${r.issue.title}`, "success");
+      setFault(null);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) { setFault(null); setPinAgain(true); return; }
+      toast(err instanceof ApiError ? err.message : "Could not raise it — try again.", "error");
+    } finally {
+      setRaising(false);
+    }
+  };
 
   const authLost = useCallback(() => setPinAgain(true), []);
 
@@ -180,8 +199,11 @@ export function FloorPage() {
               toast("Draft started with this loom — press Create shift plan when every machine is entered", "info");
               void refresh();
             }}
-            onSaved={({ machine: m, plan, autoVerified }) => {
-              toast(`${m.ID} saved — ${m.detail?.submitted?.production ?? 0} m/head${autoVerified ? " · verified: the photo and the loom's rate agree" : ""}`, "success");
+            onSaved={({ machine: m, plan, autoVerified, remark }) => {
+              toast(`${m.ID} saved — ${m.detail?.submitted?.production ?? 0} m/head${autoVerified ? " · verified: the photo and the loom's rate agree" : ""}${remark && remark.kind !== "other" ? ` · ${remarkWords(remark)}` : ""}`, "success");
+              if (remark?.machineFault && !remark.issue && m.detail?.id) {
+                setFault({ detailId: m.detail.id, machine: m.ID, said: m.detail.submitted?.feedback ?? "", remark });
+              }
               setState((s) => s ? { ...s, plan: plan ?? s.plan, machines: s.machines.map((x) => (x.id === m.id ? m : x)) } : s);
               setPhase({ kind: "scan" });
               void refresh();
@@ -189,6 +211,16 @@ export function FloorPage() {
           />
         )}
       </main>
+
+      <ConfirmDialog
+        open={!!fault}
+        title={`A fault on ${fault?.machine ?? "the loom"}?`}
+        message={fault ? `The remark — “${fault.said}” — sounds like ${remarkWords(fault.remark).toLowerCase()}. Raise it for the fitter as a machine issue? An open issue it repeats is linked instead.` : ""}
+        confirmLabel="Raise for the fitter"
+        loading={raising}
+        onCancel={() => setFault(null)}
+        onConfirm={() => void raise()}
+      />
 
       {session && (
         <PinAgainDialog
