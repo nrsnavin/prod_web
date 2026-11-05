@@ -23,7 +23,7 @@ import { CameraOff, ScanLine } from "lucide-react";
 // ══════════════════════════════════════════════════════════════════
 
 interface DetectedBarcode { rawValue: string }
-interface BarcodeDetectorLike { detect(source: HTMLVideoElement): Promise<DetectedBarcode[]> }
+interface BarcodeDetectorLike { detect(source: HTMLVideoElement | ImageBitmap): Promise<DetectedBarcode[]> }
 type BarcodeDetectorCtor = new (opts: { formats: string[] }) => BarcodeDetectorLike;
 
 /** The browser's reader, if it has one. */

@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ClipboardCheck, ClipboardList, Keyboard, RefreshCw, Search } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Camera, ClipboardCheck, ClipboardList, Keyboard, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ApiError } from "@/core/http/httpClient";
@@ -7,6 +7,7 @@ import { floorService } from "./floorClient";
 import { listOrder, readCode } from "./floorRules";
 import { LoomRow } from "./LoomCard";
 import { QrScanner } from "./QrScanner";
+import { qrFromPhoto } from "./photoQr";
 import type { CompleteResult, FloorMachine, FloorState } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
@@ -22,7 +23,8 @@ import type { CompleteResult, FloorMachine, FloorState } from "./types";
 
 export function ScanStep({ state, onMachine, onRefresh, onAuthLost, onCompleted, refreshing }: {
   state: FloorState;
-  onMachine: (m: FloorMachine) => void;
+  /** `photo`: the one photo of the label and the timer, to read the run time from. */
+  onMachine: (m: FloorMachine, photo?: File) => void;
   onRefresh: () => void;
   onAuthLost: () => void;
   /** Create shift plan went through. */
@@ -63,13 +65,13 @@ export function ScanStep({ state, onMachine, onRefresh, onAuthLost, onCompleted,
   const done = state.counts.entered;
   const total = toEnter + done;
 
-  const find = async (raw: string) => {
+  const find = async (raw: string, photo?: File) => {
     const read = readCode(raw);
     if ("problem" in read) { setError(read.problem); return; }
     setError(null);
     setLooking(true);
     try {
-      onMachine(await floorService.machine(read.code));
+      onMachine(await floorService.machine(read.code), photo);
       setTyped("");
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) { onAuthLost(); return; }
@@ -77,6 +79,19 @@ export function ScanStep({ state, onMachine, onRefresh, onAuthLost, onCompleted,
     } finally {
       setLooking(false);
     }
+  };
+
+  const both = useRef<HTMLInputElement>(null);
+  const fromPhoto = async (file: File) => {
+    setError(null);
+    setLooking(true);
+    const code = await qrFromPhoto(file);
+    setLooking(false);
+    if (!code) {
+      setError("No loom label could be found in that photo. Take it again with the label and the timer both in the frame, or scan the label.");
+      return;
+    }
+    await find(code, file);
   };
 
   return (
@@ -139,6 +154,26 @@ export function ScanStep({ state, onMachine, onRefresh, onAuthLost, onCompleted,
       />
 
       <QrScanner onCode={(code) => void find(code)} paused={looking} />
+
+      {/* One photo for both: the label finds the loom, and the timer in
+          the same photo is read for the run time on the next screen. */}
+      <input
+        ref={both}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        aria-label="Photo of the loom's label and timer"
+        data-testid="label-and-timer-input"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void fromPhoto(file);
+        }}
+      />
+      <Button variant="secondary" className="w-full" onClick={() => both.current?.click()} loading={looking}>
+        <Camera className="h-4 w-4" aria-hidden /> One photo: the label and the timer together
+      </Button>
 
       <form
         className="flex items-end gap-2"

@@ -25,6 +25,8 @@ const svc = {
   previousTimerPhoto: vi.fn(),
   timerPhotoFileUrl: vi.fn(),
 };
+const qrFromPhoto = vi.fn();
+vi.mock("./photoQr", () => ({ qrFromPhoto: (...a: unknown[]) => qrFromPhoto(...a) }));
 let stored: { token: string; session: { dateKey: string; shift: "DAY" | "NIGHT"; name: string } } | null = null;
 vi.mock("./floorClient", () => ({
   floorService: new Proxy({}, { get: (_t, k: string) => (...a: unknown[]) => (svc as Record<string, (...x: unknown[]) => unknown>)[k](...a) }),
@@ -259,6 +261,46 @@ describe("scanning and entering", () => {
     svc.shift.mockResolvedValue(stateOf([entered], planned));
     await userEvent.click(screen.getByRole("button", { name: /save and scan next/i }));
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringMatching(/L1 saved — 450 m\/head.*verified: the photo and the loom's rate agree/), "success"));
+  });
+
+  it("one photo of the label and the timer: finds the loom from the label and reads the timer in the same photo", async () => {
+    await start();
+    svc.machine.mockResolvedValue(ready);
+    qrFromPhoto.mockResolvedValue("MACHINE|id-L1|L1");
+    svc.readTimerPhoto.mockResolvedValue({ reading: { displays: [{ text: "7:30:00", kind: "run_time", label: "", confidence: 0.95, alternatives: [] }], primary: 0, problem: null }, suggestionId: null, photoId: "ph1" });
+    const photo = new File([new Uint8Array([1, 2])], "panel.jpg", { type: "image/jpeg" });
+    await userEvent.upload(screen.getByTestId("label-and-timer-input"), photo);
+
+    expect(qrFromPhoto).toHaveBeenCalledWith(photo);
+    expect(svc.machine).toHaveBeenCalledWith("MACHINE|id-L1|L1");
+    // The loom is on the shift: the same photo is read for its entry at once.
+    await waitFor(() => expect(svc.readTimerPhoto).toHaveBeenCalledWith(photo, "d1"));
+    await userEvent.click(await screen.findByRole("button", { name: /use this/i }));
+    expect(screen.getByLabelText("Run time")).toHaveValue("7:30:00");
+    expect(svc.readTimerPhoto).toHaveBeenCalledTimes(1);
+  });
+
+  it("one photo on a loom not on the shift waits for the operator, then is read and kept with the entry", async () => {
+    const unplanned = loom({ ID: "L1" });
+    await start([unplanned], null as unknown as FloorPlan);
+    svc.machine.mockResolvedValue(unplanned);
+    qrFromPhoto.mockResolvedValue("MACHINE|id-L1|L1");
+    svc.setOperator.mockResolvedValue({ detailId: "d9", added: true, planCreated: true });
+    svc.readTimerPhoto.mockResolvedValue({ reading: { displays: [], primary: null, problem: "glare" }, suggestionId: null, photoId: "ph2" });
+    await userEvent.upload(screen.getByTestId("label-and-timer-input"), new File([new Uint8Array([1])], "p.jpg", { type: "image/jpeg" }));
+
+    expect(await screen.findByText(/read for the run time once the loom is on the shift/)).toBeInTheDocument();
+    expect(svc.readTimerPhoto).not.toHaveBeenCalled();
+    await userEvent.selectOptions(screen.getByLabelText(/operator — puts this loom on the shift/i), "o1");
+    await waitFor(() => expect(svc.readTimerPhoto).toHaveBeenCalledWith(expect.any(File), "d9"));
+  });
+
+  it("one photo with no label in it says so and stays on scanning", async () => {
+    await start();
+    qrFromPhoto.mockResolvedValue(null);
+    await userEvent.upload(screen.getByTestId("label-and-timer-input"), new File([new Uint8Array([1])], "p.jpg", { type: "image/jpeg" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/No loom label could be found in that photo/);
+    expect(svc.machine).not.toHaveBeenCalled();
   });
 
   it("refuses a job label before asking the server, and shows the server's words for an unknown one", async () => {

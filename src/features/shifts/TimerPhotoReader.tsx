@@ -102,6 +102,7 @@ export function TimerPhotoReader({
   service = timerOcrService,
   prompt,
   startHours = null,
+  initialPhoto,
 }: {
   onUse: (runTime: string) => void;
   shiftHours?: number;
@@ -121,6 +122,12 @@ export function TimerPhotoReader({
    * remember it. Ignored for a run-time display, which starts from zero.
    */
   startHours?: number | null;
+  /**
+   * A photo already taken (the floor's one photo of the label and the
+   * timer): read as if just taken here. Given with `shiftId` unknown yet,
+   * it waits until there is one, so the photo is kept with the entry.
+   */
+  initialPhoto?: File;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ phase: "idle" });
@@ -128,6 +135,18 @@ export function TimerPhotoReader({
   const [typed, setTyped] = useState("");
 
   useEffect(() => () => { if (photoUrl) URL.revokeObjectURL(photoUrl); }, [photoUrl]);
+
+  // The photo taken before this screen, read once — when the entry it
+  // belongs to exists, if the screen keeps photos with one.
+  const tookInitial = useRef(false);
+  const waiting = !!initialPhoto && !tookInitial.current && !shiftId;
+  useEffect(() => {
+    if (!initialPhoto || tookInitial.current || !shiftId) return;
+    tookInitial.current = true;
+    void onFile(initialPhoto);
+    // onFile is recreated each render; the photo and the entry are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPhoto, shiftId]);
 
   const pick = () => input.current?.click();
 
@@ -179,8 +198,13 @@ export function TimerPhotoReader({
 
   if (state.phase === "idle") {
     return (
-      <div>
+      <div className="space-y-1.5">
         {fileInput}
+        {waiting && (
+          <p className="text-sm text-ink-600" role="status">
+            The photo of the label and the timer is taken — it is read for the run time once the loom is on the shift.
+          </p>
+        )}
         {prompt ? (
           <Button type="button" size="lg" className="w-full" onClick={pick}>
             <Camera className="h-5 w-5" aria-hidden /> {prompt}

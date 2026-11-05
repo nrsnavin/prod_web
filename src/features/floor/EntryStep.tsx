@@ -106,8 +106,10 @@ function PreviousTimer({ previous }: { previous: PreviousTimerPhoto | null | "lo
   );
 }
 
-export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanMade }: {
+export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanMade, firstPhoto }: {
   machine: FloorMachine;
+  /** The photo the loom was found by (its label and its timer together), read for the run time. */
+  firstPhoto?: File;
   state: FloorState;
   onSaved: (saved: EntrySaved) => void;
   onBack: () => void;
@@ -319,7 +321,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
             <h3 className="text-sm font-semibold text-ink-700">The loom's timer</h3>
             <PreviousTimer previous={previous} />
             <div className="space-y-1.5">
-              <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} prompt="Take a photo of this shift's timer" startHours={previous !== "loading" ? previous?.photo?.meterHours ?? null : null} />
+              <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} prompt="Take a photo of this shift's timer" startHours={previous !== "loading" ? previous?.photo?.meterHours ?? null : null} initialPhoto={firstPhoto} />
               {!detailId && <p className="text-xs text-ink-400">Choose the operator first, so the photo is kept with this entry for the office.</p>}
             </div>
             <Input

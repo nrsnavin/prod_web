@@ -34,7 +34,7 @@ type Phase =
   | { kind: "booting" }
   | { kind: "open" }
   | { kind: "scan" }
-  | { kind: "entry"; machine: FloorMachine };
+  | { kind: "entry"; machine: FloorMachine; photo?: File };
 
 const isAuthLost = (e: unknown) => e instanceof ApiError && e.status === 401;
 
@@ -159,8 +159,8 @@ export function FloorPage() {
               setState((s) => s ? { ...s, plan: r.plan } : s);
               void refresh();
             }}
-            onMachine={(m) => {
-              setPhase({ kind: "entry", machine: m });
+            onMachine={(m, photo) => {
+              setPhase({ kind: "entry", machine: m, photo });
               // A loom tapped in the list comes from the state as last
               // fetched; another tablet may have entered it since.
               void refresh();
@@ -172,6 +172,7 @@ export function FloorPage() {
           <EntryStep
             key={phase.machine.id}
             machine={current ?? phase.machine}
+            firstPhoto={phase.photo}
             state={state}
             onBack={() => setPhase({ kind: "scan" })}
             onAuthLost={authLost}
