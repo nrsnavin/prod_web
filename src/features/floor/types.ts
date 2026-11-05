@@ -128,8 +128,11 @@ export interface PreviousTimerPhoto {
     takenAt: string;
     byName: string;
     readText: string | null;
+    readKind?: string | null;
     runTimeUsed: string | null;
     used: boolean;
+    /** Where a total-hours meter stood when that shift ended; this shift starts from it. */
+    meterHours?: number | null;
   } | null;
 }
 

@@ -93,8 +93,11 @@ export interface PreviousReading {
     takenAt: string;
     byName: string;
     readText: string | null;
+    readKind?: string | null;
     runTimeUsed: string | null;
     used: boolean;
+    /** Where a total-hours meter stood when that shift ended. */
+    meterHours?: number | null;
   } | null;
 }
 

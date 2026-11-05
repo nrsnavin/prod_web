@@ -48,6 +48,26 @@ describe("questions", () => {
     expect(nextStep(r, { start: "1226.85" })).toMatchObject({ kind: "done", runTime: "7:45:00" });
   });
 
+  it("starts a total-hours meter from where it stood when the shift before ended, and can be told otherwise", () => {
+    const r = reading([d("1234.6", { kind: "hour_meter", label: "HRS" })]);
+    expect(nextStep(r, {}, { startHours: 1226.85 })).toMatchObject({
+      kind: "done", runTime: "7:45:00", meter: { start: 1226.85, end: 1234.6, fromPrevious: true },
+    });
+    // A start typed in wins, and is kept as typed.
+    expect(nextStep(r, { start: "1227" }, { startHours: 1226.85 })).toMatchObject({ kind: "done", meter: { start: 1227, fromPrevious: false } });
+    // "Different start reading": asked for, as without one.
+    expect(nextStep(r, { prevStart: "no" }, { startHours: 1226.85 })).toMatchObject({ kind: "question", question: { id: "start" } });
+    // A start that cannot be one shift before (the meter was reset, or a gap): asked, saying why.
+    const reset = nextStep(r, {}, { startHours: 1300 });
+    expect(reset).toMatchObject({ kind: "question", question: { id: "start" } });
+    if (reset.kind !== "question") throw new Error();
+    expect(reset.question.text).toMatch(/The shift before ended at 1300 h, which doesn't fit/);
+    expect(nextStep(r, {}, { startHours: 1100 })).toMatchObject({ kind: "question", question: { id: "start" } });
+    // An unclear photo is still asked about; a run-time display ignores it.
+    expect(nextStep(reading([d("1234.6", { kind: "hour_meter", confidence: 0.5 })]), {}, { startHours: 1226.85 })).toMatchObject({ question: { id: "confirm" } });
+    expect(nextStep(reading([d("07:45:12")]), {}, { startHours: 1226.85 })).toEqual(expect.not.objectContaining({ meter: expect.anything() }));
+  });
+
   it("refuses a start reading that makes no sense, and says why", () => {
     const r = reading([d("1234.6", { kind: "hour_meter" })]);
     expect(nextStep(r, { start: "1240" })).toMatchObject({ kind: "question", error: expect.stringMatching(/lower than/) });

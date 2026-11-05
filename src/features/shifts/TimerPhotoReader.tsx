@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/ErrorState";
 import { ApiError, httpClient } from "@/core/http/httpClient";
 import { cn } from "@/components/ui/cn";
-import { Answers, Step, TYPE_IT, TimerReading, nextStep } from "./timerReading";
+import { Answers, MeterReadings, Step, TYPE_IT, TimerReading, nextStep } from "./timerReading";
 
 // ══════════════════════════════════════════════════════════════════
 //  "READ THE TIMER FROM A PHOTO"
@@ -35,7 +35,8 @@ interface OcrResponse {
  */
 export interface TimerOcrService {
   read(photo: Blob, shiftId?: string): Promise<OcrResponse>;
-  used(photoId: string, runTime: string): Promise<unknown>;
+  /** `meter`: the total-hours readings the run time came from, kept for the next shift to start from. */
+  used(photoId: string, runTime: string, meter?: { start: number; end: number }): Promise<unknown>;
   settle?(id: string, runTime: string): Promise<unknown>;
 }
 
@@ -47,8 +48,8 @@ export const timerOcrService: TimerOcrService = {
     return httpClient.post<OcrResponse>("/ocr/timer", form);
   },
   /** The kept photo the run time was filled from; settles its reading too. Best effort. */
-  used(photoId: string, runTime: string) {
-    return httpClient.post(`/ocr/timer/photo/${encodeURIComponent(photoId)}/use`, { runTime }).catch(() => undefined);
+  used(photoId: string, runTime: string, meter?: { start: number; end: number }) {
+    return httpClient.post(`/ocr/timer/photo/${encodeURIComponent(photoId)}/use`, { runTime, ...(meter ? { meter } : {}) }).catch(() => undefined);
   },
   /** What was actually used, for the AI accuracy report. Best effort. */
   settle(id: string, runTime: string) {
@@ -100,6 +101,7 @@ export function TimerPhotoReader({
   shiftId,
   service = timerOcrService,
   prompt,
+  startHours = null,
 }: {
   onUse: (runTime: string) => void;
   shiftHours?: number;
@@ -113,6 +115,12 @@ export function TimerPhotoReader({
    * with a photo of the display) instead of the small link.
    */
   prompt?: string;
+  /**
+   * Where a total-hours meter stood when the shift before ended on this
+   * loom (from its photo): the start of this shift, so nobody has to
+   * remember it. Ignored for a run-time display, which starts from zero.
+   */
+  startHours?: number | null;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ phase: "idle" });
@@ -137,7 +145,7 @@ export function TimerPhotoReader({
     }
   };
 
-  const step: Step | null = state.phase === "steps" ? nextStep(state.reading, state.answers, { shiftHours }) : null;
+  const step: Step | null = state.phase === "steps" ? nextStep(state.reading, state.answers, { shiftHours, startHours }) : null;
 
   const answer = (id: string, value: string) => {
     if (state.phase !== "steps") return;
@@ -145,8 +153,9 @@ export function TimerPhotoReader({
     setTyped("");
   };
 
-  const use = (runTime: string) => {
-    if (state.phase === "steps" && state.photoId) void service.used(state.photoId, runTime);
+  const use = (runTime: string, meter?: MeterReadings) => {
+    const readings = meter ? { start: meter.start, end: meter.end } : undefined;
+    if (state.phase === "steps" && state.photoId) void service.used(state.photoId, runTime, readings);
     else if (state.phase === "steps" && state.suggestionId && service.settle) void service.settle(state.suggestionId, runTime);
     onUse(runTime);
     setState({ phase: "used", runTime, kept: state.phase === "steps" && !!state.photoId });
@@ -226,7 +235,15 @@ export function TimerPhotoReader({
               Run time <span className="text-lg font-semibold tabular-nums text-ink-900">{step.runTime}</span>
               {step.text !== step.runTime && <span className="ml-1 text-xs text-ink-400">from “{step.text}”</span>}
             </p>
-            <Button type="button" size="sm" onClick={() => use(step.runTime)}>
+            {step.meter?.fromPrevious && (
+              <p className="text-xs text-ink-500">
+                Meter {step.meter.start} h at the start — where it stood when the shift before ended (its photo), to {step.meter.end} h now.{" "}
+                <button type="button" onClick={() => answer("prevStart", "no")} className="font-medium text-brand-600">
+                  Different start reading
+                </button>
+              </p>
+            )}
+            <Button type="button" size="sm" onClick={() => use(step.runTime, step.meter)}>
               <Check className="h-4 w-4" aria-hidden /> Use this
             </Button>
           </>

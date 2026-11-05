@@ -9,7 +9,9 @@
 //    1. Several displays, none clearly the run time → which one is it?
 //    2. A digit could be read two ways → which does the display show?
 //    3. A total-hours meter (1234.6 h) → what did it read at the start
-//       of the shift? Run time = now − then.
+//       of the shift? Run time = now − then. Where the meter stood when
+//       the shift before ended on this loom (its photo) is the start,
+//       when it is known and fits; the person can still type another.
 //    4. "7.45" → 7 h 45 min, or 7.45 hours (7 h 27 min)?
 //    5. "45:12" is too long for hours → 45 min 12 s?
 //    6. Unsure overall → is the run time 7:45:12?
@@ -50,11 +52,20 @@ export type Question =
   | { id: "confirm"; text: string; options: Option[] }
   | { id: "long"; text: string; options: Option[] };
 
-export type Answers = Partial<Record<Question["id"], string>>;
+/** `prevStart: "no"` — don't start from the shift before's reading; ask for it. */
+export type Answers = Partial<Record<Question["id"] | "prevStart", string>>;
+
+/** The total-hours meter readings a run time was worked out from. */
+export interface MeterReadings {
+  start: number;
+  end: number;
+  /** The start is where the meter stood when the shift before ended. */
+  fromPrevious: boolean;
+}
 
 export type Step =
   | { kind: "question"; question: Question; error?: string }
-  | { kind: "done"; runTime: string; seconds: number; text: string }
+  | { kind: "done"; runTime: string; seconds: number; text: string; meter?: MeterReadings }
   | { kind: "type"; reason: string };
 
 /** The answer that means "I'll type it myself". */
@@ -106,8 +117,13 @@ function describe(d: TimerDisplay): string {
 }
 
 /** The next thing to ask, or the run time, from the reading and the answers so far. */
-export function nextStep(reading: TimerReading, answers: Answers, { shiftHours = 12 } = {}): Step {
+export function nextStep(
+  reading: TimerReading,
+  answers: Answers,
+  { shiftHours = 12, startHours = null }: { shiftHours?: number; startHours?: number | null } = {}
+): Step {
   const limit = (shiftHours + 1) * 3600;
+  let meter: MeterReadings | undefined;
 
   if (reading.problem && reading.displays.length === 0) {
     return { kind: "type", reason: `${PROBLEM_WORDS[reading.problem]} Take another photo, or type the run time.` };
@@ -184,26 +200,24 @@ export function nextStep(reading: TimerReading, answers: Answers, { shiftHours =
     }
   } else if (parsed.type === "decimal" && (display.kind === "hour_meter" || parsed.value * 3600 > limit)) {
     // A total-hours meter: this shift is the difference from the start.
-    if (answers.start === undefined) {
-      return {
-        kind: "question",
-        question: {
-          id: "start",
-          text: `This looks like a total-hours meter reading ${parsed.value} h. What did it read when the shift started?`,
-          input: { endHours: parsed.value },
-        },
-      };
+    // The shift before's end reading is the start, when it fits one shift.
+    const known = startHours != null && Number.isFinite(startHours) && answers.prevStart !== "no" ? startHours : null;
+    const knownDiff = known != null ? (parsed.value - known) * 3600 : NaN;
+    const knownFits = knownDiff > 0 && knownDiff <= limit;
+    const askStart = `This looks like a total-hours meter reading ${parsed.value} h. What did it read when the shift started?${
+      known != null && !knownFits ? ` The shift before ended at ${known} h, which doesn't fit — was the meter reset?` : ""
+    }`;
+    const fromPrevious = answers.start === undefined && knownFits;
+    if (answers.start === undefined && !fromPrevious) {
+      return { kind: "question", question: { id: "start", text: askStart, input: { endHours: parsed.value } } };
     }
-    const start = Number(answers.start);
+    const startText = fromPrevious ? String(known) : answers.start!;
+    const start = Number(startText);
     const diff = (parsed.value - start) * 3600;
-    if (!Number.isFinite(start) || answers.start.trim() === "" || diff <= 0 || diff > limit) {
+    if (!Number.isFinite(start) || startText.trim() === "" || diff <= 0 || diff > limit) {
       return {
         kind: "question",
-        question: {
-          id: "start",
-          text: `This looks like a total-hours meter reading ${parsed.value} h. What did it read when the shift started?`,
-          input: { endHours: parsed.value },
-        },
+        question: { id: "start", text: askStart, input: { endHours: parsed.value } },
         error:
           Number.isFinite(diff) && diff > 0
             ? `That makes ${spoken(diff)}, longer than a shift. Check the start reading.`
@@ -211,7 +225,10 @@ export function nextStep(reading: TimerReading, answers: Answers, { shiftHours =
       };
     }
     seconds = diff;
-    askedAboutIt = true;
+    meter = { start, end: parsed.value, fromPrevious };
+    // A start typed in is an answer about this reading; one taken from the
+    // shift before is not, so an unclear photo is still asked about.
+    if (!fromPrevious) askedAboutIt = true;
   } else if (parsed.type === "decimal") {
     // "7.45": a time written with a dot, or decimal hours?
     const [h, frac] = text.trim().split(".");
@@ -295,5 +312,5 @@ export function nextStep(reading: TimerReading, answers: Answers, { shiftHours =
     if (answers.long !== "yes") return { kind: "type", reason: "Type the run time from the display." };
   }
 
-  return { kind: "done", runTime: formatHMS(seconds), seconds, text };
+  return { kind: "done", runTime: formatHMS(seconds), seconds, text, ...(meter ? { meter } : {}) };
 }

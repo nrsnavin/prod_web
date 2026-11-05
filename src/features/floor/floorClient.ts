@@ -130,7 +130,7 @@ export const floorService = {
     form.append("photo", photo, "timer.jpg");
     return http().post<TimerPhotoResult>("/floor/timer-photo", form).then((r) => r.data);
   },
-  photoUsed(photoId: string, runTime: string): Promise<unknown> {
-    return http().post(`/floor/timer-photo/${encodeURIComponent(photoId)}/use`, { runTime }).catch(() => undefined);
+  photoUsed(photoId: string, runTime: string, meter?: { start: number; end: number }): Promise<unknown> {
+    return http().post(`/floor/timer-photo/${encodeURIComponent(photoId)}/use`, { runTime, ...(meter ? { meter } : {}) }).catch(() => undefined);
   },
 };

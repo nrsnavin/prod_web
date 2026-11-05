@@ -32,7 +32,7 @@ import type { EntrySaved, FloorMachine, FloorState, PreviousTimerPhoto } from ".
 
 const timerService = {
   read: (photo: Blob, detailId?: string) => floorService.readTimerPhoto(photo, detailId),
-  used: (photoId: string, runTime: string) => floorService.photoUsed(photoId, runTime),
+  used: (photoId: string, runTime: string, meter?: { start: number; end: number }) => floorService.photoUsed(photoId, runTime, meter),
 };
 
 const when = (iso: string | null) =>
@@ -45,7 +45,7 @@ const when = (iso: string | null) =>
  * figure about to be photographed can be checked against where the
  * display started.
  */
-function PreviousTimer({ machineId }: { machineId: string }) {
+function usePreviousTimer(machineId: string) {
   const [previous, setPrevious] = useState<PreviousTimerPhoto | null | "loading">("loading");
   useEffect(() => {
     let live = true;
@@ -55,6 +55,10 @@ function PreviousTimer({ machineId }: { machineId: string }) {
       .catch(() => { if (live) setPrevious(null); });
     return () => { live = false; };
   }, [machineId]);
+  return previous;
+}
+
+function PreviousTimer({ previous }: { previous: PreviousTimerPhoto | null | "loading" }) {
 
   if (previous === "loading") {
     return <p className="text-sm text-ink-400" aria-label="Timer the shift before">Looking up the shift before…</p>;
@@ -124,6 +128,9 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
   // their own figure, it is theirs and stays.
   const [filled, setFilled] = useState<string | null>(null);
   const [feedback, setFeedback] = useState(prior?.feedback ?? "");
+  // Where the display stood when the shift before ended: shown above the
+  // camera, and the start of a total-hours meter.
+  const previous = usePreviousTimer(machine.id);
 
   // This loom's own rate when it has been learned, else the plant's 30 cm a minute.
   const cmPerMin = machine.rate ? (machine.rate.metresPerHeadHour * 100) / 60 : DEFAULT_CM_PER_MIN;
@@ -290,9 +297,9 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
               the photo, and can still be typed or corrected below. */}
           <section className="space-y-3 rounded-xl border border-ink-200 bg-surface p-3" aria-label="The loom's timer">
             <h3 className="text-sm font-semibold text-ink-700">The loom's timer</h3>
-            <PreviousTimer machineId={machine.id} />
+            <PreviousTimer previous={previous} />
             <div className="space-y-1.5">
-              <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} prompt="Take a photo of this shift's timer" />
+              <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} prompt="Take a photo of this shift's timer" startHours={previous !== "loading" ? previous?.photo?.meterHours ?? null : null} />
               {!detailId && <p className="text-xs text-ink-400">Choose the operator first, so the photo is kept with this entry for the office.</p>}
             </div>
             <Input

@@ -330,6 +330,26 @@ describe("scanning and entering", () => {
     expect(within(timer).queryByText(/choose the operator first/i)).not.toBeInTheDocument();
   });
 
+  it("on a total-hours meter, starts this shift from where the meter stood when the shift before ended", async () => {
+    svc.previousTimerPhoto.mockResolvedValue({
+      shift: { dateKey: "2026-10-20", shift: "NIGHT", label: "Night shift · 20 Oct 2026" }, operator: "Ravi", runTime: "7:45:00", verified: false, entryId: "d0",
+      photo: { id: "ph9", takenAt: "2026-10-21T02:10:00Z", byName: "Night Sup", readText: "1226.85", readKind: "hour_meter", runTimeUsed: "7:45:00", used: true, meterHours: 1226.85 },
+    });
+    svc.readTimerPhoto.mockResolvedValue({ reading: { displays: [{ text: "1234.6", kind: "hour_meter", label: "HRS", confidence: 0.95, alternatives: [] }], primary: 0, problem: null }, suggestionId: null, photoId: "ph10" });
+    await start();
+    await userEvent.click(screen.getByRole("button", { name: /L1/ }));
+    const timer = await screen.findByRole("region", { name: "The loom's timer" });
+    await within(timer).findByText(/Photo by Night Sup/);
+    await userEvent.upload(screen.getByTestId("timer-photo-input"), new File([new Uint8Array([1])], "t.jpg", { type: "image/jpeg" }));
+
+    // No question about the start: it is the shift before's end, said so, and can be changed.
+    expect(await within(timer).findByText(/Meter 1226.85 h at the start — where it stood when the shift before ended/)).toBeInTheDocument();
+    expect(within(timer).getByText(/from “1234.6”/).closest("p")).toHaveTextContent(/Run time 7:45:00\s*from “1234.6”/);
+    await userEvent.click(within(timer).getByRole("button", { name: /use this/i }));
+    expect(screen.getByLabelText("Run time")).toHaveValue("7:45:00");
+    expect(svc.photoUsed).toHaveBeenCalledWith("ph10", "7:45:00", { start: 1226.85, end: 1234.6 });
+  });
+
   it("marks the shift before's reading verified once the office has signed it off", async () => {
     svc.previousTimerPhoto.mockResolvedValue({ shift: { dateKey: "2026-10-20", shift: "NIGHT", label: "Night shift · 20 Oct 2026" }, operator: "Ravi", runTime: "7:45:00", verified: true, entryId: "d0", photo: null });
     await start();
