@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { errorMessage } from "@/components/ui/ErrorState";
 import { ApiError, httpClient } from "@/core/http/httpClient";
 import { cn } from "@/components/ui/cn";
-import { Answers, MeterReadings, Step, TYPE_IT, TimerReading, nextStep } from "./timerReading";
+import { Answers, MeterReadings, MetreCounter, Step, TYPE_IT, TimerReading, metreCounter, nextStep } from "./timerReading";
 
 // ══════════════════════════════════════════════════════════════════
 //  "READ THE TIMER FROM A PHOTO"
@@ -36,7 +36,7 @@ interface OcrResponse {
 export interface TimerOcrService {
   read(photo: Blob, shiftId?: string): Promise<OcrResponse>;
   /** `meter`: the total-hours readings the run time came from, kept for the next shift to start from. */
-  used(photoId: string, runTime: string, meter?: { start: number; end: number }): Promise<unknown>;
+  used(photoId: string, runTime: string, meter?: { start: number; end: number }, counter?: number): Promise<unknown>;
   settle?(id: string, runTime: string): Promise<unknown>;
 }
 
@@ -48,8 +48,8 @@ export const timerOcrService: TimerOcrService = {
     return httpClient.post<OcrResponse>("/ocr/timer", form);
   },
   /** The kept photo the run time was filled from; settles its reading too. Best effort. */
-  used(photoId: string, runTime: string, meter?: { start: number; end: number }) {
-    return httpClient.post(`/ocr/timer/photo/${encodeURIComponent(photoId)}/use`, { runTime, ...(meter ? { meter } : {}) }).catch(() => undefined);
+  used(photoId: string, runTime: string, meter?: { start: number; end: number }, counter?: number) {
+    return httpClient.post(`/ocr/timer/photo/${encodeURIComponent(photoId)}/use`, { runTime, ...(meter ? { meter } : {}), ...(counter != null ? { counter } : {}) }).catch(() => undefined);
   },
   /** What was actually used, for the AI accuracy report. Best effort. */
   settle(id: string, runTime: string) {
@@ -103,6 +103,8 @@ export function TimerPhotoReader({
   prompt,
   startHours = null,
   initialPhoto,
+  onMetres,
+  previousMetres = null,
 }: {
   onUse: (runTime: string) => void;
   shiftHours?: number;
@@ -128,11 +130,21 @@ export function TimerPhotoReader({
    * it waits until there is one, so the photo is kept with the entry.
    */
   initialPhoto?: File;
+  /**
+   * Given, a metre counter seen in the photo (unit MTR or M) is offered
+   * to fill the metres — as it reads, or less where it stood when the
+   * shift before ended (`previousMetres`) for a counter that runs on.
+   */
+  onMetres?: (metres: number) => void;
+  previousMetres?: number | null;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>({ phase: "idle" });
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
+  // A metre counter in the photo, offered until it is used or another photo is taken.
+  const [counter, setCounter] = useState<MetreCounter | null>(null);
+  const [counterUsed, setCounterUsed] = useState<number | null>(null);
 
   useEffect(() => () => { if (photoUrl) URL.revokeObjectURL(photoUrl); }, [photoUrl]);
 
@@ -156,9 +168,12 @@ export function TimerPhotoReader({
     setPhotoUrl(URL.createObjectURL(file));
     setState({ phase: "reading" });
     setTyped("");
+    setCounter(null);
+    setCounterUsed(null);
     try {
       const { reading, suggestionId, photoId = null } = await service.read(await shrinkPhoto(file), shiftId);
       setState({ phase: "steps", reading, suggestionId, photoId, answers: {} });
+      setCounter(metreCounter(reading));
     } catch (e) {
       setState({ phase: "failed", message: errorMessage(e, "the photo"), kept: !!keptPhotoId(e) });
     }
@@ -174,11 +189,36 @@ export function TimerPhotoReader({
 
   const use = (runTime: string, meter?: MeterReadings) => {
     const readings = meter ? { start: meter.start, end: meter.end } : undefined;
-    if (state.phase === "steps" && state.photoId) void service.used(state.photoId, runTime, readings);
+    // What the counter read goes with the photo too: the next shift's start.
+    if (state.phase === "steps" && state.photoId) void service.used(state.photoId, runTime, readings, counter?.value);
     else if (state.phase === "steps" && state.suggestionId && service.settle) void service.settle(state.suggestionId, runTime);
     onUse(runTime);
     setState({ phase: "used", runTime, kept: state.phase === "steps" && !!state.photoId });
   };
+
+  const sinceBefore = counter && previousMetres != null && counter.value > previousMetres ? Math.round((counter.value - previousMetres) * 100) / 100 : null;
+  const fillMetres = (m: number) => { onMetres?.(m); setCounterUsed(m); };
+  const counterOffer = onMetres && counter && (
+    <div className="rounded-lg border border-ink-200 bg-surface px-3 py-2 text-sm" aria-label="Metre counter">
+      <p className="text-ink-600">
+        The photo also shows a metre counter: <span className="font-semibold tabular-nums text-ink-900">{counter.text}</span> {counter.label}
+      </p>
+      {counterUsed != null ? (
+        <p className="mt-1 flex items-center gap-1 text-xs text-status-success"><Check className="h-3.5 w-3.5" aria-hidden /> Metres a head filled: {counterUsed}</p>
+      ) : (
+        <div className="mt-1.5 flex flex-wrap gap-2">
+          {sinceBefore != null && (
+            <Button type="button" size="sm" variant="secondary" onClick={() => fillMetres(sinceBefore)}>
+              Use {sinceBefore} m — since the shift before ({previousMetres} at its end)
+            </Button>
+          )}
+          <Button type="button" size="sm" variant="secondary" onClick={() => fillMetres(counter.value)}>
+            Use {counter.value} m as the metres a head
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 
   const fileInput = (
     <input
@@ -226,6 +266,7 @@ export function TimerPhotoReader({
         Filled from the photo: <span className="font-medium tabular-nums text-ink-900">{state.runTime}</span>
         {state.kept && <span className="text-xs text-ink-400">(photo saved with the shift)</span>}
         <button type="button" onClick={pick} className="font-medium text-brand-600">Retake</button>
+        {counterOffer && <div className="w-full">{counterOffer}</div>}
       </div>
     );
   }
@@ -250,6 +291,7 @@ export function TimerPhotoReader({
           </>
         )}
         {state.phase === "steps" && state.photoId && step?.kind === "type" && <p className="text-xs text-ink-500">{KEPT}</p>}
+        {state.phase === "steps" && counterOffer}
 
         {step?.kind === "type" && <p className="text-ink-700">{step.reason}</p>}
 

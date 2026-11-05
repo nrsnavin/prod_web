@@ -32,7 +32,7 @@ import type { EntrySaved, FloorMachine, FloorState, PreviousTimerPhoto } from ".
 
 const timerService = {
   read: (photo: Blob, detailId?: string) => floorService.readTimerPhoto(photo, detailId),
-  used: (photoId: string, runTime: string, meter?: { start: number; end: number }) => floorService.photoUsed(photoId, runTime, meter),
+  used: (photoId: string, runTime: string, meter?: { start: number; end: number }, counter?: number) => floorService.photoUsed(photoId, runTime, meter, counter),
 };
 
 const when = (iso: string | null) =>
@@ -321,7 +321,10 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
             <h3 className="text-sm font-semibold text-ink-700">The loom's timer</h3>
             <PreviousTimer previous={previous} />
             <div className="space-y-1.5">
-              <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} prompt="Take a photo of this shift's timer" startHours={previous !== "loading" ? previous?.photo?.meterHours ?? null : null} initialPhoto={firstPhoto} />
+              <TimerPhotoReader onUse={changeRunTime} shiftId={detailId ?? undefined} service={timerService} prompt="Take a photo of this shift's timer" startHours={previous !== "loading" ? previous?.photo?.meterHours ?? null : null} initialPhoto={firstPhoto}
+                onMetres={(m) => { setProduction(String(m)); setFilled(null); }}
+                previousMetres={previous !== "loading" ? previous?.photo?.counterMetres ?? null : null}
+              />
               {!detailId && <p className="text-xs text-ink-400">Choose the operator first, so the photo is kept with this entry for the office.</p>}
             </div>
             <Input

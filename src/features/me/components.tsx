@@ -169,7 +169,7 @@ export function EnterProductionScreen({ shift, onClose }: { shift: MyShift | nul
           onChange={(e) => changeRunTime(e.target.value)}
           error={error && /run time/i.test(error) ? error : undefined}
         />
-        <TimerPhotoReader onUse={changeRunTime} shiftId={shift.id} />
+        <TimerPhotoReader onUse={changeRunTime} shiftId={shift.id} onMetres={(m) => { setMetres(String(m)); setFilled(null); }} />
         <div className="space-y-1.5">
           <label htmlFor="shift-note" className="block text-sm font-medium text-ink-600">
             Note for the supervisor

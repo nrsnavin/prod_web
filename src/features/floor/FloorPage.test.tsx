@@ -408,7 +408,7 @@ describe("scanning and entering", () => {
     expect(within(timer).getByText(/from “1234.6”/).closest("p")).toHaveTextContent(/Run time 7:45:00\s*from “1234.6”/);
     await userEvent.click(within(timer).getByRole("button", { name: /use this/i }));
     expect(screen.getByLabelText("Run time")).toHaveValue("7:45:00");
-    expect(svc.photoUsed).toHaveBeenCalledWith("ph10", "7:45:00", { start: 1226.85, end: 1234.6 });
+    expect(svc.photoUsed).toHaveBeenCalledWith("ph10", "7:45:00", { start: 1226.85, end: 1234.6 }, undefined);
   });
 
   it("marks the shift before's reading verified once the office has signed it off", async () => {

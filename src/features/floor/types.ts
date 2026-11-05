@@ -135,6 +135,8 @@ export interface PreviousTimerPhoto {
     used: boolean;
     /** Where a total-hours meter stood when that shift ended; this shift starts from it. */
     meterHours?: number | null;
+    /** A metre counter on the panel, where it stood when that shift ended. */
+    counterMetres?: number | null;
   } | null;
 }
 

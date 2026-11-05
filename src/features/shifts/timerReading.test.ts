@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TYPE_IT, TimerDisplay, TimerReading, formatHMS, nextStep, parseText } from "./timerReading";
+import { TYPE_IT, TimerDisplay, TimerReading, formatHMS, metreCounter, nextStep, parseText } from "./timerReading";
 
 // Each rule for turning a photo's reading into a run time, and each
 // question it asks when it can't be sure.
@@ -137,5 +137,15 @@ describe("helpers", () => {
     expect(formatHMS(27912)).toBe("7:45:12");
     expect(parseText(" 07:45 ")).toEqual({ type: "colon", parts: [7, 45] });
     expect(parseText("1234.6h")).toEqual({ type: "decimal", value: 1234.6 });
+  });
+});
+
+describe("a metre counter", () => {
+  it("is a counter whose unit is metres, as a number; picks and pieces are not", () => {
+    expect(metreCounter(reading([d("07:45:12"), d("58,213.5", { kind: "counter", label: "MTR" })]))).toEqual({ text: "58,213.5", value: 58213.5, label: "MTR" });
+    expect(metreCounter(reading([d("1234", { kind: "counter", label: "m" })]))).toMatchObject({ value: 1234 });
+    expect(metreCounter(reading([d("412000", { kind: "counter", label: "PICK" })]))).toBeNull();
+    expect(metreCounter(reading([d("1234", { kind: "counter", label: "" })]))).toBeNull();
+    expect(metreCounter(reading([d("12a4", { kind: "counter", label: "MTR" })]))).toBeNull();
   });
 });

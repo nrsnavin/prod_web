@@ -98,6 +98,8 @@ export interface PreviousReading {
     used: boolean;
     /** Where a total-hours meter stood when that shift ended. */
     meterHours?: number | null;
+    /** A metre counter on the panel, where it stood when that shift ended. */
+    counterMetres?: number | null;
   } | null;
 }
 

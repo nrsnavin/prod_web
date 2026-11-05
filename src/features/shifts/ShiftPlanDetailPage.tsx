@@ -161,7 +161,7 @@ export function EnterProductionModal({
             onChange={(e) => changeRunTime(e.target.value)}
             hint={`Fills the metres a head at ${DEFAULT_CM_PER_MIN} cm a minute.`}
           />
-          <TimerPhotoReader onUse={changeRunTime} shiftId={row.id} />
+          <TimerPhotoReader onUse={changeRunTime} shiftId={row.id} onMetres={(m) => { setMeters(String(m)); setFilled(null); }} />
         </div>
         <Input
           label="Note"

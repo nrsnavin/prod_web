@@ -314,3 +314,29 @@ export function nextStep(
 
   return { kind: "done", runTime: formatHMS(seconds), seconds, text, ...(meter ? { meter } : {}) };
 }
+
+// ── A metre counter on the same panel ─────────────────────────────
+
+const METRE_UNIT = /^(m|mt|mtr|mtrs|metre|metres|meter|meters|length)\.?$/i;
+
+export interface MetreCounter {
+  text: string;
+  value: number;
+  label: string;
+}
+
+/**
+ * A counter the photo shows whose printed unit is metres ("MTR", "M"),
+ * as a number — the metres can be filled from it instead of worked out
+ * from the run time. Null when there is none, or it is not a number.
+ * A pick or piece counter is not metres.
+ */
+export function metreCounter(reading: TimerReading): MetreCounter | null {
+  for (const d of reading.displays) {
+    if (d.kind !== "counter" || !METRE_UNIT.test(d.label.trim())) continue;
+    const t = d.text.replace(/[,\s]/g, "");
+    if (!/^\d+(\.\d+)?$/.test(t)) continue;
+    return { text: d.text, value: Number(t), label: d.label.trim() };
+  }
+  return null;
+}

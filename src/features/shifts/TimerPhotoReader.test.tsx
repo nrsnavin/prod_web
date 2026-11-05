@@ -25,6 +25,49 @@ const choose = (file = photo) => userEvent.upload(screen.getByTestId("timer-phot
 const reply = (reading: object) => post.mockImplementation((url: string) =>
   url === "/ocr/timer" ? Promise.resolve({ reading, suggestionId: "s1" }) : Promise.resolve({ success: true }));
 
+describe("a metre counter in the same photo", () => {
+  const panel = (photoId: string | null = null) => post.mockImplementation((url: string) =>
+    url === "/ocr/timer"
+      ? Promise.resolve({ reading: { displays: [
+          { text: "07:45:12", kind: "run_time", label: "RUN", confidence: 0.95, alternatives: [] },
+          { text: "58,213.5", kind: "counter", label: "MTR", confidence: 0.9, alternatives: [] },
+          { text: "412000", kind: "counter", label: "PICK", confidence: 0.9, alternatives: [] },
+        ], primary: 0, problem: null }, suggestionId: "s1", photoId })
+      : Promise.resolve({ success: true }));
+
+  it("is offered to fill the metres — as it reads, or since the shift before ended — and goes with the photo", async () => {
+    panel("ph1");
+    const onUse = vi.fn();
+    const onMetres = vi.fn();
+    render(<TimerPhotoReader onUse={onUse} onMetres={onMetres} previousMetres={57900} shiftId="sd1" />);
+    await choose();
+    const box = await screen.findByLabelText("Metre counter");
+    expect(box).toHaveTextContent("The photo also shows a metre counter: 58,213.5 MTR");
+    await userEvent.click(screen.getByRole("button", { name: "Use 313.5 m — since the shift before (57900 at its end)" }));
+    expect(onMetres).toHaveBeenCalledWith(313.5);
+    expect(box).toHaveTextContent("Metres a head filled: 313.5");
+
+    await userEvent.click(screen.getByRole("button", { name: /use this/i }));
+    expect(onUse).toHaveBeenCalledWith("7:45:12");
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/ocr/timer/photo/ph1/use", { runTime: "7:45:12", counter: 58213.5 }));
+  });
+
+  it("offers it as it reads when nothing is known from before, and not at all where metres are not asked for", async () => {
+    panel();
+    const onMetres = vi.fn();
+    const { unmount } = render(<TimerPhotoReader onUse={vi.fn()} onMetres={onMetres} />);
+    await choose();
+    expect(await screen.findByRole("button", { name: "Use 58213.5 m as the metres a head" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /since the shift before/ })).not.toBeInTheDocument();
+    unmount();
+
+    render(<TimerPhotoReader onUse={vi.fn()} />);
+    await choose();
+    await screen.findByText("7:45:12");
+    expect(screen.queryByLabelText("Metre counter")).not.toBeInTheDocument();
+  });
+});
+
 describe("reading the timer", () => {
   it("fills the field with a clear reading once the person says so", async () => {
     reply({ displays: [{ text: "07:45:12", kind: "run_time", label: "RUN", confidence: 0.95, alternatives: [] }], primary: 0, problem: null });
