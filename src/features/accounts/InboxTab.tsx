@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, CalendarClock, CheckCircle2, ClipboardCheck, HandCoins, Landmark, PhoneCall, Scale, Timer, Wrench } from "lucide-react";
+import { Banknote, CalendarClock, CheckCircle2, ClipboardCheck, HandCoins, Landmark, Mail, PhoneCall, Scale, Timer, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -93,6 +93,11 @@ export function InboxTab() {
             <Box icon={Banknote} title="Cheques to deposit" count={data.chequesDue.count} amount={data.chequesDue.amount} to="/accounts/registers?section=cheques" empty="No cheque in the drawer falls due this week"
               badge={data.chequesDue.overdue ? <StatusChip tone="warning" className="mt-1">{data.chequesDue.overdue} past their date</StatusChip> : null}>
               <ul className="space-y-2">{data.chequesDue.top.map((c) => <Row key={c._id} to={`/accounts/payments/${c._id}`} name={c.partyName} meta={`Cheque ${c.cheque.number || ""}${c.cheque.bank ? ` · ${c.cheque.bank}` : ""} · dated ${formatDate(c.cheque.date)} · ${c.kind === "receipt" ? "received" : "issued"}`} right={`₹${money(c.amount)}`} />)}</ul>
+            </Box>
+          )}
+          {data.mailedBills && (
+            <Box icon={Mail} title="Bills by mail to check" count={data.mailedBills.count} amount={data.mailedBills.amount} to="/accounts/bills" empty="No bills waiting from the mailbox">
+              <ul className="space-y-2">{data.mailedBills.top.map((b) => <Row key={b._id} to={`/accounts/bills?mailed=${b._id}`} name={b.supplierName || b.from || "Bill"} meta={`${b.billNo ? `#${b.billNo} · ` : ""}${b.receivedAt ? formatDate(b.receivedAt) : ""}${b.alreadyEntered ? ` · already entered as ${b.alreadyEntered}` : ""}`} right={b.grand != null ? `₹${money(b.grand)}` : "—"} />)}</ul>
             </Box>
           )}
           {data.serviceBills && (

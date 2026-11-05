@@ -9,7 +9,7 @@ import type {
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
   TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
-  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register,
+  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill,
 } from "./types";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
@@ -69,6 +69,14 @@ export const accountsService = {
   expenseReport: (range: { from?: string; to?: string }) => httpClient.get<ExpenseReport & { success: boolean }>("/accounts/reports/expenses", clean(range)),
   cashbook: (account: string, range: { from?: string; to?: string }) => httpClient.get<CashbookReport & { success: boolean }>("/accounts/reports/cashbook", clean({ account, ...range })),
   daybook: (date: string) => httpClient.get<DaybookReport & { success: boolean }>("/accounts/reports/daybook", { date }),
+
+  // ── Bills by mail ──
+  mailedBills: async (status: MailedBill["status"] = "new") => (await httpClient.get<{ success: boolean; bills: MailedBill[] }>("/accounts/bill-inbox", { status })).bills,
+  mailedBill: (id: string) => httpClient.get<ScanResult & { success: boolean; item: MailedBill }>(`/accounts/bill-inbox/${encodeURIComponent(id)}`),
+  mailedBillFileUrl: (id: string) => `/api/v2/accounts/bill-inbox/${encodeURIComponent(id)}/file`,
+  dismissMailedBill: (id: string, reason: string) => httpClient.post<{ success: boolean }>(`/accounts/bill-inbox/${encodeURIComponent(id)}/dismiss`, { reason }),
+  billMailboxStatus: () => httpClient.get<{ success: boolean; configured: boolean; mailbox: string; everyMin: number; waiting: number }>("/accounts/bill-inbox/status"),
+  readBillMailbox: () => httpClient.post<{ success: boolean; mails: number; bills: number; errors: string[] }>("/accounts/bill-inbox/run", {}),
 
   // ── AI ──
   async scan(files: File[]): Promise<ScanResult> {

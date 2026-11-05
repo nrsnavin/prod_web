@@ -159,6 +159,8 @@ export interface BillCreateBody {
   notes?: string;
   /** The machine service bill this is entered from (the file comes along). */
   serviceBill?: string;
+  /** The bill from the bills mailbox this is entered from (the file comes along). */
+  inboxBill?: string;
   source?: string;
   aiSuggestion?: string;
   requestId?: string;
@@ -869,6 +871,8 @@ export interface Inbox {
   variances: { count: number; top: Array<{ _id: string; billNo: string; supplierName: string; billDate: string; variance: { total: number; note?: string } }> };
   /** Bills to micro and small suppliers past, or within a week of, their 45-day limit. */
   msmeDue?: { count: number; overdue: number; amount: number; top: MsmeDue[] };
+  /** Bills that came to the bills mailbox, read and waiting to be checked and entered. */
+  mailedBills?: { count: number; amount: number; top: Array<{ _id: string; supplierName: string; from: string; receivedAt: string | null; grand: number | null; billNo: string; alreadyEntered: string | null; senderKnown: boolean }> };
   /** Bills on machines' service logs not yet entered as supplier bills. */
   serviceBills?: { count: number; amount: number; top: Array<{ _id: string; machine: string; serviceLog: string; kind: "service_bill" | "spare_bill"; vendor?: string; billNo?: string; billDate?: string | null; amount: number; filename?: string; createdAt: string }> };
   /** Cheques in the drawer whose date has come, or comes this week. */
@@ -960,3 +964,27 @@ export interface RegisterRow {
 }
 export interface RegisterTotals { count: number; cancelled: number; taxable: number; cgst: number; sgst: number; igst: number; tax: number; grand: number; byRate: Record<string, number>; itc?: number; reverseCharge?: number }
 export interface Register { from: string; to: string; rows: RegisterRow[]; totals: RegisterTotals; counts: Record<string, number> }
+
+/** A bill that came to the bills mailbox, read and matched (api/accounts.js /bill-inbox). */
+export interface MailedBill {
+  _id: string;
+  status: "new" | "entered" | "dismissed" | "failed" | "skipped";
+  note: string;
+  from: string;
+  subject: string;
+  receivedAt: string | null;
+  filename: string;
+  contentType: string;
+  supplier: string | null;
+  supplierName: string;
+  matchedBy: "gstin" | "name" | null;
+  /** The sender's address is the supplier's on file. */
+  senderKnown: boolean;
+  alreadyEntered: string | null;
+  grand: number | null;
+  billNo: string;
+  billDate: string | null;
+  confidence: number | null;
+  kind: "bill" | "receipt" | null;
+  bill: string | null;
+}
