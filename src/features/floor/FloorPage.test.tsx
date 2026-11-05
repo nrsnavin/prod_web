@@ -330,6 +330,19 @@ describe("scanning and entering", () => {
     await waitFor(() => expect(svc.readTimerPhoto).toHaveBeenCalledWith(expect.any(File), "d9"));
   });
 
+  it("offers the loom sensor's run time where the loom has one", async () => {
+    const sensed = { ...ready, sensor: { runTime: "7:31:04", seconds: 27064, lastAt: "2026-10-21T10:00:00Z", complete: false, live: true } };
+    await start([sensed]);
+    svc.machine.mockResolvedValue(sensed);
+    await userEvent.type(screen.getByLabelText(/type the machine ID/i), "L1");
+    await userEvent.click(screen.getByRole("button", { name: /find/i }));
+    const line = await screen.findByLabelText("Loom sensor");
+    expect(line).toHaveTextContent("The loom's sensor: ran 7:31:04 this shift so far");
+    await userEvent.click(within(line).getByRole("button", { name: "Use it" }));
+    expect(screen.getByLabelText("Run time")).toHaveValue("7:31:04");
+    expect(within(line).queryByRole("button", { name: "Use it" })).not.toBeInTheDocument();
+  });
+
   it("one photo with no label in it says so and stays on scanning", async () => {
     await start();
     qrFromPhoto.mockResolvedValue(null);

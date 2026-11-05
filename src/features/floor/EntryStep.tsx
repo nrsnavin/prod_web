@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, History, Info, Mic, MicOff, UserCheck } from "lucide-react";
+import { ArrowLeft, Check, Gauge, History, Info, Mic, MicOff, UserCheck } from "lucide-react";
 import { useSpeech, type SpeechLang } from "@/core/hooks/useSpeech";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -339,6 +339,20 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
               onBlur={() => changeRunTime(tidyRunTime(timer))}
               hint={`Hours and minutes the loom ran this shift. Fills the metres a head at ${machine.rate ? rateWords : `${DEFAULT_CM_PER_MIN} cm a minute`}.`}
             />
+            {/* The loom's own sensor, where it has one: the run time without reading a display. */}
+            {machine.sensor && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-sm" aria-label="Loom sensor">
+                <Gauge className="h-4 w-4 text-ink-400" aria-hidden />
+                <span>
+                  The loom's sensor: ran <span className="font-semibold tabular-nums">{machine.sensor.runTime}</span>
+                  {machine.sensor.complete ? " this shift" : " this shift so far"}
+                  {!machine.sensor.live && <span className="text-xs text-status-warning"> · not heard from in a while</span>}
+                </span>
+                {timer !== machine.sensor.runTime && (
+                  <Button type="button" size="sm" variant="secondary" onClick={() => changeRunTime(machine.sensor!.runTime)}>Use it</Button>
+                )}
+              </div>
+            )}
           </section>
 
           <Input

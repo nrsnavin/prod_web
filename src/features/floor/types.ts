@@ -55,6 +55,8 @@ export interface FloorMachine {
   rate?: { metresPerHeadHour: number; basis: "machine" | "plant"; shifts: number; pick: number } | null;
   /** Who ran it on its last same shift (and is not marked away), while nobody is on it. */
   suggestedOperator?: { id: string; name: string; why: string } | null;
+  /** The loom's own sensor: what it ran on this shift so far. */
+  sensor?: { runTime: string; seconds: number; lastAt: string; complete: boolean; live: boolean } | null;
 }
 
 export interface FloorOperator {
