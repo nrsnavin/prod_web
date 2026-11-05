@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, History, Info } from "lucide-react";
+import { ArrowLeft, Check, History, Info, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -172,6 +172,24 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
   };
 
   const options = state.operators.map((o) => ({ value: o.id, label: o.department && o.department !== "weaving" ? `${o.name} (${o.department})` : o.name }));
+  // Who ran this loom on its last same shift, offered as one tap while
+  // nobody is chosen; the supervisor still decides.
+  const suggestion = machine.suggestedOperator && !operator && state.operators.some((o) => o.id === machine.suggestedOperator!.id)
+    ? machine.suggestedOperator : null;
+  const suggest = suggestion && (
+    <button
+      type="button"
+      disabled={placing}
+      onClick={() => void chooseOperator(suggestion.id)}
+      className="flex w-full items-center gap-2 rounded-lg border border-dashed border-brand-300 px-3 py-2 text-left text-sm hover:border-brand-500"
+    >
+      <UserCheck className="h-4 w-4 shrink-0 text-brand-600" aria-hidden />
+      <span>
+        <span className="font-semibold">{suggestion.name}</span>
+        <span className="block text-xs text-ink-500">{suggestion.why}</span>
+      </span>
+    </button>
+  );
   const metres = Number(production);
   const total = Number.isFinite(metres) && production !== "" ? metres * machine.headsRunning : null;
   const enterable = canEnter(machine) && !state.plan?.finalized;
@@ -260,6 +278,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
               disabled={placing}
             />
           )}
+          {!locked && suggest}
           {placed && operator === placed && (
             <p className="text-sm text-status-success" role="status">
               {options.find((o) => o.value === placed)?.label ?? "The operator"} is on this loom this shift.
@@ -291,6 +310,7 @@ export function EntryStep({ machine, state, onSaved, onBack, onAuthLost, onPlanM
               disabled={placing}
             />
           )}
+          {!locked && suggest}
 
           {/* The timer: where the display stood when the shift before
               ended, then a photo of it now — the run time is read off

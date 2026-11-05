@@ -51,6 +51,8 @@ export interface FloorMachine {
   why: string | null;
   /** What a head of this loom weaves an hour, learned from its own verified shifts (or the plant's, `basis`). */
   rate?: { metresPerHeadHour: number; basis: "machine" | "plant"; shifts: number; pick: number } | null;
+  /** Who ran it on its last same shift (and is not marked away), while nobody is on it. */
+  suggestedOperator?: { id: string; name: string; why: string } | null;
 }
 
 export interface FloorOperator {

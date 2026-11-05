@@ -152,6 +152,25 @@ describe("the plan, made from the floor", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(/Ravi left on 20 Oct 2026/);
     expect(screen.getByLabelText(/operator — puts this loom on the shift/i)).toHaveValue("");
   });
+
+  it("offers who ran the loom on its last same shift as one tap, which puts it on the shift", async () => {
+    const unplanned = loom({ ID: "L1", suggestedOperator: { id: "o2", name: "Sita", why: "Ran this loom on the day shift of 20 Oct · marked present today" } });
+    svc.open.mockResolvedValue({ token: "t", session, state: stateOf([unplanned]) });
+    svc.shift.mockResolvedValue(stateOf([unplanned]));
+    svc.setOperator.mockResolvedValue({ detailId: "d1", added: true, planCreated: true });
+    render(<FloorPage />);
+    await openWith();
+    await userEvent.click(await screen.findByRole("button", { name: /L1/ }));
+
+    const offer = await screen.findByRole("button", { name: /Sita.*Ran this loom on the day shift of 20 Oct · marked present today/ });
+    // Nothing is chosen until it is pressed.
+    expect(svc.setOperator).not.toHaveBeenCalled();
+    await userEvent.click(offer);
+    await waitFor(() => expect(svc.setOperator).toHaveBeenCalledWith("id-L1", "o2"));
+    expect(await screen.findByLabelText("Operator")).toHaveValue("o2");
+    // Chosen: no longer offered.
+    expect(screen.queryByRole("button", { name: /Ran this loom/ })).not.toBeInTheDocument();
+  });
 });
 
 describe("scanning and entering", () => {
