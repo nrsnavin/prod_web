@@ -149,6 +149,13 @@ export const accountsService = {
   tallyReconcile: async () => (await httpClient.get<{ success: boolean } & TallyReconcile>("/accounts/tally/reconcile")),
   booksHealth: async () => (await httpClient.get<{ success: boolean } & BooksHealth>("/accounts/health")),
   booksRepair: (key: "repair" | "rebuild") => httpClient.post<{ success: boolean; fixed?: number; rows?: number }>(`/accounts/health/${key}`, {}),
+  autoRemind: () => httpClient.get<{
+    success: boolean; whatsapp: boolean; more: number;
+    settings: { enabled?: boolean; hour?: number; everyDays?: number; minOverdueDays?: number; lastRunDate?: string; acknowledgeReplies?: boolean };
+    send: Array<{ party: string; partyName: string; overdue: number; oldestDays: number; tone: string; phone: string }>;
+    skip: Array<{ party: string; partyName: string; overdue: number; why: string }>;
+  }>("/accounts/collections/auto-remind"),
+  runAutoRemind: () => httpClient.post<{ success: boolean; sent?: number; why?: string }>("/accounts/collections/auto-remind/run", {}),
   collections: (held = false) => httpClient.get<{ success: boolean; rows: CollectionEntry[]; total: number; whatsapp: boolean }>("/accounts/collections", held ? { held: "true" } : undefined),
   draftReminder: (customer: string, tone: "gentle" | "firm" = "gentle") =>
     httpClient.post<{ success: boolean; message: string; byModel: boolean; to: string; entry: CollectionEntry }>("/accounts/collections/draft", { customer, tone }),
@@ -275,6 +282,9 @@ export const accountsService = {
   accountsSettings: async () => (await httpClient.get<{ success: boolean; settings: AccountsSettings }>("/accounts/settings")).settings,
   saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills" | "gst" | "journals" | "tds" | "costCentres" | "receivables" | "lut">>) =>
     (await httpClient.put<{ success: boolean; settings: AccountsSettings }>("/accounts/settings", body)).settings,
+  /** The collections settings: reply acknowledgements and scheduled reminders. */
+  saveCollectionSettings: async (collections: Record<string, unknown>) =>
+    (await httpClient.put<{ success: boolean }>("/accounts/settings", { collections })),
   lockBooks: async (lockDate: string | null, reason?: string) =>
     (await httpClient.post<{ success: boolean; settings: AccountsSettings }>("/accounts/lock", { lockDate, reason })).settings,
 

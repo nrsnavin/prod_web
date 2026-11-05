@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { MessageSquareText, Send, Copy, Phone, Handshake, PhoneCall, History } from "lucide-react";
+import { MessageSquareText, Send, Copy, Phone, Handshake, PhoneCall, History, CalendarClock } from "lucide-react";
+import { useAuth } from "@/core/auth/useAuth";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -112,8 +113,9 @@ function HistoryDialog({ entry, onClose }: { entry: CollectionEntry; onClose: ()
         <ul className="divide-y divide-ink-100 text-sm">
           {data.map((h) => (
             <li key={h._id} className="py-2">
-              <p><span className="font-medium capitalize">{h.kind}</span>{h.channel ? <span className="text-ink-400"> · {h.channel}</span> : null}<span className="text-ink-400"> · {formatDate(h.createdAt)}{h.byName ? ` · ${h.byName}` : ""}</span>{h.result ? <StatusChip tone={h.result === "sent" ? "success" : "neutral"} className="ml-2">{h.result}</StatusChip> : null}</p>
+              <p><span className="font-medium capitalize">{h.kind === "reply" ? "Their reply" : h.kind}</span>{h.channel ? <span className="text-ink-400"> · {h.channel}</span> : null}<span className="text-ink-400"> · {formatDate(h.createdAt)}{h.byName ? ` · ${h.byName}` : ""}</span>{h.result ? <StatusChip tone={h.result === "sent" ? "success" : "neutral"} className="ml-2">{h.result}</StatusChip> : null}</p>
               {h.kind === "promise" && h.promiseDate && <p className="text-ink-600">₹{money(h.promiseAmount)} by {formatDate(h.promiseDate)}</p>}
+              {h.kind === "reply" && h.message && <p className="whitespace-pre-wrap rounded bg-ink-50 px-2 py-1 text-ink-700">“{h.message}”</p>}
               {h.note && <p className="text-ink-600">{h.note}</p>}
             </li>
           ))}
@@ -136,6 +138,7 @@ export function CollectionsTab() {
   const rows = data?.rows ?? [];
   return (
     <div className="space-y-4">
+      <ScheduledReminders />
       <Card className="p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="font-semibold">Overdue collections</h3>
@@ -175,5 +178,82 @@ export function CollectionsTab() {
       {(open?.what === "call" || open?.what === "promise") && <LogDialog entry={open.entry} kind={open.what} onClose={() => setOpen(null)} />}
       {open?.what === "history" && <HistoryDialog entry={open.entry} onClose={() => setOpen(null)} />}
     </div>
+  );
+}
+
+/**
+ * Reminders sent on WhatsApp each day at the set hour, to whoever is due
+ * one (services/collectionReminders.js), and whether a customer who
+ * replies gets an acknowledgement. Off until an admin turns them on;
+ * shows who today's run would remind and why the rest are left.
+ */
+function ScheduledReminders() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const isAdmin = user?.role === "admin";
+  const { data } = useQuery({ queryKey: [ACCOUNTS_KEY, "auto-remind"], queryFn: accountsService.autoRemind });
+  const [hour, setHour] = useState<string | null>(null);
+  const [every, setEvery] = useState<string | null>(null);
+  const [minDays, setMinDays] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [showWho, setShowWho] = useState(false);
+  if (!data) return null;
+  const st = data.settings;
+  const save = async (collections: Record<string, unknown>) => {
+    setBusy(true);
+    try {
+      await accountsService.saveCollectionSettings(collections);
+      setHour(null); setEvery(null); setMinDays(null);
+      await qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "auto-remind"] });
+      toast("Saved", "success");
+    } catch (e) { toast(e instanceof ApiError ? e.message : "Could not save", "error"); }
+    finally { setBusy(false); }
+  };
+  const runNow = async () => {
+    setBusy(true);
+    try {
+      const r = await accountsService.runAutoRemind();
+      toast(r.why === "sent today already" ? "Today's reminders have gone already" : r.why === "off" ? "Scheduled reminders are off" : `${r.sent ?? 0} reminder${r.sent === 1 ? "" : "s"} sent`, r.sent ? "success" : "info");
+      await qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
+    } catch (e) { toast(e instanceof ApiError ? e.message : "Could not send", "error"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Card className="p-5" aria-label="Reminders on a schedule">
+      <div className="flex flex-wrap items-center gap-3">
+        <CalendarClock className="h-4 w-4 text-ink-400" aria-hidden />
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input type="checkbox" checked={!!st.enabled} disabled={!isAdmin || busy} onChange={(e) => save({ autoRemind: { enabled: e.target.checked } })} aria-label="Send reminders on a schedule" />
+          Send payment reminders on WhatsApp each day
+        </label>
+        <StatusChip tone={st.enabled ? "success" : "neutral"}>{st.enabled ? "on" : "off"}</StatusChip>
+        {!data.whatsapp && <span className="text-xs text-status-warning">WhatsApp is not set up — reminders are only logged</span>}
+      </div>
+      <p className="mt-1 text-xs text-ink-400">
+        At {String(st.hour ?? 11).padStart(2, "0")}:00, to each customer {st.minOverdueDays ?? 3}+ days past due — not one who promised a date, not one contacted in the last {st.everyDays ?? 7} days, and not one old enough to need a call. Today: {data.send.length} to remind{data.more ? ` (+${data.more} tomorrow)` : ""}, {data.skip.length} left.{" "}
+        <button type="button" className="font-medium text-brand-600" onClick={() => setShowWho((x) => !x)}>{showWho ? "Hide" : "Who"}</button>
+      </p>
+      {showWho && (
+        <ul className="mt-2 space-y-1 text-sm" aria-label="Today's reminders">
+          {data.send.map((r) => <li key={r.party}>{r.partyName} · ₹{money(r.overdue)} · {r.oldestDays} days · {r.tone}</li>)}
+          {data.skip.map((r) => <li key={r.party} className="text-ink-400">{r.partyName} — {r.why}</li>)}
+        </ul>
+      )}
+      <label className="mt-2 flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={!!st.acknowledgeReplies} disabled={!isAdmin || busy} onChange={(e) => save({ acknowledgeReplies: e.target.checked })} aria-label="Acknowledge replies" />
+        Thank a customer who replies on WhatsApp (their reply is kept, and a promise noted, either way)
+      </label>
+      {isAdmin && (
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <Input label="At (hour)" type="number" min={0} max={23} className="w-24" value={hour ?? String(st.hour ?? 11)} onChange={(e) => setHour(e.target.value)} />
+          <Input label="Not again within (days)" type="number" min={1} max={60} className="w-40" value={every ?? String(st.everyDays ?? 7)} onChange={(e) => setEvery(e.target.value)} />
+          <Input label="Past due at least (days)" type="number" min={0} max={365} className="w-40" value={minDays ?? String(st.minOverdueDays ?? 3)} onChange={(e) => setMinDays(e.target.value)} />
+          <Button size="sm" variant="secondary" loading={busy} disabled={hour === null && every === null && minDays === null}
+            onClick={() => save({ autoRemind: { ...(hour !== null ? { hour: Number(hour) } : {}), ...(every !== null ? { everyDays: Number(every) } : {}), ...(minDays !== null ? { minOverdueDays: Number(minDays) } : {}) } })}>Save</Button>
+          {st.enabled && <Button size="sm" variant="ghost" loading={busy} onClick={runNow}>Send today's now</Button>}
+        </div>
+      )}
+    </Card>
   );
 }
