@@ -1,6 +1,6 @@
 import { httpClient } from "@/core/http/httpClient";
 import type {
-  CollectionEntry, ScanResult, StatementPostRow, StatementResult,
+  CollectionEntry, ScanResult, StatementPostRow, StatementResult, BankAlias,
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
   AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow,
@@ -93,6 +93,8 @@ export const accountsService = {
     httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; voucherNo?: string; _id?: string; error?: string }>; posted: number; failed: number }>("/accounts/bank/statement/post", { account, rows, statement }),
   statements: async (account?: string) => (await httpClient.get<{ success: boolean; statements: StoredStatement[] }>("/accounts/bank/statements", clean({ account }))).statements,
   storedStatement: async (id: string) => (await httpClient.get<{ success: boolean; statement: StoredStatementFull }>(`/accounts/bank/statements/${id}`)).statement,
+  bankAliases: async () => (await httpClient.get<{ success: boolean; aliases: BankAlias[] }>("/accounts/bank/aliases")).aliases,
+  forgetBankAlias: (id: string) => httpClient.delete<{ success: boolean }>(`/accounts/bank/aliases/${id}`),
   ignoreLine: (statement: string, index: number, reason: string) => httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/ignore`, { reason }),
   linkLine: (statement: string, index: number, voucherType: "Payment" | "Contra", voucher: string) =>
     httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/link`, { voucherType, voucher }),

@@ -68,6 +68,11 @@ export function InboxTab() {
             <ul className="space-y-2">{data.toChase.top.map((c) => <Row key={c.party} name={c.partyName} meta={`${c.oldestDays} days overdue${c.next ? ` · ${c.next.label.toLowerCase()}` : ""}`} right={`₹${money(c.overdue)}`} />)}</ul>
             {data.promisesDue.count > 0 && <p className="mt-2 text-xs text-ink-500">{data.promisesDue.count} promised to pay by today: {data.promisesDue.top.map((p) => p.partyName).join(", ")}</p>}
           </Box>
+          {data.statementsDue && data.statementsDue.count > 0 && (
+            <Box icon={Landmark} title="Bank statement to upload" count={data.statementsDue.count} to="/accounts/bank" empty="Every account's statement is up to date">
+              <ul className="space-y-2">{data.statementsDue.top.map((a) => <Row key={a.account} to={`/accounts/bank?account=${a.account}`} name={a.accountName} meta={a.lastTo ? `last statement runs to ${formatDate(a.lastTo)} — download from ${formatDate(new Date(new Date(a.lastTo).getTime() + 86_400_000))}` : "no statement uploaded yet"} right="" />)}</ul>
+            </Box>
+          )}
           <Box icon={Landmark} title="Bank lines to place" count={data.bankLines.count} amount={data.bankLines.amount} to={bankTo} empty="Every statement line is in the books">
             <p className="text-ink-500">On the statement{data.bankLines.accountName ? ` for ${data.bankLines.accountName}` : ""}, not yet in the books — including lines with a suggested match nobody has posted.</p>
             <Link to={bankTo} className="mt-1 inline-block text-brand-600 hover:underline">Open the statement</Link>

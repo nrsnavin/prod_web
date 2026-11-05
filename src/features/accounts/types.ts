@@ -510,13 +510,16 @@ export interface ScanResult {
 }
 
 export interface StatementSuggestion {
-  partyType: "customer" | "supplier";
-  party: string;
+  /** "other": a remembered payer or payee who is not a customer or supplier on file (the electricity board, the bank's interest). */
+  partyType: "customer" | "supplier" | "other";
+  party: string | null;
   partyName: string;
   allocations: Array<{ docType: Allocation["docType"]; doc: string; docNo: string; amount: number }>;
   confidence: number;
   reason: string;
   byModel?: boolean;
+  /** Set when a remembered payer placed the line: the remembered entry's id. */
+  remembered?: string;
 }
 export interface StatementRow {
   index: number;
@@ -532,7 +535,19 @@ export interface StatementRow {
   balance?: number | null;
   candidates?: Array<{ partyType: "customer" | "supplier"; party: string; partyName: string; docNo: string; docType: Allocation["docType"]; doc: string }>;
 }
-export interface StatementResult { statement?: string; account: { _id: string; name: string }; rows: StatementRow[]; counts: { recorded: number; matched: number; unmatched: number; ignored?: number }; file: string; closingBalance?: number | null }
+/**
+ * How an upload sits against the account's last statement: whole days
+ * neither covers, lines already brought in, and the opening balance less
+ * the last closing (not zero: lines are missing between the two).
+ */
+export interface StatementContinuity {
+  previous: { file: string; from: string; to: string; closingBalance: number | null } | null;
+  from: string; to: string; openingBalance: number | null;
+  gapDays: number; overlapLines: number; balanceDiff: number | null;
+}
+export interface StatementResult { statement?: string; account: { _id: string; name: string }; rows: StatementRow[]; counts: { recorded: number; matched: number; unmatched: number; ignored?: number }; file: string; closingBalance?: number | null; continuity?: StatementContinuity }
+/** A payer or payee remembered from a statement line: narrations carrying `text` are this party. */
+export interface BankAlias { _id: string; text: string; direction: "in" | "out"; partyType: "customer" | "supplier" | "other"; party: string | null; partyName: string; createdByName?: string; lastMatchedAt?: string | null; createdAt: string; updatedAt: string }
 export interface StatementPostRow {
   /** The line's index on the stored statement. */
   index?: number;
@@ -540,6 +555,8 @@ export interface StatementPostRow {
   partyType: "customer" | "supplier" | "other"; party?: string; partyName?: string;
   allocations?: Array<{ docType: Allocation["docType"]; doc: string; amount: number }>;
   requestId?: string;
+  /** Remember: the next statement's lines carrying this text (it must be in the narration) are this party. */
+  remember?: { text: string };
 }
 
 export interface CollectionEntry {
@@ -749,7 +766,7 @@ export interface JournalLineInput {
 
 // ── Bank reconciliation ──
 export interface StoredStatement {
-  _id: string; account: string; accountName: string; file: string; source?: "upload" | "email"; from: string; to: string; closingBalance: number | null;
+  _id: string; account: string; accountName: string; file: string; source?: "upload" | "email" | "sftp"; from: string; to: string; openingBalance?: number | null; closingBalance: number | null;
   uploadedByName?: string; createdAt: string; lines: number; counts: Partial<Record<StatementRow["status"] | "posted", number>>;
 }
 /** One stored statement with its lines, as the server sends it. */
@@ -832,6 +849,8 @@ export interface Inbox {
   approvals: { count: number; amount: number; top: Array<{ _id: string; expenseNo: string; date: string; categoryName: string; description: string; totals: { grand: number }; submittedByName?: string; source?: string }> };
   claimsToPay: { count: number; amount: number; top: Array<{ _id: string; expenseNo: string; description: string; payeeName?: string; totals: { grand: number }; paidAmount?: number }> };
   bankLines: { count: number; amount?: number; statement?: string; account?: string; accountName?: string };
+  /** Bank accounts whose last statement is more than a week old, or which have none. */
+  statementsDue?: { count: number; top: Array<{ account: string; accountName: string; lastTo: string | null }> };
   toChase: { count: number; amount: number; top: Array<{ party: string; partyName: string; overdue: number; oldestDays: number; next?: CollectionEntry["next"] }> };
   promisesDue: { count: number; top: Array<{ party: string; partyName: string; promise: NonNullable<CollectionEntry["promise"]> }> };
   variances: { count: number; top: Array<{ _id: string; billNo: string; supplierName: string; billDate: string; variance: { total: number; note?: string } }> };

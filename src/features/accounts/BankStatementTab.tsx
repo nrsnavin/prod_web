@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Upload, Check, EyeOff, Mail, RefreshCw, Server } from "lucide-react";
+import { Upload, Check, EyeOff, Mail, RefreshCw, Server, AlertTriangle, BookmarkCheck, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -16,9 +16,100 @@ import { useAuth } from "@/core/auth/useAuth";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY, useBankAccounts } from "./hooks";
 import { PartyPicker, money, today } from "./shared";
-import type { BankFeedMail, BankFeedRun, StatementPostRow, StatementResult, StatementRow, StoredStatementFull, StoredStatementLine } from "./types";
+import type { BankAlias, BankFeedMail, BankFeedRun, StatementContinuity, StatementPostRow, StatementResult, StatementRow, StoredStatementFull, StoredStatementLine } from "./types";
 
-type Decision = { use: boolean; partyType: "customer" | "supplier" | "other"; party?: string; partyName?: string; allocations: NonNullable<StatementRow["suggestion"]>["allocations"] };
+type Decision = {
+  use: boolean; partyType: "customer" | "supplier" | "other"; party?: string; partyName?: string; allocations: NonNullable<StatementRow["suggestion"]>["allocations"];
+  /** Remember this payer (keep) by narration text the next statement's lines are matched on. */
+  keep?: boolean;
+  remember?: string;
+  /** The person said it is not a customer / supplier on file, and named who it is. */
+  notOnFile?: boolean;
+};
+
+// Words every narration carries, which say nothing about who paid.
+const NOISE = /^(NEFT|RTGS|IMPS|UPI|INB|MB|MOB|TRANSFER|TRF|PAYMENT|PAYMEN|PAY|CR|DR|BY|TO|FROM|REF|CHQ|CHEQUE|CLG|DEP|DEPOSIT|ACH|NACH|ECS|BIL|ONL|ONLINE|NETBANKING|NET BANKING)$/;
+
+/**
+ * What to remember a payer by, guessed from the narration: a UPI id when
+ * there is one, else the longest stretch of words between the bank's
+ * separators that is not a code, a number or a bank's own word. The
+ * person can change it before posting.
+ */
+export function guessAlias(narration: string): string {
+  const text = String(narration || "").toUpperCase().replace(/\s+/g, " ").trim();
+  const vpa = text.match(/[A-Z0-9._-]{2,}@[A-Z0-9.-]{2,}/);
+  if (vpa) return vpa[0];
+  const parts = text.split(/[-/:|*]+/).map((p) => p.trim())
+    .filter((p) => p.length >= 4 && /[A-Z]{3}/.test(p) && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(p) && !NOISE.test(p) && (p.match(/\d/g) ?? []).length <= p.length / 3);
+  const best = parts.sort((a, b) => b.length - a.length)[0] ?? "";
+  return best.slice(0, 60);
+}
+
+/** How this upload sits against the last one, in a sentence or two. */
+function ContinuityNote({ c }: { c: StatementContinuity }) {
+  const notes: Array<{ tone: "warning" | "neutral"; text: string }> = [];
+  if (c.balanceDiff !== null && Math.abs(c.balanceDiff) > 0.005) {
+    notes.push({ tone: "warning", text: `The balance does not carry over: this statement opens at ₹${money(c.openingBalance)}, the last one closed at ₹${money(c.previous?.closingBalance)} — ₹${money(Math.abs(c.balanceDiff))} ${c.balanceDiff > 0 ? "came in" : "went out"} on days not in either. Download ${c.previous ? `from ${formatDate(nextDay(c.previous.to))} ` : ""}again and upload it.` });
+  } else if (c.gapDays > 0) {
+    notes.push({ tone: c.balanceDiff === 0 ? "neutral" : "warning", text: `${c.gapDays} day${c.gapDays === 1 ? "" : "s"} between the last statement (to ${formatDate(c.previous?.to)}) and this one ${c.balanceDiff === 0 ? "— the balance carries over, so nothing moved on them." : "are in neither. Download them too, or check nothing moved on those days."}` });
+  }
+  if (c.overlapLines > 0) notes.push({ tone: "neutral", text: `${c.overlapLines} line${c.overlapLines === 1 ? " was" : "s were"} in an earlier statement too: what was posted then shows as already recorded.` });
+  if (!notes.length) return c.previous ? <p className="px-5 pt-2 text-sm text-status-success">Follows on from the last statement (to {formatDate(c.previous.to)}) with nothing missing.</p> : null;
+  return (
+    <div className="space-y-1 px-5 pt-2" aria-label="How this statement follows the last">
+      {notes.map((n) => <p key={n.text} className={`flex items-start gap-1.5 text-sm ${n.tone === "warning" ? "text-status-warning" : "text-ink-500"}`}>{n.tone === "warning" && <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}{n.text}</p>)}
+    </div>
+  );
+}
+
+const nextDay = (d: string | Date) => new Date(new Date(d).getTime() + 86_400_000);
+
+/** What to download next: from the day after the last statement for this account. */
+function NextDownload({ account }: { account: string }) {
+  const { data } = useQuery({ queryKey: [ACCOUNTS_KEY, "statements", account], queryFn: () => accountsService.statements(account) });
+  if (!data) return null;
+  const last = [...data].sort((a, b) => new Date(b.to).getTime() - new Date(a.to).getTime())[0];
+  return (
+    <p className="w-full text-sm text-ink-600" aria-label="Next download">
+      {last
+        ? <>Last statement for this account runs to <span className="font-medium">{formatDate(last.to)}</span>{last.closingBalance !== null ? ` (balance ₹${money(last.closingBalance)})` : ""}. Download from <span className="font-medium">{formatDate(nextDay(last.to))}</span> to today — a day or two of overlap is fine.</>
+        : "No statement for this account yet. Download from the day the books start here, or the last few weeks, to today."}
+    </p>
+  );
+}
+
+/** Payers and payees the matcher remembers, and a way to forget a wrong one. */
+function RememberedPayers() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: [ACCOUNTS_KEY, "bank-aliases"], queryFn: () => accountsService.bankAliases() });
+  if (!data?.length) return null;
+  const forget = async (a: BankAlias) => {
+    try { await accountsService.forgetBankAlias(a._id); qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "bank-aliases"] }); toast(`Forgot "${a.text}"`, "success"); }
+    catch (e) { toast(e instanceof Error ? e.message : "Could not forget it", "error"); }
+  };
+  return (
+    <Card className="p-5">
+      <details>
+        <summary className="flex cursor-pointer items-center gap-2 font-semibold"><BookmarkCheck className="h-4 w-4" /> Remembered payers ({data.length})</summary>
+        <p className="mt-2 text-sm text-ink-500">A statement line carrying this text is matched to the party, for you to confirm. Forget one that was remembered wrongly.</p>
+        <ul className="mt-2 divide-y divide-ink-100 text-sm" aria-label="Remembered payers">
+          {data.map((a) => (
+            <li key={a._id} className="flex flex-wrap items-center gap-2 py-1.5">
+              <span className="font-mono text-xs">{a.text}</span>
+              <span className="text-ink-400">{a.direction === "in" ? "money in from" : "money out to"}</span>
+              <span className="font-medium">{a.partyName}</span>
+              {a.partyType === "other" && <StatusChip tone="neutral">not on file</StatusChip>}
+              <span className="ml-auto text-xs text-ink-400">{a.lastMatchedAt ? `last matched ${formatDate(a.lastMatchedAt)}` : "not matched yet"}</span>
+              <Button size="sm" variant="ghost" aria-label={`Forget ${a.text}`} onClick={() => forget(a)}><Trash2 className="h-4 w-4" /></Button>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </Card>
+  );
+}
 type View = "match" | "reconcile" | "past";
 
 /** Bank statements: match one to the books, reconcile, or look back at what came before. */
@@ -41,7 +132,8 @@ export function BankStatementTab() {
         <FilterChips options={[{ value: "match", label: "Match a statement" }, { value: "reconcile", label: "Reconcile" }, { value: "past", label: "Past statements" }]} value={view} onChange={(v) => { setView(v); if (v !== "match") setMatching(null); }} />
       </div>
       <BankFeedCard onOpen={openForMatching} />
-      {chosen && view === "match" && <MatchView key={matching ?? "upload"} account={chosen} statement={matching} onClose={() => setMatching(null)} />}
+      {chosen && view === "match" && <MatchView key={`${chosen}:${matching ?? "upload"}`} account={chosen} statement={matching} onClose={() => setMatching(null)} />}
+      {view === "match" && <RememberedPayers />}
       {chosen && view === "reconcile" && <ReconcileView account={chosen} />}
       {chosen && view === "past" && <PastView key={chosen} account={chosen} initial={chosen === params.get("account") ? params.get("statement") : null} onMatch={(id) => openForMatching(chosen, id)} />}
     </div>
@@ -198,7 +290,7 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
     setPosted({});
     const d: Record<number, Decision> = {};
     for (const row of r.rows) {
-      if (row.status === "matched" && row.suggestion) d[row.index] = { use: row.suggestion.confidence >= 0.65, partyType: row.suggestion.partyType, party: row.suggestion.party, partyName: row.suggestion.partyName, allocations: row.suggestion.allocations };
+      if (row.status === "matched" && row.suggestion) d[row.index] = { use: row.suggestion.confidence >= 0.65, partyType: row.suggestion.partyType, party: row.suggestion.party ?? undefined, partyName: row.suggestion.partyName, allocations: row.suggestion.allocations };
       else if (row.status === "unmatched") d[row.index] = { use: false, partyType: "other", partyName: "", allocations: [] };
     }
     setDecisions(d);
@@ -241,14 +333,15 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
     try {
       const rows: StatementPostRow[] = toPost.map((r) => {
         const d = decisions[r.index];
-        return { index: r.index, date: r.date, narration: r.narration, ref: r.ref, amount: r.amount, direction: r.direction, partyType: d.partyType, party: d.party, partyName: d.partyName || r.narration.slice(0, 60), allocations: d.allocations.map((a) => ({ docType: a.docType, doc: a.doc, amount: a.amount })), requestId: `${result.statement ?? result.file}:${r.index}:${r.amount}` };
+        return { index: r.index, date: r.date, narration: r.narration, ref: r.ref, amount: r.amount, direction: r.direction, partyType: d.partyType, party: d.party, partyName: d.partyName || r.narration.slice(0, 60), allocations: d.allocations.map((a) => ({ docType: a.docType, doc: a.doc, amount: a.amount })), requestId: `${result.statement ?? result.file}:${r.index}:${r.amount}`, ...(d.keep && d.remember?.trim() ? { remember: { text: d.remember.trim() } } : {}) };
       });
       const res = await accountsService.postStatement(result.account._id, rows, result.statement);
       const next = { ...posted };
       res.results.forEach((x) => { const row = toPost[x.index]; if (row) next[row.index] = x.ok ? x.voucherNo! : `✗ ${x.error}`; });
       setPosted(next);
       qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
-      toast(`${res.posted} voucher${res.posted === 1 ? "" : "s"} posted${res.failed ? `, ${res.failed} failed` : ""}`, res.failed ? "info" : "success");
+      const remembered = res.results.filter((x) => (x as { remembered?: boolean }).remembered).length;
+      toast(`${res.posted} voucher${res.posted === 1 ? "" : "s"} posted${res.failed ? `, ${res.failed} failed` : ""}${remembered ? ` · ${remembered} payer${remembered === 1 ? "" : "s"} remembered for next time` : ""}`, res.failed ? "info" : "success");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Could not post", "error");
     } finally {
@@ -256,8 +349,16 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
     }
   };
 
+  // A party chosen by hand: offer to remember it, from what the narration says.
+  const remembering = (prev: Decision | undefined, row: StatementRow) => {
+    const text = prev?.remember ?? guessAlias(row.narration);
+    return { remember: text, keep: prev?.keep ?? !!text };
+  };
   const setParty = (row: StatementRow, id: string, name: string) =>
-    setDecisions((d) => ({ ...d, [row.index]: { use: true, partyType: row.direction === "in" ? "customer" : "supplier", party: id, partyName: name, allocations: [] } }));
+    setDecisions((d) => ({ ...d, [row.index]: { use: true, partyType: row.direction === "in" ? "customer" : "supplier", party: id, partyName: name, allocations: [], ...remembering(d[row.index], row) } }));
+  const setOther = (row: StatementRow) =>
+    setDecisions((x) => ({ ...x, [row.index]: { use: true, partyType: "other", notOnFile: true, partyName: guessAlias(row.narration) || row.narration.slice(0, 60), allocations: [], ...remembering(x[row.index], row) } }));
+  const patch = (row: StatementRow, p: Partial<Decision>) => setDecisions((x) => ({ ...x, [row.index]: { ...x[row.index], ...p } }));
 
   const ignore = async (reason: string) => {
     if (!ignoring || !result?.statement) return;
@@ -275,9 +376,10 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
     <>
       <Card className="p-5">
         <div className="flex flex-wrap items-end gap-3">
-          <input ref={ref} type="file" accept=".csv,.xlsx,.xls,.sta,.mt940,.940,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" aria-label="Bank statement file" onChange={(e) => upload(e.target.files?.[0])} />
+          <input ref={ref} type="file" accept=".csv,.xlsx,.xls,.htm,.html,.sta,.mt940,.940,.txt,text/csv,text/plain,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" aria-label="Bank statement file" onChange={(e) => upload(e.target.files?.[0])} />
+          {!statement && <NextDownload account={account} />}
           <Button onClick={() => ref.current?.click()} disabled={!account} loading={busy}><Upload className="h-4 w-4" /> Upload statement (CSV / Excel / MT940)</Button>
-          <p className="text-xs text-ink-400">Export the statement from the bank's site. Lines already in the books are recognised and marked cleared; the rest are matched to open invoices and bills for you to confirm.</p>
+          <p className="text-xs text-ink-400">Download the statement from net banking as CSV or Excel. Lines already in the books are recognised and marked cleared; the rest are matched to open invoices and bills for you to confirm.</p>
           {statement && result && <StatusChip tone="info">Opened from the stored statement</StatusChip>}
         </div>
       </Card>
@@ -293,6 +395,7 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
             {result.closingBalance !== null && result.closingBalance !== undefined && <span className="text-sm text-ink-500">Bank balance ₹{money(result.closingBalance)}</span>}
             <Button className="ml-auto" size="sm" onClick={post} disabled={!toPost.length} loading={busy}><Check className="h-4 w-4" /> Post {toPost.length} ticked</Button>
           </div>
+          {result.continuity && <ContinuityNote c={result.continuity} />}
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-y border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="px-5 py-2" /><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-left font-medium">Narration</th><th className="py-2 text-right font-medium">Amount</th><th className="py-2 text-left font-medium">Placed as</th></tr></thead>
@@ -313,16 +416,34 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
                           : r.status === "matched" && r.suggestion ? (
                             <span>
                               <span className="font-medium">{d?.partyName || r.suggestion.partyName}</span>
-                              {d?.allocations.length ? <span className="text-ink-500"> → {d.allocations.map((a) => `${a.docNo} ₹${money(a.amount)}`).join(", ")}</span> : <span className="text-ink-500"> · on account</span>}
+                              {d?.allocations.length ? <span className="text-ink-500"> → {d.allocations.map((a) => `${a.docNo} ₹${money(a.amount)}`).join(", ")}</span> : <span className="text-ink-500">{r.suggestion.partyType === "other" ? " · not a party on file" : " · on account"}</span>}
                               <StatusChip tone={r.suggestion.confidence >= 0.85 ? "success" : "warning"} className="ml-2">{Math.round(r.suggestion.confidence * 100)}%</StatusChip>
+                              {r.suggestion.remembered && <StatusChip tone="info" className="ml-1">remembered</StatusChip>}
                               <span className="block text-xs text-ink-400">{r.suggestion.reason}</span>
                             </span>
                           ) : (
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="w-56"><PartyPicker partyType={r.direction === "in" ? "customer" : "supplier"} label="" value={d?.party ?? ""} onChange={(id, name) => setParty(r, id, name)} /></div>
-                              {r.candidates?.length ? <span className="text-xs text-ink-400">maybe {r.candidates.map((c) => `${c.partyName} (${c.docNo})`).join(", ")}</span> : <span className="text-xs text-ink-400">nothing open for this amount</span>}
-                              {r.direction === "out" && <Button size="sm" variant="ghost" onClick={() => setDecisions((x) => ({ ...x, [r.index]: { use: true, partyType: "other", partyName: r.narration.slice(0, 60), allocations: [] } }))}>Not a supplier</Button>}
-                              {result.statement && <Button size="sm" variant="ghost" onClick={() => setIgnoring(r)}><EyeOff className="h-4 w-4" /> Set aside</Button>}
+                            <div className="space-y-1.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                {d?.notOnFile ? (
+                                  <div className="w-56"><Input aria-label={r.direction === "in" ? `Received from, line ${r.index + 1}` : `Paid to, line ${r.index + 1}`} value={d.partyName ?? ""} onChange={(e) => patch(r, { partyName: e.target.value })} placeholder={r.direction === "in" ? "Received from" : "Paid to"} /></div>
+                                ) : (
+                                  <div className="w-56"><PartyPicker partyType={r.direction === "in" ? "customer" : "supplier"} label="" value={d?.party ?? ""} onChange={(id, name) => setParty(r, id, name)} /></div>
+                                )}
+                                {!d?.notOnFile && (r.candidates?.length ? <span className="text-xs text-ink-400">maybe {r.candidates.map((c) => `${c.partyName} (${c.docNo})`).join(", ")}</span> : <span className="text-xs text-ink-400">nothing open for this amount</span>)}
+                                {d?.notOnFile
+                                  ? <Button size="sm" variant="ghost" onClick={() => patch(r, { partyType: "other", notOnFile: false, partyName: "", party: undefined, use: false, keep: false })}>{r.direction === "in" ? "A customer" : "A supplier"}</Button>
+                                  : <Button size="sm" variant="ghost" onClick={() => setOther(r)}>{r.direction === "in" ? "Not a customer" : "Not a supplier"}</Button>}
+                                {result.statement && <Button size="sm" variant="ghost" onClick={() => setIgnoring(r)}><EyeOff className="h-4 w-4" /> Set aside</Button>}
+                              </div>
+                              {d?.use && (d.party || (d.notOnFile && d.partyName)) && (
+                                <label className="flex flex-wrap items-center gap-2 text-xs text-ink-500">
+                                  <input type="checkbox" aria-label={`Remember this payer, line ${r.index + 1}`} checked={!!d.keep} onChange={(e) => patch(r, { keep: e.target.checked, ...(e.target.checked && !d.remember?.trim() ? { remember: guessAlias(r.narration) || r.narration.slice(0, 40).toUpperCase() } : {}) })} />
+                                  Remember: next time a line says
+                                  <input aria-label={`Remember text, line ${r.index + 1}`} className="h-7 w-48 rounded border border-ink-200 bg-surface px-2 font-mono text-xs uppercase" value={d.remember ?? ""} onChange={(e) => patch(r, { remember: e.target.value.toUpperCase() })} disabled={!d.keep} />
+                                  it is {d.partyName || "this party"}
+                                  {d.keep && !!d.remember?.trim() && !r.narration.toUpperCase().replace(/\s+/g, " ").includes(d.remember.trim()) && <span className="text-status-danger">— not in this line's narration, so it won't be remembered</span>}
+                                </label>
+                              )}
                             </div>
                           )}
                       </td>
