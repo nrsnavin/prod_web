@@ -26,7 +26,7 @@ vi.mock("./api", () => ({
     postStatement: (...a: unknown[]) => postStatement(...a),
   },
 }));
-vi.mock("./hooks", () => ({ ACCOUNTS_KEY: "accounts", useBankAccounts: () => ({ data: [{ _id: "a1", name: "Kotak CA", kind: "bank", isDefault: true }] }) }));
+vi.mock("./hooks", () => ({ ACCOUNTS_KEY: "accounts", useBankAccounts: () => ({ data: [{ _id: "a1", name: "Kotak CA", kind: "bank", isDefault: true }] }), useCategories: () => ({ data: [] }) }));
 vi.mock("@/features/customers/api", () => ({ customerService: {} }));
 vi.mock("@/features/suppliers/api", () => ({ supplierService: {} }));
 vi.mock("@/core/auth/useAuth", () => ({ useAuth: () => ({ user: { role: "accounts" } }) }));

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Upload, Check, EyeOff, Mail, RefreshCw, Server, AlertTriangle, BookmarkCheck, Trash2 } from "lucide-react";
+import { Upload, Check, EyeOff, Mail, RefreshCw, Server, AlertTriangle, BookmarkCheck, Trash2, Sparkles, ArrowLeftRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/core/format/date";
 import { useAuth } from "@/core/auth/useAuth";
 import { accountsService } from "./api";
-import { ACCOUNTS_KEY, useBankAccounts } from "./hooks";
+import { ACCOUNTS_KEY, useBankAccounts, useCategories } from "./hooks";
 import { PartyPicker, money, today } from "./shared";
 import type { BankAlias, BankFeedMail, BankFeedRun, StatementContinuity, StatementPostRow, StatementResult, StatementRow, StoredStatementFull, StoredStatementLine } from "./types";
 
@@ -25,6 +25,12 @@ type Decision = {
   remember?: string;
   /** The person said it is not a customer / supplier on file, and named who it is. */
   notOnFile?: boolean;
+  /** Money between this account and another of ours: posted as a contra. */
+  contra?: { account: string; accountName: string };
+  /** Someone not on file: the expense head (money out), or interest (money in). */
+  head?: string;
+  headName?: string;
+  incomeLedger?: "interest";
 };
 
 // Words every narration carries, which say nothing about who paid.
@@ -100,7 +106,7 @@ function RememberedPayers() {
               <span className="font-mono text-xs">{a.text}</span>
               <span className="text-ink-400">{a.direction === "in" ? "money in from" : "money out to"}</span>
               <span className="font-medium">{a.partyName}</span>
-              {a.partyType === "other" && <StatusChip tone="neutral">not on file</StatusChip>}
+              {a.headName ? <StatusChip tone="neutral">{a.headName}</StatusChip> : a.incomeLedger === "interest" ? <StatusChip tone="neutral">interest</StatusChip> : a.partyType === "other" && <StatusChip tone="neutral">not on file</StatusChip>}
               <span className="ml-auto text-xs text-ink-400">{a.lastMatchedAt ? `last matched ${formatDate(a.lastMatchedAt)}` : "not matched yet"}</span>
               <Button size="sm" variant="ghost" aria-label={`Forget ${a.text}`} onClick={() => forget(a)}><Trash2 className="h-4 w-4" /></Button>
             </li>
@@ -284,13 +290,24 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
   const [decisions, setDecisions] = useState<Record<number, Decision>>({});
   const [posted, setPosted] = useState<Record<number, string>>({});
   const [ignoring, setIgnoring] = useState<StatementRow | null>(null);
+  const [filter, setFilter] = useState<"all" | "look">("all");
+  const { data: categories } = useCategories();
+  const { data: allAccounts } = useBankAccounts();
+  const ownAccounts = (allAccounts ?? []).filter((a) => a.active !== false && a._id !== account);
 
   const show = (r: StatementResult) => {
     setResult(r);
     setPosted({});
     const d: Record<number, Decision> = {};
     for (const row of r.rows) {
-      if (row.status === "matched" && row.suggestion) d[row.index] = { use: row.suggestion.confidence >= 0.65, partyType: row.suggestion.partyType, party: row.suggestion.party ?? undefined, partyName: row.suggestion.partyName, allocations: row.suggestion.allocations };
+      if (row.status === "matched" && row.suggestion) {
+        const sg = row.suggestion;
+        d[row.index] = {
+          use: sg.confidence >= 0.65, partyType: sg.partyType, party: sg.party ?? undefined, partyName: sg.partyName, allocations: sg.allocations,
+          ...(sg.kind === "contra" && sg.account ? { contra: { account: sg.account, accountName: sg.accountName ?? sg.partyName } } : {}),
+          ...(sg.head ? { head: sg.head, headName: sg.headName } : {}), ...(sg.incomeLedger ? { incomeLedger: sg.incomeLedger } : {}),
+        };
+      }
       else if (row.status === "unmatched") d[row.index] = { use: false, partyType: "other", partyName: "", allocations: [] };
     }
     setDecisions(d);
@@ -333,7 +350,8 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
     try {
       const rows: StatementPostRow[] = toPost.map((r) => {
         const d = decisions[r.index];
-        return { index: r.index, date: r.date, narration: r.narration, ref: r.ref, amount: r.amount, direction: r.direction, partyType: d.partyType, party: d.party, partyName: d.partyName || r.narration.slice(0, 60), allocations: d.allocations.map((a) => ({ docType: a.docType, doc: a.doc, amount: a.amount })), requestId: `${result.statement ?? result.file}:${r.index}:${r.amount}`, ...(d.keep && d.remember?.trim() ? { remember: { text: d.remember.trim() } } : {}) };
+        return { index: r.index, date: r.date, narration: r.narration, ref: r.ref, amount: r.amount, direction: r.direction, partyType: d.partyType, party: d.party, partyName: d.partyName || r.narration.slice(0, 60), allocations: d.allocations.map((a) => ({ docType: a.docType, doc: a.doc, amount: a.amount })), requestId: `${result.statement ?? result.file}:${r.index}:${r.amount}`, ...(d.keep && d.remember?.trim() && !d.contra ? { remember: { text: d.remember.trim() } } : {}),
+          ...(d.contra ? { contra: { account: d.contra.account } } : {}), ...(d.partyType === "other" && d.head && r.direction === "out" ? { head: d.head } : {}), ...(d.partyType === "other" && d.incomeLedger && r.direction === "in" ? { incomeLedger: d.incomeLedger } : {}) };
       });
       const res = await accountsService.postStatement(result.account._id, rows, result.statement);
       const next = { ...posted };
@@ -348,6 +366,28 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
       setBusy(false);
     }
   };
+
+  // Match the lines still to place again: after adding a party or an invoice, or to have the AI look.
+  const rematch = async () => {
+    if (!result?.statement) return;
+    setBusy(true);
+    try {
+      const r = await accountsService.rematchStatement(result.statement);
+      show(storedToResult(r.statement));
+      toast(r.changed ? `${r.changed} line${r.changed === 1 ? "" : "s"} placed differently` : "Nothing new to suggest", r.changed ? "success" : "info");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not match again", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const setTransfer = (row: StatementRow, accountId: string) => {
+    const a = ownAccounts.find((x) => x._id === accountId);
+    setDecisions((x) => ({ ...x, [row.index]: a ? { use: true, partyType: "other", notOnFile: true, partyName: a.name, allocations: [], contra: { account: a._id, accountName: a.name }, keep: false } : { ...x[row.index], contra: undefined } }));
+  };
+  // A line to look at: still to place, or placed by the AI or with less than a sure match.
+  const needsLook = (r: StatementRow) => r.status === "unmatched" || (r.status === "matched" && (!!r.suggestion?.byModel || (r.suggestion?.confidence ?? 0) < 0.85));
+  const byAi = (result?.rows ?? []).filter((r) => r.status === "matched" && r.suggestion?.byModel).length;
 
   // A party chosen by hand: offer to remember it, from what the narration says.
   const remembering = (prev: Decision | undefined, row: StatementRow) => {
@@ -393,14 +433,19 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
             <StatusChip tone={result.counts.unmatched ? "warning" : "neutral"}>{result.counts.unmatched} to place</StatusChip>
             {!!result.counts.ignored && <StatusChip tone="neutral">{result.counts.ignored} set aside</StatusChip>}
             {result.closingBalance !== null && result.closingBalance !== undefined && <span className="text-sm text-ink-500">Bank balance ₹{money(result.closingBalance)}</span>}
-            <Button className="ml-auto" size="sm" onClick={post} disabled={!toPost.length} loading={busy}><Check className="h-4 w-4" /> Post {toPost.length} ticked</Button>
+            {byAi > 0 && <StatusChip tone="info"><span className="inline-flex items-center gap-1"><Sparkles className="h-3 w-3" aria-hidden /> {byAi} placed by AI — check them</span></StatusChip>}
+            <span className="ml-auto flex flex-wrap items-center gap-2">
+              <FilterChips options={[{ value: "all", label: "All lines" }, { value: "look", label: `Needs a look (${result.rows.filter((r) => !posted[r.index] && needsLook(r)).length})` }]} value={filter} onChange={setFilter} />
+              {result.statement && <Button size="sm" variant="secondary" onClick={rematch} loading={busy}><Sparkles className="h-4 w-4" /> Match again</Button>}
+              <Button size="sm" onClick={post} disabled={!toPost.length} loading={busy}><Check className="h-4 w-4" /> Post {toPost.length} ticked</Button>
+            </span>
           </div>
           {result.continuity && <ContinuityNote c={result.continuity} />}
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
               <thead><tr className="border-y border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="px-5 py-2" /><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-left font-medium">Narration</th><th className="py-2 text-right font-medium">Amount</th><th className="py-2 text-left font-medium">Placed as</th></tr></thead>
               <tbody className="divide-y divide-ink-100">
-                {result.rows.map((r) => {
+                {result.rows.filter((r) => filter === "all" || (!posted[r.index] && needsLook(r))).map((r) => {
                   const d = decisions[r.index];
                   const done = r.status === "recorded" || r.status === "ignored" || !!posted[r.index];
                   return (
@@ -415,27 +460,42 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
                           : r.status === "ignored" ? <span>Set aside{r.note ? ` — ${r.note}` : ""}</span>
                           : r.status === "matched" && r.suggestion ? (
                             <span>
-                              <span className="font-medium">{d?.partyName || r.suggestion.partyName}</span>
-                              {d?.allocations.length ? <span className="text-ink-500"> → {d.allocations.map((a) => `${a.docNo} ₹${money(a.amount)}`).join(", ")}</span> : <span className="text-ink-500">{r.suggestion.partyType === "other" ? " · not a party on file" : " · on account"}</span>}
+                              {r.suggestion.kind === "contra"
+                                ? <span className="inline-flex items-center gap-1 font-medium"><ArrowLeftRight className="h-3.5 w-3.5" aria-hidden /> Transfer {r.direction === "out" ? "to" : "from"} {r.suggestion.accountName}</span>
+                                : <span className="font-medium">{d?.partyName || r.suggestion.partyName}</span>}
+                              {r.suggestion.kind === "contra" ? null
+                                : d?.allocations.length ? <span className="text-ink-500"> → {d.allocations.map((a) => `${a.docNo} ₹${money(a.amount)}`).join(", ")}</span>
+                                : r.suggestion.headName ? <span className="text-ink-500"> · under {r.suggestion.headName}</span>
+                                : r.suggestion.incomeLedger === "interest" ? <span className="text-ink-500"> · interest received</span>
+                                : <span className="text-ink-500">{r.suggestion.partyType === "other" ? " · not a party on file" : " · on account"}</span>}
                               <StatusChip tone={r.suggestion.confidence >= 0.85 ? "success" : "warning"} className="ml-2">{Math.round(r.suggestion.confidence * 100)}%</StatusChip>
+                              {r.suggestion.byModel && <StatusChip tone="info" className="ml-1"><span className="inline-flex items-center gap-1"><Sparkles className="h-3 w-3" aria-hidden /> AI</span></StatusChip>}
                               {r.suggestion.remembered && <StatusChip tone="info" className="ml-1">remembered</StatusChip>}
                               <span className="block text-xs text-ink-400">{r.suggestion.reason}</span>
                             </span>
                           ) : (
                             <div className="space-y-1.5">
                               <div className="flex flex-wrap items-center gap-2">
-                                {d?.notOnFile ? (
-                                  <div className="w-56"><Input aria-label={r.direction === "in" ? `Received from, line ${r.index + 1}` : `Paid to, line ${r.index + 1}`} value={d.partyName ?? ""} onChange={(e) => patch(r, { partyName: e.target.value })} placeholder={r.direction === "in" ? "Received from" : "Paid to"} /></div>
+                                {d?.contra ? (
+                                  <div className="w-56"><Select aria-label={`Other account, line ${r.index + 1}`} value={d.contra.account} onChange={(e) => setTransfer(r, e.target.value)} options={ownAccounts.map((a) => ({ value: a._id, label: `${r.direction === "out" ? "To" : "From"} ${a.name}` }))} /></div>
+                                ) : d?.notOnFile ? (
+                                  <>
+                                    <div className="w-56"><Input aria-label={r.direction === "in" ? `Received from, line ${r.index + 1}` : `Paid to, line ${r.index + 1}`} value={d.partyName ?? ""} onChange={(e) => patch(r, { partyName: e.target.value })} placeholder={r.direction === "in" ? "Received from" : "Paid to"} /></div>
+                                    {r.direction === "out"
+                                      ? <div className="w-48"><Select aria-label={`Expense head, line ${r.index + 1}`} value={d.head ?? ""} onChange={(e) => patch(r, { head: e.target.value || undefined, headName: (categories ?? []).find((c) => c._id === e.target.value)?.name })} options={(categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name }))} placeholder="Head (else Sundry)" /></div>
+                                      : <div className="w-48"><Select aria-label={`Income, line ${r.index + 1}`} value={d.incomeLedger ?? ""} onChange={(e) => patch(r, { incomeLedger: e.target.value === "interest" ? "interest" : undefined })} options={[{ value: "", label: "Other income (by name)" }, { value: "interest", label: "Interest received" }]} /></div>}
+                                  </>
                                 ) : (
                                   <div className="w-56"><PartyPicker partyType={r.direction === "in" ? "customer" : "supplier"} label="" value={d?.party ?? ""} onChange={(id, name) => setParty(r, id, name)} /></div>
                                 )}
                                 {!d?.notOnFile && (r.candidates?.length ? <span className="text-xs text-ink-400">maybe {r.candidates.map((c) => `${c.partyName} (${c.docNo})`).join(", ")}</span> : <span className="text-xs text-ink-400">nothing open for this amount</span>)}
                                 {d?.notOnFile
-                                  ? <Button size="sm" variant="ghost" onClick={() => patch(r, { partyType: "other", notOnFile: false, partyName: "", party: undefined, use: false, keep: false })}>{r.direction === "in" ? "A customer" : "A supplier"}</Button>
+                                  ? <Button size="sm" variant="ghost" onClick={() => patch(r, { partyType: "other", notOnFile: false, partyName: "", party: undefined, use: false, keep: false, contra: undefined, head: undefined, incomeLedger: undefined })}>{r.direction === "in" ? "A customer" : "A supplier"}</Button>
                                   : <Button size="sm" variant="ghost" onClick={() => setOther(r)}>{r.direction === "in" ? "Not a customer" : "Not a supplier"}</Button>}
+                                {!d?.contra && ownAccounts.length > 0 && <Button size="sm" variant="ghost" onClick={() => setTransfer(r, (ownAccounts.find((a) => a.kind === "cash") ?? ownAccounts[0])._id)}><ArrowLeftRight className="h-4 w-4" /> Own account</Button>}
                                 {result.statement && <Button size="sm" variant="ghost" onClick={() => setIgnoring(r)}><EyeOff className="h-4 w-4" /> Set aside</Button>}
                               </div>
-                              {d?.use && (d.party || (d.notOnFile && d.partyName)) && (
+                              {d?.use && !d.contra && (d.party || (d.notOnFile && d.partyName)) && (
                                 <label className="flex flex-wrap items-center gap-2 text-xs text-ink-500">
                                   <input type="checkbox" aria-label={`Remember this payer, line ${r.index + 1}`} checked={!!d.keep} onChange={(e) => patch(r, { keep: e.target.checked, ...(e.target.checked && !d.remember?.trim() ? { remember: guessAlias(r.narration) || r.narration.slice(0, 40).toUpperCase() } : {}) })} />
                                   Remember: next time a line says

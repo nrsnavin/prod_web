@@ -93,6 +93,7 @@ export const accountsService = {
     httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; voucherNo?: string; _id?: string; error?: string }>; posted: number; failed: number }>("/accounts/bank/statement/post", { account, rows, statement }),
   statements: async (account?: string) => (await httpClient.get<{ success: boolean; statements: StoredStatement[] }>("/accounts/bank/statements", clean({ account }))).statements,
   storedStatement: async (id: string) => (await httpClient.get<{ success: boolean; statement: StoredStatementFull }>(`/accounts/bank/statements/${id}`)).statement,
+  rematchStatement: async (id: string) => (await httpClient.post<{ success: boolean; changed: number; statement: StoredStatementFull }>(`/accounts/bank/statements/${id}/rematch`, {})),
   bankAliases: async () => (await httpClient.get<{ success: boolean; aliases: BankAlias[] }>("/accounts/bank/aliases")).aliases,
   forgetBankAlias: (id: string) => httpClient.delete<{ success: boolean }>(`/accounts/bank/aliases/${id}`),
   ignoreLine: (statement: string, index: number, reason: string) => httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/ignore`, { reason }),

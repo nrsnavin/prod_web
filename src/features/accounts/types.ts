@@ -520,6 +520,14 @@ export interface StatementSuggestion {
   byModel?: boolean;
   /** Set when a remembered payer placed the line: the remembered entry's id. */
   remembered?: string;
+  /** "contra": money between this account and another of ours (`account`). */
+  kind?: "contra";
+  account?: string;
+  accountName?: string;
+  /** Someone not on file: the expense head a payment goes under, or a receipt's income. */
+  head?: string;
+  headName?: string;
+  incomeLedger?: "interest";
 }
 export interface StatementRow {
   index: number;
@@ -547,7 +555,7 @@ export interface StatementContinuity {
 }
 export interface StatementResult { statement?: string; account: { _id: string; name: string }; rows: StatementRow[]; counts: { recorded: number; matched: number; unmatched: number; ignored?: number }; file: string; closingBalance?: number | null; continuity?: StatementContinuity }
 /** A payer or payee remembered from a statement line: narrations carrying `text` are this party. */
-export interface BankAlias { _id: string; text: string; direction: "in" | "out"; partyType: "customer" | "supplier" | "other"; party: string | null; partyName: string; createdByName?: string; lastMatchedAt?: string | null; createdAt: string; updatedAt: string }
+export interface BankAlias { _id: string; text: string; direction: "in" | "out"; partyType: "customer" | "supplier" | "other"; party: string | null; partyName: string; headName?: string; incomeLedger?: "" | "interest"; createdByName?: string; lastMatchedAt?: string | null; createdAt: string; updatedAt: string }
 export interface StatementPostRow {
   /** The line's index on the stored statement. */
   index?: number;
@@ -557,6 +565,11 @@ export interface StatementPostRow {
   requestId?: string;
   /** Remember: the next statement's lines carrying this text (it must be in the narration) are this party. */
   remember?: { text: string };
+  /** Money between this account and another of ours: posted as a contra. */
+  contra?: { account: string };
+  /** Someone not on file: a payment's expense head, or a receipt that is interest. */
+  head?: string;
+  incomeLedger?: "interest";
 }
 
 export interface CollectionEntry {
