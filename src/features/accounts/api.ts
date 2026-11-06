@@ -3,7 +3,7 @@ import type {
   CollectionEntry, ScanResult, StatementPostRow, StatementResult, BankAlias,
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
-  AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow,
+  AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow, OpeningOnboarding,
   Reconciliation, StoredStatement, StoredStatementFull, BankFeedStatus, BankFeedRun, TallyBatch, TallyPreview, TallyConnectorStatus, TallyReconcile, BooksHealth,
   AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense, GroupSummary,
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
@@ -277,6 +277,12 @@ export const accountsService = {
   bulkOpening: (rows: Array<Partial<OpeningImportRow> & { requestId?: string }>) =>
     httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; docNo?: string; error?: string }>; posted: number; failed: number }>("/accounts/opening-balances/bulk", { rows }),
   openingTemplateUrl: "/api/v2/accounts/opening-balances/template.xlsx",
+  // Set once, from the dashboard: who is left, the day they are as on.
+  openingOnboarding: (q: { partyType?: string; search?: string; limit?: number }) =>
+    httpClient.get<{ success: boolean } & OpeningOnboarding>("/accounts/opening-onboarding", clean(q)),
+  setOpeningAsOn: (asOn: string) => httpClient.put<{ success: boolean; asOn: string }>("/accounts/opening-onboarding", { asOn }),
+  markOpeningNone: (b: { partyType: "customer" | "supplier"; party: string }) => httpClient.post<{ success: boolean }>("/accounts/opening-onboarding/none", b),
+  closeOpeningOnboarding: () => httpClient.post<{ success: boolean; left: number }>("/accounts/opening-onboarding/close", {}),
 
   // ── Settings and the lock ──
   accountsSettings: async () => (await httpClient.get<{ success: boolean; settings: AccountsSettings }>("/accounts/settings")).settings,

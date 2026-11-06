@@ -1034,3 +1034,24 @@ export interface SupplierRecon {
   gstinDiffers: boolean;
 }
 export interface SupplierReconResult { read: { problem: string | null; partyName: string; from: string | null; to: string | null; entries: TheirEntry[] }; recon: SupplierRecon | null }
+
+/** Opening balances set once from the dashboard (GET /accounts/opening-onboarding). */
+export interface OpeningOnboardingParty {
+  partyType: "customer" | "supplier";
+  _id: string;
+  name: string;
+  gstin: string;
+}
+export interface OpeningOnboarding {
+  active: boolean;
+  completedAt?: string | null;
+  /** This very call found none left and finished it. */
+  justFinished?: boolean;
+  leftWhenClosed?: number;
+  asOn?: string;
+  asOnSaved?: boolean;
+  customers?: { total: number; left: number };
+  suppliers?: { total: number; left: number };
+  left?: OpeningOnboardingParty[];
+  more?: number;
+}

@@ -19,6 +19,7 @@ import { useUiStore } from "@/core/ui/uiStore";
 import { canAccessPath, effectiveDepartment } from "@/app/navigation";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { errorMessage } from "@/components/ui/ErrorState";
+import { OpeningOnboardingCard } from "@/features/accounts/OpeningOnboardingCard";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -75,6 +76,13 @@ export function DashboardPage() {
         // The shared banner, with Retry — the raw message here used to
         // read "["dashboard","kpis"] data is undefined".
         <ErrorBanner message={`Couldn't load the dashboard figures. ${errorMessage(kpis.error, "the dashboard figures")}`} />
+      )}
+
+      {/* Onboarding: until every party's opening balance is set. */}
+      {canAccessPath("/accounts", dept) && (
+        <ErrorBoundary variant="section" label="Opening balances">
+          <OpeningOnboardingCard />
+        </ErrorBoundary>
       )}
 
       <ErrorBoundary variant="section" label="The floor">

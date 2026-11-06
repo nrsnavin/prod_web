@@ -37,6 +37,8 @@ export const useJournals = (q: Record<string, unknown>, enabled = true) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "journals", q], queryFn: () => accountsService.journals(q), enabled });
 export const useContras = (q: Record<string, unknown>, enabled = true) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "contras", q], queryFn: () => accountsService.contras(q), placeholderData: (p) => p, enabled });
+export const useOpeningOnboarding = (q: { partyType?: string; search?: string; limit?: number }, enabled = true) =>
+  useQuery({ queryKey: [ACCOUNTS_KEY, "opening-onboarding", q], queryFn: () => accountsService.openingOnboarding(q), enabled, placeholderData: (p) => p });
 export const useOpeningBalances = (q: Record<string, unknown>) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "opening", q], queryFn: () => accountsService.openingBalances(q), placeholderData: (p) => p });
 export const useAccountsSettings = () => useQuery({ queryKey: [ACCOUNTS_KEY, "settings"], queryFn: accountsService.accountsSettings, staleTime: 60_000 });
@@ -71,6 +73,9 @@ export function useAccountsMutations() {
     createOpening: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createOpening>[0]) => accountsService.createOpening(once(b)), onSuccess: done }),
     cancelOpening: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelOpening(id, reason), onSuccess: invalidate }),
     bulkOpening: useMutation({ mutationFn: accountsService.bulkOpening, onSuccess: invalidate }),
+    markOpeningNone: useMutation({ mutationFn: accountsService.markOpeningNone, onSuccess: invalidate }),
+    setOpeningAsOn: useMutation({ mutationFn: accountsService.setOpeningAsOn, onSuccess: invalidate }),
+    closeOpeningOnboarding: useMutation({ mutationFn: accountsService.closeOpeningOnboarding, onSuccess: invalidate }),
     saveAccountsSettings: useMutation({ mutationFn: accountsService.saveAccountsSettings, onSuccess: invalidate }),
     lockBooks: useMutation({ mutationFn: ({ lockDate, reason }: { lockDate: string | null; reason?: string }) => accountsService.lockBooks(lockDate, reason), onSuccess: invalidate }),
     saveBankAccount: useMutation({
