@@ -397,6 +397,9 @@ export interface LedgerRow {
   vchType?: string;
   /** The party's own reference: their PO, the supplier's invoice number, the UTR or cheque. */
   partyRef?: string;
+  /** A bounced cheque, shown and not counted: the cheque as entered, and its return. Debit and credit are 0. */
+  memo?: "cheque-entered" | "cheque-returned";
+  memoAmount?: number;
   /** Tally's detailed view: the voucher's other ledgers … */
   lines?: Array<{ ledger: string; amount: number }>;
   /** … and bill by bill what it settled or left on account. */

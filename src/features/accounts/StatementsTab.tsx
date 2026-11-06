@@ -140,10 +140,13 @@ export function StatementsTab() {
                 </tr>
                 {st.rows.map((r) => (
                   <Fragment key={r._id}>
-                    <tr className={detailed ? "" : "border-b border-ink-100"}>
+                    {/* A bounced cheque: the cheque and its return, to read; no Debit or Credit, the balance unchanged. */}
+                    <tr className={`${detailed && !r.memo ? "" : "border-b border-ink-100"}${r.memo ? " italic text-ink-500" : ""}`} aria-label={r.memo ? `${r.particulars}, not counted` : undefined}>
                       <td className="whitespace-nowrap px-5 py-2 align-top">{formatDate(r.date)}</td>
                       <td className="py-2 pr-3 align-top">
-                        <span><span className="text-ink-400">{r.toBy ?? (r.debit ? "To" : "By")}</span> {r.particulars || r.narration}</span>
+                        {r.memo
+                          ? <span>{r.particulars}</span>
+                          : <span><span className="text-ink-400">{r.toBy ?? (r.debit ? "To" : "By")}</span> {r.particulars || r.narration}</span>}
                         {r.partyRef && <span className="block text-xs text-ink-400">{r.partyRef}</span>}
                       </td>
                       <td className="py-2 pr-3 align-top text-ink-600">{r.vchType}</td>
@@ -152,7 +155,7 @@ export function StatementsTab() {
                       <td className={`${num} align-top`}>{r.credit ? money(r.credit) : ""}</td>
                       <td className={`${num} px-5 align-top font-medium`}>{withSide(r.balance, r.balanceSide)}</td>
                     </tr>
-                    {detailed && (
+                    {detailed && !r.memo && (
                       <tr className="border-b border-ink-100">
                         <td />
                         <td colSpan={3} className="pb-2 pr-3">

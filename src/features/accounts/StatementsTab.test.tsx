@@ -25,6 +25,9 @@ const statement: Statement = {
       lines: [{ ledger: "Sales", amount: 10000 }, { ledger: "Output CGST", amount: 250 }, { ledger: "Output SGST", amount: 250 }], refs: [] },
     { _id: "e2", date: "2026-06-20", docType: "Payment", doc: "p1", docNo: "REC/2026-27/0001", debit: 0, credit: 10050, balance: 450, balanceSide: "Dr", toBy: "By", particulars: "Kotak Mahindra Bank", vchType: "Receipt", partyRef: "UTR123",
       lines: [{ ledger: "Kotak Mahindra Bank", amount: 10000 }, { ledger: "Bank Charges", amount: 50 }], refs: [{ type: "Agst Ref", name: "INV/2026-27/0001", amount: 10050 }] },
+    // A cheque that bounced: shown, not counted.
+    { _id: "p2:entered", memo: "cheque-entered", date: "2026-06-22", docType: "Payment", doc: "p2", docNo: "REC/2026-27/0002", debit: 0, credit: 0, balance: 450, balanceSide: "Dr", particulars: "Cheque 004512 (bounced)", vchType: "Receipt", partyRef: "Indian Bank · ₹450.00 · not counted" },
+    { _id: "p2:returned", memo: "cheque-returned", date: "2026-06-25", docType: "Payment", doc: "p2", docNo: "REC/2026-27/0002", debit: 0, credit: 0, balance: 450, balanceSide: "Dr", particulars: "Cheque 004512 returned", vchType: "Bounced", partyRef: "₹450.00 · Insufficient funds" },
   ],
 };
 
@@ -70,6 +73,24 @@ describe("customers' and suppliers' accounts", () => {
     expect(within(ledger).getByText("Closing Balance").closest("tr")).toHaveTextContent("75.00 Cr");
     // Condensed: no breakup.
     expect(within(ledger).queryByText("Output CGST")).not.toBeInTheDocument();
+  });
+
+  it("shows a bounced cheque, entered and returned, without counting it", async () => {
+    wrap();
+    await userEvent.click(screen.getByRole("button", { name: "Sunrise Garments" }));
+    const ledger = screen.getByRole("table", { name: "Ledger account" });
+    const entered = within(ledger).getByRole("row", { name: "Cheque 004512 (bounced), not counted" });
+    const returned = within(ledger).getByRole("row", { name: "Cheque 004512 returned, not counted" });
+    expect(entered).toHaveTextContent("Indian Bank · ₹450.00 · not counted");
+    expect(entered).not.toHaveTextContent(/^.*By Cheque/);
+    expect(returned).toHaveTextContent("Bounced");
+    expect(returned).toHaveTextContent("₹450.00 · Insufficient funds");
+    for (const row of [entered, returned]) {
+      const cells = within(row).getAllByRole("cell").map((c) => c.textContent);
+      // Debit and Credit empty; the balance as it stood.
+      expect(cells.slice(4)).toEqual(["", "", "450.00 Dr"]);
+    }
+    expect(within(ledger).getByText("Current Total").closest("tr")).toHaveTextContent("10,500.0010,575.00");
   });
 
   it("adds each voucher's ledgers and the bills it settled in the detailed view, and prints it so", async () => {
