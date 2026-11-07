@@ -20,6 +20,7 @@ import { machineService } from "@/features/machines/api";
 import { issueService, MachineIssue, type IssueIntake } from "./api";
 import { useSpeech, type SpeechLang } from "@/core/hooks/useSpeech";
 import { formatDate } from "@/core/format/date";
+import { useAuth } from "@/core/auth/useAuth";
 
 const SEVERITIES = ["low", "medium", "high", "critical"];
 const SERVICE_TYPES = ["Corrective", "Preventive", "Breakdown", "Inspection", "Other"];
@@ -316,6 +317,8 @@ function AnomalyBanner() {
 }
 
 export function MachineIssuesPage() {
+  const role = useAuth().user?.role;
+  const canSeeAnomalies = role === "admin" || role === "production";
   const [status, setStatus] = useState("all");
   const [editing, setEditing] = useState<MachineIssue | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -337,7 +340,8 @@ export function MachineIssuesPage() {
         }
       />
 
-      <AnomalyBanner />
+      {/* The breakdown pattern is for admin and production (api/machineIssue.js). */}
+      {canSeeAnomalies && <AnomalyBanner />}
 
       <div className="mb-4">
         <FilterChips

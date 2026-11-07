@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useDashboardKpis, usePendingShiftCount } from "@/features/dashboard/hooks";
+import { useAuth } from "@/core/auth/useAuth";
+import { canAccessPath, effectiveDepartment } from "@/app/navigation";
 import { advisorService } from "./api";
 
 // Builds "cards" from live dashboard signals and asks the backend's LLM
@@ -13,7 +15,9 @@ import { advisorService } from "./api";
 export function AdvisorPage() {
   const { toast } = useToast();
   const kpis = useDashboardKpis();
-  const pending = usePendingShiftCount();
+  // Shifts awaiting verification are production's to see; finance's advisor goes without them.
+  const { user } = useAuth();
+  const pending = usePendingShiftCount(canAccessPath("/shift-verification", effectiveDepartment(user)));
 
   const briefing = useMutation({
     mutationFn: () => {
