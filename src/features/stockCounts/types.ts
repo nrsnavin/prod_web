@@ -122,6 +122,9 @@ export interface CountEntry {
   /** null clears the line back to uncounted. undefined leaves it alone. */
   countedQty?: number | null;
   reason?: string;
+  /** Counted from a photo of the cones: how many, and the reading it scores. */
+  cones?: number;
+  aiSuggestion?: string | null;
 }
 
 export const STATUS_TONE: Record<

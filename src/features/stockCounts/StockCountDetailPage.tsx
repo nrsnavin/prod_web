@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, TriangleAlert, XCircle, Info } from "lucide-react";
+import { ArrowLeft, Camera, Check, TriangleAlert, XCircle, Info } from "lucide-react";
+import { ConeCountDialog } from "./ConeCount";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -78,7 +79,8 @@ export function StockCountDetailPage() {
     });
   }, [count, search, lens]);
 
-  const save = async (line: StockCountLine, patch: { countedQty?: number | null; reason?: string }) => {
+  const [coneLine, setConeLine] = useState<StockCountLine | null>(null);
+  const save = async (line: StockCountLine, patch: { countedQty?: number | null; reason?: string; cones?: number; aiSuggestion?: string | null }) => {
     try {
       await enter.mutateAsync([{ lineId: line._id, ...patch }]);
     } catch (err) {
@@ -290,6 +292,11 @@ export function StockCountDetailPage() {
                           }}
                         />
                       )}
+                      {!closed && (
+                        <button type="button" aria-label={`Count ${l.name} cones from a photo`} title="Count cones from a photo" className="ml-1 inline-grid h-9 w-9 place-items-center rounded-lg text-ink-400 hover:bg-ink-50 hover:text-ink-700" onClick={() => setConeLine(l)}>
+                          <Camera className="h-4 w-4" />
+                        </button>
+                      )}
                     </td>
                     <td
                       className={cn(
@@ -393,6 +400,10 @@ export function StockCountDetailPage() {
         }
       />
 
+      {coneLine && id && (
+        <ConeCountDialog countId={id} lineId={coneLine._id} name={coneLine.name} onClose={() => setConeLine(null)}
+          onUse={(e) => save(coneLine, e)} />
+      )}
       <ReasonDialog
         open={cancelOpen}
         onClose={() => setCancelOpen(false)}
