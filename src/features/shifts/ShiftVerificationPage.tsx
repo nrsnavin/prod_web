@@ -18,7 +18,7 @@ import { PendingShift } from "./types";
 import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
 import { TimerPhotos } from "./TimerPhotos";
 import { PreviousShiftReading } from "./PreviousShiftReading";
-import { AutoVerifiedList, AutoVerifySettings, ShiftEndReminderSettings } from "./AutoVerify";
+import { AutoVerifiedList, AutoVerifySettings, ShiftEndReminderSettings, ShiftHandoverSettings } from "./AutoVerify";
 import { LoomSensors } from "./LoomSensors";
 import { formatDate } from "@/core/format/date";
 import { remarkWords } from "./remark";
@@ -148,6 +148,7 @@ export function ShiftVerificationPage() {
       {isError && <ErrorBanner message={(error as Error).message} />}
       <AutoVerifySettings />
       <ShiftEndReminderSettings />
+      <ShiftHandoverSettings />
 
       {isLoading ? (
         <div className="space-y-3">

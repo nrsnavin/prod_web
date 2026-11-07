@@ -187,6 +187,8 @@ export interface RunningMachineOption {
 export interface ProductionSettings {
   autoVerify: { enabled: boolean; tolerancePct: number; minShifts: number };
   shiftEndNudge: { enabled: boolean; minutesBefore: number; phones: string[] };
+  /** The handover note after each shift; absent on servers before it existed. */
+  shiftHandover?: { enabled: boolean; withinMinutes: number; phones: string[] };
 }
 /** An entry the rule verified, and what it was checked against. */
 export interface AutoVerifiedRow {

@@ -31,7 +31,7 @@ vi.mock("./hooks", () => ({
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("./LoomSensors", () => ({ LoomSensors: () => null }));
-vi.mock("./AutoVerify", () => ({ AutoVerifySettings: () => null, ShiftEndReminderSettings: () => null, AutoVerifiedList: () => null }));
+vi.mock("./AutoVerify", () => ({ AutoVerifySettings: () => null, ShiftEndReminderSettings: () => null, ShiftHandoverSettings: () => null, AutoVerifiedList: () => null }));
 const photos = vi.fn();
 vi.mock("./TimerPhotos", () => ({
   TimerPhotos: (props: Record<string, unknown>) => {

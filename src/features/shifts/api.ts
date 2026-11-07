@@ -64,10 +64,13 @@ export const shiftService = {
   deletePlan: (id: string) => httpClient.delete("/shift/deletePlan", { id }),
 
   productionSettings: async () => (await httpClient.get<{ success: boolean; settings: ProductionSettings }>("/shift/production-settings")).settings,
-  saveProductionSettings: async (body: { autoVerify?: Partial<ProductionSettings["autoVerify"]>; shiftEndNudge?: Partial<Omit<ProductionSettings["shiftEndNudge"], "phones">> & { phones?: string[] | string } }) =>
+  saveProductionSettings: async (body: { autoVerify?: Partial<ProductionSettings["autoVerify"]>; shiftEndNudge?: Partial<Omit<ProductionSettings["shiftEndNudge"], "phones">> & { phones?: string[] | string }; shiftHandover?: { enabled?: boolean; withinMinutes?: number; phones?: string[] | string } }) =>
     (await httpClient.put<{ success: boolean; settings: ProductionSettings }>("/shift/production-settings", body)).settings,
   /** The shift-end reminder, now, for the running shift. */
   sendShiftEndNudge: async () => httpClient.post<{ success: boolean; sent: boolean; why?: string; looms?: string[]; text?: string }>("/shift/shift-end-nudge/send", {}),
+  /** The handover note for the shift just ended (or one named), as it would be sent. */
+  handover: async () => httpClient.get<{ success: boolean; text: string; by: "model" | "rules" }>("/shift/handover"),
+  sendHandover: async () => httpClient.post<{ success: boolean; sent: boolean; why?: string }>("/shift/handover/send", {}),
   autoVerified: async (days = 2) => (await httpClient.get<{ success: boolean; rows: AutoVerifiedRow[] }>("/shift/auto-verified", { days })).rows,
   async pendingVerification(): Promise<{ count: number; shifts: PendingShift[] }> {
     const res = await httpClient.get<{

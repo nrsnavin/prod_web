@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, BellRing, Settings2 } from "lucide-react";
+import { BadgeCheck, BellRing, Repeat, Settings2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -120,6 +120,68 @@ export function ShiftEndReminderSettings() {
           <Button size="sm" variant="ghost" loading={sending} onClick={sendNow}>Send now</Button>
         </div>
       )}
+    </Card>
+  );
+}
+
+/**
+ * After each shift, a WhatsApp handover to the owner and the next
+ * supervisor: metres against what the looms usually make, looms not
+ * entered or down, open issues, and what to watch (services/shiftHandover.js).
+ */
+export function ShiftHandoverSettings() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["production-settings"], queryFn: shiftService.productionSettings });
+  const [phones, setPhones] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  if (!data) return null;
+  const isAdmin = user?.role === "admin";
+  const h = data.shiftHandover ?? { enabled: false, withinMinutes: 60, phones: [] };
+  const save = async (shiftHandover: { enabled?: boolean; phones?: string }) => {
+    setBusy(true);
+    try {
+      qc.setQueryData(["production-settings"], await shiftService.saveProductionSettings({ shiftHandover }));
+      setPhones(null);
+      toast("Saved", "success");
+    } catch (e) { toast(e instanceof ApiError ? e.message : "Could not save", "error"); }
+    finally { setBusy(false); }
+  };
+  const show = async () => {
+    setLoading(true);
+    try { setPreview((await shiftService.handover()).text); }
+    catch (e) { toast(e instanceof ApiError ? e.message : "Could not build the handover", "error"); }
+    finally { setLoading(false); }
+  };
+  const sendNow = async () => {
+    setBusy(true);
+    try { const r = await shiftService.sendHandover(); toast(r.sent ? "Handover sent" : `Not sent: ${r.why ?? "unknown"}`, r.sent ? "success" : "info"); }
+    catch (e) { toast(e instanceof ApiError ? e.message : "Could not send", "error"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Card className="mb-4 p-4" aria-label="Shift handover">
+      <div className="flex flex-wrap items-center gap-3">
+        <Repeat className="h-4 w-4 text-ink-400" aria-hidden />
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input type="checkbox" checked={h.enabled} disabled={!isAdmin || busy} onChange={(e) => save({ enabled: e.target.checked })} aria-label="Send the shift handover" />
+          Send a handover on WhatsApp after each shift
+        </label>
+        <StatusChip tone={h.enabled ? "success" : "neutral"}>{h.enabled ? "on" : "off"}</StatusChip>
+        <Button size="sm" variant="ghost" loading={loading} onClick={show}>See the last shift's</Button>
+      </div>
+      <p className="mt-1 text-xs text-ink-400">Metres made against what the looms usually make, looms not entered or down, open machine issues, and what the next shift should watch — to {h.phones.length ? h.phones.join(", ") : "the notification recipients"}.</p>
+      {isAdmin && (
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <Input label="Handover numbers (comma between)" className="w-72" placeholder="Empty: the notification recipients" value={phones ?? h.phones.join(", ")} onChange={(e) => setPhones(e.target.value)} />
+          <Button size="sm" variant="secondary" loading={busy} disabled={phones === null} onClick={() => save({ phones: phones ?? "" })}>Save</Button>
+          <Button size="sm" variant="ghost" loading={busy} onClick={sendNow}>Send now</Button>
+        </div>
+      )}
+      {preview && <pre role="note" className="mt-3 whitespace-pre-wrap rounded-lg bg-ink-50 p-3 font-sans text-sm text-ink-700">{preview}</pre>}
     </Card>
   );
 }
