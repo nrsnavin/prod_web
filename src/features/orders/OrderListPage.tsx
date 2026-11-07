@@ -19,6 +19,7 @@ import { orderStatusTone, orderStatusLabel, orderFilterLabel } from "./orderStat
 import { OrderForm } from "./OrderForm";
 import { PoIntakeModal } from "./PoIntakeModal";
 import { OrderBulkActions } from "./OrderBulkActions";
+import { WhatsAppOrders, draftOf, useOrderRequestDecision, type OrderRequest } from "./WhatsAppOrders";
 import { formatDate } from "@/core/format/date";
 
 const columns: Column<OrderListItem>[] = [
@@ -49,7 +50,10 @@ export function OrderListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   // Arrived from the elastic list with a selection: open New order with it.
   const { prefill, clear: clearPrefill } = usePrefillElastics(() => setCreateOpen(true));
-  const closeCreate = () => { setCreateOpen(false); clearPrefill(); };
+  // Opened from a WhatsApp order: the form starts from it, and saving marks it done.
+  const [fromRequest, setFromRequest] = useState<OrderRequest | null>(null);
+  const decideRequest = useOrderRequestDecision();
+  const closeCreate = () => { setCreateOpen(false); clearPrefill(); setFromRequest(null); };
   const [intakeOpen, setIntakeOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -120,6 +124,8 @@ export function OrderListPage() {
 
       {isError && <ErrorBanner message={(error as Error).message} />}
 
+      <WhatsAppOrders onOpen={(r) => { setFromRequest(r); setCreateOpen(true); }} />
+
       {picked.size > 0 && <OrderBulkActions selected={selectedRows} onClear={() => setPicked(new Map())} />}
 
       <Card>
@@ -149,12 +155,15 @@ export function OrderListPage() {
 
       <FormScreen open={createOpen} onClose={closeCreate} title="New order" width="max-w-2xl">
         <OrderForm
+          key={fromRequest?._id ?? "new"}
           prefillElastics={prefill}
+          draft={fromRequest ? draftOf(fromRequest) : null}
           submitting={create.isPending}
           onCancel={() => closeCreate()}
           onSubmit={(values) =>
             hold.run((creditOverride) => create.mutate({ ...values, creditOverride }, {
               onSuccess: (orderId) => {
+                if (fromRequest) decideRequest.mutate({ id: fromRequest._id, action: "converted", order: orderId });
                 closeCreate();
                 toast("Order created", "success");
                 navigate(`/orders/${orderId}`);

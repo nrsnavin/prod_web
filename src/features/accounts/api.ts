@@ -157,7 +157,7 @@ export const accountsService = {
   booksRepair: (key: "repair" | "rebuild") => httpClient.post<{ success: boolean; fixed?: number; rows?: number }>(`/accounts/health/${key}`, {}),
   autoRemind: () => httpClient.get<{
     success: boolean; whatsapp: boolean; more: number;
-    settings: { enabled?: boolean; hour?: number; everyDays?: number; minOverdueDays?: number; lastRunDate?: string; acknowledgeReplies?: boolean };
+    settings: { enabled?: boolean; hour?: number; everyDays?: number; minOverdueDays?: number; lastRunDate?: string; acknowledgeReplies?: boolean; assistant?: boolean };
     send: Array<{ party: string; partyName: string; overdue: number; oldestDays: number; tone: string; phone: string }>;
     skip: Array<{ party: string; partyName: string; overdue: number; why: string }>;
   }>("/accounts/collections/auto-remind"),

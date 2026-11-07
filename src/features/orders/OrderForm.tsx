@@ -1,5 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import type { PrefillElastic } from "@/features/elastics/prefill";
+
+/** An order as read from a customer's WhatsApp message (prod: models/OrderRequest.js). */
+export interface OrderDraft {
+  customer?: { id: string; name: string };
+  po?: string;
+  supplyDate?: string;
+  description?: string;
+  lines: Array<{ elastic?: string; elasticName?: string; quantity: number }>;
+}
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,12 +47,15 @@ export function OrderForm({
   onSubmit,
   onCancel,
   prefillElastics,
+  draft,
 }: {
   submitting: boolean;
   onSubmit: (v: OrderFormValues) => void;
   onCancel: () => void;
   /** Start with these elastics on the order (from the elastic list's selection). */
   prefillElastics?: PrefillElastic[] | null;
+  /** Start from an order a customer typed on WhatsApp, as read: checked and saved by a person. */
+  draft?: OrderDraft | null;
 }) {
   // Server-searched dropdowns: type to query the full masters, not just a
   // preloaded page (customer/elastic lists can exceed the API's page cap).
@@ -73,13 +85,15 @@ export function OrderForm({
     resolver: zodResolver(schema),
     defaultValues: {
       date: new Date().toISOString().slice(0, 10),
-      po: "",
-      customer: "",
-      supplyDate: "",
-      description: "",
-      elasticOrdered: prefillElastics?.length
-        ? prefillElastics.map((e) => ({ elastic: e._id, quantity: 0 }))
-        : [{ elastic: "", quantity: 0 }],
+      po: draft?.po ?? "",
+      customer: draft?.customer?.id ?? "",
+      supplyDate: draft?.supplyDate ?? "",
+      description: draft?.description ?? "",
+      elasticOrdered: draft?.lines?.length
+        ? draft.lines.map((l) => ({ elastic: l.elastic ?? "", quantity: l.quantity || 0 }))
+        : prefillElastics?.length
+          ? prefillElastics.map((e) => ({ elastic: e._id, quantity: 0 }))
+          : [{ elastic: "", quantity: 0 }],
     },
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: "elasticOrdered" });
@@ -111,6 +125,7 @@ export function OrderForm({
   const elasticSeed = useMemo(
     () => [
       ...(prefillElastics ?? []).map((e) => ({ value: e._id, label: e.name })),
+      ...(draft?.lines ?? []).filter((l) => l.elastic && l.elasticName).map((l) => ({ value: l.elastic!, label: l.elasticName! })),
       ...(groups.data ?? []).flatMap((g) =>
         g.items.map((it) => ({ value: itemElasticId(it), label: itemElasticName(it) }))
       ),
@@ -130,6 +145,7 @@ export function OrderForm({
               label="Customer *"
               placeholder="Select customer"
               loadOptions={loadCustomers}
+              seedOptions={draft?.customer ? [{ value: draft.customer.id, label: draft.customer.name }] : undefined}
               error={errors.customer?.message}
               value={field.value}
               onChange={field.onChange}

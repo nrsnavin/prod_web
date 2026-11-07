@@ -245,6 +245,10 @@ function ScheduledReminders() {
         <input type="checkbox" checked={!!st.acknowledgeReplies} disabled={!isAdmin || busy} onChange={(e) => save({ acknowledgeReplies: e.target.checked })} aria-label="Acknowledge replies" />
         Thank a customer who replies on WhatsApp (their reply is kept, and a promise noted, either way)
       </label>
+      <label className="mt-2 flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1" checked={!!st.assistant} disabled={!isAdmin || busy} onChange={(e) => save({ assistant: e.target.checked })} aria-label="Answer customers on WhatsApp" />
+        <span>Answer customers on WhatsApp: where their order is, what is due, an invoice they name — from the records. An order they type is drafted under Orders → WhatsApp orders for you to open. Off: their messages are read as payment replies only.</span>
+      </label>
       {isAdmin && (
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <Input label="At (hour)" type="number" min={0} max={23} className="w-24" value={hour ?? String(st.hour ?? 11)} onChange={(e) => setHour(e.target.value)} />
