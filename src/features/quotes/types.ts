@@ -89,6 +89,8 @@ export interface QuoteWriteBody {
   remarks?: string;
   lines: QuoteWriteLine[];
   gstPercent: number;
+  /** The enquiry draft it came from, scored when the quote is raised. */
+  aiSuggestion?: string;
 }
 
 // ══════════════════════════════════════════════════════════════════

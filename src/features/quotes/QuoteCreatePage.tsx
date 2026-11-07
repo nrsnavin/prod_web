@@ -13,6 +13,7 @@ import { customerService } from "@/features/customers/api";
 import { elasticService } from "@/features/elastics/api";
 import { PrefillState } from "@/features/elastics/prefill";
 import { productFromElastic } from "./fromElastic";
+import { EnquiryDraft, productFromEnquiry, type EnquiryResult } from "./EnquiryDraft";
 import { useQuoteMutations } from "./hooks";
 import {
   MaterialRow,
@@ -85,6 +86,14 @@ export function QuoteCreatePage() {
   const [date, setDate] = useState(iso(new Date()));
   const [validTill, setValidTill] = useState(iso(addDays(new Date(), 30)));
   const [remarks, setRemarks] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [seedCustomer, setSeedCustomer] = useState<{ value: string; label: string }[]>([]);
+  const fromEnquiry = (r: EnquiryResult) => {
+    if (r.lines.length) setProducts(r.lines.map(productFromEnquiry));
+    if (r.customer) { setFromMaster(true); setSeedCustomer([{ value: r.customer._id, label: r.customer.name }]); setCustomerId(r.customer._id); }
+    else if (r.customerName) { setFromMaster(false); setCustomerId(""); setCustomerName(r.customerName); }
+    setAiSuggestion(r.aiSuggestion);
+  };
 
   const loadCustomers = useCallback(
     (q: string) =>
@@ -184,6 +193,7 @@ export function QuoteCreatePage() {
         validTill,
         remarks: remarks.trim(),
         gstPercent: num(gstPercent),
+        ...(aiSuggestion ? { aiSuggestion } : {}),
         // Weights and rates only. The totals on screen are the browser's
         // working; the server does its own and that is what is stored.
         lines: products.map((p) => ({
@@ -230,6 +240,7 @@ export function QuoteCreatePage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
+          <EnquiryDraft onDraft={fromEnquiry} />
           {/* ── Customer ─────────────────────────────────────── */}
           <Card className="p-5">
             <div className="mb-4 flex items-baseline justify-between gap-3">
@@ -254,6 +265,7 @@ export function QuoteCreatePage() {
                   aria-label="Customer"
                   placeholder="Search customers"
                   loadOptions={loadCustomers}
+                  seedOptions={seedCustomer}
                   value={customerId}
                   onChange={setCustomerId}
                 />
