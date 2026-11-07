@@ -126,6 +126,8 @@ export interface ElasticFormValues {
   /** Tax classification for invoices; blank / null falls back to Settings → Invoice. */
   hsn?: string;
   gstPercent?: number | null;
+  /** Filled from a tech sheet: the reading the save settles (its accuracy kept). */
+  aiSuggestion?: string;
   /** Omitted entirely when the form left the template empty. */
   warpingPlanTemplate?: { beams: Array<{ beamNo: number; sections: Array<{ warpYarn: string; ends: number; maxMeters: number }> }> };
 }

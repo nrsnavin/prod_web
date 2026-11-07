@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { PhotoFillButton } from "@/features/common/PhotoFill";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
@@ -85,10 +87,14 @@ export function ElasticForm({
 }) {
   const materials = useMaterialsByCategory();
 
+  // Filled from a tech sheet: the reading this save settles, and the yarns it could not match.
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [unmatched, setUnmatched] = useState<string[]>([]);
   const {
     register,
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<ElasticFormValues>({
     resolver: zodResolver(schema),
@@ -118,7 +124,27 @@ export function ElasticForm({
       warpingPlanTemplate: { beams: templateToForm(initial?.warpingPlanTemplate) },
     },
   });
-  const { fields, append, remove } = useFieldArray({ control, name: "warpYarn" });
+  const { fields, append, remove, replace } = useFieldArray({ control, name: "warpYarn" });
+  const fillFromSpec = (b: SpecRead) => {
+    const r = b.read; const mt = b.matches; const opt = { shouldDirty: true };
+    if (r.name) setValue("name", r.name, opt);
+    if (r.weaveType) setValue("weaveType", r.weaveType, opt);
+    for (const k of ["spandexEnds", "yarnEnds", "pick", "noOfHook", "weight"] as const) if (r[k] != null) setValue(k, r[k] as number, opt);
+    if (r.hsn) setValue("hsn", r.hsn, opt);
+    const miss: string[] = [];
+    const yarn = (key: "warpSpandex" | "spandexCovering" | "weftYarn", m?: SpecMatch | null) => {
+      if (!m) return;
+      if (m.materialId) setValue(`${key}.id`, m.materialId, opt); else miss.push(m.text);
+      if (m.weight != null) setValue(`${key}.weight`, m.weight, opt);
+    };
+    yarn("warpSpandex", mt.warpSpandex); yarn("spandexCovering", mt.spandexCovering); yarn("weftYarn", mt.weftYarn);
+    if (mt.warpYarn?.length) {
+      replace(mt.warpYarn.map((w) => ({ id: w?.materialId ?? "", weight: w?.weight ?? 0 })));
+      for (const w of mt.warpYarn) if (w && !w.materialId) miss.push(w.text);
+    }
+    setUnmatched([...miss, ...(r.unclear ?? []).map((u) => `unsure of ${u}`)]);
+    setAiSuggestion(b.aiSuggestion);
+  };
 
   const m = materials.data;
   // The template's yarns come from the warp yarns chosen above, as they
@@ -132,12 +158,20 @@ export function ElasticForm({
     <form
       // The template is stripped of half-filled rows here rather than in
       // the schema, so an abandoned beam never blocks saving the elastic.
-      onSubmit={handleSubmit((v) =>
+      onSubmit={handleSubmit((raw) => { const v = aiSuggestion ? { ...raw, aiSuggestion } : raw; return (
         onSubmit({ ...v, warpingPlanTemplate: formToTemplate(v.warpingPlanTemplate?.beams) })
-      )}
+      ); })}
       className="space-y-4"
       noValidate
     >
+      {!initial && (
+        <div className="space-y-1">
+          <PhotoFillButton<SpecRead> url="/elastic/read-spec" what="tech sheet" label="Fill from a tech sheet or sample photo" onRead={fillFromSpec} multiple />
+          {unmatched.length > 0 && (
+            <p className="text-xs text-status-warning" role="note">Check: {unmatched.map((u, i) => <span key={i}>{i ? " · " : ""}{u.startsWith("unsure of") ? u : `“${u}” not matched — pick it or add it`}</span>)}</p>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Input label="Elastic name *" error={errors.name?.message} {...register("name")} />
         <Input label="Weave type" placeholder="e.g. Plain" {...register("weaveType")} />
@@ -262,4 +296,12 @@ export function ElasticForm({
       </div>
     </form>
   );
+}
+
+/** What POST /elastic/read-spec returns. */
+interface SpecMatch { text: string; weight: number | null; materialId: string | null; materialName: string | null }
+interface SpecRead {
+  read: { problem?: string | null; name?: string; weaveType?: string; spandexEnds?: number | null; yarnEnds?: number | null; pick?: number | null; noOfHook?: number | null; weight?: number | null; hsn?: string; unclear?: string[] };
+  matches: { warpSpandex?: SpecMatch | null; spandexCovering?: SpecMatch | null; weftYarn?: SpecMatch | null; warpYarn?: Array<SpecMatch | null> };
+  aiSuggestion: string | null;
 }
