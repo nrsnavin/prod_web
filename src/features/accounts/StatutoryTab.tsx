@@ -15,10 +15,11 @@ import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
 import { money } from "./shared";
+import { NoticesSection } from "./NoticesSection";
 import type { Gstr2bRow, MsmeDue, TdsRegister } from "./types";
 
-type Section = "msme" | "gstr1" | "gstr2b" | "rule37" | "tds" | "payroll";
-const SECTIONS: Section[] = ["msme", "gstr1", "gstr2b", "rule37", "tds", "payroll"];
+type Section = "notices" | "msme" | "gstr1" | "gstr2b" | "rule37" | "tds" | "payroll";
+const SECTIONS: Section[] = ["notices", "msme", "gstr1", "gstr2b", "rule37", "tds", "payroll"];
 
 const lastMonth = () => { const d = new Date(); const p = new Date(d.getFullYear(), d.getMonth() - 1, 1); return `${p.getFullYear()}-${String(p.getMonth() + 1).padStart(2, "0")}`; };
 const thisFy = () => { const d = new Date(); const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; return `${y}-${String(y + 1).slice(2)}`; };
@@ -42,9 +43,10 @@ export function StatutoryTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <FilterChips options={[{ value: "msme", label: "MSME 45 days" }, { value: "gstr1", label: "GSTR-1" }, { value: "gstr2b", label: "GSTR-2B" }, { value: "rule37", label: "ITC unpaid 180 days" }, { value: "tds", label: "TDS" }, { value: "payroll", label: "Payroll" }]} value={section} onChange={setSection} />
-        {section !== "msme" && <Input label="Month" type="month" value={month} onChange={(e) => setMonth(e.target.value || lastMonth())} />}
+        <FilterChips options={[{ value: "notices", label: "Notices" }, { value: "msme", label: "MSME 45 days" }, { value: "gstr1", label: "GSTR-1" }, { value: "gstr2b", label: "GSTR-2B" }, { value: "rule37", label: "ITC unpaid 180 days" }, { value: "tds", label: "TDS" }, { value: "payroll", label: "Payroll" }]} value={section} onChange={setSection} />
+        {section !== "msme" && section !== "notices" && <Input label="Month" type="month" value={month} onChange={(e) => setMonth(e.target.value || lastMonth())} />}
       </div>
+      {section === "notices" && <NoticesSection />}
       {section === "msme" && <MsmeSection />}
       {section === "gstr1" && <Gstr1Section month={month} />}
       {section === "gstr2b" && <Gstr2bSection month={month} />}
