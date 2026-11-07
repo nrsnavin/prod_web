@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
 import { useEmployeesByDept, usePackingJobs } from "./hooks";
 import { PackingFormValues } from "./types";
+import { addable } from "@/features/common/quickCreateStore";
 
 const schema = z.object({
   job: z.string().min(1, "Select job"),
@@ -98,6 +99,7 @@ export function PackingForm({
       <div className="grid grid-cols-2 gap-3">
         <Controller control={control} name="checkedBy" render={({ field }) => (
           <Combobox
+            {...addable("employee")}
             label="Checked by *"
             placeholder="Select"
             options={empOptions(checkers.data)}
@@ -108,6 +110,7 @@ export function PackingForm({
         )} />
         <Controller control={control} name="packedBy" render={({ field }) => (
           <Combobox
+            {...addable("employee")}
             label="Packed by *"
             placeholder="Select"
             options={empOptions(packers.data)}

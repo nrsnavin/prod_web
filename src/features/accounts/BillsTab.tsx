@@ -1,4 +1,5 @@
 import { FlagList, useFlags } from "./Flags";
+import { quickCreate } from "@/features/common/quickCreateStore";
 import { accountsService } from "./api";
 import { CostCentreField, costCentreBody } from "./CostCentreField";
 import { useEffect, useMemo, useState } from "react";
@@ -231,7 +232,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
           <Input label="Due date" type="date" value={dueDate} placeholder="30 days" onChange={(e) => setDueDate(e.target.value)} />
         </div>
         <Select label="Kind" value={kind} onChange={(e) => setKind(e.target.value as "goods" | "service")} options={[{ value: "goods", label: "Goods (stock)" }, { value: "service", label: "Service / job work" }]} />
-        <Select label={kind === "service" ? "Expense head *" : "Expense head (for a service bill)"} value={category} onChange={(e) => setCategory(e.target.value)} options={categoryOptions} placeholder={kind === "service" ? "Pick the head it posts to" : "None"}
+        <Select label={kind === "service" ? "Expense head *" : "Expense head (for a service bill)"} value={category} onChange={(e) => setCategory(e.target.value)} options={categoryOptions} onCreate={() => void quickCreate("expenseHead").then((o) => o && setCategory(o.value))} createLabel="expense head" placeholder={kind === "service" ? "Pick the head it posts to" : "None"}
           error={needsHead && supplier ? "A service bill needs its head — freight, job work, repairs…" : undefined} />
         <CostCentreField value={costCentre} onChange={setCostCentre} />
       </div>

@@ -24,6 +24,7 @@ import {
   rupees,
   startingRows,
 } from "./costing";
+import { addable } from "@/features/common/quickCreateStore";
 
 const addDays = (from: Date, days: number) => {
   const d = new Date(from);
@@ -246,6 +247,7 @@ export function QuoteCreatePage() {
             {fromMaster ? (
               <>
                 <AsyncCombobox
+                  {...addable("customer")}
                   label="Customer *"
                   // The visible label is not tied to the button this
                   // renders, so it needs its own accessible name.

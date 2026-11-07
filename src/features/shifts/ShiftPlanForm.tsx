@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { Combobox } from "@/components/ui/Combobox";
 import { useRunningMachines, useWeavingEmployees } from "./hooks";
 import { ShiftPlanFormValues } from "./types";
+import { addable } from "@/features/common/quickCreateStore";
 
 const schema = z.object({
   date: z.string().min(1, "Date required"),
@@ -102,7 +103,7 @@ export function ShiftPlanForm({
                 />
               )} />
               <Controller control={control} name={`machines.${i}.operator`} render={({ field }) => (
-                <Combobox aria-label="Operator"
+                <Combobox {...addable("employee")} aria-label="Operator"
                   placeholder="Operator"
                   options={operatorOptions}
                   error={errors.machines?.[i]?.operator?.message}

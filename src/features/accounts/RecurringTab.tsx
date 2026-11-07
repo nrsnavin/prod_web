@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { quickCreate } from "@/features/common/quickCreateStore";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pause, Pencil, Play, Plus, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -112,7 +113,7 @@ function RecurringDialog({ initial, onClose }: { initial: Partial<RecurringExpen
     <Modal open onClose={onClose} title={initial._id ? `Edit ${initial.name}` : "New recurring expense"} width="max-w-2xl">
       <div className="grid gap-3 sm:grid-cols-2">
         <Input label="Name *" value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Factory rent" />
-        <Select label="Head *" value={f.category} onChange={(e) => set("category", e.target.value)} options={(categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name }))} placeholder="Pick a head" />
+        <Select label="Head *" value={f.category} onChange={(e) => set("category", e.target.value)} onCreate={() => void quickCreate("expenseHead").then((o) => o && set("category", o.value))} createLabel="expense head" options={(categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name }))} placeholder="Pick a head" />
         <Input label="What for *" value={f.description} onChange={(e) => set("description", e.target.value)} />
         <PartyPicker partyType="supplier" label="Supplier on file (optional)" value={f.supplier} onChange={(id, name) => { set("supplier", id); if (name) set("payeeName", name); }} />
         <Input label="Paid to" value={f.payeeName} onChange={(e) => set("payeeName", e.target.value)} />

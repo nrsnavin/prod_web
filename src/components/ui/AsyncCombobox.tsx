@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Check, Search, Loader2 } from "lucide-react";
+import { ChevronDown, Check, Plus, Search, Loader2 } from "lucide-react";
 import { cn } from "./cn";
 import type { ComboOption } from "./Combobox";
 
@@ -22,6 +22,13 @@ export interface AsyncComboboxProps {
   disabled?: boolean;
   className?: string;
   emptyText?: string;
+  /**
+   * Not in the list: a last row "+ Add “what was typed”" that calls this.
+   * Resolving with the new option picks it.
+   */
+  onCreate?: (typed: string) => Promise<ComboOption | null | void> | void;
+  /** What a new one is called: "+ Add a new customer". */
+  createLabel?: string;
 }
 
 // Server-searched variant of Combobox for large masters (customers,
@@ -39,6 +46,8 @@ export function AsyncCombobox({
   disabled,
   className,
   emptyText = "No matches",
+  onCreate,
+  createLabel,
 }: AsyncComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -142,6 +151,19 @@ export function AsyncCombobox({
     setQuery("");
   };
 
+  // The "+ Add" row sits after the matches, reachable by the arrows.
+  const createIdx = onCreate ? options.length : -1;
+  const create = async () => {
+    const typed = query.trim();
+    setOpen(false);
+    setQuery("");
+    const made = await onCreate?.(typed);
+    if (made && made.value) {
+      labelCache.current.set(made.value, made.label);
+      onChange(made.value);
+    }
+  };
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
       e.preventDefault();
@@ -151,13 +173,14 @@ export function AsyncCombobox({
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActive((a) => Math.min(a + 1, options.length - 1));
+      setActive((a) => Math.min(a + 1, (onCreate ? options.length : options.length - 1)));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (options[active]) pick(options[active]);
+      if (active === createIdx) void create();
+      else if (options[active]) pick(options[active]);
     } else if (e.key === "Escape") {
       e.stopPropagation();
       setOpen(false);
@@ -227,6 +250,22 @@ export function AsyncCombobox({
               {!loading && options.length === 0 && (
                 <li className="px-3 py-4 text-center text-sm text-ink-400">
                   {debounced ? emptyText : "Type to search…"}
+                </li>
+              )}
+              {onCreate && (
+                <li data-idx={createIdx} className="border-t border-ink-100">
+                  <button
+                    type="button"
+                    onClick={() => void create()}
+                    onMouseEnter={() => setActive(createIdx)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-sm text-left font-medium",
+                      active === createIdx ? "bg-brand-50 text-brand-600" : "text-brand-600"
+                    )}
+                  >
+                    <Plus className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate">{query.trim() ? `Add “${query.trim()}”${createLabel ? ` as a new ${createLabel}` : ""}` : `Add a new ${createLabel ?? "one"}`}</span>
+                  </button>
                 </li>
               )}
             </ul>

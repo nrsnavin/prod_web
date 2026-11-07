@@ -50,11 +50,14 @@ export function CustomerForm({
   submitting,
   onSubmit,
   onCancel,
+  defaultName,
 }: {
   initial?: Customer;
   submitting: boolean;
   onSubmit: (values: CustomerFormValues) => void;
   onCancel: () => void;
+  /** A new one, started from a name typed in a picker. */
+  defaultName?: string;
 }) {
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [seedSimilar, setSeedSimilar] = useState<SimilarParty[]>([]);
@@ -68,7 +71,7 @@ export function CustomerForm({
   } = useForm<CustomerFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: initial?.name ?? "",
+      name: initial?.name ?? defaultName ?? "",
       tallyName: initial?.tallyName ?? "",
       contactName: initial?.contactName ?? "",
       phoneNumber: initial?.phoneNumber ?? "",

@@ -23,6 +23,7 @@ import { poService } from "./api";
 import { InwardRecord, PoItem, poItemPending, poItemReceived } from "./types";
 import { poStatusTone } from "./PoListPage";
 import { formatDate } from "@/core/format/date";
+import { addable } from "@/features/common/quickCreateStore";
 
 function materialName(item: PoItem): string {
   return typeof item.rawMaterial === "object" && item.rawMaterial
@@ -423,6 +424,7 @@ function PoEditModal({
             {lines.map((l, i) => (
               <div key={i} className="grid grid-cols-[1fr_90px_100px_90px_32px] items-start gap-2">
                 <Combobox
+                  {...addable("material")}
                   aria-label="Material"
                   placeholder={materials.isLoading ? "Loading…" : "Material"}
                   options={materialOptions}

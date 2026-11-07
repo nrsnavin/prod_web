@@ -10,6 +10,7 @@ import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
 import { customerService } from "@/features/customers/api";
 import { elasticService } from "@/features/elastics/api";
 import { ElasticGroup, ElasticGroupFormValues, itemElasticId, itemElasticName } from "./types";
+import { addable } from "@/features/common/quickCreateStore";
 
 const schema = z.object({
   name: z.string().min(1, "Group name required"),
@@ -96,6 +97,7 @@ export function ElasticGroupForm({
             name="customer"
             render={({ field }) => (
               <AsyncCombobox
+                {...addable("customer")}
                 label="Customer"
                 placeholder="Global (any customer)"
                 loadOptions={loadCustomers}
@@ -123,6 +125,7 @@ export function ElasticGroupForm({
                 name={`items.${i}.elastic`}
                 render={({ field }) => (
                   <AsyncCombobox
+                    {...addable("elastic")}
                     placeholder="Select elastic"
                     loadOptions={loadElastics}
                     seedOptions={elasticSeed}

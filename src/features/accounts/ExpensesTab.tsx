@@ -1,4 +1,5 @@
 import { FlagList, useFlags } from "./Flags";
+import { quickCreate } from "@/features/common/quickCreateStore";
 import { accountsService } from "./api";
 import { CostCentreField, costCentreBody } from "./CostCentreField";
 import { useMemo, useState, useEffect } from "react";
@@ -190,7 +191,7 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <Select label="Head *" value={category} onChange={(e) => { setCategory(e.target.value); const c = (categories ?? []).find((x) => x._id === e.target.value); if (c && !itemised) setGstPercent(c.itcEligible ? 18 : 0); }}
-          options={(categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name }))} placeholder="Pick a head" />
+          options={(categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name }))} placeholder="Pick a head" onCreate={() => void quickCreate("expenseHead").then((o) => o && setCategory(o.value))} createLabel="expense head" />
         <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <Input label="What for *" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Lorry to Tiruppur, 6 boxes" />
         <Input label="Payee's bill / receipt no." value={refNo} onChange={(e) => setRefNo(e.target.value)} />
@@ -228,7 +229,7 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
       {!needsApproval && (
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex items-center gap-2 self-end text-sm"><input type="checkbox" checked={payNow} onChange={(e) => setPayNow(e.target.checked)} /> Already paid — record the payment now</label>
-          {payNow && <Select label="From account" value={chosenAccount} onChange={(e) => setAccount(e.target.value)} options={accountList.map((a) => ({ value: a._id, label: `${a.name} (₹${money(a.balance)})` }))} />}
+          {payNow && <Select label="From account" value={chosenAccount} onChange={(e) => setAccount(e.target.value)} onCreate={() => void quickCreate("bankAccount").then((o) => o && setAccount(o.value))} createLabel="account" options={accountList.map((a) => ({ value: a._id, label: `${a.name} (₹${money(a.balance)})` }))} />}
         </div>
       )}
       <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />

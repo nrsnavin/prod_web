@@ -21,6 +21,7 @@ import { useMaterialMutations } from "./hooks";
 import { materialService } from "./api";
 import { RawMaterial } from "./types";
 import { BulkPriceUpdateModal } from "./StockOps";
+import { addable } from "@/features/common/quickCreateStore";
 
 // ══════════════════════════════════════════════════════════════════
 //  ACTING ON THE MATERIALS TICKED IN THE LIST
@@ -81,7 +82,7 @@ function SupplierDialog({ count, loading, onClose, onApply }: {
   return (
     <Modal open onClose={onClose} title={`Supplier for ${count} material${count === 1 ? "" : "s"}`} width="max-w-md">
       <div className="space-y-4">
-        <AsyncCombobox label="Supplier" value={supplier} onChange={setSupplier} loadOptions={load} placeholder="Search suppliers" />
+        <AsyncCombobox {...addable("supplier")} label="Supplier" value={supplier} onChange={setSupplier} loadOptions={load} placeholder="Search suppliers" />
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
           <Button loading={loading} disabled={!supplier} onClick={() => onApply(supplier)}>Set for {count}</Button>

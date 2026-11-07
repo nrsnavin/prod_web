@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { quickCreate } from "@/features/common/quickCreateStore";
 import { AsyncCombobox } from "@/components/ui/AsyncCombobox";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -59,6 +60,9 @@ export function PartyPicker({ partyType, value, onChange, label, disabled }: {
       onChange={(id) => onChange(id, names.get(id) ?? "")}
       loadOptions={load}
       placeholder={`Search ${partyType}s…`}
+      // Not on file yet: add them here; the new name is known at once.
+      onCreate={async (typed) => { const o = await quickCreate(partyType, typed); if (o) names.set(o.value, o.label); return o; }}
+      createLabel={partyType}
       disabled={disabled}
     />
   );

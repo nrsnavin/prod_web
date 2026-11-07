@@ -16,7 +16,7 @@ import { BooksSettings } from "./BooksSettings";
 import { AiAccuracy } from "./AiAccuracy";
 import type { AccountKind, BankAccount, ExpenseCategory } from "./types";
 
-export function AccountDialog({ initial, onClose }: { initial: Partial<BankAccount> | null; onClose: () => void }) {
+export function AccountDialog({ initial, onClose, onSaved }: { initial: Partial<BankAccount> | null; onClose: () => void; onSaved?: (a: BankAccount) => void }) {
   const { toast } = useToast();
   const { saveBankAccount } = useAccountsMutations();
   const [form, setForm] = useState<Partial<BankAccount>>({ kind: "bank", name: "", bankName: "", accountNo: "", ifsc: "", upiId: "", openingBalance: 0, openingDate: "", float: 0, active: true, isDefault: false, ...initial });
@@ -56,7 +56,7 @@ export function AccountDialog({ initial, onClose }: { initial: Partial<BankAccou
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button disabled={!String(form.name || "").trim()} loading={saveBankAccount.isPending}
-            onClick={() => saveBankAccount.mutate({ id: initial?._id, body: { ...form, openingDate: form.openingDate || null } }, { onSuccess: () => { toast("Account saved", "success"); onClose(); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not save", "error") })}>Save</Button>
+            onClick={() => saveBankAccount.mutate({ id: initial?._id, body: { ...form, openingDate: form.openingDate || null } }, { onSuccess: (a) => { toast("Account saved", "success"); if (onSaved) onSaved(a as BankAccount); else onClose(); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not save", "error") })}>Save</Button>
         </div>
       </div>
     </Modal>

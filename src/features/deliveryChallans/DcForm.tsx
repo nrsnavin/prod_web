@@ -13,6 +13,7 @@ import { elasticService } from "@/features/elastics/api";
 import { useOrders } from "@/features/orders/hooks";
 import { DcFormValues } from "./types";
 import { useDcOrderInfo } from "./hooks";
+import { addable } from "@/features/common/quickCreateStore";
 
 const schema = z.object({
   type: z.enum(["elastic", "machine_part"]),
@@ -223,6 +224,7 @@ export function DcForm({
                   name={`items.${i}.elastic`}
                   render={({ field: f }) => (
                     <AsyncCombobox
+                      {...addable("elastic")}
                       aria-label="Elastic"
                       placeholder="Select elastic"
                       loadOptions={loadElastics}

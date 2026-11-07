@@ -15,6 +15,7 @@ import { useElasticGroups } from "@/features/elasticGroups/hooks";
 import { itemElasticId, itemElasticName } from "@/features/elasticGroups/types";
 import { OrderFormValues } from "./types";
 import { OrderEtaPanel } from "./OrderEtaPanel";
+import { addable } from "@/features/common/quickCreateStore";
 
 const schema = z.object({
   date: z.string().min(1, "Order date required"),
@@ -125,6 +126,7 @@ export function OrderForm({
           name="customer"
           render={({ field }) => (
             <AsyncCombobox
+              {...addable("customer")}
               label="Customer *"
               placeholder="Select customer"
               loadOptions={loadCustomers}
@@ -199,6 +201,7 @@ export function OrderForm({
                 name={`elasticOrdered.${i}.elastic`}
                 render={({ field }) => (
                   <AsyncCombobox
+                    {...addable("elastic")}
                     placeholder="Select elastic"
                     loadOptions={loadElastics}
                     seedOptions={elasticSeed}

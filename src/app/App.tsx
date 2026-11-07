@@ -5,6 +5,15 @@ import { useThemeEffect } from "@/core/ui/theme";
 import { AppRouter } from "./router";
 import { TouchHints } from "@/components/layout/TouchHints";
 import { refetchIntervalFor, refetchOnFocusFor } from "./queryPolicy";
+import { lazy, Suspense } from "react";
+import { useQuick } from "@/features/common/quickCreateStore";
+
+// "+ Add …" from any picker: the forms load the first time one is asked for.
+const QuickCreateHost = lazy(() => import("@/features/common/QuickCreate").then((m) => ({ default: m.QuickCreateHost })));
+function QuickCreate() {
+  const asked = useQuick((s) => !!s.ask);
+  return asked ? <Suspense fallback={null}><QuickCreateHost /></Suspense> : null;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +40,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <AppRouter />
+          <QuickCreate />
           {/* Shows `title` hints on touch screens, which never show them. */}
           <TouchHints />
         </ToastProvider>

@@ -10,6 +10,7 @@ import { elasticService } from "@/features/elastics/api";
 import { useDcMutations } from "./hooks";
 import { DcItem, DcUpdateBody, DeliveryChallan } from "./types";
 import { StockShortDialog, stockShortFrom } from "./StockShortDialog";
+import { addable } from "@/features/common/quickCreateStore";
 
 /** The elastic id on a line, whether the API populated it or not. */
 export function itemElasticId(item: DcItem): string {
@@ -240,6 +241,7 @@ export function DcEditModal({
               <div key={i} className="grid grid-cols-[1fr_90px_100px_32px] items-start gap-2">
                 {isElastic ? (
                   <AsyncCombobox
+                    {...addable("elastic")}
                     aria-label="Elastic"
                     placeholder="Select elastic"
                     loadOptions={loadElastics}

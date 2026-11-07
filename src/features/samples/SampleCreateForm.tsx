@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { customerService } from "@/features/customers/api";
 import { useSampleMutations } from "./hooks";
+import { addable } from "@/features/common/quickCreateStore";
 
 // Raising a sample request. Everything here is written once and then
 // never edited — anything that changes afterwards is an entry in the
@@ -87,6 +88,7 @@ export function SampleCreateForm({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <AsyncCombobox
+          {...addable("customer")}
           label="Customer"
           placeholder="Not a customer yet"
           loadOptions={loadCustomers}

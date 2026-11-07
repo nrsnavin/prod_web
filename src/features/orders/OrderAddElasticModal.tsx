@@ -10,6 +10,7 @@ import { elasticService } from "@/features/elastics/api";
 import { ForceApprovalDialog } from "./ForceApprovalDialog";
 import { useOrderMutations } from "./hooks";
 import { OrderDetail, StockShortfall } from "./types";
+import { addable } from "@/features/common/quickCreateStore";
 
 // ══════════════════════════════════════════════════════════════════
 //  ADDING AN ELASTIC TO AN APPROVED ORDER — the rare case
@@ -89,6 +90,7 @@ export function OrderAddElasticModal({ order, open, onClose }: { order: OrderDet
         </p>
 
         <AsyncCombobox
+          {...addable("elastic")}
           label="Elastic *"
           placeholder="Search elastics"
           loadOptions={loadElastics}

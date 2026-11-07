@@ -43,6 +43,7 @@ export function MaterialForm({
   submitting,
   onSubmit,
   onCancel,
+  defaultName,
 }: {
   /** Editing this material. */
   initial?: RawMaterial;
@@ -57,6 +58,8 @@ export function MaterialForm({
   submitting: boolean;
   onSubmit: (values: MaterialFormValues) => void;
   onCancel: () => void;
+  /** A new one, started from a name typed in a picker. */
+  defaultName?: string;
 }) {
   const source = initial ?? cloneFrom;
   const suppliers = useSupplierOptions();
@@ -90,7 +93,7 @@ export function MaterialForm({
   } = useForm<MaterialFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: initial?.name ?? "",
+      name: initial?.name ?? defaultName ?? "",
       category: source?.category ?? "",
       group:
         source?.group && typeof source.group === "object"

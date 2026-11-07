@@ -17,6 +17,7 @@ import { useMaterials } from "@/features/materials/hooks";
 import { supplierService } from "./api";
 import { PoFormValues, Supplier } from "./types";
 import { usePoMutations } from "./hooks";
+import { addable } from "@/features/common/quickCreateStore";
 
 const schema = z.object({
   supplier: z.string().min(1, "Select a supplier"),
@@ -191,6 +192,7 @@ export function PoCreatePage() {
                 name="supplier"
                 render={({ field }) => (
                   <AsyncCombobox
+                    {...addable("supplier")}
                     label="Supplier *"
                     placeholder="Select supplier"
                     loadOptions={loadSuppliers}
@@ -248,7 +250,7 @@ export function PoCreatePage() {
                         control={control}
                         name={`items.${i}.rawMaterial`}
                         render={({ field }) => (
-                          <Combobox aria-label="Material"
+                          <Combobox {...addable("material")} aria-label="Material"
                             placeholder="Material"
                             options={materialOptions}
                             error={errors.items?.[i]?.rawMaterial?.message}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Check, Search } from "lucide-react";
+import { ChevronDown, Check, Plus, Search } from "lucide-react";
 import { cn } from "./cn";
 
 export interface ComboOption {
@@ -18,6 +18,13 @@ export interface ComboboxProps {
   className?: string;
   /** Accessible name when there's no visible `label` (e.g. a table row). */
   "aria-label"?: string;
+  /**
+   * Not in the list: a last row "+ Add “what was typed”" that calls this.
+   * Resolving with the new option picks it.
+   */
+  onCreate?: (typed: string) => Promise<ComboOption | null | void> | void;
+  /** What a new one is called: "+ Add a new customer". */
+  createLabel?: string;
 }
 
 // Searchable dropdown for large masters (customers, elastics, materials…):
@@ -33,6 +40,8 @@ export function Combobox({
   "aria-label": ariaLabel,
   disabled,
   className,
+  onCreate,
+  createLabel,
 }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -41,7 +50,9 @@ export function Combobox({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const selected = options.find((o) => o.value === value);
+  // A thing just added here is shown at once, before the list reloads with it.
+  const [added, setAdded] = useState<ComboOption[]>([]);
+  const selected = options.find((o) => o.value === value) ?? added.find((o) => o.value === value);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -74,6 +85,19 @@ export function Combobox({
     setQuery("");
   };
 
+  // The "+ Add" row sits after the matches, reachable by the arrows.
+  const createIdx = onCreate ? filtered.length : -1;
+  const create = async () => {
+    const typed = query.trim();
+    setOpen(false);
+    setQuery("");
+    const made = await onCreate?.(typed);
+    if (made && made.value) {
+      setAdded((a) => [...a.filter((o) => o.value !== made.value), made]);
+      onChange(made.value);
+    }
+  };
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
       e.preventDefault();
@@ -83,13 +107,14 @@ export function Combobox({
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActive((a) => Math.min(a + 1, filtered.length - 1));
+      setActive((a) => Math.min(a + 1, (onCreate ? filtered.length : filtered.length - 1)));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (filtered[active]) pick(filtered[active].value);
+      if (active === createIdx) void create();
+      else if (filtered[active]) pick(filtered[active].value);
     } else if (e.key === "Escape") {
       e.stopPropagation();
       setOpen(false);
@@ -157,6 +182,22 @@ export function Combobox({
               ))}
               {filtered.length === 0 && (
                 <li className="px-3 py-4 text-center text-sm text-ink-400">No matches</li>
+              )}
+              {onCreate && (
+                <li data-idx={createIdx} className="border-t border-ink-100">
+                  <button
+                    type="button"
+                    onClick={() => void create()}
+                    onMouseEnter={() => setActive(createIdx)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-sm text-left font-medium",
+                      active === createIdx ? "bg-brand-50 text-brand-600" : "text-brand-600"
+                    )}
+                  >
+                    <Plus className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate">{query.trim() ? `Add “${query.trim()}”${createLabel ? ` as a new ${createLabel}` : ""}` : `Add a new ${createLabel ?? "one"}`}</span>
+                  </button>
+                </li>
               )}
             </ul>
           </div>

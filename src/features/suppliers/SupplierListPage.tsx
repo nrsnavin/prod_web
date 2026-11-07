@@ -50,16 +50,19 @@ const schema = z.object({
   }).optional(),
 });
 
-function SupplierForm({
+export function SupplierForm({
   initial,
   submitting,
   onSubmit,
   onCancel,
+  defaultName,
 }: {
   initial?: Supplier;
   submitting: boolean;
   onSubmit: (v: SupplierFormValues) => void;
   onCancel: () => void;
+  /** A new one, started from a name typed in a picker. */
+  defaultName?: string;
 }) {
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [seedSimilar, setSeedSimilar] = useState<SimilarParty[]>([]);
@@ -72,7 +75,7 @@ function SupplierForm({
   } = useForm<SupplierFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: initial?.name ?? "",
+      name: initial?.name ?? defaultName ?? "",
       tallyName: initial?.tallyName ?? "",
       phoneNumber: initial?.phoneNumber ?? "",
       gstin: initial?.gstin ?? "",

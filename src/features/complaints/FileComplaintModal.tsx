@@ -12,6 +12,7 @@ import { customerService } from "@/features/customers/api";
 import { jobService } from "@/features/jobs/api";
 import { complaintService, type Intake } from "./api";
 import { COMPLAINT_CATEGORIES, type ComplaintCategory } from "./types";
+import { addable } from "@/features/common/quickCreateStore";
 
 // ══════════════════════════════════════════════════════════════════
 //  FILING WHAT A CUSTOMER SAID
@@ -93,6 +94,7 @@ export function FileComplaintModal({ onClose }: { onClose: () => void }) {
     <FormScreen open onClose={onClose} title="File a complaint" width="max-w-xl">
       <div className="space-y-4">
         <AsyncCombobox
+          {...addable("customer")}
           label="Customer"
           value={customer}
           onChange={(v) => { setCustomer(v); setJob(""); setRead(null); setElastic(""); }}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { quickCreate } from "@/features/common/quickCreateStore";
 import { AdviceReader } from "./AdviceReader";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Download, Plus, Trash2, XCircle } from "lucide-react";
@@ -181,8 +182,8 @@ export function ContraForm({ onDone, onCancel, initialFrom = "", initialTo = "" 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Select label="From account *" value={from} onChange={(e) => setFrom(e.target.value)} options={options} placeholder="Where the money left" />
-        <Select label="To account *" value={to} onChange={(e) => setTo(e.target.value)} options={options.filter((o) => o.value !== from)} placeholder="Where it went" />
+        <Select label="From account *" value={from} onChange={(e) => setFrom(e.target.value)} onCreate={() => void quickCreate("bankAccount").then((o) => o && setFrom(o.value))} createLabel="account" options={options} placeholder="Where the money left" />
+        <Select label="To account *" value={to} onChange={(e) => setTo(e.target.value)} onCreate={() => void quickCreate("bankAccount").then((o) => o && setTo(o.value))} createLabel="account" options={options.filter((o) => o.value !== from)} placeholder="Where it went" />
         <Input label="Amount *" type="number" step="0.01" min={0} value={amount} onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))} />
         <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <Input label="Reference (cheque / UTR)" value={reference} onChange={(e) => setReference(e.target.value)} />
@@ -378,7 +379,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs,
           <label className="flex items-center gap-2 self-end text-sm"><input type="checkbox" checked={other} onChange={(e) => { setOther(e.target.checked); setParty(""); }} /> Not a supplier on file</label>
         )}
         <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <Select label="Through account" value={chosenAccount} onChange={(e) => setAccount(e.target.value)} options={accountList.map((a) => ({ value: a._id, label: `${a.name} (₹${money(a.balance)})` }))} />
+        <Select label="Through account" value={chosenAccount} onChange={(e) => setAccount(e.target.value)} onCreate={() => void quickCreate("bankAccount").then((o) => o && setAccount(o.value))} createLabel="account" options={accountList.map((a) => ({ value: a._id, label: `${a.name} (₹${money(a.balance)})` }))} />
         <Select label="Mode" value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)} options={isCashBox ? [{ value: "cash", label: "Cash" }] : isCard ? [{ value: "card", label: "Card" }] : [{ value: "bank", label: "Bank transfer (NEFT / RTGS / IMPS)" }, { value: "upi", label: "UPI" }, { value: "cheque", label: "Cheque" }, { value: "card", label: "Card (POS / online)" }]} title={isCashBox ? undefined : "For cash, pick the cash box as the account"} />
         <Input label="Reference (UTR / cheque no.)" value={reference} onChange={(e) => setReference(e.target.value)} />
         {mode === "cheque" && (

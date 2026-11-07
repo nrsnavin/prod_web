@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { quickCreate } from "@/features/common/quickCreateStore";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -99,8 +100,8 @@ export function JournalForm({ onDone, onCancel }: { onDone: (id: string) => void
                     <PartyPicker partyType={l.partyType} value={l.party} onChange={(id, name) => set(i, { party: id, partyName: name, refs: {} })} />
                   </div>
                 )}
-                {l.kind === "bank" && <Select label="Account" value={l.account} onChange={(e) => set(i, { account: e.target.value })} options={(accounts ?? []).filter((a) => a.active !== false).map((a) => ({ value: a._id, label: a.name }))} placeholder="Pick the account" />}
-                {l.kind === "head" && <Select label="Head" value={l.category} onChange={(e) => set(i, { category: e.target.value })} options={(categories ?? []).map((c) => ({ value: c._id, label: c.name }))} placeholder="Pick the head" />}
+                {l.kind === "bank" && <Select label="Account" value={l.account} onChange={(e) => set(i, { account: e.target.value })} onCreate={() => void quickCreate("bankAccount").then((o) => o && set(i, { account: o.value }))} createLabel="account" options={(accounts ?? []).filter((a) => a.active !== false).map((a) => ({ value: a._id, label: a.name }))} placeholder="Pick the account" />}
+                {l.kind === "head" && <Select label="Head" value={l.category} onChange={(e) => set(i, { category: e.target.value })} onCreate={() => void quickCreate("expenseHead").then((o) => o && set(i, { category: o.value }))} createLabel="expense head" options={(categories ?? []).map((c) => ({ value: c._id, label: c.name }))} placeholder="Pick the head" />}
                 {l.kind === "ledger" && <Input label="Ledger, as named in Tally" value={l.ledger} onChange={(e) => set(i, { ledger: e.target.value })} placeholder="e.g. Depreciation, Salaries Payable, Bad Debts Written Off" />}
               </div>
               <Input label="Debit" type="number" step="0.01" min={0} value={l.debit} onChange={(e) => set(i, { debit: e.target.value === "" ? "" : Number(e.target.value), credit: "" })} />

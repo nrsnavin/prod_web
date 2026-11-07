@@ -13,6 +13,7 @@ import {
   formToTemplate,
   templateToForm,
 } from "./WarpingTemplateEditor";
+import { addable } from "@/features/common/quickCreateStore";
 
 const materialWeight = z.object({
   id: z.string().min(1, "Select material"),
@@ -73,11 +74,14 @@ export function ElasticForm({
   submitting,
   onSubmit,
   onCancel,
+  defaultName,
 }: {
   initial?: Elastic;
   submitting: boolean;
   onSubmit: (v: ElasticFormValues) => void;
   onCancel: () => void;
+  /** A new one, started from a name typed in a picker. */
+  defaultName?: string;
 }) {
   const materials = useMaterialsByCategory();
 
@@ -89,7 +93,7 @@ export function ElasticForm({
   } = useForm<ElasticFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: initial?.name ?? "",
+      name: initial?.name ?? defaultName ?? "",
       weaveType: initial?.weaveType ?? "",
       warpSpandex: { id: refId(initial?.warpSpandex), weight: initial?.warpSpandex?.weight ?? 0 },
       spandexCovering: {
@@ -144,6 +148,7 @@ export function ElasticForm({
       <div className="grid grid-cols-[1fr_110px] gap-2">
         <Controller control={control} name="warpSpandex.id" render={({ field }) => (
           <Combobox
+            {...addable("material")}
             label="Warp spandex *"
             placeholder="Select rubber/spandex"
             options={toOptions(m?.rubber)}
@@ -158,6 +163,7 @@ export function ElasticForm({
       <div className="grid grid-cols-[1fr_110px] gap-2">
         <Controller control={control} name="spandexCovering.id" render={({ field }) => (
           <Combobox
+            {...addable("material")}
             label="Spandex covering *"
             placeholder="Select covering"
             options={toOptions(m?.covering)}
@@ -172,6 +178,7 @@ export function ElasticForm({
       <div className="grid grid-cols-[1fr_110px] gap-2">
         <Controller control={control} name="weftYarn.id" render={({ field }) => (
           <Combobox
+            {...addable("material")}
             label="Weft yarn *"
             placeholder="Select weft"
             options={toOptions(m?.weft)}
@@ -189,7 +196,7 @@ export function ElasticForm({
           {fields.map((field, i) => (
             <div key={field.id} className="grid grid-cols-[1fr_110px_36px] gap-2 items-start">
               <Controller control={control} name={`warpYarn.${i}.id`} render={({ field }) => (
-                <Combobox aria-label="Select warp yarn"
+                <Combobox {...addable("material")} aria-label="Select warp yarn"
                   placeholder="Select warp yarn"
                   options={toOptions(m?.warp)}
                   error={errors.warpYarn?.[i]?.id?.message}
