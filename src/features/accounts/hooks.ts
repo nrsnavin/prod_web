@@ -7,6 +7,8 @@ export const ACCOUNTS_KEY = "accounts";
 
 export const useOverview = () => useQuery({ queryKey: [ACCOUNTS_KEY, "overview"], queryFn: accountsService.overview });
 export const useBankAccounts = () => useQuery({ queryKey: [ACCOUNTS_KEY, "bank-accounts"], queryFn: accountsService.bankAccounts, staleTime: 60_000 });
+export const useBanking = () => useQuery({ queryKey: [ACCOUNTS_KEY, "banking"], queryFn: accountsService.banking });
+export const useDeposits = (q: { account?: string; page?: number } = {}) => useQuery({ queryKey: [ACCOUNTS_KEY, "deposits", q], queryFn: () => accountsService.deposits(q) });
 export const useCategories = () => useQuery({ queryKey: [ACCOUNTS_KEY, "categories"], queryFn: accountsService.categories, staleTime: 60_000 });
 
 export const useBills = (q: Record<string, unknown>) => useQuery({ queryKey: [ACCOUNTS_KEY, "bills", q], queryFn: () => accountsService.bills(q), placeholderData: (p) => p });
@@ -66,6 +68,7 @@ export function useAccountsMutations() {
     createPayment: useMutation({ mutationFn: (b: PaymentCreateBody) => accountsService.createPayment(once(b)), onSuccess: done }),
     cancelPayment: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelPayment(id, reason), onSuccess: invalidate }),
     applyCredit: useMutation({ mutationFn: accountsService.applyCredit, onSuccess: invalidate }),
+    createDeposit: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createDeposit>[0]) => accountsService.createDeposit(once(b)), onSuccess: done }),
     createContra: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createContra>[0]) => accountsService.createContra(once(b)), onSuccess: done }),
     createJournal: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createJournal>[0]) => accountsService.createJournal(once(b)), onSuccess: done }),
     cancelJournal: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelJournal(id, reason), onSuccess: done }),

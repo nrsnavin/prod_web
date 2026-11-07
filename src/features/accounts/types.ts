@@ -2,7 +2,7 @@
 
 import type { InvoiceTotals, SupplyType } from "@/features/invoices/types";
 
-export type AccountKind = "bank" | "cash" | "upi";
+export type AccountKind = "bank" | "cash" | "upi" | "card";
 export interface BankAccount {
   _id: string;
   name: string;
@@ -270,7 +270,7 @@ export interface NoteCreateBody {
 export interface InterestMarker { invoice: string; docNo?: string; from: string; to: string; days: number; rate: number; amount: number }
 
 export type VoucherKind = "receipt" | "payment";
-export type PaymentMode = "cash" | "bank" | "upi" | "cheque";
+export type PaymentMode = "cash" | "bank" | "upi" | "cheque" | "card";
 export type SettleDocType = "Invoice" | "SupplierBill" | "Expense" | "OpeningBalance";
 export interface Allocation {
   docType: SettleDocType;
@@ -1063,4 +1063,45 @@ export interface OpeningOnboarding {
   suppliers?: { total: number; left: number };
   left?: OpeningOnboardingParty[];
   more?: number;
+}
+
+/** GET /accounts/banking: every account at a glance, and the cheques waiting to go to the bank. */
+export interface BankingAccount extends BankAccount {
+  balance: number;
+  chequesInHand: { count: number; amount: number };
+  chequesIssued: { count: number; amount: number };
+  /** Vouchers the bank has not shown on a statement yet. */
+  notOnStatement: number;
+  lastStatement: string | null;
+}
+export interface ChequeInHand {
+  _id: string;
+  voucherNo: string;
+  receivedOn: string;
+  amount: number;
+  partyName: string;
+  account: string;
+  accountName: string;
+  chequeNo: string;
+  bank: string;
+  chequeDate: string;
+  /** Its date has come: the bank will take it. */
+  due: boolean;
+}
+export interface Banking {
+  accounts: BankingAccount[];
+  totals: { bank: number; cash: number; card: number; chequesInHand: number };
+  inHand: ChequeInHand[];
+}
+export interface DepositSlip {
+  _id: string;
+  slipNo: string;
+  date: string;
+  account: string;
+  accountName: string;
+  bankSlipNo?: string;
+  cheques: Array<{ payment: string; voucherNo: string; chequeNo: string; bank: string; chequeDate?: string; partyName: string; amount: number }>;
+  cash: number;
+  contraNo?: string;
+  total: number;
 }

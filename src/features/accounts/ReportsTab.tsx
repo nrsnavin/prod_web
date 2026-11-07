@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -32,9 +32,11 @@ function RateTable({ title, rows, inter }: { title: string; rows: GstRateRow[]; 
 }
 
 export function ReportsTab() {
-  const [report, setReport] = useState<Report>("gst");
+  // Opened from an account's card: its cash / bank book.
+  const [params] = useSearchParams();
+  const [report, setReport] = useState<Report>(params.get("report") === "cashbook" ? "cashbook" : "gst");
   const [range, setRange] = useState(defaultPeriod);
-  const [account, setAccount] = useState("");
+  const [account, setAccount] = useState(params.get("account") ?? "");
   const [day, setDay] = useState(today());
   const { data: accounts } = useBankAccounts();
   const acct = account || accounts?.[0]?._id || "";

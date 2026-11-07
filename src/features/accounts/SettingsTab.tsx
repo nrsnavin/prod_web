@@ -16,7 +16,7 @@ import { BooksSettings } from "./BooksSettings";
 import { AiAccuracy } from "./AiAccuracy";
 import type { AccountKind, BankAccount, ExpenseCategory } from "./types";
 
-function AccountDialog({ initial, onClose }: { initial: Partial<BankAccount> | null; onClose: () => void }) {
+export function AccountDialog({ initial, onClose }: { initial: Partial<BankAccount> | null; onClose: () => void }) {
   const { toast } = useToast();
   const { saveBankAccount } = useAccountsMutations();
   const [form, setForm] = useState<Partial<BankAccount>>({ kind: "bank", name: "", bankName: "", accountNo: "", ifsc: "", upiId: "", openingBalance: 0, openingDate: "", float: 0, active: true, isDefault: false, ...initial });
@@ -26,7 +26,7 @@ function AccountDialog({ initial, onClose }: { initial: Partial<BankAccount> | n
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <Input label="Name *" value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Kotak current a/c" />
-          <Select label="Kind" value={form.kind ?? "bank"} onChange={(e) => set("kind", e.target.value as AccountKind)} options={[{ value: "bank", label: "Bank" }, { value: "cash", label: "Cash box" }, { value: "upi", label: "UPI wallet" }]} />
+          <Select label="Kind" value={form.kind ?? "bank"} onChange={(e) => set("kind", e.target.value as AccountKind)} options={[{ value: "bank", label: "Bank" }, { value: "cash", label: "Cash box" }, { value: "upi", label: "UPI wallet" }, { value: "card", label: "Credit card" }]} />
         </div>
         {form.kind === "bank" && (
           <div className="grid grid-cols-3 gap-3">
@@ -37,9 +37,15 @@ function AccountDialog({ initial, onClose }: { initial: Partial<BankAccount> | n
         )}
         {form.kind === "bank" && <Input label="Statements come from" type="email" value={form.statementFrom ?? ""} onChange={(e) => set("statementFrom", e.target.value)} placeholder="e.g. statements@kotak.com" hint="The address the bank emails this account's statement from. Only needed when the mail does not show the account number." />}
         {form.kind === "upi" && <Input label="UPI ID" value={form.upiId ?? ""} onChange={(e) => set("upiId", e.target.value)} />}
+        {form.kind === "card" && (
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Issuer" value={form.bankName ?? ""} onChange={(e) => set("bankName", e.target.value)} placeholder="e.g. HDFC" />
+            <Input label="Last 4 digits" value={form.accountNo ?? ""} onChange={(e) => set("accountNo", e.target.value.replace(/\D/g, "").slice(-4))} inputMode="numeric" />
+          </div>
+        )}
         <Input label="Tally ledger" value={form.tallyLedger ?? ""} onChange={(e) => set("tallyLedger", e.target.value)} placeholder={form.kind === "cash" ? "Cash" : "e.g. Kotak Bank CA"} hint="The ledger name in Tally; blank uses the account's name" />
         <div className="grid grid-cols-3 gap-3">
-          <Input label="Opening balance" type="number" step="0.01" value={form.openingBalance ?? 0} onChange={(e) => set("openingBalance", Number(e.target.value))} />
+          <Input label={form.kind === "card" ? "Owed on it at the start" : "Opening balance"} type="number" step="0.01" value={form.kind === "card" ? Math.abs(form.openingBalance ?? 0) : form.openingBalance ?? 0} onChange={(e) => set("openingBalance", form.kind === "card" ? -Math.abs(Number(e.target.value)) : Number(e.target.value))} hint={form.kind === "card" ? "What was spent and not yet paid off" : undefined} />
           <Input label="As on" type="date" value={form.openingDate ? String(form.openingDate).slice(0, 10) : ""} onChange={(e) => set("openingDate", e.target.value || null)} />
           {form.kind === "cash" && <Input label="Float" type="number" step="1" value={form.float ?? 0} onChange={(e) => set("float", Number(e.target.value))} />}
         </div>

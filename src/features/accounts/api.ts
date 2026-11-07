@@ -3,7 +3,7 @@ import type {
   CollectionEntry, ScanResult, StatementPostRow, StatementResult, BankAlias,
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
-  AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow, OpeningOnboarding,
+  AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow, OpeningOnboarding, Banking, DepositSlip,
   Reconciliation, StoredStatement, StoredStatementFull, BankFeedStatus, BankFeedRun, TallyBatch, TallyPreview, TallyConnectorStatus, TallyReconcile, BooksHealth,
   AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense, GroupSummary,
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
@@ -23,6 +23,12 @@ export const accountsService = {
   bankAccounts: async () => (await httpClient.get<{ success: boolean; accounts: BankAccount[] }>("/accounts/bank-accounts")).accounts,
   createBankAccount: async (body: Partial<BankAccount>) => (await httpClient.post<{ success: boolean; account: BankAccount }>("/accounts/bank-accounts", body)).account,
   updateBankAccount: async (id: string, body: Partial<BankAccount>) => (await httpClient.put<{ success: boolean; account: BankAccount }>(`/accounts/bank-accounts/${id}`, body)).account,
+  // Banking: every account at a glance; deposits of cheques and cash.
+  banking: async () => (await httpClient.get<{ success: boolean } & Banking>("/accounts/banking")) as Banking,
+  deposits: async (q: { account?: string; page?: number } = {}) => httpClient.get<{ success: boolean; slips: DepositSlip[]; total: number; pages: number }>("/accounts/deposits", clean(q)),
+  createDeposit: async (body: { account: string; date: string; cheques: string[]; cash?: number; cashFrom?: string; bankSlipNo?: string; requestId?: string }) =>
+    (await httpClient.post<{ success: boolean; slip: DepositSlip }>("/accounts/deposits", body)).slip,
+  depositPdfUrl: (id: string) => `/api/v2/accounts/deposits/${id}/pdf`,
   categories: async () => (await httpClient.get<{ success: boolean; categories: ExpenseCategory[] }>("/accounts/categories")).categories,
   createCategory: async (body: Partial<ExpenseCategory>) => (await httpClient.post<{ success: boolean; category: ExpenseCategory }>("/accounts/categories", body)).category,
   updateCategory: async (id: string, body: Partial<ExpenseCategory>) => (await httpClient.put<{ success: boolean; category: ExpenseCategory }>(`/accounts/categories/${id}`, body)).category,

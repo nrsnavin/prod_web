@@ -72,13 +72,13 @@ export function VouchersTab() {
         </Card>
       )}
       <FormScreen open={!!creating} onClose={() => setParams({})} title={creating === "receipt" ? "Record a receipt" : "Record a payment"} width="max-w-4xl">
-        {creating && <VoucherForm kind={creating} onDone={(id) => { setParams({}); navigate(`/accounts/payments/${id}`); }} onCancel={() => setParams({})} />}
+        {creating && <VoucherForm kind={creating} initialAccount={params.get("account") ?? undefined} onDone={(id) => { setParams({}); navigate(`/accounts/payments/${id}`); }} onCancel={() => setParams({})} />}
       </FormScreen>
       <FormScreen open={newParam === "journal"} onClose={() => setParams({})} title="Post a journal" width="max-w-4xl">
         {newParam === "journal" && <JournalForm onDone={(id) => { setParams({ journal: id }); setKind("journal"); }} onCancel={() => setParams({})} />}
       </FormScreen>
       <FormScreen open={newParam === "contra"} onClose={() => setParams({})} title="Move money between accounts" width="max-w-2xl">
-        {newParam === "contra" && <ContraForm onDone={() => { setParams({}); setKind("contra"); }} onCancel={() => setParams({})} />}
+        {newParam === "contra" && <ContraForm initialFrom={params.get("from") ?? ""} initialTo={params.get("to") ?? ""} onDone={() => { setParams({}); setKind("contra"); }} onCancel={() => setParams({})} />}
       </FormScreen>
     </>
   );
@@ -165,13 +165,13 @@ function JournalsList({ open, onOpen }: { open: string | null; onOpen: (id: stri
 }
 
 /** Cash drawn, cash deposited, a transfer between two banks. */
-export function ContraForm({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+export function ContraForm({ onDone, onCancel, initialFrom = "", initialTo = "" }: { onDone: () => void; onCancel: () => void; initialFrom?: string; initialTo?: string }) {
   const { toast } = useToast();
   const { createContra } = useAccountsMutations();
   const { data: accounts } = useBankAccounts();
   const list = (accounts ?? []).filter((a) => a.active !== false);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(initialFrom);
+  const [to, setTo] = useState(initialTo);
   const [amount, setAmount] = useState<number | "">("");
   const [date, setDate] = useState(today());
   const [reference, setReference] = useState("");
@@ -210,8 +210,10 @@ const tdsShare = (d: OpenDoc) => (d.docType === "OpeningBalance" ? 1 : d.taxable
  * payment can be settled in full with an adjustment (bank charges,
  * discount, TDS the customer kept, round-off, write-off).
  */
-export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs }: {
+export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs, initialAccount }: {
   kind: VoucherKind; onDone: (id: string) => void; onCancel: () => void;
+  /** The account to record it against (opened from that account's card). */
+  initialAccount?: string;
   initialParty?: { id: string; name: string };
   /** Documents to tick when they load (record a payment from the document itself), or "all" of them. */
   initialDocs?: string[] | "all";
@@ -227,7 +229,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   const [picked, setPicked] = useState<Record<string, number | "">>({});
   const [date, setDate] = useState(today());
   const [pickedMode, setMode] = useState<PaymentMode>("bank");
-  const [account, setAccount] = useState("");
+  const [account, setAccount] = useState(initialAccount ?? "");
   const [reference, setReference] = useState("");
   const [chequeBank, setChequeBank] = useState("");
   const [chequeDate, setChequeDate] = useState("");
@@ -297,8 +299,11 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   const accountList = (accounts ?? []).filter((a) => a.active !== false);
   const chosenAccount = account || accountList.find((a) => a.isDefault)?._id || accountList[0]?._id || "";
   // Cash goes through the cash box and only cash does: the account decides it.
-  const isCashBox = accountList.find((a) => a._id === chosenAccount)?.kind === "cash";
-  const mode: PaymentMode = isCashBox ? "cash" : pickedMode === "cash" ? "bank" : pickedMode;
+  const chosenKind = accountList.find((a) => a._id === chosenAccount)?.kind;
+  const isCashBox = chosenKind === "cash";
+  // A credit card account: paid by card, nothing else.
+  const isCard = chosenKind === "card";
+  const mode: PaymentMode = isCashBox ? "cash" : isCard ? "card" : pickedMode === "cash" ? "bank" : pickedMode;
   const problems = [
     ...allocs.filter((a) => a.over).map((a) => `${a.doc.docNo} has only ₹${money(a.doc.outstanding)} outstanding`),
     ...(cash + 0.005 < cashNeeded ? [`The ticked documents need ₹${money(cashNeeded)}; the voucher is for ₹${money(cash)}`] : []),
@@ -374,7 +379,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
         )}
         <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <Select label="Through account" value={chosenAccount} onChange={(e) => setAccount(e.target.value)} options={accountList.map((a) => ({ value: a._id, label: `${a.name} (₹${money(a.balance)})` }))} />
-        <Select label="Mode" value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)} options={isCashBox ? [{ value: "cash", label: "Cash" }] : [{ value: "bank", label: "Bank transfer (NEFT / RTGS / IMPS)" }, { value: "upi", label: "UPI" }, { value: "cheque", label: "Cheque" }]} title={isCashBox ? undefined : "For cash, pick the cash box as the account"} />
+        <Select label="Mode" value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)} options={isCashBox ? [{ value: "cash", label: "Cash" }] : isCard ? [{ value: "card", label: "Card" }] : [{ value: "bank", label: "Bank transfer (NEFT / RTGS / IMPS)" }, { value: "upi", label: "UPI" }, { value: "cheque", label: "Cheque" }, { value: "card", label: "Card (POS / online)" }]} title={isCashBox ? undefined : "For cash, pick the cash box as the account"} />
         <Input label="Reference (UTR / cheque no.)" value={reference} onChange={(e) => setReference(e.target.value)} />
         {mode === "cheque" && (
           <div className="grid grid-cols-2 gap-2">

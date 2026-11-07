@@ -16,7 +16,7 @@ export interface ActionMenuItem {
   hint?: string;
 }
 
-export function ActionMenu({ label, icon, items }: { label: string; icon?: ReactNode; items: ActionMenuItem[] }) {
+export function ActionMenu({ label, icon, items, align = "left", variant = "secondary" }: { label: string; icon?: ReactNode; items: ActionMenuItem[]; align?: "left" | "right"; variant?: "primary" | "secondary" }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -35,7 +35,7 @@ export function ActionMenu({ label, icon, items }: { label: string; icon?: React
     <div ref={root} className="relative">
       <Button
         size="sm"
-        variant="secondary"
+        variant={variant}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={id}
@@ -44,7 +44,7 @@ export function ActionMenu({ label, icon, items }: { label: string; icon?: React
         {icon} {label} <ChevronDown className="h-3.5 w-3.5" />
       </Button>
       {open && (
-        <div id={id} role="menu" className="absolute left-0 z-30 mt-1 min-w-52 rounded-lg border border-ink-200 bg-surface py-1 shadow-card-hover">
+        <div id={id} role="menu" className={cn("absolute z-30 mt-1 min-w-52", align === "right" ? "right-0" : "left-0", " rounded-lg border border-ink-200 bg-surface py-1 shadow-card-hover")}>
           {items.map((it) => (
             <button
               key={it.label}

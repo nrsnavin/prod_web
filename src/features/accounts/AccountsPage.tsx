@@ -3,7 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   Inbox, ArrowDownLeft, ArrowUpRight, BookOpen, Settings2,
   FileText, Wallet, ArrowLeftRight, FileMinus, BarChart3, Landmark, BellRing, History, Send, LineChart, ListChecks, Repeat, LayoutDashboard, ShieldCheck, Scale, Library,
+  Plus, FilePlus, Undo2, PiggyBank, BookPlus,
 } from "lucide-react";
+import { ActionMenu } from "@/components/ui/ActionMenu";
+import { BankingTab } from "./BankingTab";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/components/ui/cn";
 import { InboxTab } from "./InboxTab";
@@ -27,7 +30,7 @@ import { StatutoryTab } from "./StatutoryTab";
 import { RegistersTab } from "./RegistersTab";
 
 export type AccountsTab =
-  | "inbox" | "overview" | "collections" | "vouchers" | "notes" | "bills" | "expenses" | "recurring"
+  | "inbox" | "banking" | "overview" | "collections" | "vouchers" | "notes" | "bills" | "expenses" | "recurring"
   | "bank" | "statements" | "reports" | "statutory" | "registers" | "forecast" | "close" | "opening" | "tally" | "checks" | "settings";
 
 type Door = "inbox" | "in" | "out" | "books" | "settings";
@@ -48,8 +51,9 @@ const DOORS: Array<{ id: Door; label: string; short?: string; icon: typeof FileT
     { id: "recurring", label: "Recurring", icon: Repeat },
   ] },
   { id: "books", label: "Books", icon: BookOpen, tabs: [
+    { id: "banking", label: "Banking", icon: Landmark },
     { id: "overview", label: "Overview", icon: LayoutDashboard },
-    { id: "bank", label: "Bank", icon: Landmark },
+    { id: "bank", label: "Bank statements", icon: Library },
     { id: "statements", label: "Statements", icon: BookOpen },
     { id: "reports", label: "Reports", icon: BarChart3 },
     { id: "statutory", label: "Statutory", icon: Scale },
@@ -83,7 +87,7 @@ export function AccountsPage() {
 
   return (
     <>
-      <PageHeader title="Accounts" subtitle="Bills, expenses, receipts and payments, ledgers — Tally stays the book of record." />
+      <PageHeader title="Accounts" subtitle="Bills, expenses, receipts and payments, ledgers — Tally stays the book of record." actions={<NewMenu />} />
       {/* Five doors fit a phone's width: icon over label there, side by side above. */}
       <nav aria-label="Accounts" className="mb-2 grid grid-cols-5 gap-1 sm:flex">
         {DOORS.map((d) => (
@@ -106,6 +110,7 @@ export function AccountsPage() {
         </div>
       ) : <div className="mb-5 border-b border-ink-100" />}
       {tab === "inbox" && <InboxTab />}
+      {tab === "banking" && <BankingTab />}
       {tab === "overview" && <OverviewTab />}
       {tab === "collections" && <CollectionsTab />}
       {tab === "vouchers" && <VouchersTab />}
@@ -125,5 +130,30 @@ export function AccountsPage() {
       {tab === "checks" && <ChecksTab />}
       {tab === "settings" && <SettingsTab />}
     </>
+  );
+}
+
+/**
+ * Every voucher from one place, on every accounts screen: what comes in,
+ * what goes out, and the adjustments — so no one has to remember which
+ * tab a credit note or a transfer lives on.
+ */
+export function NewMenu() {
+  const navigate = useNavigate();
+  const go = (to: string) => () => navigate(to);
+  return (
+    <ActionMenu label="New" icon={<Plus className="h-4 w-4" />} align="right" variant="primary" items={[
+      { label: "Receipt", icon: <ArrowDownLeft className="h-4 w-4" />, hint: "Money in from a customer, or anyone", onSelect: go("/accounts/vouchers?new=receipt") },
+      { label: "Payment", icon: <ArrowUpRight className="h-4 w-4" />, hint: "Money out to a supplier, or for an expense", onSelect: go("/accounts/vouchers?new=payment") },
+      { label: "Deposit cheques / cash", icon: <PiggyBank className="h-4 w-4" />, hint: "Cheques in hand and cash into the bank", onSelect: go("/accounts/banking") },
+      { label: "Transfer between accounts", icon: <ArrowLeftRight className="h-4 w-4" />, hint: "Bank to cash, a card bill, bank to bank", onSelect: go("/accounts/vouchers?new=contra") },
+      { label: "Supplier bill", icon: <FileText className="h-4 w-4" />, onSelect: go("/accounts/bills?new=bill") },
+      { label: "Expense", icon: <Wallet className="h-4 w-4" />, onSelect: go("/accounts/expenses?new=expense") },
+      { label: "Credit note", icon: <FileMinus className="h-4 w-4" />, hint: "Lower what a customer owes", onSelect: go("/accounts/notes?new=credit") },
+      { label: "Debit note to supplier", icon: <FilePlus className="h-4 w-4" />, hint: "Lower what we owe them", onSelect: go("/accounts/notes?new=debit") },
+      { label: "Debit note to customer", icon: <FilePlus className="h-4 w-4" />, hint: "Charge them more: freight, interest", onSelect: go("/accounts/notes?new=debit-customer") },
+      { label: "Refund", icon: <Undo2 className="h-4 w-4" />, hint: "Pick the party, then Refund on their credit", onSelect: go("/accounts/statements") },
+      { label: "Journal", icon: <BookPlus className="h-4 w-4" />, onSelect: go("/accounts/vouchers?new=journal") },
+    ]} />
   );
 }
