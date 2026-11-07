@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown, Pencil, ScanLine, FileBadge } from "lucide-react";
+import { ArrowLeft, Printer, Truck, PackageCheck, XCircle, FileDown, Pencil, ScanLine, FileBadge, Camera } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { EwaybillDialog } from "@/features/invoices/EwaybillDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -18,6 +18,7 @@ import { DcStatus } from "./types";
 import { dcStatusTone } from "./DcListPage";
 import { DcEditModal } from "./DcEditModal";
 import { LorryReceiptDialog } from "./LorryReceiptDialog";
+import { ProofOfDeliveryDialog } from "./ProofOfDeliveryDialog";
 import { CompanyLetterhead, CompanyDocumentFooter } from "@/components/documents/CompanyLetterhead";
 import { formatDate } from "@/core/format/date";
 
@@ -30,6 +31,7 @@ export function DcDetailPage() {
   const [downloading, setDownloading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [lrOpen, setLrOpen] = useState(false);
+  const [podOpen, setPodOpen] = useState(false);
   const [ewbOpen, setEwbOpen] = useState(false);
   const qc = useQueryClient();
   const pasteEwb = useMutation({ mutationFn: (body: Parameters<typeof dcService.pasteEwaybill>[1]) => dcService.pasteEwaybill(id!, body), onSuccess: () => qc.invalidateQueries({ queryKey: ["dcs"] }) });
@@ -133,6 +135,11 @@ export function DcDetailPage() {
                   <Truck className="h-4 w-4" /> Dispatch
                 </Button>
               )}
+              {(dc.status === "dispatched" || (dc.status === "delivered" && !dc.pod)) && (
+                <Button variant="secondary" onClick={() => setPodOpen(true)}>
+                  <Camera className="h-4 w-4" /> {dc.status === "delivered" ? "Add proof of delivery" : "Record delivery"}
+                </Button>
+              )}
               {dc.status === "dispatched" && (
                 <Button loading={updateStatus.isPending} onClick={() => setPending({
                   status: "delivered", msg: "DC delivered", label: "Mark delivered",
@@ -160,6 +167,14 @@ export function DcDetailPage() {
         />
         <div className="mb-4 flex flex-wrap gap-2">
           <StatusChip tone={dcStatusTone[dc.status]}>{dc.status}</StatusChip>
+          {dc.pod?.deliveredOn && (
+            <button type="button" onClick={() => setPodOpen(true)} className="rounded-full focus-visible:outline focus-visible:outline-2">
+              <StatusChip tone={dc.pod.issue ? "warning" : "success"}>
+                Delivered {formatDate(dc.pod.deliveredOn)}{dc.pod.receivedBy ? ` · ${dc.pod.receivedBy}` : ""}{dc.pod.issue ? ` · ${dc.pod.remark || dc.pod.issue}` : ""}
+              </StatusChip>
+            </button>
+          )}
+          {dc.pod?.complaint && <StatusChip tone="warning">Complaint opened</StatusChip>}
           {dc.ewaybill?.status === "generated" && <StatusChip tone="success">E-way bill {dc.ewaybill.number}</StatusChip>}
           {dc.status !== "cancelled" && dc.ewaybill?.status !== "generated" && (dc.totalAmount ?? 0) > 50000 && <StatusChip tone="warning">E-way bill needed (over ₹50,000)</StatusChip>}
         </div>
@@ -303,6 +318,7 @@ export function DcDetailPage() {
       {/* Keyed on the challan's own figures so reopening after a save
           starts from what was stored, not the state it was left in. */}
       {lrOpen && <LorryReceiptDialog dc={dc} onClose={() => setLrOpen(false)} />}
+      {podOpen && <ProofOfDeliveryDialog dc={dc} onClose={() => setPodOpen(false)} />}
       {ewbOpen && (
         <EwaybillDialog docNo={dc.dcNumber} mode="paste" defaultVehicle={dc.vehicleNo ?? ""} loading={pasteEwb.isPending} onClose={() => setEwbOpen(false)}
           onConfirm={(body) => pasteEwb.mutate({ number: body.number ?? "", vehicleNo: body.vehicleNo, transporterId: body.transporterId, transporterName: body.transporterName, validUpto: body.validUpto, distanceKm: body.distanceKm }, {

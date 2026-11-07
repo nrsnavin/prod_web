@@ -36,6 +36,8 @@ export interface DeliveryChallan {
   totalQuantity?: number;
   totalAmount?: number;
   remarks?: string;
+  /** When it was delivered, who took it, and what they wrote on the copy. */
+  pod?: DcPod | null;
   createdAt?: string;
   /** Set when it was sent with more than was in stock, and why. */
   stockShortfall?: {
@@ -43,6 +45,16 @@ export interface DeliveryChallan {
     lines: DcShortLine[];
     at?: string;
   } | null;
+}
+
+export interface DcPod {
+  deliveredOn?: string;
+  receivedBy?: string;
+  remark?: string;
+  issue?: "" | "short" | "damaged" | "wrong";
+  stamped?: boolean;
+  source?: "photo" | "typed";
+  complaint?: string;
 }
 
 /** One line of a challan that ships more than is on the shelf. */
