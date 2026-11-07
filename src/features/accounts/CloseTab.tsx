@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
 import { money } from "./shared";
+import { MonthReview } from "./MonthReview";
 
 const lastMonth = () => { const d = new Date(); const p = new Date(d.getFullYear(), d.getMonth() - 1, 1); return `${p.getFullYear()}-${String(p.getMonth() + 1).padStart(2, "0")}`; };
 
@@ -21,6 +22,7 @@ export function CloseTab() {
         <Input label="Month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         {data && <p className="pb-2 text-sm text-ink-500"><span className="font-semibold text-ink-900">{data.done} of {data.total}</span> done</p>}
       </div>
+      <MonthReview month={month} />
       {isLoading || !data ? <Skeleton className="h-64 w-full" /> : (
         <Card>
           <ul className="divide-y divide-ink-100" aria-label="Month-end checklist">
