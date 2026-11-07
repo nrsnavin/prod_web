@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, TriangleAlert, ClipboardList, TrendingDown, IndianRupee, Layers } from "lucide-react";
+import { Plus, TriangleAlert, ClipboardList, TrendingDown, IndianRupee, Layers, Mic } from "lucide-react";
+import { StoresVoiceDialog } from "./StoresVoice";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -135,6 +136,7 @@ export function MaterialListPage() {
   const groups = useMaterialGroups();
   const categories = useMaterialCategories();
   const [stockTakeOpen, setStockTakeOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [priceUpdateOpen, setPriceUpdateOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -196,6 +198,9 @@ export function MaterialListPage() {
             </Button>
             <Button variant="secondary" onClick={() => navigate("/materials/forecast")}>
               <TrendingDown className="h-4 w-4" /> Reorder forecast
+            </Button>
+            <Button variant="secondary" onClick={() => setVoiceOpen(true)}>
+              <Mic className="h-4 w-4" /> Say what moved
             </Button>
             <Button variant="secondary" onClick={() => setStockTakeOpen(true)}>
               <ClipboardList className="h-4 w-4" /> Stock take
@@ -272,6 +277,7 @@ export function MaterialListPage() {
       {isError && <ErrorBanner message={(error as Error).message} />}
 
       <div className="mb-4"><DuplicateMaterials /></div>
+      {voiceOpen && <StoresVoiceDialog onClose={() => setVoiceOpen(false)} />}
 
       {picked.size > 0 && (
         <MaterialBulkActions selected={selectedRows} onClear={() => setPicked(new Map())} />
