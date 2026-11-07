@@ -515,6 +515,8 @@ export interface ScanResult {
   supplier: { _id: string; name: string; gstin?: string; matchedBy: "gstin" | "name" } | null;
   alreadyEntered: string | null;
   purchaseOrders: Array<{ _id: string; poNo: number; date?: string; status: string; receipts: number; unbilledReceipts: number }>;
+  /** Saved bills or expenses that already carry this very photo (sent again, forwarded, resized). */
+  samePhoto?: Array<{ docType: "SupplierBill" | "Expense"; docId: string; docNo: string; partyName: string; amount: number | null; date: string | null; exact: boolean }>;
   aiSuggestion: string | null;
 }
 

@@ -51,12 +51,16 @@ export function ScanBillDialog({ onClose, onUse }: { onClose: () => void; onUse:
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [differentBill, setDifferentBill] = useState(false);
+  const samePhoto = result?.samePhoto ?? [];
+  const photoHeld = samePhoto.length > 0 && !differentBill;
 
   const scan = async (files: FileList | null) => {
     const list = files ? Array.from(files).slice(0, 4) : [];
     if (!list.length) return;
     setBusy(true);
     try {
+      setDifferentBill(false);
       setResult(await accountsService.scan(list));
     } catch (e) {
       toast(e instanceof Error ? e.message : "Could not read the bill", "error");
@@ -97,6 +101,12 @@ export function ScanBillDialog({ onClose, onUse }: { onClose: () => void; onUse:
                 <span className="text-ink-500">No supplier on file matches “{read.supplierName || "?"}”{read.supplierGstin ? ` (${read.supplierGstin})` : ""} — pick one on the form or add the supplier first.</span>
               )}
             </div>
+            {samePhoto.length > 0 && (
+              <div role="alert" className="space-y-1 rounded-lg bg-status-dangerBg px-3 py-2 text-sm text-status-danger">
+                <p className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> This photo is already on {samePhoto.map((d) => `${d.docType === "SupplierBill" ? "bill" : "expense"} ${d.docNo} (${d.partyName}${d.amount != null ? `, ₹${money(d.amount)}` : ""})`).join(" and ")}.</p>
+                <label className="flex items-center gap-2 text-ink-700"><input type="checkbox" checked={differentBill} onChange={(e) => setDifferentBill(e.target.checked)} /> It is a different bill — enter it anyway</label>
+              </div>
+            )}
             {result?.alreadyEntered && (
               <div role="alert" className="flex items-center gap-2 rounded-lg bg-status-dangerBg px-3 py-2 text-sm text-status-danger"><AlertTriangle className="h-4 w-4" /> Bill {read.billNo} from this supplier is already entered as {result.alreadyEntered}.</div>
             )}
@@ -119,8 +129,8 @@ export function ScanBillDialog({ onClose, onUse }: { onClose: () => void; onUse:
             )}
             <div className="flex flex-wrap justify-end gap-2">
               <Button variant="secondary" onClick={() => { setResult(null); ref.current?.click(); }}>Scan another</Button>
-              <Button variant="secondary" onClick={() => result && onUse(draftFrom(result), "expense")}>Use as expense</Button>
-              <Button onClick={() => result && onUse(draftFrom(result), "bill")} disabled={!!result?.alreadyEntered}>Use as supplier bill</Button>
+              <Button variant="secondary" onClick={() => result && onUse(draftFrom(result), "expense")} disabled={photoHeld}>Use as expense</Button>
+              <Button onClick={() => result && onUse(draftFrom(result), "bill")} disabled={!!result?.alreadyEntered || photoHeld}>Use as supplier bill</Button>
             </div>
           </>
         )}

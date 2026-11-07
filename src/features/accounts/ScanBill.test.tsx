@@ -62,4 +62,15 @@ describe("the scan dialog", () => {
     await userEvent.upload(screen.getByLabelText("Bill photo or PDF"), new File(["x"], "cat.png", { type: "image/png" }));
     expect(await screen.findByText(/does not look like a bill/)).toBeInTheDocument();
   });
+
+  it("holds a photo that is already on a saved bill until they say it is a different bill", async () => {
+    scan.mockResolvedValue({ ...result, samePhoto: [{ docType: "SupplierBill", docId: "b12", docNo: "PB/2026-27/0012", partyName: "Sri Yarn Traders", amount: 23100, date: "2026-10-03", exact: false }] });
+    render(<ScanBillDialog onClose={() => {}} onUse={() => {}} />);
+    await userEvent.upload(screen.getByLabelText("Bill photo or PDF"), new File(["x"], "b.jpg", { type: "image/jpeg" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("This photo is already on bill PB/2026-27/0012 (Sri Yarn Traders, ₹23,100");
+    expect(screen.getByRole("button", { name: /use as supplier bill/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /use as expense/i })).toBeDisabled();
+    await userEvent.click(screen.getByLabelText(/It is a different bill/));
+    expect(screen.getByRole("button", { name: /use as supplier bill/i })).toBeEnabled();
+  });
 });
