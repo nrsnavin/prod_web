@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PhotoFillButton } from "@/features/common/PhotoFill";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, Copy, PackagePlus, FileText, FileDown, Pencil, Trash2, Plus } from "lucide-react";
 import { PrintModal } from "@/components/print/PrintModal";
@@ -151,8 +152,11 @@ export function InwardForm({
   submitting,
   onSubmit,
   onCancel,
+  poId,
 }: {
   items: PoItem[];
+  /** The PO, so a photo of the supplier's challan is matched to its lines. */
+  poId?: string;
   submitting: boolean;
   // lotNo/shade were already being sent but were missing from this type.
   // They matter now: a row carrying a lot number opens a YarnLot bucket
@@ -182,6 +186,26 @@ export function InwardForm({
   const [remarks, setRemarks] = useState("");
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [reasonOpen, setReasonOpen] = useState(false);
+  // Filled from the supplier's challan / cone labels: what to check.
+  const [readNotes, setReadNotes] = useState<string[]>([]);
+  const fillFromChallan = (b: InwardRead) => {
+    const nextQty: Record<string, string> = {}; const nextLot: Record<string, string> = {}; const nextShade: Record<string, string> = {};
+    const notes: string[] = [];
+    for (const r of b.rows) {
+      if (!r.rawMaterial) { notes.push(`“${r.description}”${r.quantity != null ? ` ${r.quantity} ${r.unit || ""}`.trimEnd() : ""} is not on this PO`); continue; }
+      if (nextQty[r.rawMaterial] !== undefined) {
+        // One lot per material per inward: the next lot is a second inward, with its own weight.
+        notes.push(`${r.materialName} lot ${r.lotNo || "(no lot)"} — ${r.quantity ?? "?"} ${r.unit || ""}: record it as another inward`.replace(/\s+:/, ":"));
+        continue;
+      }
+      if (r.quantity != null) nextQty[r.rawMaterial] = String(r.quantity);
+      if (r.lotNo) nextLot[r.rawMaterial] = r.lotNo;
+      if (r.shade) nextShade[r.rawMaterial] = r.shade;
+    }
+    setQty((q) => ({ ...q, ...nextQty })); setLots((l) => ({ ...l, ...nextLot })); setShades((x) => ({ ...x, ...nextShade }));
+    if (b.read?.dcNo || b.read?.invoiceNo) setRemarks((rm) => rm || [b.read?.dcNo && `Their DC ${b.read.dcNo}`, b.read?.invoiceNo && `invoice ${b.read.invoiceNo}`].filter(Boolean).join(" · "));
+    setReadNotes(notes);
+  };
 
   /**
    * How far this line goes over what was ordered, and whether that needs
@@ -246,6 +270,10 @@ export function InwardForm({
 
   return (
     <div className="space-y-4">
+      <div className="space-y-1">
+        <PhotoFillButton<InwardRead> url={`/supplier/inward/read${poId ? `?poId=${poId}` : ""}`} what="challan" label="Fill from the supplier's challan or cone labels" onRead={fillFromChallan} multiple />
+        {readNotes.length > 0 && <ul className="text-xs text-status-warning" role="note">{readNotes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
+      </div>
       {/* Column headers label the repeating row inputs below — the inputs
           themselves only carried placeholders, which vanish once typed. */}
       <div className="grid grid-cols-[1fr_90px_100px_100px] gap-2 px-1 text-xs font-medium text-ink-400">
@@ -672,6 +700,7 @@ export function PoDetailPage() {
 
       <FormScreen open={inwardOpen} onClose={() => setInwardOpen(false)} title="Record goods received">
         <InwardForm
+          poId={po._id}
           items={po.items}
           submitting={inward.isPending}
           onCancel={() => setInwardOpen(false)}
@@ -692,4 +721,11 @@ export function PoDetailPage() {
       </FormScreen>
     </>
   );
+}
+
+/** What POST /supplier/inward/read returns. */
+interface InwardRead {
+  read?: { problem?: string | null; dcNo?: string; invoiceNo?: string; poNumber?: string };
+  rows: Array<{ description: string; quantity: number | null; unit?: string; lotNo?: string; shade?: string; rawMaterial: string | null; materialName: string | null; pending: number | null }>;
+  aiSuggestion: string | null;
 }
