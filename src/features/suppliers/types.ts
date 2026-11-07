@@ -40,7 +40,7 @@ export interface SupplierFormValues {
   msme?: { category?: "" | "micro" | "small" | "medium"; udyam?: string; agreedDays?: number };
   /** For the TDS return (26Q); without one, 20% applies (s.206AA). */
   pan?: string;
-  bank?: { accountNo?: string; ifsc?: string; holder?: string };
+  bank?: { accountNo?: string; ifsc?: string; holder?: string; source?: "" | "typed" | "cheque"; holderMatches?: boolean | null };
   name: string;
   phoneNumber?: string;
   gstin?: string;

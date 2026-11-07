@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PhotoFillButton } from "@/features/common/PhotoFill";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -45,9 +46,12 @@ export function EmployeeForm({
   /** Only an admin may set an Aadhaar number; the server enforces it too. */
   canEditAadhaar?: boolean;
 }) {
+  // Read from their Aadhaar / PAN card: what to check.
+  const [idNote, setIdNote] = useState("");
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<BasicValues>({
     resolver: zodResolver(schema),
@@ -77,6 +81,22 @@ export function EmployeeForm({
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
+      {canEditAadhaar && !onFile && (
+        <div className="space-y-1">
+          <PhotoFillButton<IdRead> url="/employee/read-id" what="ID card" label="Fill from Aadhaar / PAN card" multiple
+            onRead={(b) => {
+              const opt = { shouldDirty: true };
+              if (b.read.name) setValue("name", b.read.name, opt);
+              if (b.read.aadhaar) setValue("aadhar", b.read.aadhaar, opt);
+              const notes = [
+                b.read.aadhaar && !b.read.aadhaarValid ? "The Aadhaar number read does not pass its check digit — compare it with the card." : "",
+                [b.read.dob && `Born ${b.read.dob.split("-").reverse().join("/")}`, b.read.gender, b.read.pan && `PAN ${b.read.pan}`].filter(Boolean).join(" · "),
+              ].filter(Boolean);
+              setIdNote(notes.join(" "));
+            }} />
+          {idNote && <p className="text-xs text-ink-500" role="note">{idNote}</p>}
+        </div>
+      )}
       <Input label="Full name *" error={errors.name?.message} {...register("name")} />
       <div className="grid grid-cols-2 gap-3">
         <Select
@@ -142,3 +162,6 @@ export function EmployeeForm({
     </form>
   );
 }
+
+/** What POST /employee/read-id returns. */
+interface IdRead { read: { problem?: string | null; name: string; dob: string; gender: string; pan: string; aadhaar: string; aadhaarValid: boolean }; aiSuggestion: string | null }

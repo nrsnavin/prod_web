@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PhotoFillButton } from "@/features/common/PhotoFill";
 import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -42,6 +43,9 @@ const schema = z.object({
     accountNo: z.string().regex(/^[\d\s-]{0,24}$/, "Digits only").refine((v) => !v || /^\d{6,18}$/.test(v.replace(/[\s-]/g, "")), "6 to 18 digits").optional(),
     ifsc: z.string().regex(/^([A-Za-z]{4}0[A-Za-z0-9]{6})?$/, "11 characters, like HDFC0001234").optional(),
     holder: z.string().max(120).optional(),
+    // Read from their cancelled cheque, and whether its holder is this supplier.
+    source: z.enum(["", "typed", "cheque"]).optional(),
+    holderMatches: z.boolean().nullable().optional(),
   }).optional(),
   msme: z.object({
     category: z.enum(["", "micro", "small", "medium"]).optional(),
@@ -66,6 +70,7 @@ export function SupplierForm({
 }) {
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [seedSimilar, setSeedSimilar] = useState<SimilarParty[]>([]);
+  const [chequeNote, setChequeNote] = useState("");
   const {
     register,
     handleSubmit,
@@ -142,6 +147,19 @@ export function SupplierForm({
         {initial?.bank?.changedAt && (
           <p className="mb-3 text-xs text-status-warning">Changed on {new Date(initial.bank.changedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}{initial.bank.changedByName ? ` by ${initial.bank.changedByName}` : ""}{initial.bank.previousAccountNo ? ` (was …${initial.bank.previousAccountNo.slice(-4)})` : ""}.</p>
         )}
+        <div className="mb-3 space-y-1">
+          <PhotoFillButton<ChequeRead> url={`/supplier/read-cheque?name=${encodeURIComponent(watch("name") ?? "")}`} what="cheque" label="Fill from their cancelled cheque"
+            onRead={(b) => {
+              const opt = { shouldDirty: true };
+              if (b.read.accountNo) setValue("bank.accountNo", b.read.accountNo, opt);
+              if (b.read.ifsc) setValue("bank.ifsc", b.read.ifsc, opt);
+              if (b.read.holder) setValue("bank.holder", b.read.holder, opt);
+              setValue("bank.source", "cheque", opt);
+              setValue("bank.holderMatches", b.holderMatches, opt);
+              setChequeNote(b.holderMatches === false ? `The holder on the cheque, “${b.read.holder}”, is not this supplier's name — check with them before saving.` : "");
+            }} />
+          {chequeNote && <p className="text-xs font-medium text-status-danger" role="alert">{chequeNote}</p>}
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <Input label="Account number" inputMode="numeric" error={errors.bank?.accountNo?.message} {...register("bank.accountNo")} />
           <Input label="IFSC" placeholder="HDFC0001234" error={errors.bank?.ifsc?.message} {...register("bank.ifsc")} />
@@ -354,3 +372,6 @@ export function SupplierListPage() {
     </>
   );
 }
+
+/** What POST /supplier/read-cheque returns. */
+interface ChequeRead { read: { problem?: string | null; accountNo: string; ifsc: string; holder: string; bankName?: string }; holderMatches: boolean | null; aiSuggestion: string | null }
