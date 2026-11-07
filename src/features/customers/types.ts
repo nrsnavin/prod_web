@@ -20,6 +20,8 @@ export interface Customer {
   /** Billing address, as printed on challans and invoices. */
   address?: string;
   city?: string;
+  /** The business's own grouping, for sales by customer group. */
+  group?: string;
   pincode?: string;
   /** Two-digit GST state code; blank means "work it out from the GSTIN". */
   stateCode?: string;
@@ -55,6 +57,8 @@ export interface CustomerFormValues {
   gstin?: string;
   address?: string;
   city?: string;
+  /** The business's own grouping, for sales by customer group. */
+  group?: string;
   pincode?: string;
   stateCode?: string;
   paymentTerms?: string;

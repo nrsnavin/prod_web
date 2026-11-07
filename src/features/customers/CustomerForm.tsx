@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Customer, CustomerFormValues } from "./types";
 import { CardFillButton, GstinHint, SimilarParties, type SimilarParty } from "@/features/parties/PartyCardFill";
 import { gstinInfo } from "@/features/parties/gstin";
+import { httpClient } from "@/core/http/httpClient";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -21,6 +22,7 @@ const schema = z.object({
   gstin: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
+  group: z.string().max(60, "At most 60 characters").optional(),
   pincode: z
     .string()
     .regex(/^\d{6}$/, "Enter a 6-digit PIN code")
@@ -79,6 +81,7 @@ export function CustomerForm({
       gstin: initial?.gstin ?? "",
       address: initial?.address ?? "",
       city: initial?.city ?? "",
+      group: initial?.group ?? "",
       pincode: initial?.pincode ?? "",
       stateCode: initial?.stateCode ?? "",
       paymentTerms: initial?.paymentTerms ?? "",
@@ -149,6 +152,7 @@ export function CustomerForm({
           {...register("stateCode")}
         />
       </div>
+      <CustomerGroupField register={register("group")} error={errors.group?.message} />
       <div className="grid grid-cols-3 gap-3">
         <Input label="Payment terms" placeholder="e.g. 30 days" {...register("paymentTerms")} />
         <Input label="Credit limit (₹)" type="number" min={0} hint="0 = no limit" error={errors.creditLimit?.message} {...register("creditLimit")} />
@@ -176,5 +180,22 @@ export function CustomerForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+/** "Customer group", suggesting the groups already in use; a new name starts a new group. */
+function CustomerGroupField({ register, error }: { register: ReturnType<ReturnType<typeof useForm<CustomerFormValues>>["register"]>; error?: string }) {
+  const [groups, setGroups] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    Promise.resolve().then(() => httpClient.get<{ groups: string[] }>("/customer/groups"))
+      .then((r) => { if (live && Array.isArray(r?.groups)) setGroups(r.groups); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  return (
+    <>
+      <Input label="Customer group" placeholder="e.g. Innerwear, Exporters" list="customer-groups" hint="For sales by customer group. Pick one in use, or type a new one." error={error} {...register} />
+      <datalist id="customer-groups">{groups.map((g) => <option key={g} value={g} />)}</datalist>
+    </>
   );
 }

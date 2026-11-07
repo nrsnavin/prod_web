@@ -37,6 +37,8 @@ const DispatchReportPage = lazyPage(() => import("@/features/reports/DispatchRep
 const OrderBookReportPage = lazyPage(() => import("@/features/reports/OrderBookReportPage"), "OrderBookReportPage");
 const StockPurchasesReportPage = lazyPage(() => import("@/features/reports/StockPurchasesReportPage"), "StockPurchasesReportPage");
 const StockMovementsReportPage = lazyPage(() => import("@/features/reports/StockMovementsReportPage"), "StockMovementsReportPage");
+const ReportRunPage = lazyPage(() => import("@/features/reports/engine/ReportRunPage"), "ReportRunPage");
+const QueryBuilderPage = lazyPage(() => import("@/features/reports/engine/QueryBuilderPage"), "QueryBuilderPage");
 const OrderPnlPage = lazyPage(() => import("@/features/pnl/OrderPnlPage"), "OrderPnlPage");
 const OrderPnlDetailPage = lazyPage(() => import("@/features/pnl/OrderPnlDetailPage"), "OrderPnlDetailPage");
 const SampleListPage = lazyPage(() => import("@/features/samples/SampleListPage"), "SampleListPage");
@@ -183,6 +185,8 @@ const builtPages: Record<string, JSX.Element> = {
 
 // Detail routes that live under a nav destination.
 export const detailRoutes = [
+  { path: "/reports/r/:id", element: withSuspense(<ReportRunPage />) },
+  { path: "/reports/query", element: withSuspense(<QueryBuilderPage />) },
   { path: "/reports/production", element: withSuspense(<ProductionReportPage />) },
   { path: "/reports/dispatch", element: withSuspense(<DispatchReportPage />) },
   { path: "/reports/order-book", element: withSuspense(<OrderBookReportPage />) },
