@@ -40,6 +40,7 @@ vi.mock("@/core/http/httpClient", () => ({
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 const payloadOf = (call: unknown[]) => JSON.parse((call[1] as { payload: string }).payload);
+const lastOf = <T,>(list: T[]): T => list[list.length - 1];
 
 const at = (path: string) => render(
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -78,13 +79,13 @@ describe("a ready-made report", () => {
     await userEvent.click(screen.getByRole("button", { name: /Add a filter/ }));
     await userEvent.selectOptions(screen.getByLabelText("Filter 1 field"), "customerGroup");
     await userEvent.type(screen.getByLabelText("Filter 1 value"), "Innerwear");
-    const last = () => payloadOf(get.mock.calls.filter((c) => c[0] === "/reports/run").at(-1)!);
+    const last = () => payloadOf(lastOf(get.mock.calls.filter((c) => c[0] === "/reports/run")));
     await vi.waitFor(() => expect(last()).toEqual({ report: "sales-by-customer", filters: [{ field: "customerGroup", op: "=", value: "Innerwear" }], preset: "last_fy" }));
 
     await userEvent.click(screen.getByRole("button", { name: /Excel/ }));
     expect(getBlob).toHaveBeenCalledWith("/reports/run", { payload: JSON.stringify({ report: "sales-by-customer", filters: [{ field: "customerGroup", op: "=", value: "Innerwear" }], preset: "last_fy", format: "xlsx" }) });
     await userEvent.click(screen.getByRole("button", { name: /PDF/ }));
-    expect(JSON.parse((getBlob.mock.calls.at(-1) as unknown as [string, { payload: string }])[1].payload).format).toBe("pdf");
+    expect(JSON.parse((lastOf(getBlob.mock.calls) as unknown as [string, { payload: string }])[1].payload).format).toBe("pdf");
   });
 });
 
@@ -101,7 +102,7 @@ describe("building a report", () => {
     await userEvent.click(screen.getByRole("button", { name: /Add a total/ }));
     await userEvent.click(screen.getByRole("button", { name: "Run" }));
     expect(await screen.findByText("Sunrise Garments")).toBeInTheDocument();
-    const p = payloadOf(get.mock.calls.filter((c) => c[0] === "/reports/run").at(-1)!);
+    const p = payloadOf(lastOf(get.mock.calls.filter((c) => c[0] === "/reports/run")));
     expect(p.query).toEqual({ dataset: "sales", select: ["customer", { field: "taxable", agg: "sum" }], groupBy: ["customer"], where: [] });
     await userEvent.type(screen.getByLabelText("Save as"), "My sales");
     await userEvent.click(screen.getByRole("button", { name: /^Save$/ }));
@@ -113,7 +114,7 @@ describe("building a report", () => {
     const box = await screen.findByLabelText("SQL");
     expect(box).toHaveValue(catalog.saved[0].sql);
     await userEvent.click(screen.getByRole("button", { name: "Run" }));
-    const p = payloadOf(get.mock.calls.filter((c) => c[0] === "/reports/run").at(-1)!);
+    const p = payloadOf(lastOf(get.mock.calls.filter((c) => c[0] === "/reports/run")));
     expect(p).toEqual({ sql: catalog.saved[0].sql, title: "Innerwear sales", preset: "fy" });
     expect(within(await screen.findByRole("table")).getByText("Lux Exports")).toBeInTheDocument();
   });
