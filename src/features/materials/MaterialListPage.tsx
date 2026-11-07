@@ -8,6 +8,7 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
+import { DuplicateMaterials } from "./SimilarMaterials";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
@@ -269,6 +270,8 @@ export function MaterialListPage() {
       </div>
 
       {isError && <ErrorBanner message={(error as Error).message} />}
+
+      <div className="mb-4"><DuplicateMaterials /></div>
 
       {picked.size > 0 && (
         <MaterialBulkActions selected={selectedRows} onClear={() => setPicked(new Map())} />

@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/Select";
 import { useSupplierOptions, useMaterialCategories } from "./hooks";
 import { useMaterialGroups } from "../materialGroups/hooks";
 import { MaterialFormValues, RawMaterial } from "./types";
+import { SimilarMaterials } from "./SimilarMaterials";
 
 // ══════════════════════════════════════════════════════════════════
 //  TWO CLASSIFICATIONS, TWO PICKERS
@@ -89,6 +90,7 @@ export function MaterialForm({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<MaterialFormValues>({
     resolver: zodResolver(schema),
@@ -119,6 +121,7 @@ export function MaterialForm({
         autoFocus={!!cloneFrom}
         {...register("name")}
       />
+      <SimilarMaterials name={watch("name")} category={watch("category")} exclude={initial?._id} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Select
