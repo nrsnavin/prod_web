@@ -21,6 +21,8 @@ import type { WeightsReport } from "./types";
 
 const weights = vi.fn();
 const reset = vi.fn();
+let role = "admin";
+vi.mock("@/core/auth/useAuth", () => ({ useAuth: () => ({ user: { role } }) }));
 vi.mock("./hooks", async () => {
   const actual = await vi.importActual<Record<string, unknown>>("./hooks");
   return {
@@ -58,7 +60,7 @@ function renderPanel(data: WeightsReport | undefined, isLoading = false) {
   );
 }
 
-beforeEach(() => { weights.mockReset(); reset.mockReset(); });
+beforeEach(() => { weights.mockReset(); reset.mockReset(); role = "admin"; });
 
 describe("LearnedWeightsPanel", () => {
   it("says it is on the starting objective before anything is learned", () => {
@@ -108,6 +110,12 @@ describe("LearnedWeightsPanel", () => {
     // The default changeover cost is 1 against a lateness anchor of 10,
     // which reads as a tenth of a late day.
     expect(screen.getByText(/was 0.10 late days/i)).toBeInTheDocument();
+  });
+
+  it("does not offer a reset to anyone but an admin", () => {
+    role = "production";
+    renderPanel(report({ observations: 6, learned: true }));
+    expect(screen.queryByRole("button", { name: /reset/i })).not.toBeInTheDocument();
   });
 
   it("does not offer a reset when there is nothing to reset", () => {

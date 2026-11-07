@@ -9,6 +9,7 @@ import { cn } from "@/components/ui/cn";
 import { useIsPhone } from "@/core/hooks/useMediaQuery";
 import { usePlannerWeights, useResetWeights } from "./hooks";
 import type { WeightsReport } from "./types";
+import { useAuth } from "@/core/auth/useAuth";
 
 // ══════════════════════════════════════════════════════════════════
 //  WHAT THE PLANNER HAS WORKED OUT ABOUT THIS PLANT
@@ -157,6 +158,8 @@ function Body({ data }: { data: WeightsReport }) {
 }
 
 export function LearnedWeightsPanel() {
+  // Production reads the plan; accepting it and resetting what it learned are the admin's.
+  const isAdmin = useAuth().user?.role === "admin";
   const { data, isLoading } = usePlannerWeights();
   const reset = useResetWeights();
   const { toast } = useToast();
@@ -189,7 +192,7 @@ export function LearnedWeightsPanel() {
             taken from those.
           </p>
         </div>
-        {data && data.observations > 0 && (
+        {data && data.observations > 0 && isAdmin && (
           <Button variant="secondary" onClick={() => setConfirming(true)}>
             <RotateCcw className="h-4 w-4" /> Reset
           </Button>

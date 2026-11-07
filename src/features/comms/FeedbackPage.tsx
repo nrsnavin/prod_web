@@ -14,6 +14,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { feedbackService, FeedbackItem } from "./api";
 import { formatDate } from "@/core/format/date";
+import { useAuth } from "@/core/auth/useAuth";
 
 const statusTone: Record<string, ChipTone> = {
   open: "warning",
@@ -67,13 +68,25 @@ function RespondModal({ item, onClose }: { item: FeedbackItem; onClose: () => vo
 }
 
 export function FeedbackPage() {
+  const isAdmin = useAuth().user?.role === "admin";
   const [status, setStatus] = useState("all");
   const [responding, setResponding] = useState<FeedbackItem | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["feedback", status],
     queryFn: () => feedbackService.list(status),
+    // The inbox is the admin's; anyone else is told so, not shown an error.
+    enabled: isAdmin,
   });
+
+  if (!isAdmin) {
+    return (
+      <>
+        <PageHeader title="Feedback" subtitle="Worker feedback from the employee app." />
+        <Card><EmptyState title="Only an admin answers feedback" description="Workers send it from the employee app; an admin reads and replies here." /></Card>
+      </>
+    );
+  }
 
   return (
     <>

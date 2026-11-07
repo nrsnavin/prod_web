@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Pin, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { useAuth } from "@/core/auth/useAuth";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
@@ -96,6 +97,8 @@ function AnnouncementForm({
 }
 
 export function AnnouncementsPage() {
+  // Everyone reads what is up for them; only an admin posts, pins or removes.
+  const isAdmin = useAuth().user?.role === "admin";
   const [createOpen, setCreateOpen] = useState(false);
   const [deleting, setDeleting] = useState<Announcement | null>(null);
   const { toast } = useToast();
@@ -121,12 +124,12 @@ export function AnnouncementsPage() {
     <>
       <PageHeader
         title="Announcements"
-        subtitle="Broadcast to the employee app's notice board."
-        actions={
+        subtitle={isAdmin ? "Broadcast to the employee app's notice board." : "What is on the notice board for you now."}
+        actions={isAdmin ? (
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" /> New announcement
           </Button>
-        }
+        ) : undefined}
       />
 
       {isError && <ErrorBanner message={(error as Error).message} />}
@@ -139,7 +142,7 @@ export function AnnouncementsPage() {
         </div>
       ) : (data?.length ?? 0) === 0 ? (
         <Card>
-          <EmptyState title="No announcements" description="Post one to reach the floor." />
+          <EmptyState title="No announcements" description={isAdmin ? "Post one to reach the floor." : "Nothing on the notice board right now."} />
         </Card>
       ) : (
         <div className="space-y-3">
@@ -159,6 +162,7 @@ export function AnnouncementsPage() {
                     {a.createdAt && formatDate(a.createdAt)}
                   </p>
                 </div>
+                {isAdmin && (<>
                 <button
                   onClick={() => togglePin.mutate({ id: a._id, isPinned: !a.isPinned })}
                   className="p-1.5 rounded-lg text-ink-400 hover:bg-ink-100 hover:text-brand-600"
@@ -173,6 +177,7 @@ export function AnnouncementsPage() {
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
+                </>)}
               </div>
             </Card>
           ))}

@@ -16,6 +16,7 @@ import { useSuggestedPlan, useLatestPlan, useAcceptPlan } from "./hooks";
 import { AcceptedPlanPanel } from "./AcceptedPlanPanel";
 import { LearnedWeightsPanel } from "./LearnedWeightsPanel";
 import { MachinePlan, PlanRow, RateSource, SuggestedPlan } from "./types";
+import { useAuth } from "@/core/auth/useAuth";
 
 const HORIZONS = [7, 14, 30];
 
@@ -166,6 +167,8 @@ function MachineCard({
 }
 
 export function PlanningPage() {
+  // Production reads the plan; accepting it and resetting what it learned are the admin's.
+  const isAdmin = useAuth().user?.role === "admin";
   const { toast } = useToast();
   const [horizon, setHorizon] = useState(7);
   const { data, isLoading, isFetching, isError, refetch } = useSuggestedPlan(horizon);
@@ -359,10 +362,14 @@ export function PlanningPage() {
                   </Button>
                 </>
               )}
-              <Button onClick={() => onAccept(data)} loading={accept.isPending} disabled={obj.placed === 0}>
-                <CheckCircle2 className="h-4 w-4" />
-                {edited ? "Accept my version" : "Accept plan"}
-              </Button>
+              {isAdmin ? (
+                <Button onClick={() => onAccept(data)} loading={accept.isPending} disabled={obj.placed === 0}>
+                  <CheckCircle2 className="h-4 w-4" />
+                  {edited ? "Accept my version" : "Accept plan"}
+                </Button>
+              ) : (
+                <span className="text-xs text-ink-500">An admin accepts the plan.</span>
+              )}
             </div>
           </Card>
 
