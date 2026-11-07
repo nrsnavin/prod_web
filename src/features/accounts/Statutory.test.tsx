@@ -63,6 +63,7 @@ const postedPayroll: PayrollBooks = { ...payrollBooks, journals: { ...payrollBoo
 let payrollNow: PayrollBooks = payrollBooks;
 const postPayrollSalary = vi.fn().mockImplementation(async () => { payrollNow = postedPayroll; return { success: true, journal: { journalNo: "JV/2026-27/0003" }, summary: postedPayroll }; });
 const createJournal = vi.fn();
+const journalNarration = vi.fn(async () => ({ aiSuggestion: "ai4", suggestions: [{ text: "Being depreciation for the year on looms", from: "past" }, { text: "Being depreciation of ₹5,000 charged on Kotak CA", from: "rule" }] }));
 vi.mock("./api", () => ({
   accountsService: {
     msme: async () => msme, msmeYearEnd: async () => yearEnd, msmeForm1Url: () => "/api/v2/accounts/msme/form1?format=xlsx",
@@ -70,6 +71,7 @@ vi.mock("./api", () => ({
     gstr2b: async () => gstr2b, gstr2bFollowUps: async () => followUps, itcReversal: async () => rule37, itcReverse: (...a: unknown[]) => itcReverse(...a),
     tdsRegister: async () => tdsRegister, addTdsChallan: (...a: unknown[]) => addTdsChallan(...a),
     payrollBooks: async () => payrollNow, postPayrollSalary: (...a: unknown[]) => postPayrollSalary(...a),
+    journalNarration: (...a: unknown[]) => journalNarration(...(a as [])),
   },
 }));
 vi.mock("./hooks", () => ({
@@ -193,9 +195,14 @@ describe("the journal form", () => {
     expect(post).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Reason *"), "Year-end depreciation on looms");
     expect(post).toBeEnabled();
+    // A narration: the one used before for these ledgers fills in; another can be picked.
+    await userEvent.click(screen.getByRole("button", { name: "Suggest a narration" }));
+    expect(await screen.findByLabelText("Narration")).toHaveValue("Being depreciation for the year on looms");
+    await userEvent.click(screen.getByRole("button", { name: /Being depreciation of ₹5,000/ }));
+    expect(screen.getByLabelText("Narration")).toHaveValue("Being depreciation of ₹5,000 charged on Kotak CA");
     await userEvent.click(post);
     expect(createJournal).toHaveBeenCalledWith(expect.objectContaining({
-      reason: "Year-end depreciation on looms",
+      reason: "Year-end depreciation on looms", narration: "Being depreciation of ₹5,000 charged on Kotak CA", aiSuggestion: "ai4",
       lines: [expect.objectContaining({ kind: "ledger", ledger: "Depreciation", debit: 5000, credit: 0 }), expect.objectContaining({ kind: "bank", account: "a1", debit: 0, credit: 5000 })],
     }), expect.anything());
   });

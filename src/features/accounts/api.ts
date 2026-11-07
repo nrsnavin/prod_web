@@ -184,7 +184,10 @@ export const accountsService = {
   // ── Journal vouchers ──
   journals: (q: Record<string, unknown>) => httpClient.get<Page<"journals", Journal>>("/accounts/journals", clean(q)),
   journal: async (id: string) => (await httpClient.get<{ success: boolean; journal: Journal }>(`/accounts/journals/${id}`)).journal,
-  createJournal: async (body: { date?: string; purpose?: JournalPurpose; narration?: string; reason: string; lines: JournalLineInput[]; requestId?: string }) =>
+  /** Narrations for the journal being written: the house's own for the same ledgers first. */
+  journalNarration: async (body: { purpose?: JournalPurpose; lines: JournalLineInput[] }) =>
+    httpClient.post<{ suggestions: { text: string; from: "past" | "model" | "rule" }[]; aiSuggestion: string | null }>("/accounts/journals/narration", body),
+  createJournal: async (body: { date?: string; purpose?: JournalPurpose; narration?: string; reason: string; lines: JournalLineInput[]; requestId?: string; aiSuggestion?: string }) =>
     (await httpClient.post<{ success: boolean; journal: Journal }>("/accounts/journals", body)).journal,
   cancelJournal: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; journal: Journal }>(`/accounts/journals/${id}/cancel`, { reason })).journal,
 

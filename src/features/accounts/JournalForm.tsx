@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { quickCreate } from "@/features/common/quickCreateStore";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useAccountsMutations, useBankAccounts, useCategories, useOpenDocs } from "./hooks";
+import { accountsService } from "./api";
 import { PartyPicker, money, today } from "./shared";
 import type { JournalLineInput, JournalPurpose, OpenDoc, SettleDocType } from "./types";
 
@@ -63,6 +64,9 @@ export function JournalForm({ onDone, onCancel }: { onDone: (id: string) => void
   const [purpose, setPurpose] = useState<JournalPurpose>("other");
   const [reason, setReason] = useState("");
   const [narration, setNarration] = useState("");
+  const [ideas, setIdeas] = useState<{ text: string; from: string }[]>([]);
+  const [ideaId, setIdeaId] = useState<string | null>(null);
+  const [thinking, setThinking] = useState(false);
   const [lines, setLines] = useState<Line[]>([{ ...blank(), kind: "party" }, blank()]);
   const set = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, k) => (k === i ? { ...l, ...patch } : l)));
   const dr = lines.reduce((t, l) => t + (Number(l.debit) || 0), 0);
@@ -71,8 +75,23 @@ export function JournalForm({ onDone, onCancel }: { onDone: (id: string) => void
   const complete = lines.every((l) => (l.kind === "party" ? !!l.party : l.kind === "bank" ? !!l.account : l.kind === "head" ? !!l.category : l.ledger.trim().length >= 2) && ((Number(l.debit) || 0) > 0) !== ((Number(l.credit) || 0) > 0));
   const ready = balanced && complete && reason.trim().length >= 8;
 
+  const toLines = (): JournalLineInput[] => lines.map((l) => ({
+      kind: l.kind, ledger: l.kind === "ledger" ? l.ledger.trim() : undefined, partyType: l.kind === "party" ? l.partyType : undefined, party: l.kind === "party" ? l.party : undefined,
+      account: l.kind === "bank" ? l.account : undefined, category: l.kind === "head" ? l.category : undefined,
+      debit: Number(l.debit) || 0, credit: Number(l.credit) || 0,
+      refs: Object.entries(l.refs).filter(([, v]) => v > 0).map(([k, v]) => { const [docType, doc] = k.split("|"); return { docType: docType as SettleDocType, doc, amount: v }; }),
+    }));
+  const suggestNarration = async () => {
+    setThinking(true);
+    try {
+      const r = await accountsService.journalNarration({ purpose, lines: toLines() });
+      setIdeas(r.suggestions); setIdeaId(r.aiSuggestion);
+      if (!narration.trim() && r.suggestions[0]) setNarration(r.suggestions[0].text);
+    } catch (e) { toast(e instanceof ApiError ? e.message : "Fill in the lines first", "error"); } finally { setThinking(false); }
+  };
+
   const submit = () => createJournal.mutate({
-    date, purpose, reason: reason.trim(), narration: narration.trim() || undefined,
+    date, purpose, reason: reason.trim(), narration: narration.trim() || undefined, ...(ideaId ? { aiSuggestion: ideaId } : {}),
     lines: lines.map((l) => ({
       kind: l.kind, ledger: l.kind === "ledger" ? l.ledger.trim() : undefined, partyType: l.kind === "party" ? l.partyType : undefined, party: l.kind === "party" ? l.party : undefined,
       account: l.kind === "bank" ? l.account : undefined, category: l.kind === "head" ? l.category : undefined,
@@ -86,8 +105,20 @@ export function JournalForm({ onDone, onCancel }: { onDone: (id: string) => void
       <div className="grid gap-3 sm:grid-cols-3">
         <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <Select label="What for" value={purpose} onChange={(e) => setPurpose(e.target.value as JournalPurpose)} options={PURPOSES} />
-        <Input label="Narration" value={narration} onChange={(e) => setNarration(e.target.value)} placeholder="Shown on the ledger and in Tally" />
+        <div className="flex items-end gap-1">
+          <Input label="Narration" className="flex-1" value={narration} onChange={(e) => setNarration(e.target.value)} placeholder="Shown on the ledger and in Tally" />
+          <Button type="button" size="sm" variant="ghost" title="Suggest a narration" aria-label="Suggest a narration" loading={thinking} disabled={!balanced || !complete} onClick={suggestNarration}><Sparkles className="h-4 w-4" /></Button>
+        </div>
       </div>
+      {ideas.length > 0 && (
+        <div className="flex flex-wrap gap-2" aria-label="Narration suggestions">
+          {ideas.map((x) => (
+            <button key={x.text} type="button" onClick={() => setNarration(x.text)} className={`rounded-full border px-3 py-1 text-left text-xs ${narration === x.text ? "border-brand-500 bg-brand-50 text-brand-700" : "border-ink-200 text-ink-600 hover:border-ink-400"}`}>
+              {x.text}<span className="ml-1 text-ink-400">· {x.from === "past" ? "used before" : x.from === "model" ? "suggested" : "plain"}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="space-y-3">
         {lines.map((l, i) => (
           <div key={i} className="rounded-lg border border-ink-200 p-3">
