@@ -154,12 +154,13 @@ export function CollectionsTab() {
                     <StatusChip tone={r.oldestDays > 60 ? "danger" : "warning"} className="ml-2">{r.oldestDays}d</StatusChip>
                     {r.held && r.promise && <StatusChip tone="info" className="ml-2">promised by {formatDate(r.promise.date)}</StatusChip>}
                     {!r.held && r.promise?.broken && <StatusChip tone="danger" className="ml-2">promise broken</StatusChip>}
+                    {(r.onAccount ?? 0) > 0 && <StatusChip tone={r.covered ? "success" : "info"} className="ml-2">₹{money(r.onAccount ?? 0)} on account</StatusChip>}
                   </p>
                   <p className="text-xs text-ink-400">{r.docs.map((d) => `${d.docNo} ₹${money(d.outstanding)} (${formatDate(d.dueDate)})`).join(" · ")}</p>
                   <p className="text-xs text-ink-400">{[r.contact.name, r.contact.phone && <span key="p" className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{r.contact.phone}</span>, r.contact.accountant].filter(Boolean).map((x, i) => <span key={i} className="mr-2">{x}</span>)}</p>
                   <p className="text-xs">
                     {r.lastContact ? <span className="text-ink-500">Last: {r.lastContact.kind}{r.lastContact.channel ? ` (${r.lastContact.channel})` : ""} {formatDate(r.lastContact.at)}{r.lastContact.byName ? ` by ${r.lastContact.byName}` : ""}</span> : <span className="text-ink-400">Not contacted yet</span>}
-                    {r.next && !r.held && <span className={`ml-2 font-medium ${r.recentlyContacted ? "text-ink-400" : r.next.action !== "remind" ? "text-status-danger" : "text-status-warning"}`}>Next: {r.recentlyContacted ? "give them the week" : r.next.label}</span>}
+                    {r.next && !r.held && <span className={`ml-2 font-medium ${r.recentlyContacted ? "text-ink-400" : r.next.action === "apply" ? "text-status-success" : r.next.action !== "remind" ? "text-status-danger" : "text-status-warning"}`}>Next: {r.recentlyContacted && r.next.action !== "apply" ? "give them the week" : r.next.action === "apply" ? <Link to={`/accounts/statements?partyType=customer&party=${r.party}`} className="underline">{r.next.label}</Link> : r.next.label}</span>}
                   </p>
                 </div>
                 <span className="tabular-nums font-semibold text-status-danger">₹{money(r.overdue)}</span>

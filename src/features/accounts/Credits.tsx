@@ -8,9 +8,10 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
 import { round2 } from "@/features/invoices/gst";
-import { useAccountsMutations, useCredits, useOpenDocs } from "./hooks";
+import { useAccountsMutations, useBankAccounts, useCredits, useOpenDocs } from "./hooks";
+import { Select } from "@/components/ui/Select";
 import { money } from "./shared";
-import type { Credit, OpenDoc } from "./types";
+import type { Credit, OpenDoc, PaymentMode } from "./types";
 
 /** Which documents a credit can be set against. */
 function targetsFor(credit: Credit, partyType: "customer" | "supplier"): OpenDoc["docType"][] {
@@ -82,11 +83,61 @@ export function ApplyCreditDialog({ credit, partyType, party, onClose }: { credi
   );
 }
 
-/** A party's credits on account, each with an Apply button. Renders nothing when there are none. */
+/**
+ * Pay back some of a credit: to a customer out of what they paid ahead
+ * or were credited, or from a supplier out of what we paid them ahead.
+ * A payment voucher to the customer, a receipt from the supplier; the
+ * credit comes down by what is refunded.
+ */
+export function RefundDialog({ credit, partyType, party, onClose }: { credit: Credit; partyType: "customer" | "supplier"; party: string; onClose: () => void }) {
+  const { toast } = useToast();
+  const { createPayment } = useAccountsMutations();
+  const { data: accounts } = useBankAccounts();
+  const [amount, setAmount] = useState<number | "">(credit.available);
+  const [mode, setMode] = useState<PaymentMode>("bank");
+  const [account, setAccount] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [reference, setReference] = useState("");
+  // Cash from the cash box; anything else through a bank account.
+  const usable = (accounts ?? []).filter((a) => (mode === "cash") === (a.kind === "cash"));
+  const acct = usable.some((a) => a._id === account) ? account : usable[0]?._id ?? "";
+  const value = Number(amount) || 0;
+  const problem = value > credit.available + 0.005 ? `Only ₹${money(credit.available)} is left on ${credit.docNo}` : !acct ? "Add a bank account first" : "";
+  const toCustomer = partyType === "customer";
+  const submit = () => createPayment.mutate(
+    {
+      kind: toCustomer ? "payment" : "receipt", partyType, ...(toCustomer ? { customer: party } : { supplier: party }),
+      amount: value, mode, account: acct, date, reference: reference.trim() || undefined, allocations: [],
+      refunds: [{ sourceType: credit.sourceType, id: credit.id, amount: value }],
+      narration: `Refund of ${credit.docNo}`,
+    },
+    { onSuccess: (v) => { toast(`₹${money(value)} refunded · ${v.voucherNo}`, "success"); onClose(); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not refund", "error") },
+  );
+  return (
+    <Modal open onClose={onClose} title={`Refund ${credit.docNo}`} width="max-w-lg">
+      <p className="text-sm text-ink-500">{toCustomer ? "Pay the customer back" : "Money the supplier paid back"} out of {credit.label.toLowerCase()} · ₹{money(credit.available)} left on it.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Input label="Amount *" type="number" step="0.01" min={0} value={amount} onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))} />
+        <Input label="Date *" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <Select label={toCustomer ? "Paid by" : "Received by"} value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)} options={[{ value: "bank", label: "Bank transfer" }, { value: "upi", label: "UPI" }, { value: "cheque", label: "Cheque" }, { value: "cash", label: "Cash" }]} />
+        <Select label={toCustomer ? "From account" : "Into account"} value={acct} onChange={(e) => setAccount(e.target.value)} options={usable.map((a) => ({ value: a._id, label: a.name }))} />
+        <div className="sm:col-span-2"><Input label={mode === "cheque" ? "Cheque no." : "Reference (UTR)"} value={reference} onChange={(e) => setReference(e.target.value)} /></div>
+      </div>
+      {problem && <p className="mt-2 text-sm text-status-danger">{problem}</p>}
+      <div className="mt-4 flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        <Button onClick={submit} disabled={value <= 0 || !!problem || !date} loading={createPayment.isPending}>Refund ₹{money(value)}</Button>
+      </div>
+    </Modal>
+  );
+}
+
+/** A party's credits on account, each with Apply and Refund. Renders nothing when there are none. */
 export function CreditsCard({ partyType, party, credits: given }: { partyType: "customer" | "supplier"; party: string; credits?: Credit[] }) {
   const { data } = useCredits(given ? undefined : partyType, given ? undefined : party);
   const credits = given ?? data ?? [];
   const [applying, setApplying] = useState<Credit | null>(null);
+  const [refunding, setRefunding] = useState<Credit | null>(null);
   if (!credits.length) return null;
   const total = round2(credits.reduce((s, c) => s + c.available, 0));
   return (
@@ -96,11 +147,12 @@ export function CreditsCard({ partyType, party, credits: given }: { partyType: "
         {credits.map((c) => (
           <li key={`${c.sourceType}-${c.id}`} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
             <span><span className="font-medium">{c.docNo}</span><span className="text-ink-400"> · {c.label} · {formatDate(c.date)}</span></span>
-            <span className="flex items-center gap-2"><span className="tabular-nums">₹{money(c.available)}</span><Button size="sm" variant="secondary" onClick={() => setApplying(c)}>Apply</Button></span>
+            <span className="flex items-center gap-2"><span className="tabular-nums">₹{money(c.available)}</span><Button size="sm" variant="secondary" onClick={() => setApplying(c)}>Apply</Button><Button size="sm" variant="ghost" aria-label={`Refund ${c.docNo}`} onClick={() => setRefunding(c)}>Refund</Button></span>
           </li>
         ))}
       </ul>
       {applying && <ApplyCreditDialog credit={applying} partyType={partyType} party={party} onClose={() => setApplying(null)} />}
+      {refunding && <RefundDialog credit={refunding} partyType={partyType} party={party} onClose={() => setRefunding(null)} />}
     </Card>
   );
 }

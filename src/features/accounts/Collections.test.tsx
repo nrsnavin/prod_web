@@ -73,6 +73,23 @@ describe("reminders on a schedule", () => {
   });
 });
 
+describe("money on account", () => {
+  it("says what a customer has paid ahead, and when it covers what is overdue, to set it off", async () => {
+    svc.autoRemind.mockResolvedValue(remind(false));
+    svc.collections.mockResolvedValue({ success: true, total: 52500, whatsapp: true, rows: [
+      { ...entry, onAccount: 60000, covered: true, recentlyContacted: false, next: { action: "apply", tone: "gentle", label: "Set off the ₹60,000.00 they paid ahead" } },
+      { ...entry, party: "c2", partyName: "Kumar Knits", onAccount: 2000, covered: false, recentlyContacted: false },
+    ] });
+    wrap();
+    const covered = (await screen.findByText("Sunrise Garments")).closest("li")!;
+    expect(covered).toHaveTextContent("₹60,000.00 on account");
+    expect(within(covered).getByRole("link", { name: "Set off the ₹60,000.00 they paid ahead" })).toHaveAttribute("href", "/accounts/statements?partyType=customer&party=c1");
+    const part = screen.getByText("Kumar Knits").closest("li")!;
+    expect(part).toHaveTextContent("₹2,000.00 on account");
+    expect(part).toHaveTextContent("Next: Gentle reminder");
+  });
+});
+
 describe("a customer's reply", () => {
   it("shows in their history as they wrote it", async () => {
     svc.autoRemind.mockResolvedValue(remind(false));

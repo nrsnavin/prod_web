@@ -226,7 +226,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   const { data: open, isLoading: loadingDocs } = useOpenDocs(!other && party ? partyType : undefined, !other && party ? party : undefined);
   const [picked, setPicked] = useState<Record<string, number | "">>({});
   const [date, setDate] = useState(today());
-  const [mode, setMode] = useState<PaymentMode>("bank");
+  const [pickedMode, setMode] = useState<PaymentMode>("bank");
   const [account, setAccount] = useState("");
   const [reference, setReference] = useState("");
   const [chequeBank, setChequeBank] = useState("");
@@ -296,6 +296,9 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
   const unallocated = round2(cash + tdsTotal + adjTotal - gross);
   const accountList = (accounts ?? []).filter((a) => a.active !== false);
   const chosenAccount = account || accountList.find((a) => a.isDefault)?._id || accountList[0]?._id || "";
+  // Cash goes through the cash box and only cash does: the account decides it.
+  const isCashBox = accountList.find((a) => a._id === chosenAccount)?.kind === "cash";
+  const mode: PaymentMode = isCashBox ? "cash" : pickedMode === "cash" ? "bank" : pickedMode;
   const problems = [
     ...allocs.filter((a) => a.over).map((a) => `${a.doc.docNo} has only ₹${money(a.doc.outstanding)} outstanding`),
     ...(cash + 0.005 < cashNeeded ? [`The ticked documents need ₹${money(cashNeeded)}; the voucher is for ₹${money(cash)}`] : []),
@@ -371,7 +374,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs 
         )}
         <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <Select label="Through account" value={chosenAccount} onChange={(e) => setAccount(e.target.value)} options={accountList.map((a) => ({ value: a._id, label: `${a.name} (₹${money(a.balance)})` }))} />
-        <Select label="Mode" value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)} options={[{ value: "bank", label: "Bank transfer (NEFT / RTGS / IMPS)" }, { value: "upi", label: "UPI" }, { value: "cheque", label: "Cheque" }, { value: "cash", label: "Cash" }]} />
+        <Select label="Mode" value={mode} onChange={(e) => setMode(e.target.value as PaymentMode)} options={isCashBox ? [{ value: "cash", label: "Cash" }] : [{ value: "bank", label: "Bank transfer (NEFT / RTGS / IMPS)" }, { value: "upi", label: "UPI" }, { value: "cheque", label: "Cheque" }]} title={isCashBox ? undefined : "For cash, pick the cash box as the account"} />
         <Input label="Reference (UTR / cheque no.)" value={reference} onChange={(e) => setReference(e.target.value)} />
         {mode === "cheque" && (
           <div className="grid grid-cols-2 gap-2">

@@ -345,6 +345,8 @@ export interface PaymentCreateBody {
   requestId?: string;
   /** When the mode is cheque: its number, bank and date (dated ahead: held). A receipt's cheque is in hand until deposited, unless `deposited` says it already is. */
   cheque?: { number?: string; bank?: string; date?: string; deposited?: boolean };
+  /** A refund: the credits on account it pays back (a payment to a customer, a receipt from a supplier). */
+  refunds?: Array<{ sourceType: Credit["sourceType"]; id: string; amount: number }>;
 }
 
 export type AgeingBucket = "current" | "d30" | "d60" | "d90" | "over90";
@@ -588,7 +590,11 @@ export interface CollectionEntry {
   recentlyContacted?: boolean;
   held?: boolean;
   /** escalate: over 90 days — the owner calls and new orders are held. */
-  next?: { action: "remind" | "call" | "escalate"; tone: "gentle" | "firm"; label: string };
+  /** apply: what they paid ahead covers what is overdue — set it off, no one chases them. */
+  next?: { action: "remind" | "call" | "escalate" | "apply"; tone: "gentle" | "firm"; label: string };
+  /** What they have on account: advances, unused credit notes, opening advances. */
+  onAccount?: number;
+  covered?: boolean;
 }
 
 // ── Credits, contras, opening balances, settings ──
