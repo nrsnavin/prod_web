@@ -27,6 +27,7 @@ export function NotificationSettingsPage() {
     queryKey: ["notify-settings"],
     queryFn: notifyService.settings,
   });
+  const scheduled = useQuery({ queryKey: ["notify-scheduled"], queryFn: notifyService.scheduled });
   const update = useMutation({
     mutationFn: notifyService.update,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notify-settings"] }),
@@ -142,6 +143,35 @@ export function NotificationSettingsPage() {
                 <Plus className="h-4 w-4" /> Add
               </Button>
             </div>
+          </Card>
+
+          <Card className="p-5 lg:col-span-2">
+            <h3 className="font-semibold">Daily reports</h3>
+            <p className="text-xs text-ink-400">Sent by the server itself, once a day, India time, to the recipients above. Turn either off in the events list.</p>
+            <ul className="mt-2 divide-y divide-ink-100 text-sm">
+              {(
+                [
+                  ["morningDigest", "Morning digest", "with anomaly alerts and health checks"],
+                  ["eveningReport", "Evening report", "today's production, wastage and despatches"],
+                ] as const
+              ).map(([key, label, what]) => {
+                const r = scheduled.data?.data?.[key];
+                return (
+                  <li key={key} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                    <span>
+                      <strong>{label}</strong> at {r?.at ?? "—"} <span className="text-ink-400">· {what}</span>
+                    </span>
+                    <span className="text-ink-500">
+                      {!r?.last
+                        ? "Not sent yet"
+                        : r.last.ok === false
+                          ? `Failed on ${r.last.day}: ${r.last.error || "unknown error"}`
+                          : `Last sent ${r.last.day}`}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </Card>
         </div>
       )}

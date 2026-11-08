@@ -130,7 +130,15 @@ export const notifyService = {
     return httpClient.get("/notify/settings");
   },
   update: (body: Partial<NotificationSettings>) => httpClient.put("/notify/settings", body),
+  async scheduled(): Promise<{ data: Record<string, ScheduledReport> }> {
+    return httpClient.get("/notify/scheduled");
+  },
 };
+
+export interface ScheduledReport {
+  at: string;
+  last: { day: string; at: string; ok: boolean | null; error?: string; trigger?: string } | null;
+}
 
 export const advisorService = {
   briefing: (cards: unknown[]) =>
