@@ -19,6 +19,7 @@ import { payrollService, PayrollEmployeeRow, PayrollSettings, MonthRange, Payrol
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { formatDate } from "@/core/format/date";
+import { PayrollCheckPanel, PayFlags, usePayrollCheck, type PayFlag } from "./PayrollCheck";
 
 const payrollTone: Record<string, ChipTone> = {
   draft: "neutral",
@@ -158,7 +159,7 @@ function PayslipModal({
 // Record a payment against a payroll slip — full remaining net or a custom
 // (partial) amount. Shows any outstanding advances for context; a draft is
 // auto-finalized by the backend when paid.
-function PayDialog({ row, onClose }: { row: PayrollEmployeeRow; onClose: () => void }) {
+function PayDialog({ row, onClose, flags = [] }: { row: PayrollEmployeeRow; onClose: () => void; flags?: PayFlag[] }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const remaining = Math.max(0, (row.netPay ?? 0) - (row.amountPaid ?? 0));
@@ -211,6 +212,7 @@ function PayDialog({ row, onClose }: { row: PayrollEmployeeRow; onClose: () => v
   return (
     <FormScreen open onClose={onClose} title={`Pay — ${row.name}`} width="max-w-md">
       <div className="space-y-4">
+        <PayFlags flags={flags} />
         <div className="rounded-lg border border-ink-200 p-3 text-sm">
           <div className="flex justify-between py-0.5">
             <span className="text-ink-600">Net pay</span>
@@ -603,6 +605,7 @@ export function PayrollPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
+  const check = usePayrollCheck(year, month);
   const dashboard = useQuery({
     queryKey: ["payroll", year, month],
     queryFn: () => payrollService.dashboard(year, month),
@@ -853,6 +856,8 @@ export function PayrollPage() {
             </div>
           )}
 
+          <PayrollCheckPanel year={year} month={month} />
+
           <Card>
             <DataTable
               columns={columns}
@@ -965,7 +970,7 @@ export function PayrollPage() {
         <AddAdvanceForm defaultYear={year} defaultMonth={month} onClose={() => setAddAdvOpen(false)} />
       )}
 
-      {payRow && <PayDialog row={payRow} onClose={() => setPayRow(null)} />}
+      {payRow && <PayDialog row={payRow} onClose={() => setPayRow(null)} flags={check.data?.rows.find((r) => r.employeeId === payRow.employeeId)?.flags} />}
 
       {slip && (
         <PayslipModal
