@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Pin, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/core/auth/useAuth";
+import { NoticeTranslations } from "./NoticeTranslations";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
@@ -161,6 +162,7 @@ export function AnnouncementsPage() {
                   <p className="mt-1 text-xs text-ink-400">
                     {a.createdAt && formatDate(a.createdAt)}
                   </p>
+                  {isAdmin && <NoticeTranslations id={a._id} translations={a.translations} />}
                 </div>
                 {isAdmin && (<>
                 <button

@@ -40,6 +40,8 @@ export interface Announcement {
   audience?: string;
   department?: string;
   createdAt?: string;
+  /** Tamil and Hindi, for the employee app (admin view). */
+  translations?: Partial<Record<"ta" | "hi", { title: string; body: string; by?: "ai" | "person" }>>;
 }
 
 export const dashboardService = {
