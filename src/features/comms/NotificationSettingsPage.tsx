@@ -153,13 +153,14 @@ export function NotificationSettingsPage() {
                 [
                   ["morningDigest", "Morning digest", "with anomaly alerts and health checks"],
                   ["eveningReport", "Evening report", "today's production, wastage and despatches"],
+                  ["auditWatch", "Changes worth a look", "Mondays: cancellations, deletions, back-dated and late-night changes"],
                 ] as const
               ).map(([key, label, what]) => {
                 const r = scheduled.data?.data?.[key];
                 return (
                   <li key={key} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span>
-                      <strong>{label}</strong> at {r?.at ?? "—"} <span className="text-ink-400">· {what}</span>
+                      <strong>{label}</strong> {r?.weekday === 1 ? "Mondays " : ""}at {r?.at ?? "—"} <span className="text-ink-400">· {what}</span>
                     </span>
                     <span className="text-ink-500">
                       {!r?.last

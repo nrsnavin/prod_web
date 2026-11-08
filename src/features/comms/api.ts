@@ -137,6 +137,7 @@ export const notifyService = {
 
 export interface ScheduledReport {
   at: string;
+  weekday?: number;
   last: { day: string; at: string; ok: boolean | null; error?: string; trigger?: string } | null;
 }
 

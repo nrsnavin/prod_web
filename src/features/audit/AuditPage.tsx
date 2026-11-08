@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { auditService, AuditEntry } from "./api";
+import { AuditWatchPanel } from "./AuditWatchPanel";
 
 const entityMeta: Record<AuditEntry["entityType"], { label: string; path: (e: AuditEntry) => string | null }> = {
   Order:           { label: "Order",  path: (e) => `/orders/${e.entityId}` },
@@ -60,6 +61,8 @@ export function AuditPage() {
           </Button>
         }
       />
+
+      <AuditWatchPanel />
 
       {isLoading ? (
         <Skeleton className="h-96 w-full" />
