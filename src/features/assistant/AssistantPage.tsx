@@ -5,13 +5,15 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/components/ui/cn";
 import { ApiError } from "@/core/http/httpClient";
-import { assistantService, ChatMessage } from "./api";
+import { assistantService, ChatMessage, type AssistantReport } from "./api";
+import { AssistantReportCard } from "./AssistantReportCard";
 
 const SUGGESTIONS = [
   "Which orders are at risk this week?",
   "What's driving wastage this month?",
   "What raw materials should I reorder?",
   "What's the status of order 219?",
+  "Production by loom this week",
 ];
 
 const TOOL_LABELS: Record<string, string> = {
@@ -21,10 +23,12 @@ const TOOL_LABELS: Record<string, string> = {
   find_order: "order lookup",
   find_material: "material lookup",
   get_machine_status: "machine status",
+  run_report: "report",
 };
 
 interface DisplayMessage extends ChatMessage {
   tools?: string[];
+  reports?: AssistantReport[];
 }
 
 export function AssistantPage() {
@@ -48,7 +52,7 @@ export function AssistantPage() {
     setInput("");
     chat.mutate(history, {
       onSuccess: (res) =>
-        setMessages((m) => [...m, { role: "assistant", content: res.reply, tools: res.toolsUsed }]),
+        setMessages((m) => [...m, { role: "assistant", content: res.reply, tools: res.toolsUsed, reports: res.reports }]),
       onError: (e) =>
         setMessages((m) => [
           ...m,
@@ -98,6 +102,7 @@ export function AssistantPage() {
               )}
               <div className={cn("max-w-[75%] rounded-2xl px-4 py-2.5 text-sm", m.role === "user" ? "bg-brand-500 text-white" : "bg-ink-100 text-ink-900")}>
                 <p className="whitespace-pre-wrap">{m.content}</p>
+                {m.reports?.map((r, ri) => <AssistantReportCard key={ri} report={r} />)}
                 {m.tools && m.tools.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1 border-t border-ink-200/60 pt-2">
                     {m.tools.map((t) => (
