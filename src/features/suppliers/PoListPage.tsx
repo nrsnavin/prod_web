@@ -13,6 +13,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { usePurchaseOrders } from "./hooks";
 import { PoStatus, PurchaseOrder } from "./types";
 import { formatDate } from "@/core/format/date";
+import { LatePoPanel } from "./LatePoPanel";
 
 export const poStatusTone: Record<PoStatus, ChipTone> = {
   Open: "info",
@@ -108,6 +109,8 @@ export function PoListPage() {
       </div>
 
       {isError && <ErrorBanner message={(error as Error).message} />}
+
+      <LatePoPanel />
 
       <Card>
         <DataTable
