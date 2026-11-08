@@ -15,6 +15,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { feedbackService, FeedbackItem } from "./api";
 import { formatDate } from "@/core/format/date";
 import { useAuth } from "@/core/auth/useAuth";
+import { FeedbackThemes } from "./FeedbackThemes";
 
 const statusTone: Record<string, ChipTone> = {
   open: "warning",
@@ -91,6 +92,8 @@ export function FeedbackPage() {
   return (
     <>
       <PageHeader title="Feedback" subtitle="Worker feedback from the employee app." />
+
+      <FeedbackThemes />
 
       <div className="mb-4">
         <FilterChips
