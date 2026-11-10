@@ -12,6 +12,8 @@ import { useToast } from "@/components/ui/Toast";
 import { httpClient } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
 import { money } from "./shared";
+import { uploadForm } from "@/core/http/upload";
+import { apiUrl } from "@/app/config";
 
 // ══════════════════════════════════════════════════════════════════
 //  Notices from GST, income tax, TDS, PF, ESI: read from the PDF, kept
@@ -76,7 +78,7 @@ export function NoticesSection() {
                 <p className="text-sm text-ink-600">{[n.form ? n.subject : "", n.periodText, n.amount ? money(n.amount) : ""].filter(Boolean).join(" · ")}</p>
                 {n.summary && <p className="text-sm text-ink-500">{n.summary}</p>}
                 {n.status === "open" && n.documents.length > 0 && <p className="text-xs text-ink-500">Needs: {n.documents.join("; ")}</p>}
-                {n.attachments?.map((a) => <a key={a._id} className="mr-3 text-xs text-brand-600 underline" href={`/api/v2/accounts/notices/${n._id}/attachments/${a._id}`} target="_blank" rel="noreferrer">{a.filename || "notice"}</a>)}
+                {n.attachments?.map((a) => <a key={a._id} className="mr-3 text-xs text-brand-600 underline" href={apiUrl(`/accounts/notices/${n._id}/attachments/${a._id}`)} target="_blank" rel="noopener">{a.filename || "notice"}</a>)}
               </div>
               <div className="flex flex-col items-end gap-1">
                 <StatusChip tone={n.status === "open" ? TONE[n.urgency] : "success"}>{dueText(n)}</StatusChip>
@@ -112,9 +114,7 @@ function AddNotice({ onClose }: { onClose: () => void }) {
     try {
       const fd = new FormData();
       picked.forEach((p) => fd.append("files", p));
-      const res = await fetch("/api/v2/accounts/notices/read", { method: "POST", body: fd, credentials: "include" });
-      const body = (await res.json().catch(() => ({}))) as NoticeRead & { message?: string };
-      if (!res.ok) throw new Error(body.message || "Could not read the notice");
+      const body = await uploadForm<NoticeRead>("/accounts/notices/read", fd, "Could not read the notice");
       setRead(body);
       if (body.read.problem) { toast(body.read.problem === "not_a_notice" ? "That does not look like a government notice — type it in" : "The notice could not be read — type it in", "info"); return; }
       const r = body.read;
@@ -138,7 +138,7 @@ function AddNotice({ onClose }: { onClose: () => void }) {
       for (const file of files) {
         const fd = new FormData();
         fd.append("file", file);
-        await fetch(`/api/v2/accounts/notices/${res.data._id}/attachments`, { method: "POST", body: fd, credentials: "include" }).catch(() => null);
+        await uploadForm(`/accounts/notices/${res.data._id}/attachments`, fd).catch(() => null);
       }
       qc.invalidateQueries({ queryKey: KEY });
       toast("Notice added — reminders are set", "success");

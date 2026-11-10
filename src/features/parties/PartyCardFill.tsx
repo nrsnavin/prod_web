@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { httpClient } from "@/core/http/httpClient";
 import { useDebouncedValue } from "@/core/hooks/useDebouncedValue";
 import { gstinInfo } from "./gstin";
+import { uploadForm } from "@/core/http/upload";
 
 export interface CardFields { name: string; contactName: string; phone: string; email: string; gstin: string; gstinChecksumOk?: boolean | null; address: string; city: string; pincode: string; stateCode: string }
 export interface SimilarParty { _id: string; name: string; gstin?: string; phone?: string; why: string }
@@ -26,9 +27,8 @@ export function CardFillButton({ kind, onFill }: { kind: Kind; onFill: (f: CardF
     try {
       const fd = new FormData();
       fd.append("files", file);
-      const res = await fetch(`/api/v2${base[kind]}/read-card`, { method: "POST", body: fd, credentials: "include" });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body?.message || "Could not read the card");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const body = await uploadForm<any>(`${base[kind]}/read-card`, fd, "Could not read the card");
       if (body.read?.problem) { setNote(body.read.problem === "not_a_card" ? "That does not look like a card or letterhead." : "The card could not be read — type the details in."); return; }
       onFill(body.read as CardFields, body.aiSuggestion ?? null, body.similar ?? []);
       setNote("Filled in from the card — check each field.");

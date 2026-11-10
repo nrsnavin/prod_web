@@ -68,6 +68,20 @@ export const config = {
   appName: "Jarvis ERP",
 } as const;
 
+/**
+ * The address of an API path, for a link or anything else the shared
+ * HTTP client does not send (a download opened in a new tab).
+ *
+ * `path` is what the client is given: "/accounts/notes/123/pdf". A link
+ * written out as "/api/v2/…" is relative to the PAGE, and reaches the
+ * API only where the two share a host — the dev server. A built app is
+ * served from one host and talks to the API on another, so every such
+ * link pointed at the web host and opened the app instead of the file.
+ */
+export function apiUrl(path: string, base: string = config.apiBaseUrl): string {
+  return `${base.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
+}
+
 /** One line, at boot, saying which backend this app is wired to. */
 export function describeApiTarget(): string {
   const why = {

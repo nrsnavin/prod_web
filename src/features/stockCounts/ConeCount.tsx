@@ -4,6 +4,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import { uploadForm } from "@/core/http/upload";
 
 // ══════════════════════════════════════════════════════════════════
 //  Count the cones from a photo (experimental): the AI counts what it
@@ -37,9 +38,7 @@ export function ConeCountDialog({ countId, lineId, name, onUse, onClose }: {
       const fd = new FormData();
       fd.append("file", file); fd.append("lineId", lineId);
       if (weight.trim()) fd.append("coneWeightKg", weight.trim());
-      const r = await fetch(`/api/v2/stock-counts/${countId}/cones`, { method: "POST", body: fd, credentials: "include" });
-      const body = (await r.json().catch(() => ({}))) as ConeReading & { message?: string };
-      if (!r.ok) throw new Error(body.message || "Could not count the cones");
+      const body = await uploadForm<ConeReading>(`/stock-counts/${countId}/cones`, fd, "Could not count the cones");
       if (body.read.problem) { toast(body.read.problem === "no_cones" ? "No cones in that photo" : "The photo could not be read — try a closer, brighter one", "info"); return; }
       setRes(body); setCones(String(body.read.cones ?? ""));
       if (!weight && body.material?.coneWeightKg) setWeight(String(body.material.coneWeightKg));

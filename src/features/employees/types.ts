@@ -83,7 +83,8 @@ export interface OffboardResult {
   success: boolean;
   employee: { id: string; name: string; status: "offboarded"; lastWorkingDay: string; reason: OffboardReason };
   workerLoginClosed: boolean;
-  managerLogin: { id: string; email: string } | null;
+  /** Their other login, still listed under Users. `staysOpen`: an administrator's, which leaving does not close. */
+  managerLogin: { id: string; email: string; staysOpen?: boolean } | null;
 }
 
 /** A shift that keeps someone from leaving on the day asked (EMPLOYEE_HAS_LATER_SHIFTS). */

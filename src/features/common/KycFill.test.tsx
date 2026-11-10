@@ -10,8 +10,11 @@ import { EmployeeForm } from "@/features/employees/EmployeeForm";
 // holder is not them); an Aadhaar / PAN card fills a new employee.
 
 vi.mock("@/core/http/httpClient", () => ({ httpClient: { get: vi.fn(async () => ({ similar: [] })), post: vi.fn() }, ApiError: class extends Error {} }));
-afterEach(() => vi.unstubAllGlobals());
-const reply = (body: unknown) => { const f = vi.fn(async () => ({ ok: true, json: async () => body })); vi.stubGlobal("fetch", f); return f; };
+// Files go through the shared upload (core/http/upload.ts), like every other request.
+const upload = vi.fn();
+vi.mock("@/core/http/upload", () => ({ uploadForm: (...a: unknown[]) => upload(...(a as [])) }));
+afterEach(() => upload.mockReset());
+const reply = (body: unknown) => { upload.mockResolvedValue(body); return upload; };
 const wrap = (ui: React.ReactNode) => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>);
 const photo = () => new File([new Uint8Array([1])], "x.jpg", { type: "image/jpeg" });
 
@@ -21,7 +24,7 @@ describe("a supplier's cancelled cheque", () => {
     const onSubmit = vi.fn();
     wrap(<SupplierForm defaultName="Sri Yarn Traders" submitting={false} onSubmit={onSubmit} onCancel={() => {}} />);
     await userEvent.upload(screen.getByLabelText("cheque photo"), photo());
-    expect(f).toHaveBeenCalledWith("/api/v2/supplier/read-cheque?name=Sri%20Yarn%20Traders", expect.anything());
+    expect(f).toHaveBeenCalledWith("/supplier/read-cheque?name=Sri%20Yarn%20Traders", expect.any(FormData), expect.any(String));
     expect(await screen.findByLabelText("Account number")).toHaveValue("9988776655");
     expect(screen.getByLabelText("IFSC")).toHaveValue("ICIC0000999");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();

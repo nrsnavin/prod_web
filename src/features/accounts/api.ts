@@ -11,6 +11,8 @@ import type {
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
   PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult, Gstr2bFollowUp,
 } from "./types";
+import { uploadForm } from "@/core/http/upload";
+import { apiUrl } from "@/app/config";
 
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
 
@@ -28,7 +30,7 @@ export const accountsService = {
   deposits: async (q: { account?: string; page?: number } = {}) => httpClient.get<{ success: boolean; slips: DepositSlip[]; total: number; pages: number }>("/accounts/deposits", clean(q)),
   createDeposit: async (body: { account: string; date: string; cheques: string[]; cash?: number; cashFrom?: string; bankSlipNo?: string; requestId?: string }) =>
     (await httpClient.post<{ success: boolean; slip: DepositSlip }>("/accounts/deposits", body)).slip,
-  depositPdfUrl: (id: string) => `/api/v2/accounts/deposits/${id}/pdf`,
+  depositPdfUrl: (id: string) => apiUrl(`/accounts/deposits/${id}/pdf`),
   categories: async () => (await httpClient.get<{ success: boolean; categories: ExpenseCategory[] }>("/accounts/categories")).categories,
   createCategory: async (body: Partial<ExpenseCategory>) => (await httpClient.post<{ success: boolean; category: ExpenseCategory }>("/accounts/categories", body)).category,
   updateCategory: async (id: string, body: Partial<ExpenseCategory>) => (await httpClient.put<{ success: boolean; category: ExpenseCategory }>(`/accounts/categories/${id}`, body)).category,
@@ -79,7 +81,7 @@ export const accountsService = {
   // ── Bills by mail ──
   mailedBills: async (status: MailedBill["status"] = "new") => (await httpClient.get<{ success: boolean; bills: MailedBill[] }>("/accounts/bill-inbox", { status })).bills,
   mailedBill: (id: string) => httpClient.get<ScanResult & { success: boolean; item: MailedBill }>(`/accounts/bill-inbox/${encodeURIComponent(id)}`),
-  mailedBillFileUrl: (id: string) => `/api/v2/accounts/bill-inbox/${encodeURIComponent(id)}/file`,
+  mailedBillFileUrl: (id: string) => apiUrl(`/accounts/bill-inbox/${encodeURIComponent(id)}/file`),
   dismissMailedBill: (id: string, reason: string) => httpClient.post<{ success: boolean }>(`/accounts/bill-inbox/${encodeURIComponent(id)}/dismiss`, { reason }),
   billMailboxStatus: () => httpClient.get<{ success: boolean; configured: boolean; mailbox: string; everyMin: number; waiting: number }>("/accounts/bill-inbox/status"),
   readBillMailbox: () => httpClient.post<{ success: boolean; mails: number; bills: number; errors: string[] }>("/accounts/bill-inbox/run", {}),
@@ -91,38 +93,26 @@ export const accountsService = {
     for (const f of input.files ?? []) fd.append("files", f);
     if (input.text) fd.append("text", input.text);
     if (input.customer) fd.append("customer", input.customer);
-    const res = await fetch("/api/v2/accounts/advice/read", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read the advice");
-    return body as AdviceResult;
+    return uploadForm<AdviceResult>("/accounts/advice/read", fd, "Could not read the advice");
   },
   /** A supplier's statement of our account set beside our books. */
   async reconcileSupplier(supplier: string, files: File[]): Promise<SupplierReconResult> {
     const fd = new FormData();
     fd.append("supplier", supplier);
     for (const f of files) fd.append("files", f);
-    const res = await fetch("/api/v2/accounts/supplier-recon", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read their statement");
-    return body as SupplierReconResult;
+    return uploadForm<SupplierReconResult>("/accounts/supplier-recon", fd, "Could not read their statement");
   },
   async scan(files: File[]): Promise<ScanResult> {
     const fd = new FormData();
     for (const f of files) fd.append("files", f);
-    const res = await fetch("/api/v2/accounts/scan", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read the bill");
-    return body as ScanResult;
+    return uploadForm<ScanResult>("/accounts/scan", fd, "Could not read the bill");
   },
   async uploadStatement(account: string, file: File, useModel = true): Promise<StatementResult> {
     const fd = new FormData();
     fd.append("account", account);
     fd.append("useModel", String(useModel));
     fd.append("file", file);
-    const res = await fetch("/api/v2/accounts/bank/statement", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read the statement");
-    return body as StatementResult;
+    return uploadForm<StatementResult>("/accounts/bank/statement", fd, "Could not read the statement");
   },
   postStatement: (account: string, rows: StatementPostRow[], statement?: string) =>
     httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; voucherNo?: string; _id?: string; error?: string }>; posted: number; failed: number }>("/accounts/bank/statement/post", { account, rows, statement }),
@@ -194,16 +184,13 @@ export const accountsService = {
   // ── Statutory ──
   msme: () => httpClient.get<MsmeDues & { success: boolean }>("/accounts/msme"),
   msmeYearEnd: (fy?: string) => httpClient.get<MsmeYearEnd & { success: boolean }>("/accounts/msme/year-end", clean({ fy })),
-  msmeForm1Url: (asOf?: string) => `/api/v2/accounts/msme/form1?format=xlsx${asOf ? `&asOf=${asOf}` : ""}`,
+  msmeForm1Url: (asOf?: string) => apiUrl(`/accounts/msme/form1?format=xlsx${asOf ? `&asOf=${asOf}` : ""}`),
   gstr2b: (period?: string) => httpClient.get<Gstr2bSummary & { success: boolean }>("/accounts/gstr2b", clean({ period })),
   async uploadGstr2b(file: File, period?: string): Promise<Gstr2bSummary> {
     const fd = new FormData();
     if (period) fd.append("period", period);
     fd.append("file", file);
-    const res = await fetch("/api/v2/accounts/gstr2b/upload", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read the GSTR-2B file");
-    return body as Gstr2bSummary;
+    return uploadForm<Gstr2bSummary>("/accounts/gstr2b/upload", fd, "Could not read the GSTR-2B file");
   },
   gstr2bFollowUps: async (period: string) => (await httpClient.get<{ success: boolean; suppliers: Gstr2bFollowUp[] }>("/accounts/gstr2b/follow-ups", { period })).suppliers,
   reconcileGstr2b: (period: string) => httpClient.post<Gstr2bSummary & { success: boolean }>("/accounts/gstr2b/reconcile", { period }),
@@ -211,12 +198,12 @@ export const accountsService = {
   itcReverse: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number }>(`/accounts/bills/${bill}/itc-reverse`, { month }),
   itcReclaim: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number }>(`/accounts/bills/${bill}/itc-reclaim`, { month }),
   gstr1: (month?: string) => httpClient.get<Gstr1 & { success: boolean }>("/accounts/gstr1", clean({ month })),
-  gstr1JsonUrl: (month: string) => `/api/v2/accounts/gstr1/json?month=${month}`,
+  gstr1JsonUrl: (month: string) => apiUrl(`/accounts/gstr1/json?month=${month}`),
   tdsRegister: (month?: string) => httpClient.get<TdsRegister & { success: boolean }>("/accounts/tds/register", clean({ month })),
   addTdsChallan: (body: { month: string; section: string; amount: number; interest?: number; bsrCode?: string; challanNo?: string; depositedOn: string; account?: string }) =>
     httpClient.post<{ success: boolean; register: TdsRegister }>("/accounts/tds/challans", body),
   form26q: (fy?: string, q?: string) => httpClient.get<Form26q & { success: boolean }>("/accounts/tds/26q", clean({ fy, q })),
-  form26qXlsxUrl: (fy: string, q: string) => `/api/v2/accounts/tds/26q?fy=${fy}&q=${q}&format=xlsx`,
+  form26qXlsxUrl: (fy: string, q: string) => apiUrl(`/accounts/tds/26q?fy=${fy}&q=${q}&format=xlsx`),
   tdsCertificates: async (fy?: string) => (await httpClient.get<{ success: boolean; fy: string; rows: TdsCertificateRow[] }>("/accounts/tds/certificates", clean({ fy }))).rows,
   addTdsCertificate: (body: { kind: "issued" | "received"; party: string; fy: string; quarter: string; certNo?: string; section?: string; amount: number; on?: string; note?: string }) =>
     httpClient.post<{ success: boolean; certificate: TdsCertificateRow }>("/accounts/tds/certificates", body),
@@ -225,10 +212,7 @@ export const accountsService = {
     const fd = new FormData();
     fd.append("fy", fy);
     fd.append("file", file);
-    const res = await fetch("/api/v2/accounts/tds/26as", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read the 26AS file");
-    return body;
+    return uploadForm("/accounts/tds/26as", fd, "Could not read the 26AS file");
   },
   purchases194q: (fy?: string) => httpClient.get<Purchases194q & { success: boolean }>("/accounts/tds/194q", clean({ fy })),
   payrollBooks: (month?: string) => httpClient.get<PayrollBooks & { success: boolean }>("/accounts/payroll-books", clean({ month })),
@@ -238,11 +222,11 @@ export const accountsService = {
     httpClient.post<{ success: boolean; deposit: StatutoryDepositRow; summary: PayrollBooks }>("/accounts/payroll-books/deposits", body),
   serviceBillDraft: (id: string) => httpClient.get<{ success: boolean; entered: string | null; draft: ServiceBillDraft | null }>(`/accounts/service-bills/${id}/draft`),
   creditNoteLimit: (invoice: string) => httpClient.get<CreditNoteLimit & { success: boolean }>("/accounts/credit-note-limit", { invoice }),
-  gstr1XlsxUrl: (month: string) => `/api/v2/accounts/gstr1/xlsx?month=${month}`,
+  gstr1XlsxUrl: (month: string) => apiUrl(`/accounts/gstr1/xlsx?month=${month}`),
 
   // ── Registers: fixed assets, closing stock, budgets, cost centres ──
   fixedAssets: (fy?: string) => httpClient.get<FixedAssetRegister & { success: boolean }>("/accounts/fixed-assets", clean({ fy })),
-  fixedAssetsXlsxUrl: (fy: string) => `/api/v2/accounts/fixed-assets/register.xlsx?fy=${fy}`,
+  fixedAssetsXlsxUrl: (fy: string) => apiUrl(`/accounts/fixed-assets/register.xlsx?fy=${fy}`),
   fixedAsset: (id: string) => httpClient.get<{ success: boolean; asset: FixedAsset; years: AssetYear[] }>(`/accounts/fixed-assets/${id}`),
   addFixedAsset: (body: FixedAssetBody) => httpClient.post<{ success: boolean; asset: FixedAsset; year: AssetYear }>("/accounts/fixed-assets", body),
   disposeFixedAsset: (id: string, body: { how: "sold" | "scrapped"; date: string; amount?: number; reason?: string }) => httpClient.post<{ success: boolean; asset: FixedAsset; year: AssetYear }>(`/accounts/fixed-assets/${id}/dispose`, body),
@@ -264,7 +248,7 @@ export const accountsService = {
   interest: (asOf?: string, customer?: string) => httpClient.get<InterestDue & { success: boolean }>("/accounts/interest", clean({ asOf, customer })),
   interestDraft: (customer: string, asOf?: string) => httpClient.get<InterestDraft & { success: boolean }>("/accounts/interest/draft", clean({ customer, asOf })),
   register: (kind: "sales" | "purchase", from?: string, to?: string) => httpClient.get<Register & { success: boolean }>(`/accounts/registers/${kind}`, clean({ from, to })),
-  registerXlsxUrl: (kind: "sales" | "purchase", from: string, to: string) => `/api/v2/accounts/registers/${kind}?from=${from}&to=${to}&format=xlsx`,
+  registerXlsxUrl: (kind: "sales" | "purchase", from: string, to: string) => apiUrl(`/accounts/registers/${kind}?from=${from}&to=${to}&format=xlsx`),
   createContra: async (body: { from: string; to: string; amount: number; date?: string; mode?: string; reference?: string; narration?: string; requestId?: string }) =>
     (await httpClient.post<{ success: boolean; contra: Contra }>("/accounts/contras", body)).contra,
   cancelContra: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; contra: Contra }>(`/accounts/contras/${id}/cancel`, { reason })).contra,
@@ -278,14 +262,11 @@ export const accountsService = {
   async importOpening(file: File): Promise<{ rows: OpeningImportRow[]; ok: number; problems: number; file: string }> {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch("/api/v2/accounts/opening-balances/import", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read the file");
-    return body;
+    return uploadForm("/accounts/opening-balances/import", fd, "Could not read the file");
   },
   bulkOpening: (rows: Array<Partial<OpeningImportRow> & { requestId?: string }>) =>
     httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; docNo?: string; error?: string }>; posted: number; failed: number }>("/accounts/opening-balances/bulk", { rows }),
-  openingTemplateUrl: "/api/v2/accounts/opening-balances/template.xlsx",
+  openingTemplateUrl: apiUrl("/accounts/opening-balances/template.xlsx"),
   // Set once, from the dashboard: who is left, the day they are as on.
   openingOnboarding: (q: { partyType?: string; search?: string; limit?: number }) =>
     httpClient.get<{ success: boolean } & OpeningOnboarding>("/accounts/opening-onboarding", clean(q)),
@@ -304,16 +285,16 @@ export const accountsService = {
     (await httpClient.post<{ success: boolean; settings: AccountsSettings }>("/accounts/lock", { lockDate, reason })).settings,
 
   // ── Documents for the other side ──
-  notePdfUrl: (id: string) => `/api/v2/accounts/notes/${id}/pdf`,
-  paymentPdfUrl: (id: string) => `/api/v2/accounts/payments/${id}/pdf`,
+  notePdfUrl: (id: string) => apiUrl(`/accounts/notes/${id}/pdf`),
+  paymentPdfUrl: (id: string) => apiUrl(`/accounts/payments/${id}/pdf`),
   statementPdfUrl: (partyType: "customer" | "supplier", party: string, range: { from?: string; to?: string } = {}, detailed = false) =>
-    `/api/v2/accounts/statement/pdf?${new URLSearchParams(clean({ partyType, party, ...range, detailed: detailed ? "1" : undefined }) as Record<string, string>).toString()}`,
+    apiUrl(`/accounts/statement/pdf?${new URLSearchParams(clean({ partyType, party, ...range, detailed: detailed ? "1" : undefined }) as Record<string, string>).toString()}`),
   statementXlsxUrl: (partyType: "customer" | "supplier", party: string, range: { from?: string; to?: string } = {}) =>
-    `/api/v2/accounts/statement/xlsx?${new URLSearchParams(clean({ partyType, party, ...range }) as Record<string, string>).toString()}`,
+    apiUrl(`/accounts/statement/xlsx?${new URLSearchParams(clean({ partyType, party, ...range }) as Record<string, string>).toString()}`),
   ledgerSummary: (partyType: "customer" | "supplier", range: { from?: string; to?: string } = {}) =>
     httpClient.get<GroupSummary & { success: boolean }>("/accounts/ledger/summary", clean({ partyType, ...range })),
   ledgerSummaryXlsxUrl: (partyType: "customer" | "supplier", range: { from?: string; to?: string } = {}) =>
-    `/api/v2/accounts/ledger/summary?${new URLSearchParams(clean({ partyType, ...range, format: "xlsx" }) as Record<string, string>).toString()}`,
+    apiUrl(`/accounts/ledger/summary?${new URLSearchParams(clean({ partyType, ...range, format: "xlsx" }) as Record<string, string>).toString()}`),
   noteEinvoiceJson: (id: string) => httpClient.getBlob(`/accounts/notes/${id}/einvoice.json`),
   registerNoteIrn: (id: string) => httpClient.post<{ success: boolean; note: AccountNote }>(`/accounts/notes/${id}/register-irn`, {}),
   pasteNoteIrn: (id: string, body: { irn: string; ackNo?: string; ackDate?: string; signedQr?: string }) =>
@@ -337,7 +318,7 @@ export const accountsService = {
     (await (id ? httpClient.put<{ success: boolean; row: RecurringExpense }>(`/accounts/recurring/${id}`, body) : httpClient.post<{ success: boolean; row: RecurringExpense }>("/accounts/recurring", body))).row,
   runRecurring: () => httpClient.post<{ success: boolean; drafted: string[] }>("/accounts/recurring/run", {}),
   exportUrl: (what: "bills" | "expenses" | "vouchers" | "notes" | "receivables" | "payables", range: { from?: string; to?: string } = {}) =>
-    `/api/v2/accounts/export/${what}${Object.keys(clean(range)).length ? `?${new URLSearchParams(clean(range) as Record<string, string>).toString()}` : ""}`,
+    apiUrl(`/accounts/export/${what}${Object.keys(clean(range)).length ? `?${new URLSearchParams(clean(range) as Record<string, string>).toString()}` : ""}`),
 
-  attachmentUrl: (kind: "bills" | "expenses" | "notes" | "payments", id: string, aid: string) => `/api/v2/accounts/${kind}/${id}/attachments/${aid}`,
+  attachmentUrl: (kind: "bills" | "expenses" | "notes" | "payments", id: string, aid: string) => apiUrl(`/accounts/${kind}/${id}/attachments/${aid}`),
 };

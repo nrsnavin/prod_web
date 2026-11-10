@@ -22,6 +22,7 @@ import {
   featuresForDepartment,
 } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
+import { passwordProblem, MIN_PASSWORD_LENGTH } from "@/core/auth/password";
 import { usersService, ManagedUser } from "./api";
 
 const deptOptions = DEPARTMENTS.map((d) => ({ value: d, label: DEPARTMENT_LABELS[d] ?? d }));
@@ -129,8 +130,9 @@ export function UserFormScreen({
     // A worker login has no email; it signs in by phone and PIN.
     const needsEmail = !(isEdit && user?.phoneSignIn && !user.email);
     if (!name.trim() || (needsEmail && !email.trim())) return toast("Name and email are required", "error");
-    if (!isEdit && password.length < 4) return toast("Password must be at least 4 characters", "error");
-    if (isEdit && password && password.length < 4) return toast("Password must be at least 4 characters", "error");
+    // New passwords only: on an edit, blank means "leave it as it is".
+    const weak = !isEdit || password ? passwordProblem(password) : null;
+    if (weak) return toast(weak, "error");
     if (selfService && !employeeId) return toast("Pick the employee this login belongs to", "error");
     // Saving nobody any access is legitimate — but it is a decision, not a
     // slip, so make it explicit rather than silent.
@@ -150,6 +152,10 @@ export function UserFormScreen({
           <Input
             label={isEdit ? "New password (leave blank to keep)" : "Password"}
             type="password"
+            autoComplete="new-password"
+            hint={isEdit
+              ? `At least ${MIN_PASSWORD_LENGTH} characters. Setting one signs them out everywhere.`
+              : `At least ${MIN_PASSWORD_LENGTH} characters`}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />

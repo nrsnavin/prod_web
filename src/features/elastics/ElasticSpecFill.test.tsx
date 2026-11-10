@@ -28,17 +28,19 @@ const body = {
   },
 };
 
-afterEach(() => vi.unstubAllGlobals());
+// Files go through the shared upload (core/http/upload.ts), like every other request.
+const upload = vi.fn();
+vi.mock("@/core/http/upload", () => ({ uploadForm: (...a: unknown[]) => upload(...(a as [])) }));
+afterEach(() => upload.mockReset());
 
 describe("filling an elastic from a tech sheet", () => {
   it("fills what was read, picks the yarns it matched, says what to check, and saves the reading with it", async () => {
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => body }));
-    vi.stubGlobal("fetch", fetchMock);
+    upload.mockResolvedValue(body);
     const onSubmit = vi.fn();
     render(<ElasticForm submitting={false} onSubmit={onSubmit} onCancel={() => {}} />);
     const file = new File([new Uint8Array([1, 2, 3])], "sheet.jpg", { type: "image/jpeg" });
     await userEvent.upload(screen.getByLabelText("tech sheet photo"), file);
-    expect(fetchMock).toHaveBeenCalledWith("/api/v2/elastic/read-spec", expect.objectContaining({ method: "POST" }));
+    expect(upload).toHaveBeenCalledWith("/elastic/read-spec", expect.any(FormData), expect.any(String));
     expect(await screen.findByText("Filled in from the tech sheet — check each field.")).toBeInTheDocument();
     expect(screen.getByLabelText("Elastic name *")).toHaveValue("25mm Knitted Elastic Black");
     expect(screen.getByLabelText("Pick")).toHaveValue(12);

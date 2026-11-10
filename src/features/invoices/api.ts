@@ -11,6 +11,7 @@ import type {
   IrnPasteBody,
   OrderInvoices,
 } from "./types";
+import { apiUrl } from "@/app/config";
 
 export const invoiceService = {
   async list(params: { page?: number; limit?: number; status?: InvoiceStatus | "all"; einvoice?: EinvoiceStatus | "all"; search?: string; customer?: string; order?: string }) {
@@ -59,7 +60,7 @@ export const invoiceService = {
   async pasteEwaybill(id: string, body: EwaybillBody): Promise<Invoice> {
     return (await httpClient.post<{ success: boolean; invoice: Invoice }>(`/invoice/${id}/ewaybill/paste`, body)).invoice;
   },
-  ewaybillJsonUrl: (id: string) => `/api/v2/invoice/${id}/ewaybill.json`,
+  ewaybillJsonUrl: (id: string) => apiUrl(`/invoice/${id}/ewaybill.json`),
   /** The shipping bill customs issued after the export invoice, and the port. */
   async updateExport(id: string, body: { shippingBill: { number: string; date?: string }; portCode?: string }): Promise<Invoice> {
     return (await httpClient.post<{ success: boolean; invoice: Invoice }>(`/invoice/${id}/export`, body)).invoice;

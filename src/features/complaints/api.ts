@@ -2,6 +2,7 @@ import { httpClient } from "@/core/http/httpClient";
 import type {
   ComplaintRow, ComplaintCategory, ComplaintStatus, TraceResult, ThemesReport,
 } from "./types";
+import { uploadForm } from "@/core/http/upload";
 
 export interface ComplaintListResponse {
   success: boolean;
@@ -48,10 +49,7 @@ export const complaintService = {
     fd.append("customer", customer);
     fd.append("text", text);
     for (const p of photos.slice(0, 3)) fd.append("photos", p);
-    const res = await fetch("/api/v2/complaint/intake", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read the message");
-    return body.data as Intake;
+    return (await uploadForm<{ data: Intake }>("/complaint/intake", fd, "Could not read the message")).data;
   },
 
   async replyDraft(id: string) {

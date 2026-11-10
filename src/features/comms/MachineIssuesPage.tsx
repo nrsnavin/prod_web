@@ -317,8 +317,12 @@ function AnomalyBanner() {
 }
 
 export function MachineIssuesPage() {
-  const role = useAuth().user?.role;
+  const me = useAuth().user;
+  const role = me?.role;
   const canSeeAnomalies = role === "admin" || role === "production";
+  // Closing an issue is the office's: a worker's own login reports one
+  // and follows it, and the server refuses its status change.
+  const canUpdate = me?.selfService !== true;
   const [status, setStatus] = useState("all");
   const [editing, setEditing] = useState<MachineIssue | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -401,7 +405,7 @@ export function MachineIssuesPage() {
                 <StatusChip tone={statusTone[i.status] ?? "neutral"}>
                   {STATUS_LABEL[i.status] ?? i.status}
                 </StatusChip>
-                {i.status !== "resolved" && i.status !== "rejected" && (
+                {canUpdate && i.status !== "resolved" && i.status !== "rejected" && (
                   <Button size="sm" variant="secondary" onClick={() => setEditing(i)}>
                     Update
                   </Button>

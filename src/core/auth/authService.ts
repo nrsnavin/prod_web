@@ -51,10 +51,19 @@ class ApiAuthService implements AuthService {
   }
 
   async logout(): Promise<void> {
-    // No logout endpoint on the backend — the cookie is httpOnly so we
-    // can't delete it client-side; clearing local session state is enough
-    // (the cookie expires in 24h and guards ignore it without a session).
-    return Promise.resolve();
+    // Ends the session on the server. The cookie is httpOnly, so this
+    // page cannot delete it — and until this call existed it stayed good
+    // in the browser for the rest of its day, on an office desktop the
+    // next person sits down at. The server now refuses that token from
+    // here on and tells the browser to drop it.
+    //
+    // Signing out has to work with the network down too: whatever
+    // happens here, the caller clears the local session.
+    try {
+      await this.client.post("/user/logout", {});
+    } catch {
+      /* nothing to do: the cookie expires on its own within the day */
+    }
   }
 
   async fetchCurrentUser(): Promise<SessionUser> {

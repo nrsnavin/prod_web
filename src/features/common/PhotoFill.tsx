@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { uploadForm } from "@/core/http/upload";
 
 // ══════════════════════════════════════════════════════════════════
 //  "Fill from a photo": a photo or PDF sent to a reader route, and what
@@ -26,9 +27,8 @@ export function PhotoFillButton<T extends { read?: { problem?: string | null } }
     try {
       const fd = new FormData();
       for (const f of Array.from(files).slice(0, 3)) fd.append("files", f);
-      const res = await fetch(`/api/v2${url}`, { method: "POST", body: fd, credentials: "include" });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body?.message || `Could not read the ${what}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const body = await uploadForm<any>(url, fd, `Could not read the ${what}`);
       const problem = body?.read?.problem;
       if (problem) { setNote(problem.startsWith("not_") ? `That does not look like a ${what}.` : `The ${what} could not be read — type the details in.`); return; }
       onRead(body as T);

@@ -9,6 +9,8 @@ export interface HttpClient {
   getBlob(url: string, params?: Record<string, unknown>): Promise<Blob>;
   postBlob(url: string, body?: unknown): Promise<Blob>;
   post<T>(url: string, body?: unknown): Promise<T>;
+  /** A form with files. Waits longer than an ordinary call — see UPLOAD_TIMEOUT_MS. */
+  upload<T>(url: string, form: FormData): Promise<T>;
   put<T>(url: string, body?: unknown): Promise<T>;
   patch<T>(url: string, body?: unknown): Promise<T>;
   delete<T>(url: string, params?: Record<string, unknown>): Promise<T>;
@@ -75,6 +77,14 @@ export function toApiError(error: unknown): ApiError {
   return new ApiError("Unexpected error", undefined, error);
 }
 
+/**
+ * How long a file upload may take. Most of them are read by the model
+ * on the way in (a bill, a statement, a timer photo), and the server
+ * gives one such read up to 90 seconds; the ordinary 20 would give up
+ * on a read that was about to succeed.
+ */
+export const UPLOAD_TIMEOUT_MS = 120_000;
+
 class AxiosHttpClient implements HttpClient {
   private readonly instance: AxiosInstance;
 
@@ -113,6 +123,11 @@ class AxiosHttpClient implements HttpClient {
   }
   async post<T>(url: string, body?: unknown): Promise<T> {
     const { data } = await this.instance.post<T>(url, body);
+    return data;
+  }
+  async upload<T>(url: string, form: FormData): Promise<T> {
+    // No Content-Type here: the browser writes it, with the boundary.
+    const { data } = await this.instance.post<T>(url, form, { timeout: UPLOAD_TIMEOUT_MS });
     return data;
   }
   async put<T>(url: string, body?: unknown): Promise<T> {

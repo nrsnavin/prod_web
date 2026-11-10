@@ -82,7 +82,7 @@ describe("the offboard dialog", () => {
 
   it("records the day, the reason and a note, and says what happened to their sign-in", async () => {
     offboard.mockResolvedValue({
-      success: true, workerLoginClosed: true, managerLogin: { id: "u9", email: "ravi@balu.in" },
+      success: true, workerLoginClosed: true, managerLogin: { id: "u9", email: "ravi@balu.in", staysOpen: false },
       employee: { id: "e1", name: "Ravi", status: "offboarded", lastWorkingDay: "2026-10-25T00:00:00.000Z", reason: "resigned" },
     });
     open();
@@ -96,10 +96,24 @@ describe("the offboard dialog", () => {
     expect(offboard).toHaveBeenCalledWith("e1", { lastWorkingDay: "2026-10-25", reason: "resigned", note: "Moved to Tiruppur" });
     expect(await screen.findByText(/recorded as leaving after 25 Oct 2026/)).toBeInTheDocument();
     expect(screen.getByText(/phone sign-in is turned off/)).toBeInTheDocument();
-    const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("They still have a manager login (ravi@balu.in), and it still works.");
-    expect(within(alert).getByRole("link", { name: /remove it under users/i })).toHaveAttribute("href", "/users");
+    // Their other login stops by itself: said, but not as a warning.
+    expect(screen.getByText(/Their login \(ravi@balu\.in\) stops working after their last working day/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /under users/i })).toHaveAttribute("href", "/users");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(toast).toHaveBeenCalledWith("Ravi offboarded", "success");
+  });
+
+  it("warns when the login left behind is an administrator's, which leaving does not close", async () => {
+    offboard.mockResolvedValue({
+      success: true, workerLoginClosed: false, managerLogin: { id: "u1", email: "owner@balu.in", staysOpen: true },
+      employee: { id: "e1", name: "Ravi", status: "offboarded", lastWorkingDay: "2026-10-25T00:00:00.000Z", reason: "resigned" },
+    });
+    open();
+    await userEvent.selectOptions(screen.getByLabelText("Reason"), "resigned");
+    await userEvent.click(screen.getByRole("button", { name: "Offboard" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("They have an administrator login (owner@balu.in), and it still works");
+    expect(within(alert).getByRole("link", { name: /remove it under users/i })).toHaveAttribute("href", "/users");
   });
 
   it("names the shifts that keep them from leaving that day", async () => {

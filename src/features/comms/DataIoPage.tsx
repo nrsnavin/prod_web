@@ -4,8 +4,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { config } from "@/app/config";
 import { ioService } from "./api";
+import { uploadForm } from "@/core/http/upload";
 
 export function DataIoPage() {
   const { toast } = useToast();
@@ -19,16 +19,8 @@ export function DataIoPage() {
     try {
       const form = new FormData();
       form.append("file", file);
-      // multer upload — raw fetch keeps the multipart body intact.
-      const res = await fetch(`${config.apiBaseUrl}/io/import`, {
-        method: "POST",
-        body: form,
-        credentials: "include",
-      });
-      const json = await res.json();
-      if (!res.ok || json.success === false) {
-        throw new Error(json.message || "Import failed");
-      }
+      const json = await uploadForm<{ success?: boolean; message?: string }>("/io/import", form, "Import failed");
+      if (json.success === false) throw new Error(json.message || "Import failed");
       setResult(json.message ?? "Import completed");
       toast("Import completed", "success");
     } catch (e) {

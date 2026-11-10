@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { uploadForm } from "@/core/http/upload";
 
 export type ClaimStatus = "pending" | "approved" | "rejected" | "paid" | "cancelled";
 export interface Claim {
@@ -36,15 +37,11 @@ export const claimsService = {
   async scan(file: File): Promise<ClaimScan> {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch("/api/v2/claims/scan", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read the receipt");
-    return body as ClaimScan;
+    return uploadForm<ClaimScan>("/claims/scan", fd, "Could not read the receipt");
   },
   async photo(id: string, file: File) {
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`/api/v2/claims/${id}/photo`, { method: "POST", body: fd, credentials: "include" });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.message || "Could not attach the photo");
+    await uploadForm(`/claims/${id}/photo`, fd, "Could not attach the photo");
   },
 };

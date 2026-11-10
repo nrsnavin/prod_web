@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { MaterialRow, ProductLine, newKey, newProduct } from "./costing";
+import { uploadForm } from "@/core/http/upload";
 
 // ══════════════════════════════════════════════════════════════════
 //  "Draft from an enquiry": the customer's message (or a photo of their
@@ -56,9 +57,7 @@ export function EnquiryDraft({ onDraft }: { onDraft: (r: EnquiryResult) => void 
       const fd = new FormData();
       if (text.trim()) fd.append("text", text.trim());
       files.forEach((f) => fd.append("files", f));
-      const res = await fetch("/api/v2/quote/from-enquiry", { method: "POST", body: fd, credentials: "include" });
-      const body = (await res.json().catch(() => ({}))) as EnquiryResult & { message?: string };
-      if (!res.ok) throw new Error(body.message || "Could not read the enquiry");
+      const body = await uploadForm<EnquiryResult>("/quote/from-enquiry", fd, "Could not read the enquiry");
       if (body.read.problem) { toast("That does not read as an enquiry for elastic", "info"); return; }
       setResult(body);
       onDraft(body);

@@ -6,6 +6,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
 import { authService } from "@/core/auth/authService";
+import { MIN_PASSWORD_LENGTH, passwordTooShort } from "@/core/auth/password";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ApiError } from "@/core/http/httpClient";
@@ -13,7 +14,7 @@ import { AuthLayout } from "./AuthLayout";
 
 const schema = z
   .object({
-    password: z.string().min(4, "Password must be at least 4 characters"),
+    password: z.string().min(MIN_PASSWORD_LENGTH, passwordTooShort),
     confirm: z.string().min(1, "Please confirm your password"),
   })
   .refine((v) => v.password === v.confirm, {

@@ -6,7 +6,10 @@ import { EnquiryDraft, productFromEnquiry, type EnquiryResult } from "./EnquiryD
 // The customer's message drafted into the quote, with why each margin.
 
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
-afterEach(() => vi.unstubAllGlobals());
+// Files go through the shared upload (core/http/upload.ts), like every other request.
+const upload = vi.fn();
+vi.mock("@/core/http/upload", () => ({ uploadForm: (...a: unknown[]) => upload(...(a as [])) }));
+afterEach(() => upload.mockReset());
 
 const body: EnquiryResult = {
   read: { problem: null }, customer: { _id: "c1", name: "Sunrise Garments" }, aiSuggestion: "ai8",
@@ -17,13 +20,12 @@ const body: EnquiryResult = {
 
 describe("a quote from an enquiry", () => {
   it("sends the message, shows the price and why, and hands the lines to the form", async () => {
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => body }));
-    vi.stubGlobal("fetch", fetchMock);
+    upload.mockResolvedValue(body);
     const onDraft = vi.fn();
     render(<EnquiryDraft onDraft={onDraft} />);
     await userEvent.type(screen.getByLabelText("Enquiry"), "Need 20000 m 25mm black");
     await userEvent.click(screen.getByRole("button", { name: /Draft the quote/ }));
-    expect(fetchMock).toHaveBeenCalledWith("/api/v2/quote/from-enquiry", expect.objectContaining({ method: "POST" }));
+    expect(upload).toHaveBeenCalledWith("/quote/from-enquiry", expect.any(FormData), expect.any(String));
     expect(await screen.findByText(/cost ₹3.25\/m, at 20% ₹3.90\/m/)).toBeInTheDocument();
     expect(screen.getByText("Declined at 12% before (Q/2) — they may push back.")).toBeInTheDocument();
     expect(screen.getByText(/20,000 m at ₹3.90\/m \+ GST/)).toBeInTheDocument();

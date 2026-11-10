@@ -23,16 +23,18 @@ const body = {
   ],
 };
 
-afterEach(() => vi.unstubAllGlobals());
+// Files go through the shared upload (core/http/upload.ts), like every other request.
+const upload = vi.fn();
+vi.mock("@/core/http/upload", () => ({ uploadForm: (...a: unknown[]) => upload(...(a as [])) }));
+afterEach(() => upload.mockReset());
 
 describe("goods received from the supplier's challan", () => {
   it("fills each line from what was read and lists what to check", async () => {
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => body }));
-    vi.stubGlobal("fetch", fetchMock);
+    upload.mockResolvedValue(body);
     const onSubmit = vi.fn();
     render(<InwardForm poId="po1" items={items} submitting={false} onSubmit={onSubmit} onCancel={() => {}} />);
     await userEvent.upload(screen.getByLabelText("challan photo"), new File([new Uint8Array([1])], "dc.jpg", { type: "image/jpeg" }));
-    expect(fetchMock).toHaveBeenCalledWith("/api/v2/supplier/inward/read?poId=po1", expect.objectContaining({ method: "POST" }));
+    expect(upload).toHaveBeenCalledWith("/supplier/inward/read?poId=po1", expect.any(FormData), expect.any(String));
     expect(await screen.findByLabelText(/Quantity received for 40s PC Black/i)).toHaveValue(150.5);
     expect(screen.getByLabelText(/Quantity received for Spandex 840D/i)).toHaveValue(20);
     const notes = screen.getByRole("note");

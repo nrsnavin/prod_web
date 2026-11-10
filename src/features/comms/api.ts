@@ -1,6 +1,7 @@
 import { httpClient } from "@/core/http/httpClient";
 import { config } from "@/app/config";
 import { Announcement } from "@/features/dashboard/api";
+import { uploadForm } from "@/core/http/upload";
 
 export interface AnnouncementFormValues {
   title: string;
@@ -105,10 +106,7 @@ export const issueService = {
     fd.append("machineId", machineId);
     fd.append("text", text);
     if (photo) fd.append("photo", photo);
-    const res = await fetch("/api/v2/machine-issue/intake", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not write it up");
-    return body.data as IssueIntake;
+    return (await uploadForm<{ data: IssueIntake }>("/machine-issue/intake", fd, "Could not write it up")).data;
   },
   setStatus: (id: string, status: string, resolutionNotes?: string) =>
     httpClient.put(`/machine-issue/${id}/status`, { status, resolutionNotes }),

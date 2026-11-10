@@ -29,6 +29,7 @@ import type { Attachment, Credit, Fingerprint, TaxLine } from "./types";
 import { ADJUSTMENT_LABELS } from "./types";
 import { useNavigate } from "react-router-dom";
 import type { SupplyType } from "@/features/invoices/types";
+import { uploadForm } from "@/core/http/upload";
 
 type Kind = "bills" | "expenses" | "notes" | "payments";
 
@@ -71,8 +72,7 @@ function Attachments({ kind, id, rows }: { kind: Kind; id: string; rows?: Attach
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch(`/api/v2/accounts/${kind}/${id}/attachments`, { method: "POST", body: fd, credentials: "include" });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.message || "Upload failed");
+      await uploadForm(`/accounts/${kind}/${id}/attachments`, fd, "Upload failed");
       qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
       toast("Attached", "success");
     } catch (e) { toast(e instanceof Error ? e.message : "Upload failed", "error"); } finally { setBusy(false); if (ref.current) ref.current.value = ""; }

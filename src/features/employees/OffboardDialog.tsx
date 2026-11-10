@@ -64,12 +64,19 @@ export function OffboardDialog({ empId, name, onClose }: { empId: string; name: 
             attendance, pay and bonus are kept; from the next day they are no longer offered for shifts.
           </p>
           {done.workerLoginClosed && <p>Their phone sign-in is turned off and any open session ended.</p>}
-          {done.managerLogin && (
+          {done.managerLogin && (done.managerLogin.staysOpen ? (
             <p role="alert" className="rounded-lg bg-status-warningBg px-3 py-2 text-status-warning">
-              They still have a manager login ({done.managerLogin.email}), and it still works.{" "}
+              They have an administrator login ({done.managerLogin.email}), and it still works: an
+              administrator's login is never closed from here.{" "}
               <Link to="/users" className="font-medium underline">Remove it under Users</Link>.
             </p>
-          )}
+          ) : (
+            <p className="rounded-lg bg-surface-muted px-3 py-2 text-ink-600">
+              Their login ({done.managerLogin.email}) stops working after their last working day, on every
+              device it is signed in on. It stays listed{" "}
+              <Link to="/users" className="font-medium underline">under Users</Link> until you remove it.
+            </p>
+          ))}
           <div className="flex justify-end">
             <Button type="button" onClick={onClose}>Done</Button>
           </div>

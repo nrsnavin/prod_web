@@ -8,6 +8,7 @@ import {
   DcUpdateBody,
   DeliveryChallan,
 } from "./types";
+import { uploadForm } from "@/core/http/upload";
 
 /** What a lorry receipt says, the transporter on file, and anything that does not fit this challan. */
 export interface LrScan {
@@ -26,10 +27,7 @@ export const dcService = {
   async scanLr(id: string, file: File): Promise<LrScan> {
     const fd = new FormData();
     fd.append("files", file);
-    const res = await fetch(`/api/v2/dc/${id}/lr/scan`, { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body?.message || "Could not read the receipt");
-    return body as LrScan;
+    return uploadForm<LrScan>(`/dc/${id}/lr/scan`, fd, "Could not read the receipt");
   },
 
   saveTransport(id: string, body: { lrNumber?: string; vehicleNo?: string; transporter?: string; driverName?: string; aiSuggestion?: string }) {
