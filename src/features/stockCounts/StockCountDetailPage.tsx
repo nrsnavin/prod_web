@@ -19,6 +19,7 @@ import { cn } from "@/components/ui/cn";
 import { toApiError } from "@/core/http/httpClient";
 import { useStockCount, useStockCountMutations } from "./hooks";
 import { STATUS_LABEL, STATUS_TONE, StockCountLine } from "./types";
+import { StockCountRail } from "./StockCountRail";
 import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 import { rupees } from "@/core/format/money";
 
@@ -179,7 +180,7 @@ export function StockCountDetailPage() {
             {!closed && (
               <>
                 <Button variant="secondary" onClick={() => setCancelOpen(true)}>
-                  Cancel count
+                  Cancel count…
                 </Button>
                 <Button
                   onClick={() => setPostReview(true)}
@@ -194,6 +195,8 @@ export function StockCountDetailPage() {
           </div>
         }
       />
+
+      <StockCountRail count={count} />
 
       {/* ── Where the count stands ─────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">

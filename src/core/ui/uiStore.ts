@@ -43,6 +43,9 @@ interface UiState {
   // navOrder: sectionLabel → ordered array of item paths.
   navHidden: string[];
   navOrder: Record<string, string[]>;
+  /** Entries pinned to the top of the menu, in the order they were pinned. */
+  navPinned: string[];
+  togglePinned(path: string): void;
   toggleNavHidden(path: string): void;
   setSectionOrder(sectionLabel: string, paths: string[]): void;
   resetNavPrefs(): void;
@@ -70,6 +73,11 @@ export const useUiStore = create<UiState>()(
 
       navHidden: [],
       navOrder: {},
+      navPinned: [],
+      togglePinned: (path) =>
+        set((s) => ({
+          navPinned: s.navPinned.includes(path) ? s.navPinned.filter((p) => p !== path) : [...s.navPinned, path],
+        })),
       toggleNavHidden: (path) =>
         set((s) => ({
           navHidden: s.navHidden.includes(path)
@@ -78,7 +86,7 @@ export const useUiStore = create<UiState>()(
         })),
       setSectionOrder: (sectionLabel, paths) =>
         set((s) => ({ navOrder: { ...s.navOrder, [sectionLabel]: paths } })),
-      resetNavPrefs: () => set({ navHidden: [], navOrder: {} }),
+      resetNavPrefs: () => set({ navHidden: [], navOrder: {}, navPinned: [] }),
     }),
     { name: UI_STORAGE_KEY }
   )

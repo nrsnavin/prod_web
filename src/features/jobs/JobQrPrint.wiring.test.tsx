@@ -76,9 +76,10 @@ function renderPage(job: JobDetail) {
 beforeEach(() => useJob.mockReset());
 
 describe("QR label, from the job detail page", () => {
-  it("offers the button", () => {
+  it("offers it under More", async () => {
     renderPage(baseJob());
-    expect(screen.getByRole("button", { name: /qr label/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /more/i }));
+    expect(screen.getByRole("menuitem", { name: /qr label/i })).toBeInTheDocument();
   });
 
   it("does not print the sheet until it is asked for", () => {
@@ -88,7 +89,8 @@ describe("QR label, from the job detail page", () => {
 
   it("opens a sheet carrying this job's QR", async () => {
     renderPage(baseJob());
-    await userEvent.click(screen.getByRole("button", { name: /qr label/i }));
+    await userEvent.click(screen.getByRole("button", { name: /more/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /qr label/i }));
 
     const img = await screen.findByRole("img", { name: /^QR:/ });
     expect(img).toHaveAttribute("alt", `QR: ${window.location.origin}/jobs/j1`);
@@ -100,7 +102,8 @@ describe("QR label, from the job detail page", () => {
     // would mean the one time somebody most needs to look a job up —
     // afterwards — is the time they cannot print the card.
     renderPage(baseJob({ status: "cancelled" }));
-    await userEvent.click(screen.getByRole("button", { name: /qr label/i }));
+    await userEvent.click(screen.getByRole("button", { name: /more/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /qr label/i }));
     expect(await screen.findByRole("img", { name: /^QR:/ })).toBeInTheDocument();
   });
 });

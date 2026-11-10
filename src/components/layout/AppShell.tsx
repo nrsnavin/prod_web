@@ -66,7 +66,7 @@ export function AppShell() {
         />
         {/* Below lg the bottom bar (~56px) sits over the page's foot, so the
             page ends above it. */}
-        <main className="flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:p-6 lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <main className="flex-1 p-4 pb-[calc(5rem+var(--phone-bar,0px)+env(safe-area-inset-bottom))] lg:p-6 lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
           <RequireDeptAccess>
             {/* A short fade as each screen arrives, so the eye sees the
                 change rather than a jump; off under reduce-motion. */}

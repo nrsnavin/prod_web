@@ -105,6 +105,11 @@ export interface Invoice {
   einvoiceProblems?: string[];
   fingerprints?: InvoiceFingerprint[];
   createdAt?: string;
+  /** Money against it so far, as the receivables reckon it. */
+  dueDate?: string | null;
+  paidAmount?: number;
+  creditedAmount?: number;
+  debitedAmount?: number;
 }
 
 /** A list row or a card row: the invoice without its lines' tax detail. */

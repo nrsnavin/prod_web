@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Cog, ArrowRight, XCircle, FileText, Check, AlertTriangle, Pencil, QrCode } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { PageActions } from "@/components/layout/PageActions";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -180,6 +181,7 @@ export function JobDetailPage() {
   const summary = useJobSummary(id);
   const readiness = useWeavingReadiness(id, job?.status === "preparatory");
   const { updateStatus, cancel } = useJobMutations();
+  const navigate = useNavigate();
   const [assignOpen, setAssignOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [qtyOpen, setQtyOpen] = useState(false);
@@ -212,6 +214,10 @@ export function JobDetailPage() {
 
   const next = nextJobStatus[job.status];
   const terminal = job.status === "completed" || job.status === "cancelled";
+  // A loom job with no machine can't weave, so assigning one is the next
+  // step; an outsourced job is made by a vendor and needs none.
+  const machineFirst =
+    (job.status === "preparatory" || job.status === "weaving") && !job.machine && job.productionMode !== "outsource";
 
   const move = () =>
     next &&
@@ -269,61 +275,59 @@ export function JobDetailPage() {
         title={job.jobNo}
         subtitle={`${job.customerName}${job.orderNo ? ` · Order #${job.orderNo}` : ""}`}
         actions={
-          <>
-            <Link to={`/jobs/${job.id}/mrp`}>
-              <Button variant="secondary">
-                <FileText className="h-4 w-4" /> MRP sheet
-              </Button>
-            </Link>
-            {/* Available at every status, including cancelled: the
-                label goes on the work, and somebody chasing a job
-                months later wants the same one. */}
-            <Button variant="secondary" onClick={() => setQrOpen(true)}>
-              <QrCode className="h-4 w-4" /> QR label
-            </Button>
-            {/* Only while nothing is committed to these figures. The
-                reason is on the button's title rather than hidden, so
-                somebody who expected it can see why it has gone. */}
-            {["preparatory", "weaving", "finishing", "checking"].includes(job.status) && (
-              <Button
-                variant="secondary"
-                disabled={!canEditElastics(job)}
-                title={editableReason(job) ?? "Change the planned quantities"}
-                onClick={() => setQtyOpen(true)}
-              >
-                <Pencil className="h-4 w-4" /> Edit quantities
-              </Button>
-            )}
-            {/* The exceptional case: the loom goes on to another of
-                the order's elastics mid-run, with a reason. */}
-            {["weaving", "finishing", "checking"].includes(job.status) && (
-              <Button variant="secondary" onClick={() => setChangeOpen(true)}>
-                <Pencil className="h-4 w-4" /> Change elastic
-              </Button>
-            )}
-            {/* Weaving too, not just preparatory: a machine can break
-                down mid-run, and the job then has to be moved to a
-                working one. The old machine is freed server-side. */}
-            {(job.status === "preparatory" || job.status === "weaving") && (
-              <Button
-                variant={job.machine ? "secondary" : "primary"}
-                onClick={() => setAssignOpen(true)}
-              >
-                <Cog className="h-4 w-4" />{" "}
-                {job.machine ? "Change machine" : "Assign machine"}
-              </Button>
-            )}
-            {next && (
-              <Button loading={updateStatus.isPending} onClick={() => setMoveAsk(true)}>
-                <ArrowRight className="h-4 w-4" /> Move to {next}…
-              </Button>
-            )}
-            {!terminal && (
-              <Button variant="secondary" onClick={() => setCancelOpen(true)}>
-                <XCircle className="h-4 w-4" /> Cancel job…
-              </Button>
-            )}
-          </>
+          <PageActions
+            primary={
+              machineFirst
+                ? { label: "Assign machine…", icon: <Cog className="h-4 w-4" />, onClick: () => setAssignOpen(true) }
+                : next
+                  ? { label: `Move to ${next}…`, icon: <ArrowRight className="h-4 w-4" />, loading: updateStatus.isPending, onClick: () => setMoveAsk(true) }
+                  : null
+            }
+            secondary={[
+              // Only while nothing is committed to these figures. The
+              // reason is on the button's title rather than hidden, so
+              // somebody who expected it can see why it has gone.
+              ["preparatory", "weaving", "finishing", "checking"].includes(job.status) && {
+                label: "Edit quantities…",
+                icon: <Pencil className="h-4 w-4" />,
+                disabled: !canEditElastics(job),
+                title: editableReason(job) ?? "Change the planned quantities",
+                onClick: () => setQtyOpen(true),
+              },
+              // The move still offered while the machine leads: the
+              // server's answer to it is where the user learns what
+              // preparatory work is open.
+              machineFirst && next && {
+                label: `Move to ${next}…`,
+                icon: <ArrowRight className="h-4 w-4" />,
+                loading: updateStatus.isPending,
+                onClick: () => setMoveAsk(true),
+              },
+            ]}
+            more={[
+              { label: "MRP sheet", icon: <FileText className="h-4 w-4" />, onSelect: () => navigate(`/jobs/${job.id}/mrp`) },
+              // Available at every status, including cancelled: the
+              // label goes on the work, and somebody chasing a job
+              // months later wants the same one.
+              { label: "QR label", icon: <QrCode className="h-4 w-4" />, onSelect: () => setQrOpen(true) },
+              // Weaving too, not just preparatory: a machine can break
+              // down mid-run, and the job then has to be moved to a
+              // working one. The old machine is freed server-side.
+              (job.status === "preparatory" || job.status === "weaving") && !machineFirst && {
+                label: job.machine ? "Change machine…" : "Assign machine…",
+                icon: <Cog className="h-4 w-4" />,
+                onSelect: () => setAssignOpen(true),
+              },
+              // The exceptional case: the loom goes on to another of
+              // the order's elastics mid-run, with a reason.
+              ["weaving", "finishing", "checking"].includes(job.status) && {
+                label: "Change elastic…",
+                icon: <Pencil className="h-4 w-4" />,
+                onSelect: () => setChangeOpen(true),
+              },
+              !terminal && { label: "Cancel job…", icon: <XCircle className="h-4 w-4" />, onSelect: () => setCancelOpen(true) },
+            ]}
+          />
         }
       />
 

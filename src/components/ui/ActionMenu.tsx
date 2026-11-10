@@ -16,7 +16,7 @@ export interface ActionMenuItem {
   hint?: string;
 }
 
-export function ActionMenu({ label, icon, items, align = "left", variant = "secondary" }: { label: string; icon?: ReactNode; items: ActionMenuItem[]; align?: "left" | "right"; variant?: "primary" | "secondary" }) {
+export function ActionMenu({ label, icon, items, align = "left", variant = "secondary", size = "sm" }: { label: string; icon?: ReactNode; items: ActionMenuItem[]; align?: "left" | "right"; variant?: "primary" | "secondary"; size?: "sm" | "md" }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -34,7 +34,7 @@ export function ActionMenu({ label, icon, items, align = "left", variant = "seco
   return (
     <div ref={root} className="relative">
       <Button
-        size="sm"
+        size={size}
         variant={variant}
         aria-haspopup="menu"
         aria-expanded={open}

@@ -117,12 +117,16 @@ describe("the invoice page", () => {
     expect(screen.getByText("b".repeat(64))).toBeInTheDocument();
     expect(screen.getByText("Pasted from the portal")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /register irn/i })).not.toBeInTheDocument();
-    expect(screen.getByText("IRN registered")).toBeInTheDocument();
+    // The chip says so, and the rail marks the step done.
+    expect(screen.getAllByText("IRN registered")).toHaveLength(2);
+    const rail = screen.getByRole("region", { name: "Invoice progress" });
+    expect(within(rail).getByText("IRN registered").closest("li")).not.toHaveAttribute("aria-current");
   });
 
   it("cancelling needs a reason of 8 characters, and relays the portal note", async () => {
     open();
-    await userEvent.click(screen.getByRole("button", { name: /^cancel invoice…$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /more/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /^cancel invoice…$/i }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByRole("textbox"), "Wrong rate agreed");
     await userEvent.click(within(dialog).getByRole("button", { name: /^cancel invoice$/i }));
@@ -131,11 +135,12 @@ describe("the invoice page", () => {
     expect(toast).toHaveBeenCalledWith("Invoice cancelled. Cancel it on the portal too.", "info");
   });
 
-  it("a cancelled invoice says why and offers nothing", () => {
+  it("a cancelled invoice says why and offers nothing", async () => {
     inv = { ...base, status: "cancelled", cancel: { reason: "Wrong rate agreed" } };
     open();
     expect(screen.getByText("Cancelled: Wrong rate agreed")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /register irn/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^cancel invoice…$/i })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /more/i }));
+    expect(screen.queryByRole("menuitem", { name: /^cancel invoice…$/i })).not.toBeInTheDocument();
   });
 });

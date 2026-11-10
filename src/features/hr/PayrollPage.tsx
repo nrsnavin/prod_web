@@ -22,6 +22,9 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { formatDate } from "@/core/format/date";
 import { PayrollCheckPanel, PayFlags, usePayrollCheck, type PayFlag } from "./PayrollCheck";
+import { PayrollRail } from "./PayrollRail";
+import { useAuth } from "@/core/auth/useAuth";
+import { canAccessPath } from "@/app/navigation";
 import { rupeesAuto } from "@/core/format/money";
 
 const payrollTone: Record<string, ChipTone> = {
@@ -616,6 +619,7 @@ export function PayrollPage() {
   const qc = useQueryClient();
 
   const check = usePayrollCheck(year, month);
+  const { user } = useAuth();
   const dashboard = useQuery({
     queryKey: ["payroll", year, month],
     queryFn: () => payrollService.dashboard(year, month),
@@ -845,6 +849,7 @@ export function PayrollPage() {
             <PayrollRangeView range={range} />
           ) : (
           <>
+          <PayrollRail year={year} month={month} summary={s} check={check.data} showBooks={canAccessPath("/accounts", user)} />
           {dashboard.isLoading ? (
             <Skeleton className="h-24 w-full mb-4" />
           ) : (

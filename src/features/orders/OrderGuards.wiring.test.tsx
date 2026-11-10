@@ -126,7 +126,9 @@ describe("completing", () => {
 describe("cancelling", () => {
   it("an Open order: asks, then cancels with no reason needed", async () => {
     show();
-    await userEvent.click(await screen.findByRole("button", { name: "Cancel order…" }));
+    // Rarer acts sit under More; the header leads with the next step.
+    await userEvent.click(await screen.findByRole("button", { name: /more/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Cancel order…" }));
     expect(post).not.toHaveBeenCalled();
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel order #4" }));
     expect(post).toHaveBeenCalledWith("/order/cancel", { orderId: "o1" });
@@ -134,7 +136,9 @@ describe("cancelling", () => {
 
   it("an approved order: asks why, and the reason reaches the server", async () => {
     show({ status: "Approved" });
-    await userEvent.click(await screen.findByRole("button", { name: "Cancel order…" }));
+    // Rarer acts sit under More; the header leads with the next step.
+    await userEvent.click(await screen.findByRole("button", { name: /more/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Cancel order…" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent(/goes back to stock/);
     // Not without a reason.

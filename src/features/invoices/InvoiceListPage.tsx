@@ -10,19 +10,12 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { formatDate } from "@/core/format/date";
 import { useInvoices } from "./hooks";
 import { money } from "./gst";
-import { einvoiceLabel, einvoiceTone, invoiceStatusTone } from "./invoiceStatus";
+import { daysOverdue, einvoiceLabel, einvoiceTone, invoiceStatusTone, owed } from "./invoiceStatus";
 import type { EinvoiceStatus, InvoiceStatus, InvoiceSummary } from "./types";
 import { SavedViews, type ListView } from "@/components/ui/SavedViews";
 import { useUrlNumber, useUrlState } from "@/core/hooks/useUrlState";
 import { cn } from "@/components/ui/cn";
 
-const DAY = 86_400_000;
-/** What is still owed on an issued invoice, as the receivables reckon it. */
-export const owed = (i: InvoiceSummary) =>
-  i.status !== "issued" ? 0 : Math.max(0, (i.totals?.grand ?? 0) + (i.debitedAmount ?? 0) - (i.paidAmount ?? 0) - (i.creditedAmount ?? 0));
-/** Whole days past due; 0 or less while it is not yet due. */
-export const daysOverdue = (i: InvoiceSummary, now = new Date()) =>
-  Math.floor((now.getTime() - new Date(i.dueDate || i.invoiceDate).getTime()) / DAY);
 
 const issuedTotal = (rows: InvoiceSummary[]) => rows.filter((i) => i.status === "issued").reduce((s, i) => s + (i.totals?.grand ?? 0), 0);
 

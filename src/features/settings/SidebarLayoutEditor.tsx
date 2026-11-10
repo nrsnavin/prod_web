@@ -1,4 +1,4 @@
-import { ArrowUp, ArrowDown, Eye, EyeOff, RotateCcw } from "lucide-react";
+import { ArrowUp, ArrowDown, Eye, EyeOff, Pin, PinOff, RotateCcw } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
@@ -27,6 +27,8 @@ export function SidebarLayoutEditor() {
   const navHidden = useUiStore((s) => s.navHidden);
   const navOrder = useUiStore((s) => s.navOrder);
   const toggleNavHidden = useUiStore((s) => s.toggleNavHidden);
+  const navPinned = useUiStore((s) => s.navPinned);
+  const togglePinned = useUiStore((s) => s.togglePinned);
   const setSectionOrder = useUiStore((s) => s.setSectionOrder);
   const resetNavPrefs = useUiStore((s) => s.resetNavPrefs);
 
@@ -45,7 +47,7 @@ export function SidebarLayoutEditor() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-ink-500">
-          Reorder or hide items in your sidebar. This is personal to you and saved in this browser —
+          Pin, reorder or hide items in your sidebar. Pinned items lead the menu. This is personal to you and saved in this browser —
           it doesn't change what anyone else sees, and hidden pages stay reachable by their link.
         </p>
         <Button size="sm" variant="secondary" onClick={resetNavPrefs}>
@@ -64,6 +66,7 @@ export function SidebarLayoutEditor() {
               <ul className="space-y-1">
                 {items.map((item, i) => {
                   const isHidden = hidden.has(item.path);
+                  const isPinned = navPinned.includes(item.path);
                   const locked = UNHIDEABLE_PATHS.includes(item.path);
                   return (
                     <li
@@ -77,6 +80,15 @@ export function SidebarLayoutEditor() {
                       <span className={cn("flex-1 truncate text-sm", isHidden ? "text-ink-400 line-through" : "text-ink-800")}>
                         {item.label}
                       </span>
+                      <button
+                        onClick={() => togglePinned(item.path)}
+                        aria-pressed={isPinned}
+                        aria-label={isPinned ? `Unpin ${item.label}` : `Pin ${item.label} to the top`}
+                        title={isPinned ? "Unpin" : "Pin to the top"}
+                        className={cn("p-1 rounded hover:bg-ink-100", isPinned ? "text-brand-600" : "text-ink-400")}
+                      >
+                        {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                      </button>
                       <button
                         onClick={() => move(section.label, items, i, i - 1)}
                         disabled={i === 0}

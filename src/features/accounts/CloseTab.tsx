@@ -9,8 +9,14 @@ import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
 import { money } from "./shared";
 import { MonthReview } from "./MonthReview";
+import { MonthEndRail } from "./MonthEndRail";
 
 const lastMonth = () => { const d = new Date(); const p = new Date(d.getFullYear(), d.getMonth() - 1, 1); return `${p.getFullYear()}-${String(p.getMonth() + 1).padStart(2, "0")}`; };
+
+const monthName = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return y && m ? new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" }) : ym;
+};
 
 /** What is left before a month's books can be closed and sent to Tally. */
 export function CloseTab() {
@@ -22,6 +28,7 @@ export function CloseTab() {
         <Input label="Month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
         {data && <p className="pb-2 text-sm text-ink-500"><span className="font-semibold text-ink-900">{data.done} of {data.total}</span> done</p>}
       </div>
+      {data && <MonthEndRail items={data.items} monthLabel={monthName(month)} />}
       <MonthReview month={month} />
       {isLoading || !data ? <Skeleton className="h-64 w-full" /> : (
         <Card>

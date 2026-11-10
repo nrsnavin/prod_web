@@ -5,6 +5,7 @@ import { ArrowLeft, CheckCircle2, XCircle, Play, Flag, Plus, Pencil, Trash2, Spa
 import { canAccessPath } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { PageActions } from "@/components/layout/PageActions";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
@@ -29,6 +30,7 @@ import { OrderYarnLots } from "./OrderYarnLots";
 import { OrderLotAssign } from "./OrderLotAssign";
 import { OrderDeliveryChallans } from "./OrderDeliveryChallans";
 import { OrderInvoices } from "./OrderInvoices";
+import { OrderRail } from "./OrderRail";
 import { OrderElasticProgress, OrderStatus, RawMaterialRequirement, StockShortfall } from "./types";
 import { jobRefId } from "./orderJobRef";
 import { OrderJobGlance } from "./OrderJobGlance";
@@ -487,89 +489,42 @@ export function OrderDetailPage() {
         title={`Order #${order.orderNo}`}
         subtitle={order.customer?.name}
         actions={
-          <>
-            {/* Opens in a new tab rather than fetching — the report is a
-                document to hand over, and the browser's own PDF viewer
-                gives print and save for free. */}
-            <a
-              href={orderService.statusReportPdfUrl(order._id)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Button variant="secondary">
-                <FileText className="h-4 w-4" /> Status report
-              </Button>
-            </a>
-            {/* Margin is a separate permission from the order itself, so
-                this only appears for people who hold it — the API would
-                403 the page anyway, and offering a door that opens onto
-                a 403 is worse than not offering it. */}
-            {canAccessPath("/order-pnl", user) && (
-              <>
-                <a
-                  href={pnlService.pdfUrl(order._id)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Button variant="secondary">
-                    <FileText className="h-4 w-4" /> P&L statement
-                  </Button>
-                </a>
-                <Link to={`/order-pnl/${order._id}`}>
-                  <Button variant="secondary">
-                    <IndianRupee className="h-4 w-4" /> P&L
-                  </Button>
-                </Link>
-              </>
-            )}
-            {(order.status === "Open" || order.status === "Approved") && (
-              <Button variant="secondary" onClick={() => setPlanOpen(true)}>
-                <Sparkles className="h-4 w-4" /> Suggested plan
-              </Button>
-            )}
-            {(order.status === "Approved" || order.status === "InProgress") && (
-              <>
-                {/* The rare case: an elastic the order never had, added
-                    after its yarn was drawn — with a reason, drawing its own. */}
-                <Button variant="secondary" onClick={() => setAddElasticOpen(true)}>
-                  <Plus className="h-4 w-4" /> Add elastic
-                </Button>
-                <Button onClick={() => setJobOpen(true)}>
-                  <Plus className="h-4 w-4" /> Create job
-                </Button>
-              </>
-            )}
-            {order.status === "Open" && (
-              <>
-                <Button variant="secondary" onClick={() => setEditOpen(true)}>
-                  <Pencil className="h-4 w-4" /> Edit
-                </Button>
-                <Button onClick={() => setConfirm("approve")}>
-                  <CheckCircle2 className="h-4 w-4" /> Approve…
-                </Button>
-              </>
-            )}
-            {order.status === "Approved" && (
-              <Button variant="secondary" onClick={() => setConfirm("start")}>
-                <Play className="h-4 w-4" /> Start production…
-              </Button>
-            )}
-            {order.status === "InProgress" && (
-              <Button variant="secondary" onClick={() => setConfirm("complete")}>
-                <Flag className="h-4 w-4" /> Complete…
-              </Button>
-            )}
-            {(order.status === "Open" || order.status === "Approved") && (
-              <Button variant="secondary" onClick={() => setConfirm("cancel")}>
-                <XCircle className="h-4 w-4" /> Cancel order…
-              </Button>
-            )}
-            {order.status === "Open" && (
-              <Button variant="secondary" onClick={() => setDelOpen(true)}>
-                <Trash2 className="h-4 w-4" /> Delete order…
-              </Button>
-            )}
-          </>
+          // One next step for the order as it stands; the documents and
+          // the rarer acts under More.
+          <PageActions
+            primary={
+              order.status === "Open"
+                ? { label: "Approve…", icon: <CheckCircle2 className="h-4 w-4" />, onClick: () => setConfirm("approve") }
+                : order.status === "Approved" || order.status === "InProgress"
+                  ? { label: "Create job", icon: <Plus className="h-4 w-4" />, onClick: () => setJobOpen(true) }
+                  : null
+            }
+            secondary={[
+              order.status === "Open" && { label: "Edit", icon: <Pencil className="h-4 w-4" />, onClick: () => setEditOpen(true) },
+              order.status === "Approved" && { label: "Start production…", icon: <Play className="h-4 w-4" />, onClick: () => setConfirm("start") },
+              order.status === "InProgress" && { label: "Complete…", icon: <Flag className="h-4 w-4" />, onClick: () => setConfirm("complete") },
+              (order.status === "Completed" || order.status === "Cancelled") && {
+                label: "Status report", icon: <FileText className="h-4 w-4" />,
+                onClick: () => window.open(orderService.statusReportPdfUrl(order._id), "_blank", "noopener"),
+              },
+            ]}
+            more={[
+              (order.status === "Open" || order.status === "Approved") && { label: "Suggested plan", icon: <Sparkles className="h-4 w-4" />, onSelect: () => setPlanOpen(true) },
+              // The rare case: an elastic the order never had, added after
+              // its yarn was drawn — with a reason, drawing its own.
+              (order.status === "Approved" || order.status === "InProgress") && { label: "Add elastic…", icon: <Plus className="h-4 w-4" />, onSelect: () => setAddElasticOpen(true) },
+              // A document to hand over: the browser's PDF viewer prints and saves.
+              order.status !== "Completed" && order.status !== "Cancelled" && {
+                label: "Status report", icon: <FileText className="h-4 w-4" />,
+                onSelect: () => window.open(orderService.statusReportPdfUrl(order._id), "_blank", "noopener"),
+              },
+              // Margin is a separate permission from the order itself.
+              canAccessPath("/order-pnl", user) && { label: "Print P&L statement", icon: <FileText className="h-4 w-4" />, onSelect: () => window.open(pnlService.pdfUrl(order._id), "_blank", "noopener") },
+              canAccessPath("/order-pnl", user) && { label: "Open order P&L", icon: <IndianRupee className="h-4 w-4" />, onSelect: () => navigate(`/order-pnl/${order._id}`) },
+              (order.status === "Open" || order.status === "Approved") && { label: "Cancel order…", icon: <XCircle className="h-4 w-4" />, onSelect: () => setConfirm("cancel") },
+              order.status === "Open" && { label: "Delete order…", icon: <Trash2 className="h-4 w-4" />, onSelect: () => setDelOpen(true) },
+            ]}
+          />
         }
       />
 
@@ -602,6 +557,8 @@ export function OrderDetailPage() {
           )
         }
       />
+
+      <OrderRail order={order} />
 
       <Card className="p-6">
         <div className="mb-4">

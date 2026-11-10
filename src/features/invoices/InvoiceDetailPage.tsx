@@ -8,6 +8,7 @@ import { ArrowLeft, FileDown, FileJson, BadgeCheck, ClipboardPaste, XCircle, Ale
 import { Input } from "@/components/ui/Input";
 import { EwaybillDialog } from "./EwaybillDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { PageActions } from "@/components/layout/PageActions";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -23,8 +24,9 @@ import { useTrackRecent } from "@/core/ui/uiStore";
 import { useInvoice, useInvoiceMutations } from "./hooks";
 import { invoiceService } from "./api";
 import { IrnDialog } from "./IrnDialog";
+import { InvoiceRail } from "./InvoiceRail";
 import { money, qty } from "./gst";
-import { einvoiceLabel, einvoiceTone, invoiceStatusTone } from "./invoiceStatus";
+import { einvoiceLabel, einvoiceTone, invoiceStatusTone, owed } from "./invoiceStatus";
 import type { InvoiceParty } from "./types";
 
 const STATE: Record<string, string> = {
@@ -126,6 +128,11 @@ export function InvoiceDetailPage() {
   const ewb = inv.ewaybill?.status === "generated" ? inv.ewaybill : null;
   // Goods above ₹50,000 move with an e-way bill (CGST Rule 138).
   const needsEwb = issued && !ewb && (inv.totals?.grand ?? 0) > 50000;
+  const canReceive = issued && canAccessPath("/accounts", user);
+  // The one next step, in the order the portal and the money ask for it:
+  // the IRN, then the e-way bill the goods move under, then the payment.
+  const step: "irn" | "ewb" | "receipt" | null =
+    issued && !registered ? "irn" : needsEwb ? "ewb" : canReceive && owed(inv) > 0 ? "receipt" : null;
 
   const register = () =>
     registerIrn.mutate(inv._id, {
@@ -154,39 +161,32 @@ export function InvoiceDetailPage() {
         title={inv.invoiceNumber}
         subtitle={`${inv.buyer.name} · ${formatDate(inv.invoiceDate)}`}
         actions={
-          <>
-            <Button variant="secondary" onClick={() => download("pdf")} loading={busy === "pdf"}>
-              <FileDown className="h-4 w-4" /> PDF
-            </Button>
-            <Button variant="secondary" onClick={() => download("json")} loading={busy === "json"}>
-              <FileJson className="h-4 w-4" /> e-Invoice JSON
-            </Button>
-            {issued && !registered && (
-              <>
-                <Button onClick={() => setIrnReview(true)} loading={registerIrn.isPending}>
-                  <BadgeCheck className="h-4 w-4" /> Register IRN…
-                </Button>
-                <Button variant="secondary" onClick={() => setIrnOpen(true)}>
-                  <ClipboardPaste className="h-4 w-4" /> Paste IRN
-                </Button>
-              </>
-            )}
-            {issued && !ewb && (
-              <Button variant="secondary" onClick={() => setEwbOpen(registered ? "generate" : "paste")}>
-                <Truck className="h-4 w-4" /> E-way bill
-              </Button>
-            )}
-            {issued && canAccessPath("/accounts", user) && (
-              <Button variant="secondary" onClick={() => setReceiving(true)}>
-                <Wallet className="h-4 w-4" /> Record receipt
-              </Button>
-            )}
-            {issued && (
-              <Button variant="secondary" onClick={() => setCancelOpen(true)}>
-                <XCircle className="h-4 w-4" /> Cancel invoice…
-              </Button>
-            )}
-          </>
+          <PageActions
+            primary={
+              step === "irn"
+                ? { label: "Register IRN…", icon: <BadgeCheck className="h-4 w-4" />, loading: registerIrn.isPending, onClick: () => setIrnReview(true) }
+                : step === "ewb"
+                  ? { label: "E-way bill…", icon: <Truck className="h-4 w-4" />, onClick: () => setEwbOpen(registered ? "generate" : "paste") }
+                  : step === "receipt"
+                    ? { label: "Record receipt…", icon: <Wallet className="h-4 w-4" />, onClick: () => setReceiving(true) }
+                    : null
+            }
+            secondary={[
+              { label: "PDF", icon: <FileDown className="h-4 w-4" />, loading: busy === "pdf", onClick: () => download("pdf") },
+            ]}
+            more={[
+              { label: "e-Invoice JSON", icon: <FileJson className="h-4 w-4" />, disabled: busy === "json", onSelect: () => download("json") },
+              // With no GSP connected, the IRN made on the portal is pasted in.
+              issued && !registered && { label: "Paste IRN…", icon: <ClipboardPaste className="h-4 w-4" />, onSelect: () => setIrnOpen(true) },
+              issued && !ewb && step !== "ewb" && {
+                label: "E-way bill…",
+                icon: <Truck className="h-4 w-4" />,
+                onSelect: () => setEwbOpen(registered ? "generate" : "paste"),
+              },
+              canReceive && step !== "receipt" && { label: "Record receipt…", icon: <Wallet className="h-4 w-4" />, onSelect: () => setReceiving(true) },
+              issued && { label: "Cancel invoice…", icon: <XCircle className="h-4 w-4" />, onSelect: () => setCancelOpen(true) },
+            ]}
+          />
         }
       />
       <FormScreen open={receiving} onClose={() => setReceiving(false)} title={`Receipt from ${inv.buyer.name}`} width="max-w-4xl">
@@ -195,6 +195,7 @@ export function InvoiceDetailPage() {
             onDone={(id) => { setReceiving(false); navigate(`/accounts/payments/${id}`); }} onCancel={() => setReceiving(false)} />
         )}
       </FormScreen>
+      <InvoiceRail inv={inv} />
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <StatusChip tone={invoiceStatusTone[inv.status]}>{inv.status}</StatusChip>
         <StatusChip tone={einvoiceTone[inv.einvoice.status]}>{einvoiceLabel[inv.einvoice.status]}</StatusChip>
