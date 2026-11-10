@@ -23,6 +23,10 @@ export interface OrderListItem {
   supplyDate?: string;
   customer?: { _id?: string; name: string } | null;
   createdAt?: string;
+  /** The lines as stored: metres ordered and the agreed rate (0 until priced). */
+  elasticOrdered?: Array<{ quantity?: number; rate?: number }>;
+  /** Metres woven so far, per elastic. */
+  producedElastic?: Array<{ quantity?: number }>;
 }
 
 /** One page of /order/list. `total` is the count matching the filter. */

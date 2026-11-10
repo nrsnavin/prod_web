@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useUrlFlag, useUrlState } from "@/core/hooks/useUrlState";
+import { SavedViews, type ListView } from "@/components/ui/SavedViews";
 import { useNavigate } from "react-router-dom";
 import { Plus, TriangleAlert, ClipboardList, TrendingDown, IndianRupee, Layers, Mic } from "lucide-react";
 import { StoresVoiceDialog } from "./StoresVoice";
@@ -114,24 +116,34 @@ const columns: Column<RawMaterial>[] = [
     sort: (m) => m.stock * (m.avgCost || m.price),
     render: (m) =>
       Math.round(m.stock * (m.avgCost || m.price)).toLocaleString("en-IN"),
+    total: (rows) => Math.round(rows.reduce((s, m) => s + m.stock * (m.avgCost || m.price), 0)).toLocaleString("en-IN"),
   },
   {
     key: "consumption",
     header: "Consumed",
+    defaultHidden: true,
     align: "right",
     render: (m) => (m.totalConsumption ?? 0).toLocaleString("en-IN"),
   },
 ];
 
+const VIEWS: ListView[] = [
+  { name: "All materials", params: {} },
+  { name: "Below minimum", params: { low: "1" } },
+  { name: "Including archived", params: { archived: "1" } },
+];
+
 export function MaterialListPage() {
-  const [search, setSearch] = useState("");
+  // Filters live in the address, so a refresh or a shared link keeps them.
+  const [search, setSearch] = useUrlState<string>("q", "");
   // Two filters, because there are two classifications. This was one
   // control holding a group id, which meant that once groups existed
   // there was no way to ask "show me the warp" at all.
-  const [group, setGroup] = useState("all");
-  const [category, setCategory] = useState("all");
-  const [lowStock, setLowStock] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
+  const [group, setGroup] = useUrlState<string>("group", "all");
+  const [category, setCategory] = useUrlState<string>("category", "all");
+  const [lowStock, setLowStockFlag] = useUrlFlag("low");
+  const setLowStock = (f: (v: boolean) => boolean) => setLowStockFlag(f(lowStock));
+  const [showArchived, setShowArchived] = useUrlFlag("archived");
   const [createOpen, setCreateOpen] = useState(false);
   const groups = useMaterialGroups();
   const categories = useMaterialCategories();
@@ -218,7 +230,8 @@ export function MaterialListPage() {
       <ReorderSuggestions />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search materials…" className="w-full max-w-sm" />
+        <SavedViews tableId="materials" views={VIEWS} keys={["q", "category", "group", "low", "archived"]} />
+        <SearchInput value={search} onChange={(v) => setSearch(v)} placeholder="Search materials…" className="w-full max-w-sm" />
         <FilterChips
           label="Category"
           options={[
@@ -229,7 +242,7 @@ export function MaterialListPage() {
             })),
           ]}
           value={category}
-          onChange={setCategory}
+          onChange={(v) => setCategory(v)}
         />
         {/*
           Only when there ARE groups. A row of chips reading just "All"
@@ -244,7 +257,7 @@ export function MaterialListPage() {
               ...(groups.data ?? []).map((g) => ({ value: g._id, label: g.name })),
             ]}
             value={group}
-            onChange={setGroup}
+            onChange={(v) => setGroup(v)}
           />
         )}
         <button
@@ -292,6 +305,8 @@ export function MaterialListPage() {
           onRowClick={(m) => navigate(`/materials/${m._id}`)}
           loading={isLoading}
           emptyTitle="No materials found"
+          tableId="materials"
+          totalLabel={`${(data ?? []).length} material${(data ?? []).length === 1 ? "" : "s"}`}
         />
       </Card>
 

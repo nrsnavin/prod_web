@@ -35,6 +35,12 @@ export interface JobListItem {
   customer?: { name: string } | null;
   machine?: { ID: string; status?: string } | null;
   createdAt?: string;
+  /** The order it serves, with the date promised on it. */
+  order?: { _id: string; orderNo: number; supplyDate?: string } | null;
+  /** Metres planned, made and packed, per elastic. */
+  elastics?: Array<{ quantity?: number }>;
+  producedElastic?: Array<{ quantity?: number }>;
+  packedElastic?: Array<{ quantity?: number }>;
 }
 
 export interface ElasticQty {

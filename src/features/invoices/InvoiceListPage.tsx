@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -13,15 +12,58 @@ import { useInvoices } from "./hooks";
 import { money } from "./gst";
 import { einvoiceLabel, einvoiceTone, invoiceStatusTone } from "./invoiceStatus";
 import type { EinvoiceStatus, InvoiceStatus, InvoiceSummary } from "./types";
+import { SavedViews, type ListView } from "@/components/ui/SavedViews";
+import { useUrlNumber, useUrlState } from "@/core/hooks/useUrlState";
+import { cn } from "@/components/ui/cn";
+
+const DAY = 86_400_000;
+/** What is still owed on an issued invoice, as the receivables reckon it. */
+export const owed = (i: InvoiceSummary) =>
+  i.status !== "issued" ? 0 : Math.max(0, (i.totals?.grand ?? 0) + (i.debitedAmount ?? 0) - (i.paidAmount ?? 0) - (i.creditedAmount ?? 0));
+/** Whole days past due; 0 or less while it is not yet due. */
+export const daysOverdue = (i: InvoiceSummary, now = new Date()) =>
+  Math.floor((now.getTime() - new Date(i.dueDate || i.invoiceDate).getTime()) / DAY);
+
+const issuedTotal = (rows: InvoiceSummary[]) => rows.filter((i) => i.status === "issued").reduce((s, i) => s + (i.totals?.grand ?? 0), 0);
 
 const columns: Column<InvoiceSummary>[] = [
-  { key: "no", header: "Invoice", render: (i) => <span className="font-medium">{i.invoiceNumber}</span> },
-  { key: "date", header: "Date", render: (i) => formatDate(i.invoiceDate) },
-  { key: "buyer", header: "Buyer", render: (i) => i.buyer?.name ?? "—" },
+  { key: "no", header: "Invoice", sort: (i) => i.invoiceNumber, render: (i) => <span className="font-medium">{i.invoiceNumber}</span> },
+  { key: "date", header: "Date", sort: (i) => new Date(i.invoiceDate).getTime(), render: (i) => formatDate(i.invoiceDate) },
+  { key: "buyer", header: "Buyer", sort: (i) => i.buyer?.name ?? "", render: (i) => i.buyer?.name ?? "—" },
   { key: "order", header: "Order", render: (i) => (i.orderNo != null ? `#${i.orderNo}` : "—") },
-  { key: "dcs", header: "Challans", render: (i) => i.dcs.map((d) => d.dcNumber).join(", ") || "—", cellClassName: "whitespace-normal" },
-  { key: "tax", header: "Tax", render: (i) => (i.supplyType === "intra" ? "CGST+SGST" : i.supplyType === "export" ? "Export" : i.supplyType === "sez" ? "SEZ" : "IGST") },
-  { key: "amount", header: "Total (₹)", align: "right", render: (i) => money(i.totals?.grand) },
+  { key: "dcs", header: "Challans", defaultHidden: true, render: (i) => i.dcs.map((d) => d.dcNumber).join(", ") || "—", cellClassName: "whitespace-normal" },
+  { key: "tax", header: "Tax", defaultHidden: true, render: (i) => (i.supplyType === "intra" ? "CGST+SGST" : i.supplyType === "export" ? "Export" : i.supplyType === "sez" ? "SEZ" : "IGST") },
+  {
+    key: "amount",
+    header: "Total (₹)",
+    align: "right",
+    sort: (i) => i.totals?.grand ?? 0,
+    render: (i) => <span className={cn(i.status === "cancelled" && "text-ink-400 line-through")}>{money(i.totals?.grand)}</span>,
+    // Cancelled invoices are struck through above and left out here.
+    total: (rows) => money(issuedTotal(rows)),
+  },
+  {
+    key: "owed",
+    header: "Payment",
+    align: "right",
+    sort: owed,
+    render: (i) => {
+      if (i.status !== "issued") return "—";
+      const due = owed(i);
+      if (due <= 0.005) return <span className="text-status-success">Paid</span>;
+      const late = daysOverdue(i);
+      const part = (i.paidAmount ?? 0) + (i.creditedAmount ?? 0) > 0;
+      return (
+        <span>
+          {money(due)} {part ? "left" : "due"}
+          <span className={cn("block text-xs", late > 0 ? "font-medium text-status-danger" : "text-ink-400")}>
+            {late > 0 ? `${late} day${late === 1 ? "" : "s"} overdue` : late === 0 ? "due today" : `due in ${-late} day${late === -1 ? "" : "s"}`}
+          </span>
+        </span>
+      );
+    },
+    total: (rows) => `${money(rows.reduce((s, i) => s + owed(i), 0))} owed`,
+  },
   {
     key: "einvoice",
     header: "e-Invoice",
@@ -33,11 +75,17 @@ const columns: Column<InvoiceSummary>[] = [
   { key: "status", header: "Status", render: (i) => <StatusChip tone={invoiceStatusTone[i.status]}>{i.status}</StatusChip> },
 ];
 
+const VIEWS: ListView[] = [
+  { name: "All invoices", params: {} },
+  { name: "Waiting for an IRN", params: { status: "issued", irn: "pending" } },
+  { name: "Cancelled", params: { status: "cancelled" } },
+];
+
 export function InvoiceListPage() {
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<InvoiceStatus | "all">("all");
-  const [einvoice, setEinvoice] = useState<EinvoiceStatus | "all">("all");
-  const [search, setSearch] = useState("");
+  const [page, setPage] = useUrlNumber("page", 1);
+  const [status, setStatus] = useUrlState<InvoiceStatus | "all">("status", "all", ["all", "issued", "cancelled"]);
+  const [einvoice, setEinvoice] = useUrlState<EinvoiceStatus | "all">("irn", "all", ["all", "pending", "registered", "cancelled"]);
+  const [search, setSearch] = useUrlState<string>("q", "");
   const navigate = useNavigate();
   const { data, isLoading, isError, error } = useInvoices({ page, status, einvoice, search });
 
@@ -49,12 +97,10 @@ export function InvoiceListPage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
+        <SavedViews tableId="invoices" views={VIEWS} keys={["status", "irn", "q"]} />
         <SearchInput
           value={search}
-          onChange={(v) => {
-            setSearch(v);
-            setPage(1);
-          }}
+          onChange={(v) => setSearch(v, { page: null })}
           placeholder="Invoice no., buyer, GSTIN, IRN, challan or order no…"
           className="w-full max-w-xs"
         />
@@ -65,10 +111,7 @@ export function InvoiceListPage() {
             { value: "cancelled", label: "Cancelled" },
           ]}
           value={status}
-          onChange={(v) => {
-            setStatus(v);
-            setPage(1);
-          }}
+          onChange={(v) => setStatus(v, { page: null })}
         />
         <FilterChips
           options={[
@@ -77,10 +120,7 @@ export function InvoiceListPage() {
             { value: "registered", label: "IRN registered" },
           ]}
           value={einvoice}
-          onChange={(v) => {
-            setEinvoice(v);
-            setPage(1);
-          }}
+          onChange={(v) => setEinvoice(v, { page: null })}
         />
       </div>
 
@@ -95,6 +135,8 @@ export function InvoiceListPage() {
           loading={isLoading}
           emptyTitle="No invoices yet"
           emptyDescription="Open an order and raise an invoice against its despatched challans."
+          tableId="invoices"
+          totalLabel={`${(data?.invoices ?? []).length} on this page`}
         />
         <Pagination page={page} totalPages={data?.pages ?? 1} total={data?.total} onChange={setPage} />
       </Card>

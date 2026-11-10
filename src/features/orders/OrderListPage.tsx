@@ -9,6 +9,7 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useCreditHold } from "@/features/customers/credit";
@@ -21,20 +22,91 @@ import { PoIntakeModal } from "./PoIntakeModal";
 import { OrderBulkActions } from "./OrderBulkActions";
 import { WhatsAppOrders, draftOf, useOrderRequestDecision, type OrderRequest } from "./WhatsAppOrders";
 import { formatDate } from "@/core/format/date";
+import { rupees } from "@/core/format/money";
+import { useUrlFlag, useUrlState } from "@/core/hooks/useUrlState";
+import { SavedViews, type ListView } from "@/components/ui/SavedViews";
+
+// ══════════════════════════════════════════════════════════════════
+//  THE ORDER BOOK
+//
+//  It carried names and dates and nothing to weigh an order by. Each
+//  row now says how far along it is (metres made of metres ordered),
+//  what it is worth at the agreed rates, and how long is left before its
+//  supply date, or how late it is. The foot of the table totals what is
+//  shown. The filter, and whether only late orders show, live in the
+//  address, so a refresh or a shared link keeps them.
+// ══════════════════════════════════════════════════════════════════
+
+const DAY = 86_400_000;
+const LIVE = new Set(["Open", "Approved", "InProgress"]);
+const qty = (xs?: Array<{ quantity?: number }>) => (xs ?? []).reduce((s, x) => s + (x.quantity ?? 0), 0);
+const valueOf = (o: OrderListItem) => (o.elasticOrdered ?? []).reduce((s, x) => s + (x.quantity ?? 0) * (x.rate ?? 0), 0);
+const priced = (o: OrderListItem) => (o.elasticOrdered ?? []).some((x) => (x.rate ?? 0) > 0);
+const metres = (n: number) => Math.round(n).toLocaleString("en-IN");
+const dayOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+/** Days from today to the supply date: negative when it has passed. */
+export const daysToSupply = (iso: string, now = new Date()) => Math.round((dayOf(new Date(iso)) - dayOf(now)) / DAY);
+export const isLate = (o: OrderListItem, now = new Date()) => LIVE.has(o.status) && !!o.supplyDate && daysToSupply(o.supplyDate, now) < 0;
 
 const columns: Column<OrderListItem>[] = [
-  { key: "no", header: "Order #", render: (o) => <span className="font-medium">#{o.orderNo}</span> },
-  { key: "customer", header: "Customer", render: (o) => o.customer?.name ?? "—" },
-  { key: "po", header: "Customer PO", render: (o) => o.po || "—" },
   {
-    key: "date",
-    header: "Order date",
-    render: (o) => (o.date ? formatDate(o.date) : "—"),
+    key: "no",
+    header: "Order",
+    sort: (o) => o.orderNo,
+    render: (o) => (
+      <span>
+        <span className="font-medium">#{o.orderNo}</span>
+        {o.po && <span className="block text-xs text-ink-400">{o.po}</span>}
+      </span>
+    ),
   },
+  { key: "customer", header: "Customer", sort: (o) => o.customer?.name ?? "", render: (o) => o.customer?.name ?? "—" },
   {
     key: "supply",
     header: "Supply by",
-    render: (o) => (o.supplyDate ? formatDate(o.supplyDate) : "—"),
+    sort: (o) => (o.supplyDate ? new Date(o.supplyDate).getTime() : Number.MAX_SAFE_INTEGER),
+    render: (o) => {
+      if (!o.supplyDate) return "—";
+      const d = daysToSupply(o.supplyDate);
+      return (
+        <span>
+          {formatDate(o.supplyDate)}
+          {LIVE.has(o.status) && (
+            <span className={cn("block text-xs", d < 0 ? "font-medium text-status-danger" : d <= 3 ? "text-status-warning" : "text-ink-400")}>
+              {d < 0 ? `${-d} day${d === -1 ? "" : "s"} late` : d === 0 ? "due today" : `in ${d} day${d === 1 ? "" : "s"}`}
+            </span>
+          )}
+        </span>
+      );
+    },
+  },
+  {
+    key: "made",
+    header: "Made / ordered",
+    align: "right",
+    sort: (o) => { const t = qty(o.elasticOrdered); return t ? qty(o.producedElastic) / t : 0; },
+    render: (o) => {
+      const ordered = qty(o.elasticOrdered);
+      const made = qty(o.producedElastic);
+      const pct = ordered ? Math.min(100, Math.round((made / ordered) * 100)) : 0;
+      return (
+        <span className="inline-block min-w-[8.5rem]">
+          {metres(made)} / {metres(ordered)} m
+          <span className="mt-1 block h-1 w-full overflow-hidden rounded-full bg-ink-100" aria-hidden>
+            <span className="block h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+          </span>
+        </span>
+      );
+    },
+    total: (rows) => `${metres(rows.reduce((s, o) => s + qty(o.producedElastic), 0))} / ${metres(rows.reduce((s, o) => s + qty(o.elasticOrdered), 0))} m`,
+  },
+  {
+    key: "value",
+    header: "Value",
+    align: "right",
+    sort: valueOf,
+    render: (o) => (priced(o) ? rupees(valueOf(o)) : <span className="text-ink-400">Not priced</span>),
+    total: (rows) => rupees(rows.reduce((s, o) => s + valueOf(o), 0)),
   },
   {
     key: "status",
@@ -43,10 +115,19 @@ const columns: Column<OrderListItem>[] = [
       <StatusChip tone={orderStatusTone[o.status]}>{orderStatusLabel[o.status]}</StatusChip>
     ),
   },
+  { key: "date", header: "Order date", defaultHidden: true, sort: (o) => (o.date ? new Date(o.date).getTime() : 0), render: (o) => (o.date ? formatDate(o.date) : "—") },
+];
+
+const VIEWS: ListView[] = [
+  { name: "All orders", params: {} },
+  { name: "Waiting for approval", params: { status: "Open" } },
+  { name: "In production", params: { status: "InProgress" } },
+  { name: "Late", params: { late: "1" } },
 ];
 
 export function OrderListPage() {
-  const [status, setStatus] = useState<OrderFilter>("All");
+  const [status, setStatus] = useUrlState<OrderFilter>("status", "All", ORDER_FILTERS);
+  const [lateOnly, setLateOnly] = useUrlFlag("late");
   const [createOpen, setCreateOpen] = useState(false);
   // Arrived from the elastic list with a selection: open New order with it.
   const { prefill, clear: clearPrefill } = usePrefillElastics(() => setCreateOpen(true));
@@ -85,7 +166,8 @@ export function OrderListPage() {
     return [...picked.values()].map((o) => shown.get(o._id) ?? o);
   }, [picked, orders]);
 
-  const scope = status === "All" ? "" : `${orderFilterLabel[status].toLowerCase()} `;
+  const scope = `${lateOnly ? "late " : ""}${status === "All" ? "" : `${orderFilterLabel[status].toLowerCase()} `}`;
+  const rows = useMemo(() => (lateOnly ? orders.filter((o) => isLate(o)) : orders), [orders, lateOnly]);
 
   return (
     <>
@@ -114,12 +196,17 @@ export function OrderListPage() {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <SavedViews tableId="orders" views={VIEWS} keys={["status", "late"]} />
         <FilterChips
           options={ORDER_FILTERS.map((s) => ({ value: s, label: orderFilterLabel[s] }))}
           value={status}
-          onChange={setStatus}
+          onChange={(v) => setStatus(v)}
         />
+        <label className="flex items-center gap-2 text-sm text-ink-600">
+          <input type="checkbox" className="h-4 w-4 accent-brand-500" checked={lateOnly} onChange={(e) => setLateOnly(e.target.checked)} />
+          Only late
+        </label>
       </div>
 
       {isError && <ErrorBanner message={(error as Error).message} />}
@@ -132,11 +219,13 @@ export function OrderListPage() {
         <DataTable
           selection={{ selected: pickedIds, onChange: onPick, label: (o) => `Select order ${o.orderNo}` }}
           columns={columns}
-          rows={orders}
+          rows={rows}
           rowKey={(o) => o._id}
           onRowClick={(o) => navigate(`/orders/${o._id}`)}
           loading={isLoading}
           emptyTitle={`No ${scope}orders`}
+          tableId="orders"
+          totalLabel={`${rows.length} order${rows.length === 1 ? "" : "s"} shown`}
         />
         {hasNextPage && (
           <div className="border-t border-ink-100 p-3 text-center">

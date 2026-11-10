@@ -1,4 +1,4 @@
-import { ReactNode, RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { ReactNode, RefObject, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "./Skeleton";
 import { EmptyState } from "./EmptyState";
@@ -6,6 +6,7 @@ import { ErrorState } from "./ErrorState";
 import { cn } from "./cn";
 import { naturalCompare } from "./naturalOrder";
 import { useIsPhone } from "@/core/hooks/useMediaQuery";
+import { ColumnPicker, useHiddenColumns } from "./ColumnPicker";
 
 // Generic, config-driven table (OCP: list pages declare columns, never
 // re-implement table markup; LSP: works for any row type with an id).
@@ -27,6 +28,14 @@ export interface Column<T> {
    * in a wide table.
    */
   phone?: "title" | "badge" | "hide";
+  /**
+   * The figure for the totals row, worked out over every row the table
+   * was given (not only those drawn so far). A table with any column
+   * total gets a totals row at its foot.
+   */
+  total?: (rows: T[]) => ReactNode;
+  /** Hidden until the person chooses it (needs `tableId`). */
+  defaultHidden?: boolean;
 }
 
 export interface DataTableProps<T> {
@@ -65,6 +74,13 @@ export interface DataTableProps<T> {
    * draws a box per row and one in the header for every row it shows.
    */
   selection?: RowSelection<T>;
+  /**
+   * Names the table so each person can choose its columns, kept in their
+   * browser. Without it every column always shows.
+   */
+  tableId?: string;
+  /** The first cell of the totals row when its column has no total. Default "Total". */
+  totalLabel?: ReactNode;
 }
 
 export interface RowSelection<T> {
@@ -136,10 +152,39 @@ export function DataTable<T>({
   phoneLayout = "cards",
   compactEmpty = false,
   selection,
+  tableId,
+  totalLabel = "Total",
 }: DataTableProps<T>) {
   const isPhone = useIsPhone();
   // Never crash on a missing/undefined rows prop — render empty instead.
   const rows = rowsProp ?? [];
+  // The person's choice of columns; the first one always shows.
+  const prefs = useHiddenColumns(tableId, columns.filter((c) => c.defaultHidden).map((c) => c.key));
+  const shown = tableId ? columns.filter((c, i) => i === 0 || !prefs.hidden.has(c.key)) : columns;
+  const hasTotals = shown.some((c) => c.total);
+
+  // The header sticks under the top bar while the page scrolls. A scroll
+  // box around the table would stop that, so the box only scrolls
+  // sideways when the table is actually wider than the page.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [wide, setWide] = useState(false);
+  // In a dialog the header sticks to the dialog's own scroll area, not
+  // below the page's top bar.
+  const [inBox, setInBox] = useState(false);
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    const table = tableRef.current;
+    if (!wrap || !table) return;
+    setInBox(!!wrap.closest('[role="dialog"]'));
+    const check = () => setWide(table.scrollWidth > wrap.clientWidth + 1);
+    check();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(check);
+    ro.observe(wrap);
+    ro.observe(table);
+    return () => ro.disconnect();
+  }, [loading, !!error, rows.length > 0, isPhone, phoneLayout, shown.length]);
   const [sortKey, setSortKey] = useState<string | null>(defaultSortKey ?? null);
   const [sortDir, setSortDir] = useState<1 | -1>(defaultSortDir ?? 1);
 
@@ -205,7 +250,7 @@ export function DataTable<T>({
     return (
       <>
       <PhoneCards
-        columns={columns}
+        columns={shown}
         rows={visible}
         rowKey={rowKey}
         onRowClick={onRowClick}
@@ -225,13 +270,24 @@ export function DataTable<T>({
         }}
       />
       <MoreRows shown={visible.length} total={sorted.length} onMore={more} sentinel={sentinel} />
+      {hasTotals && (
+        <dl className="space-y-1 border-t border-ink-200 bg-surface-muted px-4 py-3" aria-label="Totals">
+          <dt className="text-xs font-medium text-ink-500">{totalLabel}</dt>
+          {shown.filter((c) => c.total).map((c) => (
+            <div key={c.key} className="flex items-baseline justify-between gap-3 text-sm">
+              <dt className="text-ink-500">{c.header}</dt>
+              <dd className="font-semibold tabular-nums text-ink-900">{c.total!(sorted)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       </>
     );
   }
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead className="border-b border-ink-100 bg-surface-muted">
+    <div ref={wrapRef} className={cn(wide && "overflow-x-auto")}>
+      <table ref={tableRef} className="w-full">
+        <thead className={cn("sticky z-10 border-b border-ink-100 bg-surface-muted", inBox ? "top-0" : "top-[calc(4rem+env(safe-area-inset-top))]")}>
           <tr>
             {selection && (
               <th className="w-10 px-4 py-2">
@@ -243,7 +299,7 @@ export function DataTable<T>({
                 />
               </th>
             )}
-            {columns.map((c) => (
+            {shown.map((c) => (
               <th
                 key={c.key}
                 // Announced, not merely drawn: without this a screen
@@ -284,6 +340,17 @@ export function DataTable<T>({
                 )}
               </th>
             ))}
+            {tableId && (
+              <th className="w-10 px-2 py-1 text-right">
+                <ColumnPicker
+                  columns={columns.map((c, i) => ({ key: c.key, header: c.header, locked: i === 0 }))}
+                  hidden={prefs.hidden}
+                  onToggle={prefs.toggle}
+                  onReset={prefs.reset}
+                  customised={prefs.customised}
+                />
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y divide-ink-100">
@@ -318,7 +385,7 @@ export function DataTable<T>({
                   />
                 </td>
               )}
-              {columns.map((c) => (
+              {shown.map((c) => (
                 <td
                   key={c.key}
                   className={cn(
@@ -332,9 +399,30 @@ export function DataTable<T>({
                   {c.render(row)}
                 </td>
               ))}
+              {tableId && <td aria-hidden />}
             </tr>
           ))}
         </tbody>
+        {hasTotals && (
+          // Over every row given, not only those drawn so far.
+          <tfoot className="border-t border-ink-200 bg-surface-muted">
+            <tr>
+              {selection && <td className="w-10 px-4 py-row" />}
+              {shown.map((c, i) => (
+                <td
+                  key={c.key}
+                  className={cn(
+                    "px-4 py-row text-table font-semibold whitespace-nowrap tabular-nums text-ink-900",
+                    alignClass[c.align ?? "left"]
+                  )}
+                >
+                  {c.total ? c.total(sorted) : i === 0 ? <span className="font-medium text-ink-500">{totalLabel}</span> : null}
+                </td>
+              ))}
+              {tableId && <td aria-hidden />}
+            </tr>
+          </tfoot>
+        )}
       </table>
       <MoreRows shown={visible.length} total={sorted.length} onMore={more} sentinel={sentinel} />
     </div>

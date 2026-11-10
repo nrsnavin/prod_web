@@ -113,6 +113,11 @@ export type InvoiceSummary = Pick<
   "_id" | "invoiceNumber" | "invoiceDate" | "orderNo" | "status" | "totals" | "supplyType" | "dcs" | "createdAt"
 > & {
   order?: string;
+  /** For "paid / part paid / overdue": the same reckoning as the receivables. */
+  dueDate?: string | null;
+  paidAmount?: number;
+  creditedAmount?: number;
+  debitedAmount?: number;
   buyer?: Partial<InvoiceParty>;
   einvoice?: Partial<InvoiceEinvoice>;
   lines?: Array<Pick<InvoiceLine, "name" | "quantity" | "unit">>;
