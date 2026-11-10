@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -78,7 +78,7 @@ export function SupplierForm({
     setValue,
     formState: { errors },
   } = useForm<SupplierFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: {
       name: initial?.name ?? defaultName ?? "",
       tallyName: initial?.tallyName ?? "",

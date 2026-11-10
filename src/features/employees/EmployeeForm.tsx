@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PhotoFillButton } from "@/features/common/PhotoFill";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -54,7 +54,7 @@ export function EmployeeForm({
     setValue,
     formState: { errors },
   } = useForm<BasicValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: {
       name: initial?.name ?? "",
       department: initial?.department ?? "weaving",

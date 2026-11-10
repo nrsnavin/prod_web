@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Copy, Layers, Merge, Plus, Trash2, Unlink, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -224,7 +224,7 @@ export function WarpingPlanForm({
     watch,
     formState: { errors, isDirty },
   } = useForm<PlanValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: {
       remarks: plan?.remarks ?? "",
       reason: "",

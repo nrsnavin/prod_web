@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Layers, Plus, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -63,7 +63,7 @@ function AddLotForm({
   onCancel: () => void;
 }) {
   const { register, handleSubmit, formState } = useForm<LotValues>({
-    resolver: zodResolver(makeLotSchema(unplaced)),
+    resolver: formResolver(makeLotSchema(unplaced)),
   });
 
   return (

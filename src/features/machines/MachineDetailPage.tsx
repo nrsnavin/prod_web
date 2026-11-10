@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Plus, Wrench, Play, QrCode } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -147,7 +147,7 @@ function ServiceLogForm({
     handleSubmit,
     formState: { errors },
   } = useForm<ServiceLogFormValues>({
-    resolver: zodResolver(logSchema),
+    resolver: formResolver(logSchema),
     // Booking work in usually means the machine is coming off the floor, so
     // that is the default — except when it is already there.
     defaultValues: {

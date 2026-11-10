@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { PrefillElastic } from "@/features/elastics/prefill";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -53,7 +53,7 @@ const schema = z.object({
     v.items.forEach((item, i) => {
       if (!item.elastic) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           path: ["items", i, "elastic"],
           message: "Pick the elastic",
         });
@@ -88,7 +88,7 @@ export function DcForm({
     watch,
     formState: { errors },
   } = useForm<DcFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: {
       type: "elastic",
       customerName: "",

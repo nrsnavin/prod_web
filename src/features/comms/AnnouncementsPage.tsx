@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Plus, Pin, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAuth } from "@/core/auth/useAuth";
@@ -48,7 +48,7 @@ function AnnouncementForm({
     watch,
     formState: { errors },
   } = useForm<AnnouncementFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver<AnnouncementFormValues>(schema),
     defaultValues: { title: "", body: "", type: "info", audience: "all", isPinned: false },
   });
   const audience = watch("audience");

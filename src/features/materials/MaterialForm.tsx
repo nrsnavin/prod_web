@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -93,7 +93,7 @@ export function MaterialForm({
     watch,
     formState: { errors },
   } = useForm<MaterialFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: {
       name: initial?.name ?? defaultName ?? "",
       category: source?.category ?? "",

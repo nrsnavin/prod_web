@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, Pencil, Trash2, Scale, Archive, ArchiveRestore, Copy } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -56,7 +56,7 @@ function AdjustStockForm({
     watch,
     formState: { errors },
   } = useForm<AdjustValues>({
-    resolver: zodResolver(adjustSchema),
+    resolver: formResolver(adjustSchema),
     defaultValues: { adjustment: 0, reason: "", lotNo: "", shade: "", yarnLot: "" },
   });
   const adj = Number(watch("adjustment")) || 0;

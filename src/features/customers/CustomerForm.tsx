@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Customer, CustomerFormValues } from "./types";
@@ -71,7 +71,7 @@ export function CustomerForm({
     getValues,
     formState: { errors },
   } = useForm<CustomerFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver<CustomerFormValues>(schema),
     defaultValues: {
       name: initial?.name ?? defaultName ?? "",
       tallyName: initial?.tallyName ?? "",

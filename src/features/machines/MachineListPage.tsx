@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Plus, Wrench, AlertTriangle, QrCode } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -151,7 +151,7 @@ function MachineForm({
     handleSubmit,
     formState: { errors },
   } = useForm<MachineFormValues>({
-    resolver: zodResolver(machineSchema),
+    resolver: formResolver(machineSchema),
     defaultValues: { ID: "", manufacturer: "", NoOfHead: 1, NoOfHooks: 1 },
   });
   return (

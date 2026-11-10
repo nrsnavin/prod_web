@@ -3,7 +3,7 @@ import { UnsavedChangesGuard } from "@/components/ui/UnsavedChangesGuard";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { ArrowLeft, Plus, Trash2, Building2, ShoppingCart } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -89,7 +89,7 @@ export function PoCreatePage() {
     watch,
     formState: { errors, isDirty, isSubmitSuccessful },
   } = useForm<PoFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: {
       supplier: prefill?.supplier ?? "",
       expectedDate: prefill?.expectedDate ?? "",

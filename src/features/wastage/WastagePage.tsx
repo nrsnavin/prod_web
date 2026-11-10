@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Plus, ChevronDown, ChevronUp, Trash2, Sparkles, AlertTriangle, Info, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -53,7 +53,7 @@ function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
     setValue,
     formState: { errors },
   } = useForm<WastageFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: { job: "", elastic: "", employee: "", quantity: 0, penalty: 0, reason: "", incidentDate: new Date().toISOString().slice(0, 10) },
   });
 

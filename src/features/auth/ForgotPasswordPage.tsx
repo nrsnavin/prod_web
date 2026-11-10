@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Link, Navigate } from "react-router-dom";
 import { ArrowLeft, MailCheck } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
@@ -25,7 +25,7 @@ export function ForgotPasswordPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({ resolver: formResolver(schema) });
 
   if (isAuthenticated) return <Navigate to="/" replace />;
 

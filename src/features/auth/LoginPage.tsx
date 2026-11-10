@@ -1,7 +1,7 @@
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Link, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { ArrowLeft, KeyRound, MailCheck, ScanLine, Smartphone } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
@@ -277,7 +277,7 @@ function EmailStep({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<EmailValues>({ resolver: zodResolver(emailSchema) });
+  } = useForm<EmailValues>({ resolver: formResolver(emailSchema) });
 
   const onSubmit = async (values: EmailValues) => {
     setServerError(null);
@@ -380,7 +380,7 @@ function PhoneStep({
     handleSubmit,
     resetField,
     formState: { errors, isSubmitting },
-  } = useForm<PhoneValues>({ resolver: zodResolver(phoneSchema) });
+  } = useForm<PhoneValues>({ resolver: formResolver(phoneSchema) });
 
   const submit = async (values: PhoneValues) => {
     setServerError(null);
@@ -488,7 +488,7 @@ function CodeStep({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<OtpValues>({ resolver: zodResolver(otpSchema) });
+  } = useForm<OtpValues>({ resolver: formResolver(otpSchema) });
   const [resending, setResending] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval>>();
 
@@ -628,7 +628,7 @@ function PasswordStep({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<PasswordValues>({ resolver: zodResolver(passwordSchema) });
+  } = useForm<PasswordValues>({ resolver: formResolver(passwordSchema) });
 
   const submit = async (values: PasswordValues) => {
     setServerError(null);

@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import type { PrefillElastic } from "@/features/elastics/prefill";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -64,7 +64,7 @@ export function ElasticGroupForm({
     handleSubmit,
     formState: { errors },
   } = useForm<ElasticGroupFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: {
       name: initial?.name ?? "",
       customer: fixedCustomerId ?? initial?.customer?._id ?? "",

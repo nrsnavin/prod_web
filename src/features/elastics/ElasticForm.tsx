@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { PhotoFillButton } from "@/features/common/PhotoFill";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -97,7 +97,10 @@ export function ElasticForm({
     setValue,
     formState: { errors },
   } = useForm<ElasticFormValues>({
-    resolver: zodResolver(schema),
+    // The schema lets a warping template be half filled (see the note on
+    // it above), so what it gives is wider than ElasticFormValues there;
+    // formToTemplate drops the blanks before anything is submitted.
+    resolver: formResolver<ElasticFormValues>(schema as unknown as z.ZodType<ElasticFormValues>),
     defaultValues: {
       name: initial?.name ?? defaultName ?? "",
       weaveType: initial?.weaveType ?? "",

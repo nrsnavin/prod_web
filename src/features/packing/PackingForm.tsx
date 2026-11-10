@@ -1,6 +1,6 @@
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { formResolver } from "@/core/forms/formResolver";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Combobox } from "@/components/ui/Combobox";
@@ -42,7 +42,7 @@ export function PackingForm({
     watch,
     formState: { errors },
   } = useForm<PackingFormValues>({
-    resolver: zodResolver(schema),
+    resolver: formResolver(schema),
     defaultValues: { job: "", elastic: "", meter: 0, netWeight: 0, tareWeight: 0, grossWeight: 0, checkedBy: "", packedBy: "" },
   });
 

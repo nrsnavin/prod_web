@@ -298,15 +298,12 @@ const router = createBrowserRouter([
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },
-], {
-  // Opt in to the v7 behaviours now, while the v6 fallbacks still exist,
-  // so the upgrade isn't a big-bang change. Relative paths inside splat
-  // routes resolve against the splat rather than its parent.
-  future: { v7_relativeSplatPath: true },
-});
+]);
 
+// On react-router 7. The two behaviours this used to opt in to ahead of
+// the upgrade — relative paths inside splat routes resolving against the
+// splat, and navigation updates wrapped in React.startTransition — are
+// simply how it works now, so the `future` flags are gone.
 export function AppRouter() {
-  // v7_startTransition is a RouterProvider flag, not a router one: it
-  // wraps navigation state updates in React.startTransition.
-  return <RouterProvider router={router} future={{ v7_startTransition: true }} />;
+  return <RouterProvider router={router} />;
 }
