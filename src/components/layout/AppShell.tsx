@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { Outlet, useLocation } from "react-router-dom";
 import { RequireDeptAccess } from "@/app/guards";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { GlobalSearch } from "./GlobalSearch";
+import { ShortcutsSheet, useShortcuts } from "./Shortcuts";
 import { BottomNav } from "./BottomNav";
 import { PullToRefresh } from "./PullToRefresh";
 import { useUiStore } from "@/core/ui/uiStore";
@@ -39,17 +40,13 @@ export function AppShell() {
   const { pathname } = useLocation();
   useSessionRefresh();
 
-  // ⌘K / Ctrl+K opens global search
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setSearchOpen((v) => !v);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  // ⌘K / Ctrl+K or / opens search; ? lists the keys; G then a letter
+  // goes to a page.
+  const [helpOpen, setHelpOpen] = useState(false);
+  const toggleSearch = useCallback(() => setSearchOpen((v) => !v), []);
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  const openHelp = useCallback(() => setHelpOpen(true), []);
+  useShortcuts({ toggleSearch, openSearch, openHelp });
 
   return (
     <div className="min-h-screen">
@@ -82,6 +79,7 @@ export function AppShell() {
       <PullToRefresh />
       <BottomNav onMore={() => setMobileNavOpen(true)} />
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <ShortcutsSheet open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

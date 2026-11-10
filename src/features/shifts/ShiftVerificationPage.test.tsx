@@ -31,7 +31,7 @@ vi.mock("./hooks", () => ({
 }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 vi.mock("./LoomSensors", () => ({ LoomSensors: () => null }));
-vi.mock("./AutoVerify", () => ({ AutoVerifySettings: () => null, ShiftEndReminderSettings: () => null, ShiftHandoverSettings: () => null, AutoVerifiedList: () => null }));
+vi.mock("./AutoVerify", () => ({ AutoVerifySettings: () => null, ShiftEndReminderSettings: () => null, ShiftHandoverSettings: () => null, AutoVerifiedList: () => null, AutoVerifyNote: () => null }));
 const photos = vi.fn();
 vi.mock("./TimerPhotos", () => ({
   TimerPhotos: (props: Record<string, unknown>) => {
@@ -85,5 +85,14 @@ describe("verifying a shift", () => {
     // The photos of the timer, to check the run time against.
     expect(screen.getByText("timer-photos")).toBeInTheDocument();
     expect(photos).toHaveBeenLastCalledWith({ shiftId: "sd-9" });
+  });
+});
+
+describe("the page's settings", () => {
+  it("sit behind a Settings button, not on top of the queue", async () => {
+    render(<MemoryRouter><ShiftVerificationPage /></MemoryRouter>);
+    expect(screen.queryByText("Shift verification settings")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /settings/i }));
+    expect(await screen.findByText("Shift verification settings")).toBeInTheDocument();
   });
 });

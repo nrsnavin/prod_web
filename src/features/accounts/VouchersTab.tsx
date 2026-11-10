@@ -73,7 +73,9 @@ export function VouchersTab() {
         </Card>
       )}
       <FormScreen open={!!creating} onClose={() => setParams({})} title={creating === "receipt" ? "Record a receipt" : "Record a payment"} width="max-w-4xl">
-        {creating && <VoucherForm kind={creating} initialAccount={params.get("account") ?? undefined} onDone={(id) => { setParams({}); navigate(`/accounts/payments/${id}`); }} onCancel={() => setParams({})} />}
+        {creating && <VoucherForm kind={creating} initialAccount={params.get("account") ?? undefined}
+          // From ⌘K's "receipt from Sunrise": the party comes chosen.
+          initialParty={params.get("party") ? { id: params.get("party")!, name: params.get("partyName") ?? "" } : undefined} onDone={(id) => { setParams({}); navigate(`/accounts/payments/${id}`); }} onCancel={() => setParams({})} />}
       </FormScreen>
       <FormScreen open={newParam === "journal"} onClose={() => setParams({})} title="Post a journal" width="max-w-4xl">
         {newParam === "journal" && <JournalForm onDone={(id) => { setParams({ journal: id }); setKind("journal"); }} onCancel={() => setParams({})} />}
@@ -373,7 +375,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs,
         {other ? (
           <Input label="Paid to" value={partyName} onChange={(e) => setPartyName(e.target.value)} />
         ) : (
-          <PartyPicker partyType={partyType} value={party} onChange={(id, name) => { setParty(id); setPartyName(name); }} />
+          <PartyPicker partyType={partyType} value={party} knownName={partyName} onChange={(id, name) => { setParty(id); setPartyName(name); }} />
         )}
         {kind === "payment" && (
           <label className="flex items-center gap-2 self-end text-sm"><input type="checkbox" checked={other} onChange={(e) => { setOther(e.target.checked); setParty(""); }} /> Not a supplier on file</label>

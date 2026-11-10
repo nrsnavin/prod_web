@@ -40,8 +40,10 @@ export function periods(now = new Date()): Array<{ key: string; label: string; f
 export const defaultPeriod = (now = new Date()) => { const p = periods(now); const x = now.getDate() < 10 ? p[1] : p[0]; return { from: x.from, to: x.to }; };
 
 /** A customer or supplier, searched on the server. */
-export function PartyPicker({ partyType, value, onChange, label, disabled }: {
+export function PartyPicker({ partyType, value, onChange, label, disabled, knownName }: {
   partyType: "customer" | "supplier"; value: string; onChange: (id: string, name: string) => void; label?: string; disabled?: boolean;
+  /** The chosen party's name when it arrives chosen (from an invoice, or ⌘K), so the box shows it at once. */
+  knownName?: string;
 }) {
   const names = useMemo(() => new Map<string, string>(), []);
   const load = async (query: string) => {
@@ -59,6 +61,7 @@ export function PartyPicker({ partyType, value, onChange, label, disabled }: {
       value={value}
       onChange={(id) => onChange(id, names.get(id) ?? "")}
       loadOptions={load}
+      seedOptions={value && knownName ? [{ value, label: knownName }] : undefined}
       placeholder={`Search ${partyType}s…`}
       // Not on file yet: add them here; the new name is known at once.
       onCreate={async (typed) => { const o = await quickCreate(partyType, typed); if (o) names.set(o.value, o.label); return o; }}

@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, CornerDownLeft, FileText, Users, Cable, Boxes, Truck, ShoppingCart, Cog, LucideIcon } from "lucide-react";
-import { allNavItems, canAccess } from "@/app/navigation";
+import { allNavItems, canAccess, canAccessPath } from "@/app/navigation";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/components/ui/cn";
 import { httpClient } from "@/core/http/httpClient";
 import { useAuth } from "@/core/auth/useAuth";
 import { employeeSections } from "@/features/me/employeeNav";
+import { ACTIONS, actionPage, matchActions, parseIntent, voucherFor } from "./paletteActions";
 
 export interface GlobalSearchProps {
   open: boolean;
@@ -134,20 +135,62 @@ async function searchEntities(q: string): Promise<Hit[]> {
   return hits;
 }
 
+// "receipt from Sunrise": the customers (or, for a payment, the
+// suppliers) whose names match, each a voucher ready to fill.
+async function searchParties(kind: "receipt" | "payment", party: string): Promise<Hit[]> {
+  if (kind === "receipt") {
+    const r = await httpClient.get<{ customers?: Array<{ _id: string; name: string }> }>("/customer/all-customers", { search: party, limit: 5, page: 1 });
+    return (r.customers ?? []).slice(0, 5).map((c) => ({
+      icon: ACTIONS.find((a) => a.label === "Record receipt")!.icon,
+      label: `Record receipt from ${c.name}`,
+      sub: "Action",
+      path: voucherFor("receipt", { id: c._id, name: c.name }),
+    }));
+  }
+  const r = await httpClient.get<{ suppliers?: Array<{ _id: string; name: string }> }>("/supplier/get-suppliers", { search: party, limit: 5, page: 1 });
+  return (r.suppliers ?? []).slice(0, 5).map((v) => ({
+    icon: ACTIONS.find((a) => a.label === "Record payment")!.icon,
+    label: `Record payment to ${v.name}`,
+    sub: "Action",
+    path: voucherFor("payment", { id: v._id, name: v.name }),
+  }));
+}
+
 export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const navigate = useNavigate();
 
-  const q = query.trim();
+  const typed = query.trim();
   const { user } = useAuth();
+  const staff = !user?.selfService;
+  // "go to J-4" searches for "J-4"; "receipt from Sunrise" looks for a
+  // party instead of searching records for the whole phrase.
+  const intent = staff ? parseIntent(typed) : null;
+  const money = intent && intent.kind !== "goto" && canAccessPath("/accounts", user) ? intent : null;
+  const q = intent?.kind === "goto" ? intent.rest : typed;
   const entities = useQuery({
     queryKey: ["global-search", q],
     queryFn: () => searchEntities(q),
     // An employee login may read no plant records, so it is not asked to.
-    enabled: open && q.length >= 2 && !user?.selfService,
+    enabled: open && q.length >= 2 && staff && !money,
     staleTime: 15_000,
   });
+  const parties = useQuery({
+    queryKey: ["global-search", "party", money?.kind, money?.party],
+    queryFn: () => searchParties(money!.kind, money!.party),
+    enabled: open && !!money,
+    staleTime: 15_000,
+  });
+  const actionHits: Hit[] = useMemo(
+    () =>
+      staff
+        ? matchActions(typed)
+            .filter((a) => canAccessPath(actionPage(a), user))
+            .map((a) => ({ icon: a.icon, label: a.label, sub: "Action", path: a.path }))
+        : [],
+    [typed, staff, user]
+  );
 
   const pageHits: Hit[] = useMemo(() => {
     const needle = q.toLowerCase();
@@ -163,8 +206,13 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
   }, [q, user]);
 
   const results: Hit[] = useMemo(
-    () => [...(q.length >= 2 ? entities.data ?? [] : []), ...pageHits],
-    [entities.data, pageHits, q]
+    () => [
+      ...(money ? parties.data ?? [] : []),
+      ...actionHits,
+      ...(q.length >= 2 && !money ? entities.data ?? [] : []),
+      ...(money ? [] : pageHits),
+    ],
+    [money, parties.data, actionHits, entities.data, pageHits, q]
   );
 
   useEffect(() => {
@@ -204,13 +252,18 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="J-3, #4, a PO, a customer, LOOM-04… or a page"
+            placeholder="J-3, #4, a customer, LOOM-04, a page… or “new order”"
             className="flex-1 outline-none text-sm placeholder:text-ink-400"
           />
-          {entities.isFetching && (
+          {(entities.isFetching || parties.isFetching) && (
             <span className="text-xs text-ink-400 animate-pulse">searching…</span>
           )}
         </div>
+        {!typed && staff && (
+          <p className="-mt-1 mb-2 px-1 text-xs text-ink-500">
+            Try “new order”, “receipt from …” or “J-4”. Press <kbd className="rounded border border-ink-200 px-1 font-sans">?</kbd> anywhere for shortcuts.
+          </p>
+        )}
         <ul className="max-h-80 overflow-y-auto -mx-2">
           {results.map(({ label, sub, path, icon: Icon }, i) => (
             <li key={`${path}-${i}`}>
@@ -229,9 +282,9 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
               </button>
             </li>
           ))}
-          {results.length === 0 && (
+          {results.length === 0 && !(parties.isFetching || entities.isFetching) && (
             <li className="px-3 py-8 text-center text-sm text-ink-400">
-              No matches for “{query}”
+              {money ? `No ${money.kind === "receipt" ? "customer" : "supplier"} called “${money.party}”` : `No matches for “${query}”`}
             </li>
           )}
         </ul>

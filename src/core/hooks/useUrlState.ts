@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
 // ══════════════════════════════════════════════════════════════════
@@ -57,4 +57,28 @@ export function useUrlFlag(key: string): [boolean, (on: boolean) => void] {
   const [raw, setRaw] = useUrlState<string>(key, "");
   const set = useCallback((on: boolean) => setRaw(on ? "1" : ""), [setRaw]);
   return [raw === "1", set];
+}
+
+/**
+ * Arriving with `?new=1` (from ⌘K's "New order", say) opens the page's
+ * create form once, and the flag leaves the address so a refresh or the
+ * back button doesn't open it again.
+ */
+export function useOpenOnArrival(open: () => void, key = "new") {
+  const [params, setParams] = useSearchParams();
+  const asked = params.get(key) === "1";
+  useEffect(() => {
+    if (!asked) return;
+    open();
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete(key);
+        return p;
+      },
+      { replace: true }
+    );
+    // Once per arrival: the flag is gone after the replace above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asked]);
 }

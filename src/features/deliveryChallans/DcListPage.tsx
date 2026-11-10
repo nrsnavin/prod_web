@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useOpenOnArrival } from "@/core/hooks/useUrlState";
 import { usePrefillElastics } from "@/features/elastics/prefill";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -72,6 +73,7 @@ export function DcListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   // Arrived from the elastic list with a selection: open New DC with it.
   const { prefill, clear: clearPrefill } = usePrefillElastics(() => setCreateOpen(true));
+  useOpenOnArrival(() => setCreateOpen(true));
   const closeCreate = () => { setCreateOpen(false); clearPrefill(); };
   const navigate = useNavigate();
   const { toast } = useToast();

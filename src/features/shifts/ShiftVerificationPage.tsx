@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShieldCheck, Sun, Moon } from "lucide-react";
+import { ShieldCheck, Sun, Moon, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -18,7 +18,8 @@ import { PendingShift } from "./types";
 import { ExpectedOutput } from "@/features/productionModel/ExpectedOutput";
 import { TimerPhotos } from "./TimerPhotos";
 import { PreviousShiftReading } from "./PreviousShiftReading";
-import { AutoVerifiedList, AutoVerifySettings, ShiftEndReminderSettings, ShiftHandoverSettings } from "./AutoVerify";
+import { AutoVerifiedList, AutoVerifyNote, AutoVerifySettings, ShiftEndReminderSettings, ShiftHandoverSettings } from "./AutoVerify";
+import { SidePanel } from "@/components/ui/SidePanel";
 import { LoomSensors } from "./LoomSensors";
 import { formatDate } from "@/core/format/date";
 import { remarkWords } from "./remark";
@@ -137,18 +138,23 @@ function VerifyModal({
 export function ShiftVerificationPage() {
   const { data, isLoading, isError, error } = usePendingVerification();
   const [verifying, setVerifying] = useState<PendingShift | null>(null);
+  // How the page works sits behind a button; the queue comes first.
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <>
       <PageHeader
         title="Shift verification"
         subtitle="Worker-submitted production awaiting your sign-off. Verified numbers cascade to the job, order and shift plan."
+        actions={
+          <Button variant="secondary" onClick={() => setSettingsOpen(true)}>
+            <Settings2 className="h-4 w-4" /> Settings
+          </Button>
+        }
       />
 
       {isError && <ErrorBanner message={(error as Error).message} />}
-      <AutoVerifySettings />
-      <ShiftEndReminderSettings />
-      <ShiftHandoverSettings />
+      <AutoVerifyNote onSettings={() => setSettingsOpen(true)} />
 
       {isLoading ? (
         <div className="space-y-3">
@@ -229,7 +235,13 @@ export function ShiftVerificationPage() {
       )}
 
       <AutoVerifiedList />
-      <LoomSensors />
+
+      <SidePanel open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Shift verification settings" width="max-w-xl">
+        <AutoVerifySettings />
+        <ShiftEndReminderSettings />
+        <ShiftHandoverSettings />
+        <LoomSensors />
+      </SidePanel>
 
       {verifying && <VerifyModal shift={verifying} onClose={() => setVerifying(null)} />}
     </>

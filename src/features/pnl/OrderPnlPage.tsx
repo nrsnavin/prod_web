@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, ArrowRight, IndianRupee } from "lucide-react";
+import { AlertTriangle, ArrowRight, IndianRupee, SlidersHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { SidePanel } from "@/components/ui/SidePanel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -9,7 +11,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { usePnlOrders } from "./hooks";
+import { useCostSettings, usePnlOrders } from "./hooks";
 import { RateCardPanel } from "./RateCardPanel";
 import { marginLabel, marginTone, meters, rupee } from "./format";
 import type { PnlSort } from "./types";
@@ -50,16 +52,39 @@ export function OrderPnlPage() {
   });
 
   const rows = data?.rows ?? [];
+  // The rate card is set once and changed rarely: it opens beside the
+  // profits instead of sitting above them. While nothing is set, the page
+  // says so, because every margin on it then reads too high.
+  const [ratesOpen, setRatesOpen] = useState(false);
+  const rates = useCostSettings();
+  const unset = rates.data && !rates.data.configured;
 
   return (
     <div>
       <PageHeader
         title="Order P&L"
         subtitle="What each order earned, against the yarn, wages, job-work and conversion cost behind it."
+        actions={
+          <Button variant="secondary" onClick={() => setRatesOpen(true)}>
+            <SlidersHorizontal className="h-4 w-4" /> Rate card
+          </Button>
+        }
       />
 
+      <SidePanel open={ratesOpen} onClose={() => setRatesOpen(false)} title="Conversion rate card" width="max-w-xl">
+        <RateCardPanel bare />
+      </SidePanel>
+
       <div className="space-y-5">
-        <RateCardPanel />
+        {unset && (
+          <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-status-warningBg px-4 py-3 text-sm text-status-warning">
+            <p>
+              <AlertTriangle className="mr-1.5 inline h-4 w-4 align-[-2px]" aria-hidden />
+              No conversion rates are set, so finishing, checking, packing and overhead cost ₹0 here: every margin below reads higher than the real one.
+            </p>
+            <Button size="sm" variant="secondary" onClick={() => setRatesOpen(true)}>Set the rate card…</Button>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-48">

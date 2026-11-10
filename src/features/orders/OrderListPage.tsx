@@ -23,7 +23,7 @@ import { OrderBulkActions } from "./OrderBulkActions";
 import { WhatsAppOrders, draftOf, useOrderRequestDecision, type OrderRequest } from "./WhatsAppOrders";
 import { formatDate } from "@/core/format/date";
 import { rupees } from "@/core/format/money";
-import { useUrlFlag, useUrlState } from "@/core/hooks/useUrlState";
+import { useUrlFlag, useUrlState, useOpenOnArrival } from "@/core/hooks/useUrlState";
 import { SavedViews, type ListView } from "@/components/ui/SavedViews";
 
 // ══════════════════════════════════════════════════════════════════
@@ -131,6 +131,7 @@ export function OrderListPage() {
   const [createOpen, setCreateOpen] = useState(false);
   // Arrived from the elastic list with a selection: open New order with it.
   const { prefill, clear: clearPrefill } = usePrefillElastics(() => setCreateOpen(true));
+  useOpenOnArrival(() => setCreateOpen(true));
   // Opened from a WhatsApp order: the form starts from it, and saving marks it done.
   const [fromRequest, setFromRequest] = useState<OrderRequest | null>(null);
   const decideRequest = useOrderRequestDecision();

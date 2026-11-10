@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Inbox, ArrowDownLeft, ArrowUpRight, BookOpen, Settings2,
@@ -6,6 +5,7 @@ import {
   Plus, FilePlus, Undo2, PiggyBank, BookPlus,
 } from "lucide-react";
 import { ActionMenu } from "@/components/ui/ActionMenu";
+import { TabStrip } from "@/components/ui/TabStrip";
 import { BankingTab } from "./BankingTab";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/components/ui/cn";
@@ -81,9 +81,6 @@ export function AccountsPage() {
   const tab = (ALL_TABS.includes(raw as AccountsTab) ? raw : "inbox") as AccountsTab;
   const door = doorOf(tab);
   const go = (t: AccountsTab) => navigate(t === "inbox" ? "/accounts" : `/accounts/${t}`);
-  // On a phone the sub-tabs scroll sideways: keep the open one in view.
-  const activeTab = useRef<HTMLButtonElement>(null);
-  useEffect(() => { activeTab.current?.scrollIntoView?.({ block: "nearest", inline: "nearest" }); }, [tab]);
 
   return (
     <>
@@ -99,15 +96,8 @@ export function AccountsPage() {
         ))}
       </nav>
       {door.tabs.length > 1 ? (
-        <div className="mb-5 flex gap-1 overflow-x-auto no-scrollbar border-b border-ink-100">
-          {door.tabs.map((t) => (
-            <button key={t.id} ref={tab === t.id ? activeTab : undefined} onClick={() => go(t.id)} aria-current={tab === t.id ? "page" : undefined}
-              className={cn("flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
-                tab === t.id ? "border-brand-500 text-brand-600" : "border-transparent text-ink-500 hover:text-ink-800")}>
-              <t.icon className="h-4 w-4" /> {t.label}
-            </button>
-          ))}
-        </div>
+        // One row: the tabs that fit, the rest under More.
+        <TabStrip tabs={door.tabs} active={tab} onSelect={go} label={door.label} className="mb-5" />
       ) : <div className="mb-5 border-b border-ink-100" />}
       {tab === "inbox" && <InboxTab />}
       {tab === "banking" && <BankingTab />}

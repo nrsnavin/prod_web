@@ -68,6 +68,30 @@ export function AutoVerifySettings() {
 }
 
 /**
+ * The work page's one line about it: whether entries are verified as
+ * they are saved, and the way to the settings, which no longer sit on
+ * top of the queue they exist for.
+ */
+export function AutoVerifyNote({ onSettings }: { onSettings: () => void }) {
+  const { data } = useQuery({ queryKey: ["production-settings"], queryFn: shiftService.productionSettings });
+  if (!data) return null;
+  const a = data.autoVerify;
+  return (
+    <p className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-500" aria-label="Auto-verification">
+      <StatusChip tone={a.enabled ? "success" : "neutral"}>{a.enabled ? "Auto-verify on" : "Auto-verify off"}</StatusChip>
+      <span>
+        {a.enabled
+          ? `Entries within ±${a.tolerancePct}% of the loom's own rate are verified as they are saved; the rest wait here.`
+          : "Every entry waits here for you."}
+      </span>
+      <button type="button" onClick={onSettings} className="font-medium text-brand-600 hover:underline">
+        Settings
+      </button>
+    </p>
+  );
+}
+
+/**
  * Before each shift ends, a WhatsApp message naming the looms not
  * entered yet (services/shiftEndNudge.js on the server).
  */

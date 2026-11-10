@@ -22,7 +22,8 @@ const FIELDS = [
 
 type FieldKey = (typeof FIELDS)[number]["key"];
 
-export function RateCardPanel() {
+/** `bare` drops the card and its heading, for a panel that has its own. */
+export function RateCardPanel({ bare = false }: { bare?: boolean } = {}) {
   const { data, isLoading } = useCostSettings();
   const { saveSettings } = usePnlMutations();
   const [draft, setDraft] = useState<Partial<Record<FieldKey, string>>>({});
@@ -45,14 +46,17 @@ export function RateCardPanel() {
 
   const unset = data && !data.configured;
 
+  const Shell = bare ? "div" : Card;
   return (
-    <Card className="p-5">
+    <Shell className={bare ? undefined : "p-5"}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <SlidersHorizontal className="h-4 w-4 text-ink-400" />
-            Conversion rate card
-          </h2>
+          {!bare && (
+            <h2 className="flex items-center gap-2 text-base font-semibold">
+              <SlidersHorizontal className="h-4 w-4 text-ink-400" />
+              Conversion rate card
+            </h2>
+          )}
           <p className="mt-0.5 text-sm text-ink-400">
             Charged per meter produced. A job that actually cost something else
             carries its own figure, which wins over these.
@@ -90,6 +94,6 @@ export function RateCardPanel() {
           />
         ))}
       </div>
-    </Card>
+    </Shell>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useOpenOnArrival } from "@/core/hooks/useUrlState";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -48,6 +49,7 @@ export function CustomerListPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  useOpenOnArrival(() => setCreateOpen(true));
   const navigate = useNavigate();
   const { toast } = useToast();
 

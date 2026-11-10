@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useOpenOnArrival } from "@/core/hooks/useUrlState";
 import { useNavigate } from "react-router-dom";
 import { FileSpreadsheet, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -76,6 +77,7 @@ export function ElasticListPage() {
   const [showInactive, setShowInactive] = useState(false);
   const [lowStock, setLowStock] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  useOpenOnArrival(() => setCreateOpen(true));
   const [uploadOpen, setUploadOpen] = useState(false);
   const { user } = useAuth();
   // Same people who can create one (server: admin / accounts).
