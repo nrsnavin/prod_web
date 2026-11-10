@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { useUiStore, ThemeMode } from "./uiStore";
+import { useUiStore, ThemeMode, Density } from "./uiStore";
 
 /** Colours the browser chrome (mobile address bar) to match the app. */
-const THEME_COLOR = { light: "#F8F8F8", dark: "#131316" } as const;
+const THEME_COLOR = { light: "#F4F5F8", dark: "#0B101A" } as const;
 
 const prefersDark = () =>
   typeof window !== "undefined" &&
@@ -47,6 +47,32 @@ export function useThemeEffect() {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, [theme]);
+}
+
+/**
+ * Applies the table density. Compact is the default and needs no
+ * attribute; index.css reads `data-density` on <html>. Mirrors the
+ * pre-paint script in index.html, so rows don't jump on load.
+ */
+export function applyDensity(density: Density) {
+  const root = document.documentElement;
+  if (density === "comfortable") root.dataset.density = "comfortable";
+  else delete root.dataset.density;
+}
+
+/** Keeps <html> in step with the stored density. Mounted at the app root. */
+export function useDensityEffect() {
+  const density = useUiStore((s) => s.density);
+  useEffect(() => {
+    applyDensity(density);
+  }, [density]);
+}
+
+/** Read the density preference and change it. */
+export function useDensity() {
+  const density = useUiStore((s) => s.density);
+  const setDensity = useUiStore((s) => s.setDensity);
+  return { density, setDensity };
 }
 
 /** Read the current preference and change it. */

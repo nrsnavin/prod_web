@@ -50,7 +50,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       >
         <div className={cn("flex items-center justify-between h-16 border-b border-ink-100", collapsed ? "px-5 lg:px-0 lg:justify-center" : "px-5")}>
           <div className="flex items-center gap-2">
-            <span className="h-8 w-8 rounded-lg bg-brand-500 text-white grid place-items-center">
+            <span className="h-8 w-8 rounded-lg bg-logo text-white grid place-items-center">
               <BrandMark className="h-6 w-6" />
             </span>
             <span className={cn("font-bold text-lg tracking-tight", collapsed && "lg:hidden")}>

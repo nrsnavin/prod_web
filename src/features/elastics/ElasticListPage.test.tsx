@@ -46,7 +46,7 @@ it("flags LOW on free stock, and shows how much is free", () => {
   renderPage();
   // 500 on the shelf, 200 promised: 300 free is under the 400 minimum.
   const cell = screen.getByText("300 free").closest("td")!;
-  expect(within(cell).getByText("LOW")).toBeInTheDocument();
+  expect(within(cell).getByText("Low")).toBeInTheDocument();
 });
 
 it("asks for low stock only", async () => {

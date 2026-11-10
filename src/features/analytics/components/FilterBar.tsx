@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/components/ui/cn";
 import { AnalyticsFilters, ShiftFilter } from "../types";
+import { Input } from "@/components/ui/Input";
 
 const PRESETS = [
   { label: "Today", days: 0 },
@@ -68,21 +69,19 @@ export function FilterBar({
 
       {/* Custom range */}
       <div className="flex items-center gap-2 text-sm">
-        <input aria-label="Start date"
+        <Input aria-label="Start date"
           type="date"
           value={filters.startDate}
           max={filters.endDate}
           onChange={(e) => onChange({ ...filters, startDate: e.target.value })}
-          className="h-9 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500"
         />
         <span className="text-ink-400">→</span>
-        <input aria-label="End date"
+        <Input aria-label="End date"
           type="date"
           value={filters.endDate}
           min={filters.startDate}
           max={toISODate(new Date())}
           onChange={(e) => onChange({ ...filters, endDate: e.target.value })}
-          className="h-9 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500"
         />
       </div>
 

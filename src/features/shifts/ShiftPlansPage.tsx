@@ -163,12 +163,11 @@ export function ShiftPlansPage() {
           <label htmlFor="plan-date" className="text-sm font-medium text-ink-600">
             Date
           </label>
-          <input
+          <Input
             id="plan-date"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="h-10 rounded-lg border border-ink-200 bg-surface px-3 text-sm focus:outline-none focus:border-brand-500"
           />
           <span className="text-sm text-ink-400">
             {new Date(date).toLocaleDateString("en-IN", {
@@ -227,3 +226,4 @@ export function ShiftPlansPage() {
 }
 
 import { ShiftPlanForm as ShiftPlanFormLazy } from "./ShiftPlanForm";
+import { Input } from "@/components/ui/Input";

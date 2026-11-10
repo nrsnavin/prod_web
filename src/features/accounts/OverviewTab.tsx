@@ -7,15 +7,10 @@ import { formatDate } from "@/core/format/date";
 import { useOverview } from "./hooks";
 import { money } from "./shared";
 import type { PartyWithAhead } from "./types";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "danger" | "success" }) {
-  return (
-    <Card className="p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{label}</p>
-      <p className={`mt-1 text-2xl font-bold tabular-nums ${tone === "danger" ? "text-status-danger" : tone === "success" ? "text-status-success" : ""}`}>{value}</p>
-      {sub && <p className="text-xs text-ink-400">{sub}</p>}
-    </Card>
-  );
+  return <UiStatTile label={label} value={value} sub={sub} tone={tone === "danger" ? "danger" : tone === "success" ? "good" : "default"} />;
 }
 
 const monthLabel = (from: string) => new Date(from).toLocaleDateString("en-IN", { month: "long", year: "numeric" });

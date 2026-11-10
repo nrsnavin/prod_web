@@ -100,7 +100,7 @@ export function AssistantPage() {
                   <Bot className="h-4 w-4" />
                 </div>
               )}
-              <div className={cn("max-w-[75%] rounded-2xl px-4 py-2.5 text-sm", m.role === "user" ? "bg-brand-500 text-white" : "bg-ink-100 text-ink-900")}>
+              <div className={cn("max-w-[75%] rounded-2xl px-4 py-2.5 text-sm", m.role === "user" ? "bg-accent text-white" : "bg-ink-100 text-ink-900")}>
                 <p className="whitespace-pre-wrap">{m.content}</p>
                 {m.reports?.map((r, ri) => <AssistantReportCard key={ri} report={r} />)}
                 {m.tools && m.tools.length > 0 && (
@@ -147,7 +147,7 @@ export function AssistantPage() {
           <button
             type="submit"
             disabled={!input.trim() || chat.isPending}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-500 text-white hover:opacity-90 disabled:opacity-40"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent text-white hover:bg-accent-hover disabled:opacity-40"
             aria-label="Send"
           >
             <Send className="h-4 w-4" />

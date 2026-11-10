@@ -13,57 +13,94 @@
 :root {
   color-scheme: light;
 
-  --color-canvas: 248 248 248;
+  /* Slate neutrals with a slight indigo lean: chosen rather than a flat
+     mid-grey, so the page reads calm and the numbers carry the colour. */
+  --color-canvas: 244 245 248;          /* #F4F5F8 */
   --color-surface: 255 255 255;
-  --color-surface-muted: 250 250 250;
+  --color-surface-muted: 248 249 251;   /* #F8F9FB */
 
-  --color-brand-50: 254 241 242;
-  --color-brand-100: 253 224 226;
-  --color-brand-400: 236 86 97;
-  --color-brand-500: 226 55 68;
-  --color-brand-600: 196 43 55;
-  --color-brand-700: 163 33 44;
+  /* Indigo is the accent: anything you can press, focus, selection.
+     Red is NOT the accent any more; it means a problem (status-danger).
+     In the light theme one indigo works both as text and as a fill. */
+  --color-brand-50: 238 240 253;        /* #EEF0FD tint */
+  --color-brand-100: 222 226 251;       /* #DEE2FB */
+  --color-brand-400: 108 123 230;       /* #6C7BE6 */
+  --color-brand-500: 51 70 211;         /* #3346D3 */
+  --color-brand-600: 42 59 184;         /* #2A3BB8 links, selected text */
+  --color-brand-700: 35 51 160;         /* #2333A0 */
 
-  --color-ink-900: 28 28 28;
-  --color-ink-800: 43 43 43;
-  --color-ink-700: 59 59 59;
-  --color-ink-600: 79 79 79;
-  --color-ink-500: 102 102 102;
-  --color-ink-400: 130 130 130;
-  --color-ink-300: 184 184 184;
-  --color-ink-200: 224 224 224;
-  --color-ink-100: 240 240 240;
-  --color-ink-50: 247 247 247;
+  /* Solid fills that carry white text (primary buttons, chat bubbles).
+     Separate from the ramp because in the dark theme no single indigo
+     can be both readable as text and dark enough under white text. */
+  --color-accent: 51 70 211;            /* #3346D3, 7.1:1 with white */
+  --color-accent-hover: 42 59 184;      /* #2A3BB8 */
+  --color-accent-active: 35 51 160;     /* #2333A0 */
 
-  --color-status-success: 30 142 62;
-  --color-status-success-bg: 230 244 234;
-  --color-status-warning: 178 106 0;
-  --color-status-warning-bg: 255 244 224;
-  --color-status-info: 25 103 210;
-  --color-status-info-bg: 232 240 254;
-  --color-status-danger: 197 34 31;
+  /* The J mark stays red: the brand lives in the logo, not in buttons. */
+  --color-logo: 226 55 68;              /* #E23744 */
+
+  --color-ink-900: 15 23 41;            /* #0F1729 */
+  --color-ink-800: 30 41 61;
+  --color-ink-700: 43 52 72;
+  --color-ink-600: 71 83 106;           /* #47536A secondary text, 7.7:1 */
+  --color-ink-500: 83 94 116;
+  /* Muted text: subtitles, table headers, captions. Was #828282 at
+     3.8:1, under the 4.5:1 normal text needs; this is 5.4:1 on a card
+     and 4.9:1 on the page. */
+  --color-ink-400: 95 107 130;          /* #5F6B82 */
+  --color-ink-300: 133 144 166;         /* #8590A6 icons, 3.2:1 */
+  --color-ink-200: 214 219 228;         /* #D6DBE4 hairlines, field borders */
+  --color-ink-100: 237 240 246;         /* #EDF0F6 fills */
+  --color-ink-50: 245 247 250;          /* #F5F7FA */
+
+  /* Status colours always come with a word or an icon. Each text/fill
+     pair clears 4.5:1 (green and amber chips were 3.7 and 3.9). Info is
+     the indigo family: "in progress" reads as the app's own colour. */
+  --color-status-success: 23 112 58;    /* #17703A */
+  --color-status-success-bg: 227 244 232;
+  --color-status-warning: 143 83 0;     /* #8F5300 */
+  --color-status-warning-bg: 255 241 214;
+  --color-status-info: 43 60 184;       /* #2B3CB8 */
+  --color-status-info-bg: 238 240 253;
+  --color-status-danger: 179 38 30;     /* #B3261E */
   --color-status-danger-bg: 252 232 230;
-  --color-status-danger-solid: 197 34 31;
+  --color-status-danger-solid: 179 38 30;
 
-  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
-  --shadow-card-hover: 0 4px 12px rgb(0 0 0 / 0.1);
+  --shadow-card: 0 1px 2px rgb(15 23 41 / 0.06), 0 1px 1px rgb(15 23 41 / 0.03);
+  --shadow-card-hover: 0 8px 24px rgb(15 23 41 / 0.12), 0 2px 6px rgb(15 23 41 / 0.05);
 
-  --scrim: rgb(0 0 0 / 0.4);
+  --scrim: rgb(15 23 41 / 0.4);
   --skeleton-sheen: rgb(255 255 255 / 0.7);
 
+  /* Table row padding. Compact by default on a desk; see the density
+     setting under Settings > Appearance, and the touch override below. */
+  --row-py: 0.5rem;
+
   /* Chart tokens — consumed by src/core/charts/theme.ts as var() refs so
-     recharts SVG fills follow the theme. Full colours, not channels. */
-  --chart-grid: #e1e0d9;
-  --chart-axis: #898781;
-  --chart-ink: #1c1c1c;
-  --chart-muted-ink: #828282;
+     recharts SVG fills follow the theme. Full colours, not channels.
+     The eight series are a colour-blind-checked palette used in this
+     fixed order; status colours are never series colours. */
+  --chart-grid: #e6e9f0;
+  --chart-axis: #687390;
+  --chart-ink: #0f1729;
+  --chart-muted-ink: #5f6b82;
   --chart-surface: #ffffff;
-  --chart-border: #e0e0e0;
-  --chart-cursor: rgb(0 0 0 / 0.04);
+  --chart-border: #d6dbe4;
+  --chart-cursor: rgb(15 23 41 / 0.04);
   --chart-series-1: #2a78d6;
-  --chart-series-2: #1baf7a;
-  --chart-series-3: #eda100;
-  --chart-series-4: #4a3aa7;
+  --chart-series-2: #eb6834;
+  --chart-series-3: #1baf7a;
+  --chart-series-4: #eda100;
+  --chart-series-5: #e87ba4;
+  --chart-series-6: #008300;
+  --chart-series-7: #6250d6;
+  --chart-series-8: #e34948;
+  /* A sequence (produced → packed → delivered): one blue, deepening as
+     it goes. Flips in dark, where further along is lighter. */
+  --chart-stage-1: #86b6ef;
+  --chart-stage-2: #2a78d6;
+  --chart-stage-3: #104281;
+  --chart-track: #e2e6ef;
   --chart-good: #0ca30c;
   --chart-warning: #fab219;
   --chart-serious: #ec835a;
@@ -73,72 +110,94 @@
 .dark {
   color-scheme: dark;
 
-  /* Near-black rather than pure black: pure #000 makes the elevation
-     between canvas and card impossible to see, and haloes light text. */
-  --color-canvas: 19 19 22;
-  --color-surface: 28 28 32;
-  --color-surface-muted: 35 35 40;
+  /* Near-black blue rather than pure black: the step between page and
+     card stays visible, and light text doesn't halo. */
+  --color-canvas: 11 16 26;             /* #0B101A */
+  --color-surface: 20 27 41;            /* #141B29 */
+  --color-surface-muted: 24 33 50;      /* #182132 */
 
-  /* Brand red stays vivid enough to read as an accent on a dark surface
-     while remaining a usable fill behind white button text. 600/700 are
-     the hover/active steps, so on dark they get *lighter*, not darker. */
-  --color-brand-50: 44 20 23;
-  --color-brand-100: 60 26 31;
-  --color-brand-400: 247 99 112;
-  --color-brand-500: 240 74 87;
-  --color-brand-600: 255 129 138;
-  --color-brand-700: 255 158 165;
+  /* On dark the ramp lightens toward 700, so text and borders read on
+     the dark surface. Fills that carry white text use --color-accent. */
+  --color-brand-50: 29 36 80;           /* #1D2450 tint */
+  --color-brand-100: 38 47 102;         /* #262F66 */
+  --color-brand-400: 101 117 238;       /* #6575EE */
+  --color-brand-500: 123 138 245;       /* #7B8AF5, 5.6:1 as text */
+  --color-brand-600: 154 166 255;       /* #9AA6FF links, 7.6:1 */
+  --color-brand-700: 180 189 255;       /* #B4BDFF */
 
-  --color-ink-900: 244 244 245;
-  --color-ink-800: 228 228 231;
-  --color-ink-700: 208 208 213;
-  --color-ink-600: 176 176 184;
-  --color-ink-500: 151 151 159;
-  /* Tuned so muted text clears 4.5:1 against the *chip* fill (ink-100), not
-     just against the card — it is the single most-used text colour here. */
-  --color-ink-400: 144 144 152;
-  --color-ink-300: 90 90 99;
-  --color-ink-200: 52 52 58;
-  --color-ink-100: 38 38 43;
-  --color-ink-50: 32 32 36;
+  --color-accent: 79 95 232;            /* #4F5FE8, 5.1:1 with white */
+  --color-accent-hover: 67 82 218;      /* #4352DA */
+  --color-accent-active: 58 72 196;     /* #3A48C4 */
 
-  --color-status-success: 69 196 106;
+  --color-logo: 226 55 68;
+
+  --color-ink-900: 232 236 244;         /* #E8ECF4 */
+  --color-ink-800: 213 219 231;
+  --color-ink-700: 191 199 214;
+  --color-ink-600: 169 179 199;         /* #A9B3C7 */
+  --color-ink-500: 154 164 185;
+  /* Tuned so muted text clears 4.5:1 on the chip fill (ink-100), not
+     just on the card. */
+  --color-ink-400: 143 154 176;         /* #8F9AB0 */
+  --color-ink-300: 98 110 138;          /* #626E8A icons, 3.4:1 */
+  --color-ink-200: 46 56 80;            /* #2E3850 hairlines */
+  --color-ink-100: 34 43 61;            /* #222B3D fills */
+  --color-ink-50: 27 35 52;
+
+  --color-status-success: 69 196 106;   /* #45C46A */
   --color-status-success-bg: 20 48 30;
-  --color-status-warning: 232 163 61;
+  --color-status-warning: 232 163 61;   /* #E8A33D */
   --color-status-warning-bg: 51 38 15;
-  --color-status-info: 107 166 245;
-  --color-status-info-bg: 18 35 61;
-  --color-status-danger: 248 113 104;
+  --color-status-info: 154 166 255;     /* #9AA6FF */
+  --color-status-info-bg: 29 36 80;
+  --color-status-danger: 248 113 104;   /* #F87168 */
   --color-status-danger-bg: 58 27 25;
   /* Deeper than `danger` so white text on the filled danger button keeps
      its contrast — the bright tone above is tuned for text, not fills. */
-  --color-status-danger-solid: 214 65 55;
+  --color-status-danger-solid: 207 59 50; /* #CF3B32 */
 
   /* Shadows read as almost nothing on dark, so lean on a stronger cast
-     plus the canvas/surface lightness difference for elevation. */
-  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-card-hover: 0 4px 14px rgb(0 0 0 / 0.6);
+     plus the canvas/surface step for elevation. */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 1px 1px rgb(0 0 0 / 0.4);
+  --shadow-card-hover: 0 8px 24px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.4);
 
   /* A 40% scrim barely separates a dark dialog from a dark page, so the
      dark theme dims harder to keep the modal clearly in front. */
   --scrim: rgb(0 0 0 / 0.65);
   --skeleton-sheen: rgb(255 255 255 / 0.06);
 
-  --chart-grid: #2e2e34;
-  --chart-axis: #86868e;
-  --chart-ink: #f4f4f5;
-  --chart-muted-ink: #86868e;
-  --chart-surface: #23232a;
-  --chart-border: #34343a;
+  --chart-grid: #222b3b;
+  --chart-axis: #8f9ab0;
+  --chart-ink: #e8ecf4;
+  --chart-muted-ink: #8f9ab0;
+  --chart-surface: #141b29;
+  --chart-border: #2e3850;
   --chart-cursor: rgb(255 255 255 / 0.06);
-  --chart-series-1: #5b9be8;
-  --chart-series-2: #3fcb96;
-  --chart-series-3: #f2bc3f;
-  --chart-series-4: #8f7fe0;
+  /* The same eight hues, stepped for a dark surface (the light set is
+     too light for it and fails the lightness check). */
+  --chart-series-1: #3987e5;
+  --chart-series-2: #d95926;
+  --chart-series-3: #199e70;
+  --chart-series-4: #c98500;
+  --chart-series-5: #d55181;
+  --chart-series-6: #008300;
+  --chart-series-7: #9085e9;
+  --chart-series-8: #e66767;
+  --chart-stage-1: #184f95;
+  --chart-stage-2: #3987e5;
+  --chart-stage-3: #9ec5f4;
+  --chart-track: #273246;
   --chart-good: #3fbf5a;
   --chart-warning: #f2bc3f;
   --chart-serious: #f0906a;
   --chart-critical: #f0605c;
+}
+
+/* Density. Compact rows by default on a desk, comfortable when chosen,
+   and always comfortable on a touch screen (see TOUCH TARGETS below),
+   where a row is a tap target. */
+:root[data-density="comfortable"] {
+  --row-py: 0.75rem;
 }
 
 @layer base {
@@ -152,6 +211,20 @@
      native date/time pickers stop showing up as light rectangles. */
   ::selection {
     @apply bg-brand-500/25;
+  }
+}
+
+@layer utilities {
+  /* Table rows: padding from the density setting (--row-py), and the
+     13px table type. Plain classes rather than arbitrary values, which
+     the build has dropped silently before (see .print-label-2in). */
+  .py-row {
+    padding-top: var(--row-py);
+    padding-bottom: var(--row-py);
+  }
+  .text-table {
+    font-size: 13px;
+    line-height: 18px;
   }
 }
 
@@ -228,6 +301,12 @@
    re-styled — the control keeps its look and grows its hit area.
    ══════════════════════════════════════════════════════════════════ */
 @media (pointer: coarse) {
+  /* Table rows stay comfortable on touch, whatever the density setting. */
+  :root,
+  :root[data-density] {
+    --row-py: 0.75rem;
+  }
+
   button,
   [role="button"],
   a[href],
@@ -371,37 +450,42 @@ body {
   .dark {
     color-scheme: light;
 
-    --color-canvas: 255 255 255;
+    --color-canvas: 244 245 248;
     --color-surface: 255 255 255;
-    --color-surface-muted: 250 250 250;
+    --color-surface-muted: 248 249 251;
 
-    --color-brand-50: 254 241 242;
-    --color-brand-100: 253 224 226;
-    --color-brand-400: 236 86 97;
-    --color-brand-500: 226 55 68;
-    --color-brand-600: 196 43 55;
-    --color-brand-700: 163 33 44;
+    --color-brand-50: 238 240 253;
+    --color-brand-100: 222 226 251;
+    --color-brand-400: 108 123 230;
+    --color-brand-500: 51 70 211;
+    --color-brand-600: 42 59 184;
+    --color-brand-700: 35 51 160;
 
-    --color-ink-900: 28 28 28;
-    --color-ink-800: 43 43 43;
-    --color-ink-700: 59 59 59;
-    --color-ink-600: 79 79 79;
-    --color-ink-500: 102 102 102;
-    --color-ink-400: 130 130 130;
-    --color-ink-300: 184 184 184;
-    --color-ink-200: 224 224 224;
-    --color-ink-100: 240 240 240;
-    --color-ink-50: 247 247 247;
+    --color-accent: 51 70 211;
+    --color-accent-hover: 42 59 184;
+    --color-accent-active: 35 51 160;
+    --color-logo: 226 55 68;
 
-    --color-status-success: 30 142 62;
-    --color-status-success-bg: 230 244 234;
-    --color-status-warning: 178 106 0;
-    --color-status-warning-bg: 255 244 224;
-    --color-status-info: 25 103 210;
-    --color-status-info-bg: 232 240 254;
-    --color-status-danger: 197 34 31;
+    --color-ink-900: 15 23 41;
+    --color-ink-800: 30 41 61;
+    --color-ink-700: 43 52 72;
+    --color-ink-600: 71 83 106;
+    --color-ink-500: 83 94 116;
+    --color-ink-400: 95 107 130;
+    --color-ink-300: 133 144 166;
+    --color-ink-200: 214 219 228;
+    --color-ink-100: 237 240 246;
+    --color-ink-50: 245 247 250;
+
+    --color-status-success: 23 112 58;
+    --color-status-success-bg: 227 244 232;
+    --color-status-warning: 143 83 0;
+    --color-status-warning-bg: 255 241 214;
+    --color-status-info: 43 60 184;
+    --color-status-info-bg: 238 240 253;
+    --color-status-danger: 179 38 30;
     --color-status-danger-bg: 252 232 230;
-    --color-status-danger-solid: 197 34 31;
+    --color-status-danger-solid: 179 38 30;
 
     --shadow-card: none;
     --shadow-card-hover: none;

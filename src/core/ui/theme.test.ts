@@ -36,7 +36,7 @@ function installMatchMedia(matches: boolean) {
 
 beforeEach(() => {
   document.documentElement.classList.remove("dark");
-  document.head.innerHTML = '<meta name="theme-color" content="#F8F8F8" />';
+  document.head.innerHTML = '<meta name="theme-color" content="#F4F5F8" />';
   useUiStore.setState({ theme: "system" });
 });
 
@@ -77,9 +77,9 @@ describe("applyTheme", () => {
     const meta = () =>
       document.querySelector('meta[name="theme-color"]')!.getAttribute("content");
     applyTheme("dark");
-    expect(meta()).toBe("#131316");
+    expect(meta()).toBe("#0B101A");
     applyTheme("light");
-    expect(meta()).toBe("#F8F8F8");
+    expect(meta()).toBe("#F4F5F8");
   });
 });
 

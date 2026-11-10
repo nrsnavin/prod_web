@@ -16,8 +16,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand — one bold accent, used sparingly (Zomato-style)
+        // Indigo accent: what you can press, focus and select. Use the
+        // ramp for text, borders and tints; use `accent` for a solid fill
+        // that carries white text (in dark mode the ramp lightens so text
+        // stays readable, which makes it too light under white text).
         brand: ramp("brand", [50, 100, 400, 500, 600, 700]),
+        accent: {
+          DEFAULT: token("accent"),
+          hover: token("accent-hover"),
+          active: token("accent-active"),
+        },
+        // The red J. The brand colour now lives in the logo only, so red
+        // elsewhere means a problem.
+        logo: token("logo"),
 
         // Page background, and the raised sheet that cards/inputs sit on.
         // `surface` is what used to be a hardcoded `bg-white`.
@@ -61,8 +72,14 @@ export default {
         card: "var(--shadow-card)",
         "card-hover": "var(--shadow-card-hover)",
       },
+      // Tighter corners than the stock scale: cards 8px, controls 6px.
+      // Overriding lg/xl here rather than renaming classes keeps every
+      // existing `rounded-lg` and `rounded-xl` in step.
       borderRadius: {
-        card: "12px",
+        card: "8px",
+        lg: "6px",
+        xl: "8px",
+        "2xl": "12px",
       },
       // Short and eased out: a sheet arriving, a screen settling. Always
       // used behind `motion-safe:` so reduce-motion turns them off.

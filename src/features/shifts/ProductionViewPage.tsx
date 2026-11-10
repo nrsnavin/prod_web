@@ -345,45 +345,50 @@ export function ProductionViewPage() {
       />
 
       <Card className="p-3 mb-4 flex flex-wrap items-center gap-2">
-        {[
-          { label: "7D", days: 6 },
-          { label: "14D", days: 13 },
-          { label: "30D", days: 29 },
-        ].map((p) => (
-          <button
-            key={p.label}
-            onClick={() => setRange(presetRange(p.days))}
-            className={cn(
-              "px-3 py-1.5 rounded-md text-sm font-medium",
-              presetRange(p.days).startDate === range.startDate
-                ? "bg-ink-900 text-canvas"
-                : "bg-ink-100 text-ink-600 hover:text-ink-900"
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
+        <div className="inline-flex gap-0.5 rounded-lg bg-ink-100 p-0.5" role="group" aria-label="Period">
+          {[
+            { label: "7D", days: 6 },
+            { label: "14D", days: 13 },
+            { label: "30D", days: 29 },
+          ].map((p) => {
+            const on = presetRange(p.days).startDate === range.startDate;
+            return (
+              <button
+                key={p.label}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setRange(presetRange(p.days))}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-sm font-medium",
+                  on ? "bg-surface text-ink-900 shadow-card" : "text-ink-600 hover:text-ink-900"
+                )}
+              >
+                {p.label}
+              </button>
+            );
+          })}
+        </div>
         {/* Subtle signal that a preset/date change is refetching while the
             previous rows stay visible (placeholderData). */}
         {isFetching && !isLoading && (
           <span className="ml-1 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-ink-300 border-t-brand-500" aria-label="Refreshing" />
         )}
         <div className="flex w-full min-w-0 items-center gap-2 text-sm sm:ml-2 sm:w-auto">
-          <input aria-label="Start date"
+          <Input aria-label="Start date"
             type="date"
             value={range.startDate}
             max={range.endDate}
             onChange={(e) => setRange((r) => ({ ...r, startDate: e.target.value }))}
-            className="h-9 min-w-0 flex-1 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500 sm:flex-none"
+            wrapperClassName="min-w-0 flex-1 sm:flex-none"
           />
           <span className="text-ink-400">→</span>
-          <input aria-label="End date"
+          <Input aria-label="End date"
             type="date"
             value={range.endDate}
             min={range.startDate}
             max={toISODate(new Date())}
             onChange={(e) => setRange((r) => ({ ...r, endDate: e.target.value }))}
-            className="h-9 min-w-0 flex-1 rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500 sm:flex-none"
+            wrapperClassName="min-w-0 flex-1 sm:flex-none"
           />
         </div>
       </Card>

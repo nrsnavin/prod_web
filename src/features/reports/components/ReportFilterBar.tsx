@@ -45,18 +45,20 @@ export function ReportFilterBar({
     <Card className="mb-4 p-4 print:hidden">
       <div className="flex flex-wrap items-end gap-3">
         {/* Preset chips */}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="inline-flex flex-wrap gap-0.5 rounded-lg bg-ink-100 p-0.5" role="group" aria-label="Period">
           {PRESETS.map((p) => {
             const active = filters.preset === p.value;
             return (
               <button
                 key={p.value}
+                type="button"
+                aria-pressed={active}
                 onClick={() => set({ preset: p.value })}
                 className={
-                  "rounded-lg px-3 py-1.5 text-sm font-medium transition " +
+                  "rounded-md px-3 py-1.5 text-sm font-medium transition " +
                   (active
-                    ? "bg-brand-500 text-white"
-                    : "bg-ink-100 text-ink-600 hover:bg-ink-200")
+                    ? "bg-surface text-ink-900 shadow-card"
+                    : "text-ink-600 hover:text-ink-900")
                 }
               >
                 {p.label}

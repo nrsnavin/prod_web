@@ -120,7 +120,7 @@ function PageFallback({ error, onRetry }: { error: Error; onRetry: () => void })
       <button
         type="button"
         onClick={updated ? reload : onRetry}
-        className="mt-4 h-10 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600"
+        className="mt-4 h-10 rounded-lg bg-accent px-4 text-sm font-medium text-white hover:bg-accent-hover"
       >
         {updated ? "Reload" : "Try again"}
       </button>
@@ -142,7 +142,7 @@ function ScreenFallback({ error }: { error: unknown }) {
         <button
           type="button"
           onClick={() => (updated ? reload() : window.location.assign("/"))}
-          className="mt-4 h-10 rounded-lg bg-brand-500 px-4 text-sm font-medium text-white hover:bg-brand-600"
+          className="mt-4 h-10 rounded-lg bg-accent px-4 text-sm font-medium text-white hover:bg-accent-hover"
         >
           {updated ? "Reload" : "Back to the start"}
         </button>

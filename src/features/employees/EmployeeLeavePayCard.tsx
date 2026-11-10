@@ -5,12 +5,13 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { leaveService, payrollService } from "@/features/hr/api";
 import { formatDate } from "@/core/format/date";
+import { rupeesAuto } from "@/core/format/money";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
-const inr = (n: number | undefined) => `₹${(n ?? 0).toLocaleString("en-IN")}`;
+const inr = (n: number | null | undefined) => rupeesAuto(n ?? 0);
 
 const payslipTone: Record<string, ChipTone> = {
   paid: "success",

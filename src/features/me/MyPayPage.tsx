@@ -10,13 +10,13 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useMyAttendance, useMyEmployeeId, useMyLeaves, useMyPayslip } from "./hooks";
 import { leaveShiftLabel, leaveStatusLabel, leaveTone, leaveTypeLabel } from "./leave";
 import { meService } from "./api";
+import { rupees } from "@/core/format/money";
 
 // ══════════════════════════════════════════════════════════════════
 //  PAY AND ATTENDANCE — the worker's own, one month at a time
 // ══════════════════════════════════════════════════════════════════
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const rupees = (n: number | null | undefined) => (n == null ? "—" : `₹${Math.round(n).toLocaleString("en-IN")}`);
 // Labels shared with the Leave screen (./leave.ts). "Whole day" used to
 // read as "Day" here, which is a different request.
 

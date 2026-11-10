@@ -17,6 +17,7 @@ import { AcceptedPlanPanel } from "./AcceptedPlanPanel";
 import { LearnedWeightsPanel } from "./LearnedWeightsPanel";
 import { MachinePlan, PlanRow, RateSource, SuggestedPlan } from "./types";
 import { useAuth } from "@/core/auth/useAuth";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 const HORIZONS = [7, 14, 30];
 
@@ -35,12 +36,7 @@ const fmtDate = (s: string | null) =>
   s ? new Date(s).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "—";
 
 function StatTile({ label, value, tone }: { label: string; value: string | number; tone?: string }) {
-  return (
-    <Card className="p-4">
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className={cn("mt-0.5 text-2xl font-bold tabular-nums", tone)}>{value}</p>
-    </Card>
-  );
+  return <UiStatTile label={label} value={value} toneClass={tone} />;
 }
 
 function SequenceRow({ row }: { row: PlanRow }) {

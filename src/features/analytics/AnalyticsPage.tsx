@@ -17,6 +17,7 @@ import { AnomaliesList } from "./components/AnomaliesList";
 import { change, previousPeriod, type Change } from "./comparison";
 import { BreakdownPanel } from "./breakdown/BreakdownPanel";
 import { ForecastPanel } from "./breakdown/ForecastPanel";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 type Tab = "overview" | "breakdown" | "forecast" | "machines" | "operators" | "anomalies";
 
@@ -40,27 +41,14 @@ function StatTile({
   delta?: Change;
   higherIsBetter?: boolean;
 }) {
-  const good = delta && delta.direction !== "flat" && (delta.direction === "up") === higherIsBetter;
   return (
-    <Card className={cn("p-4", className)}>
-      <p className="text-xs text-ink-400">{label}</p>
-      {loading ? (
-        <Skeleton className="mt-1.5 h-7 w-16" />
-      ) : (
-        <p className="mt-0.5 text-2xl font-bold tabular-nums">{value}</p>
-      )}
-      {!loading && delta && delta.pct !== null && (
-        <p
-          className={cn(
-            "mt-0.5 text-xs font-medium tabular-nums",
-            delta.direction === "flat" ? "text-ink-400" : good ? "text-status-success" : "text-status-danger"
-          )}
-        >
-          {delta.direction === "up" ? "▲" : delta.direction === "down" ? "▼" : "■"} {Math.abs(delta.pct)}%
-          <span className="font-normal text-ink-400"> vs previous</span>
-        </p>
-      )}
-    </Card>
+    <UiStatTile
+      className={className}
+      label={label}
+      value={value}
+      loading={loading}
+      change={delta && delta.pct !== null ? { ...delta, vs: "vs previous period", higherIsBetter } : null}
+    />
   );
 }
 

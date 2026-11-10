@@ -16,6 +16,7 @@ import { breakdownService } from "@/features/analytics/breakdown/api";
 import { useElasticGroup, useElasticGroupMutations } from "./hooks";
 import { ElasticGroupItem, itemElasticName } from "./types";
 import { ElasticGroupForm } from "./ElasticGroupForm";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 const itemColumns: Column<ElasticGroupItem & { _i: number }>[] = [
   { key: "elastic", header: "Elastic", render: (it) => <span className="font-medium">{itemElasticName(it)}</span> },
@@ -175,10 +176,5 @@ export function ElasticGroupDetailPage() {
 }
 
 function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <Card className="p-4">
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold tabular-nums">{value}</p>
-    </Card>
-  );
+  return <UiStatTile label={label} value={value} />;
 }

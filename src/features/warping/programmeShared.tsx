@@ -2,8 +2,8 @@ import { ChipTone, StatusChip } from "@/components/ui/StatusChip";
 import { ElasticOrderedLine, ProgrammeStatus } from "./types";
 
 export const programmeTone: Record<ProgrammeStatus, ChipTone> = {
-  open: "info",
-  in_progress: "warning",
+  open: "neutral",
+  in_progress: "info",
   completed: "success",
   cancelled: "neutral",
 };

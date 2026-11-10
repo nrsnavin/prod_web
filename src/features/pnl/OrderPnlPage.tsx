@@ -13,6 +13,7 @@ import { usePnlOrders } from "./hooks";
 import { RateCardPanel } from "./RateCardPanel";
 import { marginLabel, marginTone, meters, rupee } from "./format";
 import type { PnlSort } from "./types";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 const SORTS: Array<{ value: PnlSort; label: string }> = [
   { value: "recent", label: "Newest first" },
@@ -33,12 +34,7 @@ const STATUSES = [
 const LIMIT = 25;
 
 function Tile({ label, value, tone }: { label: string; value: string; tone?: string }) {
-  return (
-    <Card className="p-4">
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className={`mt-1 text-xl font-semibold tabular-nums ${tone ?? ""}`}>{value}</p>
-    </Card>
-  );
+  return <UiStatTile label={label} value={value} toneClass={tone} />;
 }
 
 export function OrderPnlPage() {

@@ -115,7 +115,7 @@ export function FloorPage() {
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="mx-auto flex max-w-xl items-center gap-3 px-4 py-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-500 text-white">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-logo text-white">
             <BrandMark className="h-6 w-6" />
           </span>
           <div className="min-w-0 flex-1">

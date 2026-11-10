@@ -16,7 +16,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Jarvis" />
     <meta name="application-name" content="Jarvis" />
-    <meta name="theme-color" content="#F8F8F8" />
+    <meta name="theme-color" content="#F4F5F8" />
     <title>Jarvis ERP</title>
     <!--
       Tab mark. The SVG is the real icon (sharp at every size and the
@@ -44,6 +44,9 @@
           if (raw) {
             var saved = JSON.parse(raw);
             if (saved && saved.state && saved.state.theme) mode = saved.state.theme;
+            // Table density, so rows don't change height after load.
+            if (saved && saved.state && saved.state.density === "comfortable")
+              document.documentElement.setAttribute("data-density", "comfortable");
           }
           var dark =
             mode === "dark" ||
@@ -53,7 +56,7 @@
             document.documentElement.classList.add("dark");
             document
               .querySelector('meta[name="theme-color"]')
-              .setAttribute("content", "#131316");
+              .setAttribute("content", "#0B101A");
           }
         } catch (e) {
           /* Corrupt or unavailable storage — fall through to the light theme. */

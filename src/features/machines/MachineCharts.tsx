@@ -4,6 +4,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { lazyChart } from "@/components/ui/LazyChart";
 import { useMachineSpend, useProductionSeries } from "./hooks";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
+import { rupees } from "@/core/format/money";
 
 // ══════════════════════════════════════════════════════════════════
 //  WHAT THIS LOOM MADE, AND WHAT IT COST TO KEEP
@@ -35,7 +37,6 @@ import { useMachineSpend, useProductionSeries } from "./hooks";
 //  rewrites itself days later.
 // ══════════════════════════════════════════════════════════════════
 
-const rupees = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 const metres = (n: number) => `${Math.round(n).toLocaleString("en-IN")} m`;
 
 /** "2026-08" → "Aug 26" */
@@ -53,12 +54,7 @@ const Chart = lazyChart<{
 }>(() => import("@/features/reports/components/ReportBarChart"), "ReportBarChart", "h-60");
 
 function Figure({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className="text-lg font-bold tabular-nums text-ink-900">{value}</p>
-    </div>
-  );
+  return <UiStatTile variant="plain" size="sm" label={label} value={value} />;
 }
 
 export function MachineCharts({ machineId, days = 365 }: {

@@ -13,6 +13,8 @@ import { lazyChart } from "@/components/ui/LazyChart";
 import { toApiError } from "@/core/http/httpClient";
 import { useServiceAnalytics, useMachineMutations } from "./hooks";
 import { ServiceFinding } from "./types";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
+import { rupees } from "@/core/format/money";
 
 // ══════════════════════════════════════════════════════════════════
 //  WHAT SERVICING COSTS, AND WHAT IS WORTH A LOOK
@@ -36,7 +38,6 @@ import { ServiceFinding } from "./types";
 //  is itself visible.
 // ══════════════════════════════════════════════════════════════════
 
-const rupees = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 
 /** "2026-08" → "Aug 26" */
 const monthLabel = (m: string) => {
@@ -53,13 +54,7 @@ const SpendChart = lazyChart<{
 }>(() => import("@/features/reports/components/ReportBarChart"), "ReportBarChart", "h-60");
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-lg border border-ink-200 p-3">
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className="mt-0.5 text-xl font-bold tabular-nums text-ink-900">{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-ink-400">{hint}</p>}
-    </div>
-  );
+  return <UiStatTile variant="inset" size="sm" label={label} value={value} sub={hint} />;
 }
 
 /** How loud a finding is drawn. Ranking only — not a probability. */

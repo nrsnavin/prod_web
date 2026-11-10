@@ -15,6 +15,7 @@ import { useBreakdown } from "./hooks";
 import { GroupDim, BreakdownRow } from "./types";
 import { InsightsList } from "./InsightsList";
 import { recoverFromStaleChunk } from "@/pwa/staleChunk";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 const BreakdownBarChart = lazy(() =>
   import("./charts")
@@ -247,14 +248,5 @@ export function BreakdownPanel({
 }
 
 function TotalTile({ label, value, loading }: { label: string; value: string; loading: boolean }) {
-  return (
-    <Card className="p-4">
-      <p className="text-xs text-ink-400">{label}</p>
-      {loading ? (
-        <Skeleton className="mt-1.5 h-7 w-20" />
-      ) : (
-        <p className="mt-0.5 text-2xl font-bold tabular-nums">{value}</p>
-      )}
-    </Card>
-  );
+  return <UiStatTile label={label} value={value} loading={loading} />;
 }

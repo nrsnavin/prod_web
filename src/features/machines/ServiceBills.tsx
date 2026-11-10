@@ -12,8 +12,9 @@ import { ApiError } from "@/core/http/httpClient";
 import { machineService } from "./api";
 import { useMachineMutations } from "./hooks";
 import { ServiceBill, ServiceBillKind } from "./types";
+import { rupeesAuto } from "@/core/format/money";
 
-const inr = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const inr = (n: number | null | undefined) => rupeesAuto(n ?? 0);
 
 const KIND_LABEL: Record<ServiceBillKind, string> = {
   service_bill: "Service bill",

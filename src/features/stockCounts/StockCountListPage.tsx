@@ -12,9 +12,9 @@ import { cn } from "@/components/ui/cn";
 import { useStockCounts } from "./hooks";
 import { STATUS_LABEL, STATUS_TONE, StockCountStatus, StockCountSummary } from "./types";
 import { OpenCountForm } from "./OpenCountForm";
+import { rupees } from "@/core/format/money";
 
-const money = (v: number) =>
-  `${v < 0 ? "−" : ""}₹${Math.abs(Math.round(v)).toLocaleString("en-IN")}`;
+const money = (v: number) => rupees(v);
 
 const day = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";

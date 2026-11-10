@@ -5,8 +5,8 @@ export const jobStatusTone: Record<JobStatus, ChipTone> = {
   preparatory: "neutral",
   weaving: "info",
   finishing: "info",
-  checking: "warning",
-  packing: "warning",
+  checking: "info",
+  packing: "info",
   completed: "success",
   cancelled: "neutral",
 };

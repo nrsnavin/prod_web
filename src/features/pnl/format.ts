@@ -9,25 +9,9 @@ import type { ChipTone } from "@/components/ui/StatusChip";
  */
 export const MAX_RATE = 1_000_000;
 
-// The sign goes OUTSIDE the symbol. Formatting the raw number puts it
-// inside — "₹-8,010" — which on a screen full of rupee figures reads as
-// a typo before it reads as a loss.
-const signed = (n: number, body: (abs: number) => string) =>
-  `${n < 0 ? "−" : ""}₹${body(Math.abs(n))}`;
-
-export const rupee = (n: number | null | undefined) =>
-  n == null ? "—" : signed(n, (a) => Math.round(a).toLocaleString("en-IN"));
-
-/** Rates and per-meter figures need the paise; totals do not. */
-export const rupeePrecise = (n: number | null | undefined) =>
-  n == null
-    ? "—"
-    : signed(n, (a) =>
-        a.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      );
-
-export const meters = (n: number | null | undefined) =>
-  n == null ? "—" : `${n.toLocaleString("en-IN")} m`;
+// Money and metres come from the shared formatters (sign outside the
+// symbol, "—" for nothing); these names are kept for the P&L screens.
+export { rupees as rupee, rupeesPrecise as rupeePrecise, metres as meters } from "@/core/format/money";
 
 /**
  * An order with no selling rate has an UNKNOWN margin, not a bad one.

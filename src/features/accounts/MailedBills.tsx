@@ -72,7 +72,7 @@ export function MailedBills() {
               <span className="tabular-nums">{b.grand != null ? `₹${money(b.grand)}` : "—"}</span>
               <span className="flex gap-1">
                 <a className="rounded-lg px-2 py-1.5 text-xs font-medium text-ink-600 hover:bg-ink-100" href={accountsService.mailedBillFileUrl(b._id)} target="_blank" rel="noreferrer">View</a>
-                <Link className="rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand-700" to={`/accounts/bills?mailed=${b._id}`}>Open as a bill</Link>
+                <Link className="rounded-lg bg-accent px-2.5 py-1.5 text-xs font-medium text-white hover:bg-accent-hover" to={`/accounts/bills?mailed=${b._id}`}>Open as a bill</Link>
                 {dismissing === b._id ? (
                   <Button size="sm" variant="danger" loading={dismiss.isPending} onClick={() => dismiss.mutate(b._id)}>Not ours — dismiss</Button>
                 ) : (

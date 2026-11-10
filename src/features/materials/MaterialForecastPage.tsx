@@ -13,6 +13,7 @@ import { cn } from "@/components/ui/cn";
 import { useReplenishmentForecast } from "./hooks";
 import { ForecastLine, ForecastSupplierGroup, LeadTimeSource } from "./types";
 import { ReorderExplainer } from "./ReorderExplainer";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 // How long an order should last once it arrives. Replaces the old
 // "horizon" tabs: the reorder point is set by the supplier's lead time
@@ -35,12 +36,7 @@ const LEAD_SOURCE: Record<LeadTimeSource, { label: string; measured: boolean }> 
 };
 
 function StatTile({ label, value, tone }: { label: string; value: string | number; tone?: string }) {
-  return (
-    <Card className="p-4">
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className={cn("mt-0.5 text-2xl font-bold tabular-nums", tone)}>{value}</p>
-    </Card>
-  );
+  return <UiStatTile label={label} value={value} toneClass={tone} />;
 }
 
 function LeadTimeNote({ l }: { l: ForecastLine }) {

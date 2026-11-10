@@ -12,6 +12,9 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { payrollService, MonthRange } from "@/features/hr/api";
 import { cn } from "@/components/ui/cn";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
+import { rupeesAuto } from "@/core/format/money";
+import { Input } from "@/components/ui/Input";
 
 const statusTone: Record<string, ChipTone> = { paid: "success", finalized: "info", draft: "warning" };
 
@@ -20,16 +23,10 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-const inr = (n: number | undefined) => `₹${(n ?? 0).toLocaleString("en-IN")}`;
+const inr = (n: number | null | undefined) => rupeesAuto(n ?? 0);
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div>
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className="text-xl font-bold tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-ink-400">{sub}</p>}
-    </div>
-  );
+  return <UiStatTile variant="plain" size="sm" label={label} value={value} sub={sub} />;
 }
 
 function SlipRow({
@@ -204,11 +201,9 @@ function LedgerView({ empId }: { empId: string }) {
     <>
       <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
         <span className="text-ink-400">From</span>
-        <input aria-label="Ledger from date" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)}
-          className="h-9 rounded-lg border border-ink-200 bg-surface px-2 text-sm" />
+        <Input aria-label="Ledger from date" type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
         <span className="text-ink-400">to</span>
-        <input aria-label="Ledger to date" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)}
-          className="h-9 rounded-lg border border-ink-200 bg-surface px-2 text-sm" />
+        <Input aria-label="Ledger to date" type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />
       </div>
 
       {q.isLoading ? (

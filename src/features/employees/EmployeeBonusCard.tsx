@@ -6,8 +6,9 @@ import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { bonusService } from "@/features/hr/api";
+import { rupeesAuto } from "@/core/format/money";
 
-const inr = (n: number | null | undefined) => `₹${Number(n ?? 0).toLocaleString("en-IN")}`;
+const inr = (n: number | null | undefined) => rupeesAuto(n ?? 0);
 
 const TIER_TONE: Record<string, "success" | "info" | "warning" | "danger"> = {
   S: "success", A: "info", B: "warning", C: "danger",

@@ -9,7 +9,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
       {/* Brand panel */}
-      <div className="hidden lg:flex flex-col justify-between bg-brand-500 text-white p-12">
+      <div className="hidden lg:flex flex-col justify-between bg-accent text-white p-12">
         <div className="flex items-center gap-2.5">
           {/* Sits on the always-red brand panel, so it is a white scrim in
               both themes rather than the themeable surface token. */}

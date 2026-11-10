@@ -11,6 +11,7 @@ import { ReportFilterBar } from "./components/ReportFilterBar";
 import { lazyChart } from "@/components/ui/LazyChart";
 import { ReportTable } from "./components/ReportTable";
 import { StockMovementsReport, ReportFilters } from "./types";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 // Recharts is 362 KB. Behind a lazy boundary it arrives with the
 // chart rather than before the page can draw its heading.
@@ -26,13 +27,7 @@ const GROUP_BY_OPTIONS = [
 const nf = (n: number | undefined) => (n ?? 0).toLocaleString("en-IN");
 
 function Tile({ label, value, tone }: { label: string; value: string; tone?: "up" | "down" }) {
-  const color = tone === "up" ? "text-status-success" : tone === "down" ? "text-status-danger" : "";
-  return (
-    <Card className="p-4">
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className={"mt-1 text-xl font-semibold tabular-nums " + color}>{value}</p>
-    </Card>
-  );
+  return <UiStatTile label={label} value={value} tone={tone === "up" ? "good" : tone === "down" ? "danger" : "default"} />;
 }
 
 export function StockMovementsReportPage() {

@@ -17,6 +17,7 @@ import { attendanceService, AttendanceRecord } from "./api";
 import { ShiftTimerPanel } from "./ShiftTimerPanel";
 import { CorrectMarkModal, STATUS_OPTIONS, TOO_LONG_FOR_A_SHIFT_MIN, clockTime, stampLabel } from "./CorrectMarkModal";
 import { toISODate } from "@/features/analytics/components/FilterBar";
+import { Input } from "@/components/ui/Input";
 
 function fmtWorked(mins?: number): string {
   if (!mins || mins <= 0) return "—";
@@ -253,12 +254,11 @@ export function AttendancePage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input aria-label="Attendance date"
+        <Input aria-label="Attendance date"
           type="date"
           value={date}
           max={toISODate(new Date())}
           onChange={(e) => setDate(e.target.value)}
-          className="h-10 rounded-lg border border-ink-200 px-3 text-sm bg-surface focus:outline-none focus:border-brand-500"
         />
         <FilterChips
           options={[

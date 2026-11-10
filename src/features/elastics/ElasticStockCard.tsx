@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Pagination } from "@/components/ui/Pagination";
 import { useToast } from "@/components/ui/Toast";
 import { httpClient, ApiError } from "@/core/http/httpClient";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 interface StockMovement {
   _id: string;
@@ -138,12 +139,7 @@ function Movement({
 }
 
 function Stat({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
-  return (
-    <div className="rounded-lg bg-canvas p-3">
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className={`text-xl font-bold tabular-nums ${danger ? "text-status-danger" : ""}`}>{value}</p>
-    </div>
-  );
+  return <UiStatTile variant="inset" size="sm" label={label} value={value} tone={danger ? "danger" : "default"} />;
 }
 
 /**

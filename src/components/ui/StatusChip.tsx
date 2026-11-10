@@ -16,23 +16,47 @@ export interface StatusChipProps {
   tone?: ChipTone;
   children: React.ReactNode;
   className?: string;
+  /**
+   * The small dot before the words. It gives the state a shape as well as
+   * a colour, so it reads without colour too. On by default, off for a
+   * bare number (a count chip is not a state).
+   */
+  dot?: boolean;
 }
 
-export function StatusChip({ tone = "neutral", children, className }: StatusChipProps) {
-  // Humanize machine strings so raw enums (PENDING_VERIFICATION, half_day)
-  // never reach the user.
-  if (typeof children === "string") {
-    children = children.replace(/_/g, " ");
-  }
+/**
+ * Words the server sends in capitals that are plain words, not
+ * abbreviations. Everything else in capitals (IRN, GST, DC) is left as
+ * it came.
+ */
+const SHOUTED_WORDS = new Set(["DAY", "NIGHT", "LOW"]);
+
+/** "in_production" → "in production"; "NIGHT" → "Night". */
+export function chipText(value: string): string {
+  const spaced = value.replace(/_/g, " ");
+  if (SHOUTED_WORDS.has(spaced)) return spaced.charAt(0) + spaced.slice(1).toLowerCase();
+  return spaced;
+}
+
+/**
+ * A state in sentence case with a dot. It used to be all capitals with
+ * wide tracking, which slows reading and makes every row shout; the
+ * capitals were CSS, so the text itself (and every test that reads it)
+ * is unchanged. The first letter is raised by CSS for the same reason.
+ */
+export function StatusChip({ tone = "neutral", children, className, dot }: StatusChipProps) {
+  if (typeof children === "string") children = chipText(children);
+  const showDot = dot ?? typeof children !== "number";
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
         toneClasses[tone],
         className
       )}
     >
-      {children}
+      {showDot && <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />}
+      <span className="inline-block first-letter:uppercase">{children}</span>
     </span>
   );
 }

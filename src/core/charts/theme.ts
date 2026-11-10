@@ -10,13 +10,25 @@
 // charts with no re-render and no hook. The values live in src/index.css;
 // the dark set is lifted in lightness to stay legible on a dark surface.
 export const chartTheme = {
-  // Categorical slots — assign in this fixed order, never cycled.
+  // Categorical slots — assign in this fixed order, never cycled. A ninth
+  // series folds into "Other" or small multiples; never a new hue.
   series: [
     "var(--chart-series-1)",
     "var(--chart-series-2)",
     "var(--chart-series-3)",
     "var(--chart-series-4)",
+    "var(--chart-series-5)",
+    "var(--chart-series-6)",
+    "var(--chart-series-7)",
+    "var(--chart-series-8)",
   ],
+
+  // A sequence that only goes one way (produced → packed → delivered):
+  // one blue that deepens with each step, so the order reads from the
+  // colour. Not categorical; never mixed with `series`.
+  stage: ["var(--chart-stage-1)", "var(--chart-stage-2)", "var(--chart-stage-3)"],
+  // What is still to come in a sequence: the unfilled part of a bar.
+  track: "var(--chart-track)",
 
   // Status colors for anomaly/health encodings (icon + label, never alone).
   status: {

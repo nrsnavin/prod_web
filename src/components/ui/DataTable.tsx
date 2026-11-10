@@ -231,10 +231,10 @@ export function DataTable<T>({
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
-        <thead className="border-b border-ink-100">
+        <thead className="border-b border-ink-100 bg-surface-muted">
           <tr>
             {selection && (
-              <th className="w-10 px-4 py-2.5">
+              <th className="w-10 px-4 py-2">
                 <SelectBox
                   label="Select all shown"
                   checked={allTicked}
@@ -256,8 +256,10 @@ export function DataTable<T>({
                       : "none"
                     : undefined
                 }
+                // Sentence case: headers in capitals slowed the eye on every
+                // column, and the column names are what people scan for.
                 className={cn(
-                  "px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-ink-400 whitespace-nowrap",
+                  "px-4 py-2 text-xs font-medium text-ink-500 whitespace-nowrap",
                   alignClass[c.align ?? "left"]
                 )}
               >
@@ -265,7 +267,7 @@ export function DataTable<T>({
                   <button
                     onClick={() => toggleSort(c.key)}
                     className={cn(
-                      "inline-flex items-center gap-1 uppercase tracking-wide hover:text-ink-900",
+                      "inline-flex items-center gap-1 hover:text-ink-900",
                       sortKey === c.key && "text-ink-900"
                     )}
                   >
@@ -308,7 +310,7 @@ export function DataTable<T>({
               )}
             >
               {selection && (
-                <td className="w-10 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                <td className="w-10 px-4 py-row" onClick={(e) => e.stopPropagation()}>
                   <SelectBox
                     label={rowLabel(row)}
                     checked={selection.selected.has(rowKey(row))}
@@ -320,9 +322,10 @@ export function DataTable<T>({
                 <td
                   key={c.key}
                   className={cn(
-                    "px-4 py-3 text-sm whitespace-nowrap",
+                    // Row height follows the density setting (compact on a
+                    // desk, comfortable on touch); figures line up.
+                    "px-4 py-row text-table whitespace-nowrap tabular-nums",
                     alignClass[c.align ?? "left"],
-                    (c.align ?? "left") === "right" && "tabular-nums",
                     c.cellClassName
                   )}
                 >

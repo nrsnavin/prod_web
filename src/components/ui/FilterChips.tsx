@@ -15,7 +15,8 @@ export interface FilterChipsProps<T extends string> {
   label?: string;
 }
 
-// Horizontal filter chip row (Zomato-style list filters).
+// A row of filter chips. The selected one carries the indigo tint, the one
+// look a filter chip has anywhere in the app.
 export function FilterChips<T extends string>({
   options,
   value,
@@ -25,13 +26,15 @@ export function FilterChips<T extends string>({
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto">
       {label && (
-        <span className="shrink-0 pr-0.5 text-xs font-medium uppercase tracking-wide text-ink-400">
+        <span className="shrink-0 pr-0.5 text-xs font-medium text-ink-400">
           {label}
         </span>
       )}
       {options.map((o) => (
         <button
           key={o.value}
+          type="button"
+          aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
             "px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-colors",

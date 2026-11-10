@@ -12,6 +12,13 @@ export interface RecentItem {
 export type ThemeMode = "light" | "dark" | "system";
 
 /**
+ * Table row height. Compact fits more rows on a desk; comfortable is
+ * roomier. A touch screen always gets comfortable rows (see index.css),
+ * because there a row is something a finger has to hit.
+ */
+export type Density = "compact" | "comfortable";
+
+/**
  * localStorage key this store persists under. index.html reads the same key
  * in a pre-paint script to apply the theme before React mounts, so keep the
  * two in sync if it ever changes.
@@ -26,6 +33,9 @@ interface UiState {
 
   theme: ThemeMode;
   setTheme(theme: ThemeMode): void;
+
+  density: Density;
+  setDensity(density: Density): void;
 
   // ── Per-user sidebar customization (persisted in this browser) ──
   // navHidden: item paths the user chose to hide from the sidebar
@@ -54,6 +64,9 @@ export const useUiStore = create<UiState>()(
 
       theme: "system",
       setTheme: (theme) => set({ theme }),
+
+      density: "compact",
+      setDensity: (density) => set({ density }),
 
       navHidden: [],
       navOrder: {},

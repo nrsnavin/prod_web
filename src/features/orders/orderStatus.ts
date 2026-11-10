@@ -1,10 +1,13 @@
 import { ChipTone } from "@/components/ui/StatusChip";
 import { OrderFilter, OrderStatus } from "./types";
 
+// Colour carries meaning: work in hand is indigo (info), waiting is
+// neutral, an outcome is green, and amber/red are kept for what needs
+// someone's attention, so they still stand out when they appear.
 export const orderStatusTone: Record<OrderStatus, ChipTone> = {
-  Open: "info",
-  Approved: "warning",
-  InProgress: "warning",
+  Open: "neutral",
+  Approved: "neutral",
+  InProgress: "info",
   Completed: "success",
   Cancelled: "neutral",
 };

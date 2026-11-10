@@ -38,15 +38,18 @@ function Pipeline({ status }: { status: string }) {
   return (
     <ol className="flex flex-wrap items-center gap-1.5">
       {JOB_PIPELINE.map((stage, i) => {
-        const done = i < activeIdx;
-        const active = i === activeIdx;
+        // The last stage, once reached, is an outcome rather than work in
+        // hand: it reads as done (green, ticked), not as the current step.
+        const finished = i === activeIdx && i === JOB_PIPELINE.length - 1;
+        const done = i < activeIdx || finished;
+        const active = i === activeIdx && !finished;
         return (
           <li key={stage} className="flex items-center gap-1.5">
             <span
               className={cn(
                 "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold capitalize",
                 done && "bg-status-successBg text-status-success",
-                active && "bg-brand-500 text-white",
+                active && "bg-accent text-white",
                 !done && !active && "bg-ink-100 text-ink-400"
               )}
             >

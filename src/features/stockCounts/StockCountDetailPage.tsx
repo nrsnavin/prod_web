@@ -18,9 +18,10 @@ import { cn } from "@/components/ui/cn";
 import { toApiError } from "@/core/http/httpClient";
 import { useStockCount, useStockCountMutations } from "./hooks";
 import { STATUS_LABEL, STATUS_TONE, StockCountLine } from "./types";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
+import { rupees } from "@/core/format/money";
 
-const money = (v: number) =>
-  `${v < 0 ? "−" : ""}₹${Math.abs(Math.round(v)).toLocaleString("en-IN")}`;
+const money = (v: number) => rupees(v);
 
 const qty = (v: number) =>
   v.toLocaleString("en-IN", { maximumFractionDigits: 3 });
@@ -436,18 +437,12 @@ function Stat({
   tone?: "danger" | "success";
 }) {
   return (
-    <Card className="p-3">
-      <p className="text-xs uppercase tracking-wide text-ink-400">{label}</p>
-      <div
-        className={cn(
-          "mt-1 text-lg font-semibold tabular-nums",
-          muted && "text-ink-400",
-          tone === "danger" && "text-status-danger",
-          tone === "success" && "text-status-success"
-        )}
-      >
-        {value}
-      </div>
-    </Card>
+    <UiStatTile
+      dense
+      size="sm"
+      label={label}
+      value={value}
+      tone={muted ? "muted" : tone === "danger" ? "danger" : tone === "success" ? "good" : "default"}
+    />
   );
 }

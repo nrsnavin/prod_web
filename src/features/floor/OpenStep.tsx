@@ -72,7 +72,7 @@ export function OpenStep({ onOpened, initial }: { onOpened: (r: OpenResult) => v
                 onClick={() => setShift(value)}
                 className={cn(
                   "inline-flex items-center justify-center gap-1.5 text-sm font-medium transition-colors",
-                  shift === value ? "bg-brand-500 text-white" : "bg-surface text-ink-600 hover:bg-ink-100"
+                  shift === value ? "bg-accent text-white" : "bg-surface text-ink-600 hover:bg-ink-100"
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden /> {label}

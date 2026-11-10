@@ -20,6 +20,7 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { formatDate } from "@/core/format/date";
 import { PayrollCheckPanel, PayFlags, usePayrollCheck, type PayFlag } from "./PayrollCheck";
+import { rupeesAuto } from "@/core/format/money";
 
 const payrollTone: Record<string, ChipTone> = {
   draft: "neutral",
@@ -28,7 +29,7 @@ const payrollTone: Record<string, ChipTone> = {
   paid: "success",
 };
 
-const inr = (n: number | null | undefined) => `₹${Number(n ?? 0).toLocaleString("en-IN")}`;
+const inr = (n: number | null | undefined) => rupeesAuto(n ?? 0);
 
 // requested → approved → paid_out → recovered (rejected is terminal)
 const advanceTone: Record<string, ChipTone> = {

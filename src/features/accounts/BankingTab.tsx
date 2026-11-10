@@ -203,7 +203,7 @@ function DepositDialog({ cheques, into, accounts, onClose }: { cheques: ChequeIn
         <p className="text-sm text-ink-600">{done.slipNo} is posted. Print the slip to hand in at the counter, or keep it with the bank's counterfoil.</p>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>Done</Button>
-          <a href={accountsService.depositPdfUrl(done.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"><Printer className="h-4 w-4" /> Print slip</a>
+          <a href={accountsService.depositPdfUrl(done.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-accent hover:bg-accent-hover px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"><Printer className="h-4 w-4" /> Print slip</a>
         </div>
       </Modal>
     );

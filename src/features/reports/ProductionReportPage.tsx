@@ -12,6 +12,7 @@ import { reportsService } from "./api";
 import { ReportFilterBar } from "./components/ReportFilterBar";
 import { lazyChart } from "@/components/ui/LazyChart";
 import { ProductionReport, ProductionRow, ReportFilters } from "./types";
+import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
 // Recharts is 362 KB. Behind a lazy boundary it arrives with the
 // chart rather than before the page can draw its heading.
@@ -30,13 +31,7 @@ const GROUP_BY_OPTIONS = [
 const nf = (n: number | undefined) => (n ?? 0).toLocaleString("en-IN");
 
 function Tile({ label, value, sub }: { label: string; value: string; sub?: ReactNode }) {
-  return (
-    <Card className="p-4">
-      <p className="text-xs text-ink-400">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
-      {sub && <div className="mt-1 text-xs">{sub}</div>}
-    </Card>
-  );
+  return <UiStatTile label={label} value={value} sub={sub} />;
 }
 
 function Delta({ value, pct, invert }: { value: number; pct?: number | null; invert?: boolean }) {
