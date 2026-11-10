@@ -22,9 +22,46 @@ export interface ModalProps {
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FIELDS =
+  'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])';
+
+/** Focus the first of these that can actually take focus (a `hidden` one can't). */
+function focusFirst(nodes: Iterable<HTMLElement>): boolean {
+  for (const el of nodes) {
+    el.focus();
+    if (document.activeElement === el) return true;
+  }
+  return false;
+}
+
+/**
+ * Where focus starts when a dialog opens.
+ *
+ * It used to be the first focusable thing, which is the header's close
+ * button. Two things went wrong with that. A dialog with a field made
+ * the user click into it before typing. And a field that had already
+ * taken focus itself (the reason box) was blurred straight away, which
+ * is what made every reason dialog open showing its error.
+ *
+ * So: a field that already has focus keeps it; then anything marked
+ * `data-autofocus`; then, with a mouse or keyboard, the first field in
+ * the body, else the first button there, which in a confirmation is the
+ * safe "Cancel". On a touch screen a field is skipped, so the keyboard
+ * doesn't cover the sheet the moment it opens.
+ */
+function placeFocus(panel: HTMLElement, body: HTMLElement | null) {
+  if (panel.contains(document.activeElement)) return;
+  const touch =
+    typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches;
+  const all = (root: ParentNode, sel: string) => Array.from(root.querySelectorAll<HTMLElement>(sel));
+  if (focusFirst(all(panel, "[data-autofocus]"))) return;
+  if (!touch && body && (focusFirst(all(body, FIELDS)) || focusFirst(all(body, FOCUSABLE)))) return;
+  focusFirst(all(panel, FOCUSABLE));
+}
 
 export function Modal({ open, onClose, title, children, width = "max-w-lg", confirmDirtyClose = true, placement = "sheet" }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
   const restoreRef = useRef<HTMLElement | null>(null);
   const [asking, setAsking] = useState(false);
@@ -51,10 +88,9 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
     setAsking(false);
     restoreRef.current = document.activeElement as HTMLElement | null;
 
-    // Move focus into the dialog (first field, else close button).
+    // Move focus into the dialog; see placeFocus for where it lands.
     const t = setTimeout(() => {
-      const first = panelRef.current?.querySelector<HTMLElement>(FOCUSABLE);
-      first?.focus();
+      if (panelRef.current) placeFocus(panelRef.current, bodyRef.current);
     }, 0);
 
     const onKey = (e: KeyboardEvent) => {
@@ -134,7 +170,7 @@ export function Modal({ open, onClose, title, children, width = "max-w-lg", conf
         )}
         {/* Body scrolls when a dialog is taller than the viewport, so the
             content below the fold (e.g. a Save button) is always reachable. */}
-        <div className="p-5 overflow-y-auto">{children}</div>
+        <div ref={bodyRef} className="p-5 overflow-y-auto">{children}</div>
 
         <DiscardChangesPrompt
           open={asking}

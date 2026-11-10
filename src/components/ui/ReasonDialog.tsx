@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
@@ -37,13 +37,17 @@ export function ReasonDialog({
   minLength = 3,
 }: ReasonDialogProps) {
   const [reason, setReason] = useState("");
-  const [touched, setTouched] = useState(false);
+  const noteId = useId();
+  // Set by an attempt to confirm, not by leaving the box: a dialog that
+  // scolds before anything has been typed teaches people to ignore red.
+  const [tried, setTried] = useState(false);
 
   useEffect(() => {
-    if (open) { setReason(""); setTouched(false); }
+    if (open) { setReason(""); setTried(false); }
   }, [open]);
 
   const tooShort = reason.trim().length < minLength;
+  const showError = tried && tooShort;
 
   return (
     <Modal open={open} onClose={onClose} title={title} width="max-w-md" confirmDirtyClose={false}>
@@ -62,20 +66,27 @@ export function ReasonDialog({
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason *</label>
           <textarea
             aria-label="Reason"
+            aria-invalid={showError}
+            aria-describedby={noteId}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            onBlur={() => setTouched(true)}
             rows={3}
             autoFocus
-            placeholder="Why is this change being made? (recorded in the audit log)"
+            placeholder="Why is this change being made?"
             className={cn(
-              "w-full rounded-lg border px-3 py-2 text-sm outline-none",
+              "w-full rounded-lg border bg-surface px-3 py-2 text-sm outline-none",
               "focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500",
-              touched && tooShort ? "border-status-danger" : "border-ink-200"
+              showError ? "border-status-danger" : "border-ink-200"
             )}
           />
-          {touched && tooShort && (
-            <p className="mt-1 text-xs text-status-danger">Please give a brief reason (min 3 characters).</p>
+          {showError ? (
+            <p id={noteId} className="mt-1 text-xs text-status-danger">
+              Give a reason of at least {minLength} characters.
+            </p>
+          ) : (
+            <p id={noteId} className="mt-1 text-xs text-ink-400">
+              Saved to the audit trail with your name. At least {minLength} characters.
+            </p>
           )}
         </div>
 
@@ -86,7 +97,7 @@ export function ReasonDialog({
             variant={tone === "danger" ? "danger" : "primary"}
             loading={loading}
             onClick={() => {
-              if (tooShort) { setTouched(true); return; }
+              if (tooShort) { setTried(true); return; }
               onConfirm(reason.trim());
             }}
           >

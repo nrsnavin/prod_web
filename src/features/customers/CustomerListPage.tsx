@@ -16,6 +16,9 @@ import { useCustomers, useCustomerMutations } from "./hooks";
 import { Customer } from "./types";
 import { CustomerForm } from "./CustomerForm";
 
+/** "1 customer", "12 customers". */
+export const customerCount = (n: number) => `${n.toLocaleString("en-IN")} customer${n === 1 ? "" : "s"}`;
+
 const columns: Column<Customer>[] = [
   {
     key: "name",
@@ -55,7 +58,7 @@ export function CustomerListPage() {
     <>
       <PageHeader
         title="Customers"
-        subtitle={data ? `${data.total} customers` : undefined}
+        subtitle={data ? customerCount(data.total ?? data.customers.length) : undefined}
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" /> Add customer

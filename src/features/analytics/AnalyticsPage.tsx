@@ -30,8 +30,9 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 function StatTile({
-  label, value, loading, delta, higherIsBetter = true,
+  label, value, loading, delta, higherIsBetter = true, className,
 }: {
+  className?: string;
   label: string;
   value: string;
   loading: boolean;
@@ -41,7 +42,7 @@ function StatTile({
 }) {
   const good = delta && delta.direction !== "flat" && (delta.direction === "up") === higherIsBetter;
   return (
-    <Card className="p-4">
+    <Card className={cn("p-4", className)}>
       <p className="text-xs text-ink-400">{label}</p>
       {loading ? (
         <Skeleton className="mt-1.5 h-7 w-16" />
@@ -110,7 +111,9 @@ export function AnalyticsPage() {
 
       {/* Summary stat tiles — only for the production-summary tabs */}
       {tab !== "forecast" && tab !== "breakdown" && (
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
+      <div className={cn("grid gap-3 grid-cols-2", canOtd ? "sm:grid-cols-3 xl:grid-cols-9" : "md:grid-cols-4 xl:grid-cols-8")}>
+        {/* Eight tiles, or nine with on-time delivery. Each count gets a grid
+            it fills, so the ninth no longer sits alone on a second row. */}
         <StatTile label="Total production (m)" value={fmt(s?.totalProduction)} loading={isLoading} delta={change(s?.totalProduction, p?.totalProduction)} />
         <StatTile label="Shifts" value={fmt(s?.activeShifts)} loading={isLoading} delta={change(s?.activeShifts, p?.activeShifts)} />
         <StatTile label="Machines" value={fmt(s?.activeMachines)} loading={isLoading} />
@@ -121,6 +124,7 @@ export function AnalyticsPage() {
         <StatTile label="Anomalies" value={fmt(s?.anomalyCount)} loading={isLoading} delta={change(s?.anomalyCount, p?.anomalyCount)} higherIsBetter={false} />
         {canOtd && (
           <StatTile
+            className="col-span-2 sm:col-span-1"
             label="On-time delivery (90d)"
             value={
               otd.data?.otdPct != null
