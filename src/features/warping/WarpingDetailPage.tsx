@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -41,6 +42,8 @@ export function WarpingDetailPage() {
   // something the operator can go and do.
   const [yarnBlocker, setYarnBlocker] = useState<string | null>(null);
   const [forceOpen, setForceOpen] = useState(false);
+  // Completing and cancelling can't be reopened, so both ask first.
+  const [asking, setAsking] = useState<"complete" | "cancel" | null>(null);
 
   // Arriving from a job's page: "#plan" goes straight to the plan, and
   // "?plan=create" opens the form to make one — once, on arrival.
@@ -155,16 +158,53 @@ export function WarpingDetailPage() {
               </>
             )}
             {warping.status === "in_progress" && (
-              <Button loading={complete.isPending} onClick={() => runComplete()}>
-                <CheckCircle2 className="h-4 w-4" /> Complete
+              <Button loading={complete.isPending} onClick={() => setAsking("complete")}>
+                <CheckCircle2 className="h-4 w-4" /> Complete…
               </Button>
             )}
             {(warping.status === "open" || warping.status === "in_progress") && (
-              <Button variant="danger" loading={cancel.isPending} onClick={() => run(cancel, "Warping cancelled")}>
-                <XCircle className="h-4 w-4" /> Cancel
+              <Button variant="secondary" loading={cancel.isPending} onClick={() => setAsking("cancel")}>
+                <XCircle className="h-4 w-4" /> Cancel warping…
               </Button>
             )}
           </>
+        }
+      />
+
+      <ConfirmDialog
+        open={asking === "complete"}
+        title={`Complete warping for J-${warping.job?.jobOrderNo ?? ""}?`}
+        message="Warping is closed with today's date."
+        consequences={[
+          { text: "It can't be reopened.", tone: "warning" },
+          { text: "The yarn must already be issued on a batch; if it isn't, you'll be told which." },
+          { text: "The job moves on to weaving once its covering is complete too." },
+        ]}
+        confirmLabel="Complete warping"
+        cancelLabel="Not now"
+        loading={complete.isPending}
+        onCancel={() => setAsking(null)}
+        onConfirm={() => {
+          setAsking(null);
+          runComplete();
+        }}
+      />
+      <ReasonDialog
+        open={asking === "cancel"}
+        onClose={() => setAsking(null)}
+        title={`Cancel warping for J-${warping.job?.jobOrderNo ?? ""}?`}
+        description="Batches with yarn already issued have to be cancelled first, which puts the yarn back on the rack. The reason goes on the job's timeline."
+        confirmLabel="Cancel warping"
+        minLength={5}
+        loading={cancel.isPending}
+        onConfirm={(reason) =>
+          cancel.mutate(
+            { id: warping._id, remarks: reason },
+            {
+              onSuccess: () => { setAsking(null); toast("Warping cancelled", "success"); },
+              onError: (e) => toast(e instanceof ApiError ? e.message : "Action failed", "error"),
+            }
+          )
         }
       />
 

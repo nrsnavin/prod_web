@@ -90,8 +90,8 @@ export function CustomerDetailPage() {
                 <UserCheck className="h-4 w-4" /> Restore
               </Button>
             ) : (
-              <Button variant="danger" onClick={() => setConfirmOpen(true)}>
-                <UserX className="h-4 w-4" /> Archive
+              <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
+                <UserX className="h-4 w-4" /> Archive…
               </Button>
             )}
           </>

@@ -134,7 +134,7 @@ describe("ending a sample", () => {
   it("is offered to an admin only", () => {
     renderPage(detail(), "production");
     expect(screen.queryByRole("button", { name: /mark completed/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^close$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^close sample…$/i })).not.toBeInTheDocument();
 
     renderPage(detail(), "admin");
     expect(screen.getByRole("button", { name: /mark completed/i })).toBeInTheDocument();

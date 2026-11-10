@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { JobDetailPage } from "./JobDetailPage";
@@ -79,6 +79,12 @@ beforeEach(() => {
   };
 });
 
+/** The move asks first: press it, then move in the dialog. */
+async function moveToWeaving(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: /move to weaving…/i }));
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Move to weaving" }));
+}
+
 describe("moving a preparatory job to weaving", () => {
   it("offers the move — the button is where the user learns the answer", () => {
     renderPage();
@@ -110,7 +116,7 @@ describe("moving a preparatory job to weaving", () => {
     });
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /move to weaving/i }));
+    await moveToWeaving(user);
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent(/not ready for weaving/i);
@@ -125,7 +131,7 @@ describe("moving a preparatory job to weaving", () => {
     updateError = new ApiError("Job cannot move to weaving yet", 409, null, "WEAVING_NOT_READY", {});
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /move to weaving/i }));
+    await moveToWeaving(user);
     expect(await screen.findByRole("dialog")).toHaveTextContent(/cannot move to weaving yet/i);
   });
 
@@ -134,10 +140,22 @@ describe("moving a preparatory job to weaving", () => {
     updateError = new ApiError("Network is down", 500);
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /move to weaving/i }));
+    await moveToWeaving(user);
 
     expect(toast).toHaveBeenCalledWith("Network is down", "error");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("one press of Move only asks, and lists what is still open", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole("button", { name: /move to weaving…/i }));
+    expect(updateMutate).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(/covering is in progress, not completed/i);
+    expect(dialog).toHaveTextContent(/can't be undone/i);
+    await user.click(within(dialog).getByRole("button", { name: "Not now" }));
+    expect(updateMutate).not.toHaveBeenCalled();
   });
 
   it("moves the job when the server accepts", async () => {
@@ -145,7 +163,7 @@ describe("moving a preparatory job to weaving", () => {
     readiness = { ready: true, jobStatus: "preparatory", stages: [], blockers: [] };
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /move to weaving/i }));
+    await moveToWeaving(user);
 
     expect(updateMutate.mock.calls[0][0]).toMatchObject({ jobId: "j1", nextStatus: "weaving" });
     expect(toast).toHaveBeenCalledWith("Job moved to weaving", "success");

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -82,6 +83,8 @@ function WarpingBlock({ stage, canOpen, jobClosed }: { stage: Job["warping"]; ca
   const { toast } = useToast();
   const [yarnBlocker, setYarnBlocker] = useState<string | null>(null);
   const [forceOpen, setForceOpen] = useState(false);
+  // Completing can't be reopened, so it asks first.
+  const [completing, setCompleting] = useState(false);
   if (!stage) return <Missing name="Warping" />;
 
   const id = stage._id;
@@ -163,13 +166,28 @@ function WarpingBlock({ stage, canOpen, jobClosed }: { stage: Job["warping"]; ca
             </Button>
           )}
           {active && stage.status === "in_progress" && (
-            <Button size="sm" onClick={() => runComplete()} loading={complete.isPending}>
-              <CheckCircle2 className="h-4 w-4" aria-hidden /> Complete warping
+            <Button size="sm" onClick={() => setCompleting(true)} loading={complete.isPending}>
+              <CheckCircle2 className="h-4 w-4" aria-hidden /> Complete warping…
             </Button>
           )}
         </div>
       )}
 
+      <ConfirmDialog
+        open={completing}
+        title="Complete the warping?"
+        message="Warping is closed with today's date."
+        consequences={[
+          { text: "It can't be reopened.", tone: "warning" },
+          { text: "The yarn must already be issued on a batch; if it isn't, you'll be told which." },
+          { text: "The job moves on to weaving once its covering is complete too." },
+        ]}
+        confirmLabel="Complete warping"
+        cancelLabel="Not now"
+        loading={complete.isPending}
+        onCancel={() => setCompleting(false)}
+        onConfirm={() => { setCompleting(false); runComplete(); }}
+      />
       <ReasonDialog
         open={forceOpen}
         onClose={() => setForceOpen(false)}

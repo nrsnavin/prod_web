@@ -112,7 +112,11 @@ describe("the shift-end reminder", () => {
     expect(await screen.findByText(/45 minutes before .* to \+919840000001/)).toBeInTheDocument();
 
     sendShiftEndNudge.mockResolvedValueOnce({ success: true, sent: true, looms: ["L1", "L2"] });
-    await userEvent.click(screen.getByRole("button", { name: "Send now" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send now…" }));
+    // A WhatsApp can't be recalled: one press only asks, naming who gets it.
+    expect(sendShiftEndNudge).not.toHaveBeenCalled();
+    expect(screen.getByText("Send the reminder now to +919840000001?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Send reminder" }));
     expect(toast).toHaveBeenCalledWith("Sent — 2 looms to enter", "success");
   });
 
@@ -121,6 +125,6 @@ describe("the shift-end reminder", () => {
     productionSettings.mockResolvedValue(settings());
     wrap(<ShiftEndReminderSettings />);
     expect(await screen.findByLabelText("Remind before the shift ends")).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Send now" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /send now/i })).not.toBeInTheDocument();
   });
 });

@@ -72,6 +72,10 @@ describe("the warping", () => {
     complete.mockImplementationOnce((_v, opts) =>
       opts.onError(new ApiError("2 batches are not issued yet", 409, undefined, "WARPING_YARN_NOT_ISSUED")));
     await userEvent.click(within(warping()).getByRole("button", { name: /complete warping/i }));
+    // One press only asks.
+    expect(complete).not.toHaveBeenCalled();
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Complete warping" }));
+    expect(complete).toHaveBeenCalledWith({ id: "w1" }, expect.anything());
     const alert = within(warping()).getByRole("alert");
     expect(alert).toHaveTextContent("2 batches are not issued yet");
     await userEvent.click(within(alert).getByRole("button", { name: /complete anyway/i }));

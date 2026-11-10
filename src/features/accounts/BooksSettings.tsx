@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
@@ -37,6 +38,9 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
   const { lockBooks, saveAccountsSettings } = useAccountsMutations();
   const [lockDate, setLockDate] = useState("");
   const [reopen, setReopen] = useState(false);
+  // Closing the books stops every entry on or before the date, so the
+  // button asks first; reopening already asks for a reason.
+  const [closing, setClosing] = useState(false);
   const [ledgers, setLedgers] = useState<Partial<Record<TallyLedgerKey, string>>>({});
   const [variance, setVariance] = useState<number | "">("");
   const [hsnDigits, setHsnDigits] = useState<4 | 6 | 8>(4);
@@ -72,8 +76,8 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <Input label="Close the books up to" type="date" value={lockDate} onChange={(e) => setLockDate(e.target.value)} />
             <Button loading={lockBooks.isPending} disabled={lockDate === current}
-              onClick={() => (goingBack ? setReopen(true) : lockBooks.mutate({ lockDate: lockDate || null }, { onSuccess: () => toast("Books locked", "success"), onError: fail }))}>
-              {goingBack ? <><Unlock className="h-4 w-4" /> Reopen</> : "Lock"}
+              onClick={() => (goingBack ? setReopen(true) : setClosing(true))}>
+              {goingBack ? <><Unlock className="h-4 w-4" /> Reopen…</> : <><Lock className="h-4 w-4" /> Close books…</>}
             </Button>
           </div>
         ) : <p className="mt-2 text-xs text-ink-400">An admin closes and reopens the books.</p>}
@@ -132,6 +136,21 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
         )}
       </Card>
 
+      <ConfirmDialog
+        open={closing && !!lockDate}
+        title={lockDate ? `Close the books up to ${formatDate(lockDate)}?` : "Close the books?"}
+        message="Do this once the period has gone to Tally, so it can't change underneath the accountant."
+        consequences={[
+          { text: <>Nothing dated on or before <span className="font-semibold">{lockDate ? formatDate(lockDate) : ""}</span> can be posted, edited or cancelled.</>, tone: "warning" },
+          ...(current ? [{ text: <>The lock moves forward from {formatDate(current)}.</> }] : []),
+          { text: "Reopening later needs an admin and a reason, saved to the audit trail." },
+        ]}
+        confirmLabel={lockDate ? `Close books to ${formatDate(lockDate)}` : "Close books"}
+        cancelLabel="Not now"
+        loading={lockBooks.isPending}
+        onCancel={() => setClosing(false)}
+        onConfirm={() => lockBooks.mutate({ lockDate: lockDate || null }, { onSuccess: () => { setClosing(false); toast("Books closed", "success"); }, onError: fail })}
+      />
       <ReasonDialog open={reopen} onClose={() => setReopen(false)} title="Reopen closed books?" description={lockDate ? `The lock moves back to ${formatDate(lockDate)}.` : "The books open for every date."} confirmLabel="Reopen" minLength={8} loading={lockBooks.isPending}
         onConfirm={(reason) => lockBooks.mutate({ lockDate: lockDate || null, reason }, { onSuccess: () => { setReopen(false); toast("Books reopened", "success"); }, onError: fail })} />
     </>

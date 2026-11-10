@@ -243,20 +243,31 @@ export function MachineDetailPage() {
   // Heads carrying an elastic: what production is counted on.
   const running = (machine.elastics ?? []).filter((h) => h.elastic).length;
 
-  const markLoading = (loading: boolean) =>
+  // These are one press each, so each can be taken back from its toast:
+  // the server treats loading and running, free and maintenance, as moves
+  // in either direction.
+  const markLoading = (loading: boolean, undoing = false) =>
     setLoading.mutate(
       { id: id!, loading },
       {
-        onSuccess: (r) => toast(r.message, "success"),
+        onSuccess: (r) =>
+          undoing
+            ? toast(r.message, "info")
+            : toast(r.message, "success", { action: { label: "Undo", onClick: () => markLoading(!loading, true) } }),
         onError: (e) => toast(e instanceof ApiError ? e.message : "Could not change it", "error"),
       }
     );
 
-  const toggleStatus = (next: "free" | "maintenance") =>
+  const toggleStatus = (next: "free" | "maintenance", undoing = false) =>
     setStatus.mutate(
       { id: id!, status: next },
       {
-        onSuccess: () => toast(`Machine marked ${next}`, "success"),
+        onSuccess: () =>
+          undoing
+            ? toast(`Machine back to ${next}`, "info")
+            : toast(`Machine marked ${next}`, "success", {
+                action: { label: "Undo", onClick: () => toggleStatus(next === "free" ? "maintenance" : "free", true) },
+              }),
         onError: (e) => toast(e instanceof ApiError ? e.message : "Status update failed", "error"),
       }
     );

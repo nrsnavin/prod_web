@@ -54,11 +54,16 @@ describe("loom sensors", () => {
     await screen.findByText("L1");
     post.mockResolvedValueOnce({ success: true, device: row, key: "ld_two.other" });
     await userEvent.click(screen.getByRole("button", { name: "New key for L1" }));
+    // Retiring a key stops the board: one press only asks.
+    expect(post).not.toHaveBeenCalledWith("/loom-sensor/devices/d1/key", {});
+    await userEvent.click(screen.getByRole("button", { name: "Make a new key" }));
     expect(post).toHaveBeenCalledWith("/loom-sensor/devices/d1/key", {});
     expect(await screen.findByTestId("device-key")).toHaveTextContent("ld_two.other");
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
     del.mockResolvedValueOnce({ success: true });
     await userEvent.click(screen.getByRole("button", { name: "Remove the sensor on L1" }));
+    expect(del).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Remove sensor" }));
     expect(del).toHaveBeenCalledWith("/loom-sensor/devices/d1");
   });
 

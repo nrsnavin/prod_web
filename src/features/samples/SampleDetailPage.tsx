@@ -139,8 +139,8 @@ export function SampleDetailPage() {
                   <Button onClick={() => setPending("completed")}>
                     <CheckCircle2 className="h-4 w-4" /> Mark completed
                   </Button>
-                  <Button variant="danger" onClick={() => setPending("closed")}>
-                    <XCircle className="h-4 w-4" /> Close
+                  <Button variant="secondary" onClick={() => setPending("closed")}>
+                    <XCircle className="h-4 w-4" /> Close sample…
                   </Button>
                 </>
               )}

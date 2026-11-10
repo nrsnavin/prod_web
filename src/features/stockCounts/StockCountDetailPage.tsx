@@ -13,6 +13,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ReviewDialog } from "@/components/ui/ReviewDialog";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/components/ui/cn";
 import { toApiError } from "@/core/http/httpClient";
@@ -51,6 +52,9 @@ export function StockCountDetailPage() {
   // The server's objection to a partial post, held so it can be shown
   // in a real dialog with the lines it is about — see below.
   const [postObjection, setPostObjection] = useState<string | null>(null);
+  // Posting moves stock to the counted figures and can't be undone, so
+  // the figures it will post are shown first.
+  const [postReview, setPostReview] = useState(false);
 
   // Local edits, keyed by line. The sheet is keyed in from paper one row
   // at a time and each row is saved on blur, so this holds only what has
@@ -178,12 +182,12 @@ export function StockCountDetailPage() {
                   Cancel count
                 </Button>
                 <Button
-                  onClick={() => doPost(false)}
+                  onClick={() => setPostReview(true)}
                   loading={post.isPending}
                   disabled={t.counted === 0}
                 >
                   <Check className="h-4 w-4 mr-1.5" />
-                  Post
+                  Post count…
                 </Button>
               </>
             )}
@@ -355,6 +359,56 @@ export function StockCountDetailPage() {
           left untouched when the sheet is posted — never written off.
         </p>
       )}
+
+      <ReviewDialog
+        open={postReview}
+        wide={uncountedLines.length > 0}
+        title={`Post stock count #${count.countNo ?? ""}`}
+        intro="Stock moves to the counted figures."
+        rows={[
+          { label: "Lines counted", value: `${t.counted} of ${t.lines}` },
+          { label: "Lines that differ", value: t.varied },
+          { label: "Found over the system figure", value: t.gainValue ? `+${money(t.gainValue)}` : money(0) },
+          { label: "Missing against the system figure", value: money(t.lossValue) },
+          { label: "Net change in stock value", value: money(t.netValue), strong: true },
+        ]}
+        warning={
+          t.needingReason > 0
+            ? `${t.needingReason} line${t.needingReason === 1 ? " differs" : "s differ"} by more than the threshold and need${t.needingReason === 1 ? "s" : ""} a reason before the count can be posted.`
+            : "A posted count can't be undone. A difference found later is put right by another count."
+        }
+        acknowledge={t.varied > 0 && t.needingReason === 0 ? (t.varied === 1 ? "I have checked the line that differs." : `I have checked the ${t.varied} lines that differ.`) : undefined}
+        disabled={t.needingReason > 0}
+        confirmLabel={`Post count #${count.countNo ?? ""}`}
+        loading={post.isPending}
+        onCancel={() => setPostReview(false)}
+        onConfirm={() => {
+          setPostReview(false);
+          // The uncounted lines are listed here, so this is the second
+          // asking the server wants for a partial post.
+          void doPost(uncountedLines.length > 0);
+        }}
+      >
+        {uncountedLines.length > 0 && (
+          <div>
+            <p className="mb-1.5 font-medium text-ink-900">
+              {uncountedLines.length} line{uncountedLines.length === 1 ? " was" : "s were"} never counted and will be left exactly as {uncountedLines.length === 1 ? "it is" : "they are"}:
+            </p>
+            <ul className="max-h-40 divide-y divide-ink-100 overflow-y-auto rounded-lg border border-ink-200">
+              {uncountedLines.map((l) => (
+                <li key={l._id} className="flex justify-between gap-3 px-3 py-1.5">
+                  <span>{l.name}</span>
+                  <span className="tabular-nums text-ink-400">system {qty(l.systemQty)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1.5 text-ink-500">
+              Nothing is written off. An uncounted line keeps its current stock figure and can be
+              counted on a later sheet.
+            </p>
+          </div>
+        )}
+      </ReviewDialog>
 
       {/* The override the UX audit singled out. It now shows the
           server's objection in full AND the lines it is about — which

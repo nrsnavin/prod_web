@@ -14,6 +14,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { ReviewDialog } from "@/components/ui/ReviewDialog";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -62,6 +63,9 @@ export function InvoiceDetailPage() {
   const { toast } = useToast();
   const { data: inv, isLoading, isError, error } = useInvoice(id);
   const { registerIrn, pasteIrn, cancel, ewaybill, pasteEwaybill, updateExport } = useInvoiceMutations();
+  // Registering with the GST portal can only be undone by cancelling within
+  // 24 hours, so it goes through a review of what will be sent.
+  const [irnReview, setIrnReview] = useState(false);
   const [sbNo, setSbNo] = useState("");
   const [sbDate, setSbDate] = useState("");
   const [ewbOpen, setEwbOpen] = useState<"generate" | "paste" | null>(null);
@@ -159,8 +163,8 @@ export function InvoiceDetailPage() {
             </Button>
             {issued && !registered && (
               <>
-                <Button onClick={register} loading={registerIrn.isPending}>
-                  <BadgeCheck className="h-4 w-4" /> Register IRN
+                <Button onClick={() => setIrnReview(true)} loading={registerIrn.isPending}>
+                  <BadgeCheck className="h-4 w-4" /> Register IRN…
                 </Button>
                 <Button variant="secondary" onClick={() => setIrnOpen(true)}>
                   <ClipboardPaste className="h-4 w-4" /> Paste IRN
@@ -178,8 +182,8 @@ export function InvoiceDetailPage() {
               </Button>
             )}
             {issued && (
-              <Button variant="danger" onClick={() => setCancelOpen(true)}>
-                <XCircle className="h-4 w-4" /> Cancel
+              <Button variant="secondary" onClick={() => setCancelOpen(true)}>
+                <XCircle className="h-4 w-4" /> Cancel invoice…
               </Button>
             )}
           </>
@@ -287,6 +291,29 @@ export function InvoiceDetailPage() {
           />
         </Card>
       )}
+      <ReviewDialog
+        open={irnReview}
+        title={`Register ${inv.invoiceNumber} with the GST portal`}
+        intro="This is what the portal will receive."
+        rows={[
+          { label: "Buyer", value: inv.buyer.name || "—" },
+          { label: "Buyer GSTIN", value: <span className="font-mono">{inv.buyer.gstin || "Unregistered"}</span> },
+          { label: "Place of supply", value: stateName(inv.placeOfSupply) },
+          { label: "Lines", value: inv.lines.length },
+          { label: "Taxable value", value: `₹${money(inv.totals?.taxable)}` },
+          { label: `Tax · ${taxLabel}`, value: `₹${money(inv.totals?.tax)}` },
+          { label: "Invoice total", value: `₹${money(inv.totals?.grand)}`, strong: true },
+        ]}
+        warning="Once registered, the invoice can't be edited. It can be cancelled on the portal within 24 hours; after that only a credit note reverses it."
+        acknowledge="I have checked the buyer's GSTIN and the amounts."
+        confirmLabel="Register with GST portal"
+        loading={registerIrn.isPending}
+        onCancel={() => setIrnReview(false)}
+        onConfirm={() => {
+          setIrnReview(false);
+          register();
+        }}
+      />
       {ewbOpen && (
         <EwaybillDialog docNo={inv.invoiceNumber} mode={ewbOpen} loading={ewaybill.isPending || pasteEwaybill.isPending} onClose={() => setEwbOpen(null)}
           onConfirm={(body) => (ewbOpen === "generate" ? ewaybill : pasteEwaybill).mutate({ id: inv._id, body }, {

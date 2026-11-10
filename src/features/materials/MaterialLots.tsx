@@ -171,6 +171,16 @@ export function MaterialLots({
   const [openLedger, setOpenLedger] = useState<string | null>(null);
   const [adjusting, setAdjusting] = useState<YarnLot | null>(null);
 
+  // The Undo on a hold or release: the lot goes back to where it was.
+  const putBack = (lot: YarnLot, status: "open" | "quarantined" | "closed") =>
+    setStatus.mutate(
+      { id: lot._id, status },
+      {
+        onSuccess: () => toast(`Lot ${lot.lotNo} put back`, "info"),
+        onError: (e) => toast(e instanceof ApiError ? e.message : "Could not put the lot back", "error"),
+      }
+    );
+
   const onRack = lots
     .filter((l) => l.status === "open")
     .reduce((s, l) => s + l.balance, 0);
@@ -270,7 +280,11 @@ export function MaterialLots({
                       setStatus.mutate(
                         { id: lot._id, status: "open" },
                         {
-                          onSuccess: () => toast(`Lot ${lot.lotNo} released`, "success"),
+                          // Releasing is one press, so it can be taken back.
+                          onSuccess: () =>
+                            toast(`Lot ${lot.lotNo} released`, "success", {
+                              action: { label: "Undo", onClick: () => putBack(lot, "quarantined") },
+                            }),
                           onError: (e) =>
                             toast(e instanceof ApiError ? e.message : "Release failed", "error"),
                         }
@@ -288,7 +302,13 @@ export function MaterialLots({
                       setStatus.mutate(
                         { id: lot._id, status: "quarantined" },
                         {
-                          onSuccess: () => toast(`Lot ${lot.lotNo} held back`, "success"),
+                          // Holding is one press, so it can be taken back:
+                          // a closed lot goes back to closed, anything else
+                          // to open (the server makes an empty one exhausted).
+                          onSuccess: () =>
+                            toast(`Lot ${lot.lotNo} held back`, "success", {
+                              action: { label: "Undo", onClick: () => putBack(lot, lot.status === "closed" ? "closed" : "open") },
+                            }),
                           onError: (e) =>
                             toast(e instanceof ApiError ? e.message : "Hold failed", "error"),
                         }

@@ -75,7 +75,9 @@ export const orderService = {
 
   approve: (orderId: string, force?: boolean, forceReason?: string) =>
     httpClient.post("/order/approve", { orderId, force, forceReason }),
-  cancel: (orderId: string) => httpClient.post("/order/cancel", { orderId }),
+  // The reason rides on the cancel fingerprint and the owner's WhatsApp alert.
+  cancel: (orderId: string, cancelReason?: string) =>
+    httpClient.post("/order/cancel", cancelReason ? { orderId, cancelReason } : { orderId }),
   startProduction: (orderId: string) => httpClient.post("/order/start-production", { orderId }),
   complete: (orderId: string) => httpClient.post("/order/complete", { orderId }),
 

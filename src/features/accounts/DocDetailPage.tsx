@@ -11,6 +11,7 @@ import { DescriptionList } from "@/components/ui/DescriptionList";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { useToast } from "@/components/ui/Toast";
@@ -111,7 +112,7 @@ export function BillDetailPage() {
         actions={<>
           {canPay && <Button onClick={() => setPaying(true)}><Wallet className="h-4 w-4" /> Record payment</Button>}
           {bill.status !== "cancelled" && bill.paidAmount === 0 && bill.debitedAmount === 0 && <Button variant="secondary" onClick={() => setReentering(true)}><RotateCcw className="h-4 w-4" /> Cancel and re-enter</Button>}
-          {bill.status !== "cancelled" && bill.paidAmount === 0 && bill.debitedAmount === 0 && <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button>}
+          {bill.status !== "cancelled" && bill.paidAmount === 0 && bill.debitedAmount === 0 && <Button variant="secondary" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel bill…</Button>}
         </>} />
       <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={billTone[bill.status]}>{billLabel[bill.status]}</StatusChip><StatusChip tone="neutral">{bill.supplyType === "inter" ? "IGST" : "CGST + SGST"}</StatusChip>{bill.tds?.applicable && <StatusChip tone="warning">TDS {bill.tds.section} @ {bill.tds.rate}%</StatusChip>}{bill.itc?.eligible ? <StatusChip tone="success">ITC ₹{money(bill.itc.amount)}</StatusChip> : <StatusChip tone="neutral">No input credit</StatusChip>}{bill.gstr2b?.status === "matched" && <StatusChip tone="success">In GSTR-2B {bill.gstr2b.period}</StatusChip>}{bill.gstr2b?.status === "mismatch" && <span title={bill.gstr2b.note}><StatusChip tone="warning">GSTR-2B: tax differs</StatusChip></span>}{bill.gstr2b?.status === "missing" && <span title={bill.gstr2b.note}><StatusChip tone="danger">Not in GSTR-2B {bill.gstr2b.period}: ITC held</StatusChip></span>}{(bill.itcReversal?.amount ?? 0) > 0 && <StatusChip tone={bill.itcReversal?.reclaimAmount ? "neutral" : "warning"}>{bill.itcReversal?.reclaimAmount ? `ITC ₹${money(bill.itcReversal.reclaimAmount)} re-claimed ${bill.itcReversal.reclaimPeriod}` : `ITC ₹${money(bill.itcReversal?.amount)} reversed ${bill.itcReversal?.period} (Rule 37)`}</StatusChip>}{bill.status === "cancelled" && bill.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {bill.cancel.reason}</span>}</div>
       <Card className="p-6">
@@ -172,7 +173,7 @@ export function ExpenseDetailPage() {
   const { user } = useAuth();
   const { data, isLoading, isError, error } = useExpense(id);
   const { approveExpense, rejectExpense, payExpense, cancelExpense } = useAccountsMutations();
-  const [dialog, setDialog] = useState<"reject" | "pay" | "cancel" | "reenter" | null>(null);
+  const [dialog, setDialog] = useState<"approve" | "reject" | "pay" | "cancel" | "reenter" | null>(null);
   const navigate = useNavigate();
   if (isLoading) return <Skeleton className="h-96 w-full" />;
   if (isError || !data) return <p className="rounded-lg bg-status-dangerBg px-4 py-3 text-sm text-status-danger">{(error as Error | null)?.message ?? "Expense not found"}</p>;
@@ -183,10 +184,10 @@ export function ExpenseDetailPage() {
       <Link to="/accounts/expenses" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Expenses</Link>
       <PageHeader title={e.expenseNo} subtitle={`${e.categoryName} · ${e.description}`} actions={
         <>
-          {e.status === "pending" && canApprove && <><Button onClick={() => approveExpense.mutate({ id: e._id }, { onSuccess: () => toast("Approved", "success"), onError: (err) => toast(err instanceof ApiError ? err.message : "Could not approve", "error") })} loading={approveExpense.isPending}><Check className="h-4 w-4" /> Approve</Button><Button variant="secondary" onClick={() => setDialog("reject")}><X className="h-4 w-4" /> Reject</Button></>}
+          {e.status === "pending" && canApprove && <><Button onClick={() => setDialog("approve")} loading={approveExpense.isPending}><Check className="h-4 w-4" /> Approve…</Button><Button variant="secondary" onClick={() => setDialog("reject")}><X className="h-4 w-4" /> Reject…</Button></>}
           {e.status === "approved" && <Button onClick={() => setDialog("pay")}><Banknote className="h-4 w-4" /> Pay</Button>}
           {["pending", "approved", "rejected"].includes(e.status) && e.paidAmount === 0 && e.source !== "claim" && <Button variant="secondary" onClick={() => setDialog("reenter")}><RotateCcw className="h-4 w-4" /> Cancel and re-enter</Button>}
-          {["pending", "approved", "rejected"].includes(e.status) && e.paidAmount === 0 && <Button variant="danger" onClick={() => setDialog("cancel")}><XCircle className="h-4 w-4" /> Cancel</Button>}
+          {["pending", "approved", "rejected"].includes(e.status) && e.paidAmount === 0 && <Button variant="secondary" onClick={() => setDialog("cancel")}><XCircle className="h-4 w-4" /> Cancel expense…</Button>}
         </>
       } />
       <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={expenseTone[e.status]}>{expenseLabel[e.status]}</StatusChip>{e.itc?.eligible && <StatusChip tone="success">ITC ₹{money(e.itc.amount)}</StatusChip>}{e.approval?.byName && <span className="text-sm text-ink-500">{e.status === "rejected" ? "Rejected" : "Approved"} by {e.approval.byName}{e.approval.note ? ` — ${e.approval.note}` : ""}</span>}</div>
@@ -203,6 +204,15 @@ export function ExpenseDetailPage() {
       {payments.length > 0 && <Card className="mt-4 p-5"><h3 className="font-semibold">Paid by</h3><ul className="mt-2 divide-y divide-ink-100 text-sm">{payments.map((p) => <li key={p._id} className="flex justify-between py-2"><span><Link to={`/accounts/payments/${p._id}`} className="text-brand-600 hover:underline">{p.voucherNo}</Link> · {formatDate(p.date)} · {p.accountName}</span><span className="tabular-nums">₹{money(p.amount)}</span></li>)}</ul></Card>}
       <Attachments kind="expenses" id={e._id} rows={e.attachments} />
       <History rows={e.fingerprints} />
+      <ConfirmDialog open={dialog === "approve"} title={`Approve ${e.expenseNo}?`}
+        message={`${e.categoryName}: ${e.description}`}
+        consequences={[
+          { text: <>₹{money(e.totals.grand)}{e.payeeName ? <> owed to <span className="font-semibold">{e.payeeName}</span></> : null}{e.supplier ? ", posted to their account" : ""}.</> },
+          { text: "It can then be paid; until it is paid it can still be cancelled with a reason." },
+        ]}
+        confirmLabel={`Approve ₹${money(e.totals.grand)}`} cancelLabel="Not now" loading={approveExpense.isPending}
+        onCancel={() => setDialog(null)}
+        onConfirm={() => approveExpense.mutate({ id: e._id }, { onSuccess: () => { setDialog(null); toast("Approved", "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not approve", "error") })} />
       <ReasonDialog open={dialog === "reject"} onClose={() => setDialog(null)} title={`Reject ${e.expenseNo}?`} confirmLabel="Reject" minLength={8} loading={rejectExpense.isPending}
         onConfirm={(reason) => rejectExpense.mutate({ id: e._id, reason }, { onSuccess: () => { setDialog(null); toast("Rejected", "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not reject", "error") })} />
       <ReasonDialog open={dialog === "reenter"} onClose={() => setDialog(null)} title={`Cancel ${e.expenseNo} and enter it again?`} description="It is cancelled with your reason, and the form opens with everything it had." confirmLabel="Cancel and re-enter" minLength={8} loading={cancelExpense.isPending}
@@ -266,7 +276,7 @@ export function NoteDetailPage() {
         {toCustomer && n.status === "issued" && !registered && <><Button variant="secondary" onClick={register} loading={busy === "irn"}><BadgeCheck className="h-4 w-4" /> Register IRN</Button><Button variant="secondary" onClick={() => setIrnOpen(true)}><ClipboardPaste className="h-4 w-4" /> Paste IRN</Button></>}
         <Button variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> WhatsApp</Button>
         {credit && <Button onClick={() => setApplying(true)}>Apply ₹{money(credit.available)}</Button>}
-        {n.status === "issued" && <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button>}
+        {n.status === "issued" && <Button variant="secondary" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel note…</Button>}
       </>} />
       <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={n.status === "issued" ? "success" : "danger"}>{n.status}</StatusChip><StatusChip tone={n.kind === "credit" ? "info" : "warning"}>{noteKindLabel(n)}</StatusChip>{(n.unapplied ?? 0) > 0 && <StatusChip tone="warning">₹{money(n.unapplied)} unapplied</StatusChip>}{registered && <StatusChip tone="success">IRN {n.einvoice?.irn?.slice(0, 12)}…</StatusChip>}{n.status === "cancelled" && n.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {n.cancel.reason}</span>}</div>
       <Card className="p-6">
@@ -313,7 +323,7 @@ export function PaymentDetailPage() {
         <a href={accountsService.paymentPdfUrl(p._id)} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"><FileDown className="h-4 w-4" /> {p.kind === "receipt" ? "Receipt" : "Payment advice"}</a>
         {p.partyType !== "other" && <Button variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> WhatsApp</Button>}
         {credit && <Button onClick={() => setApplying(true)}>Apply ₹{money(credit.available)}</Button>}
-        {p.status === "posted" && <Button variant="danger" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel</Button>}
+        {p.status === "posted" && <Button variant="secondary" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel voucher…</Button>}
       </>} />
       <div className="mb-4 flex flex-wrap gap-2"><StatusChip tone={p.status === "posted" ? "success" : "danger"}>{p.status}</StatusChip><StatusChip tone={p.kind === "receipt" ? "success" : "info"}>{p.kind}</StatusChip>{p.status === "cancelled" && p.cancel?.reason && <span className="text-sm text-status-danger">Cancelled: {p.cancel.reason}</span>}</div>
       <Card className="p-6">

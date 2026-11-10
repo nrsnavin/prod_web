@@ -4,6 +4,7 @@ import { Camera, Plus, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { StatusChip, type ChipTone } from "@/components/ui/StatusChip";
@@ -136,7 +137,12 @@ export function ClaimsPage() {
                 </div>
                 <span className="tabular-nums font-semibold">₹{money(c.totals.grand)}</span>
                 <StatusChip tone={TONE[c.status]}>{LABEL[c.status]}</StatusChip>
-                {c.status === "pending" && <Button size="sm" variant="ghost" onClick={() => withdraw.mutate(c)}>Withdraw</Button>}
+                {/* Withdrawing cancels the claim for good, so it asks in place. */}
+                {c.status === "pending" && (
+                  <InlineConfirm question={`Withdraw the ₹${money(c.totals.grand)} claim?`} confirmLabel="Withdraw claim" onConfirm={() => withdraw.mutate(c)}>
+                    Withdraw…
+                  </InlineConfirm>
+                )}
               </li>
             ))}
           </ul>

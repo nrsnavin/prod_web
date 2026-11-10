@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -114,7 +114,8 @@ describe("the weaving gate is wired to the real endpoints", () => {
     );
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: /move to weaving/i }));
+    await user.click(await screen.findByRole("button", { name: /move to weaving…/i }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Move to weaving" }));
 
     expect(post).toHaveBeenCalledWith("/job/update-status", {
       jobId: "j1",

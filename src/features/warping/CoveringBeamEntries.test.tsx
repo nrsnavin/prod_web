@@ -58,10 +58,13 @@ describe("CoveringBeamEntries", () => {
     expect(toast).toHaveBeenCalledWith(expect.stringMatching(/valid weight/i), "error");
   });
 
-  it("removes an existing beam entry", async () => {
+  it("removes an existing beam entry only on the second press", async () => {
     const user = userEvent.setup();
     render(<CoveringBeamEntries covering={covering} />);
 
+    await user.click(screen.getByRole("button", { name: /remove beam 1/i }));
+    expect(deleteBeam).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Keep" })).toHaveFocus();
     await user.click(screen.getByRole("button", { name: /remove beam 1/i }));
 
     expect(deleteBeam).toHaveBeenCalledWith(

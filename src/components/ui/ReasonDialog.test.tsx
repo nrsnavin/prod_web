@@ -12,7 +12,7 @@ import { Modal } from "./Modal";
 
 describe("ReasonDialog", () => {
   it("opens quiet, with the cursor in the reason box", async () => {
-    render(<ReasonDialog open onClose={() => {}} onConfirm={() => {}} title="Delete order #1" />);
+    render(<ReasonDialog open onClose={() => {}} onConfirm={() => {}} title="Delete order #1" confirmLabel="Delete order" />);
     const box = screen.getByLabelText("Reason");
     // The dialog places focus on a timer; give it the chance to steal.
     await new Promise((r) => setTimeout(r, 20));

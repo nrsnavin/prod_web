@@ -91,8 +91,8 @@ export function ElasticGroupDetailPage() {
             <Button variant="secondary" onClick={() => setEditing(true)}>
               <Pencil className="h-4 w-4" /> Edit
             </Button>
-            <Button variant="danger" onClick={() => setDeleting(true)}>
-              <Trash2 className="h-4 w-4" /> Delete
+            <Button variant="secondary" onClick={() => setDeleting(true)}>
+              <Trash2 className="h-4 w-4" /> Delete group…
             </Button>
           </>
         }

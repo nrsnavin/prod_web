@@ -151,7 +151,7 @@ export function DcDetailPage() {
               )}
               {(dc.status === "draft" || dc.status === "dispatched") && (
                 <Button
-                  variant="danger"
+                  variant="secondary"
                   loading={updateStatus.isPending}
                   onClick={() => setPending({
                     status: "cancelled", msg: "DC cancelled — stock restored", label: "Cancel DC", danger: true,
@@ -159,7 +159,7 @@ export function DcDetailPage() {
                     body: "Cancelling restores the deducted stock and reservations. This can't be undone.",
                   })}
                 >
-                  <XCircle className="h-4 w-4" /> Cancel
+                  <XCircle className="h-4 w-4" /> Cancel DC…
                 </Button>
               )}
             </>

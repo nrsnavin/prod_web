@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -80,6 +80,25 @@ beforeEach(() => {
   toast.mockClear();
 });
 
+/** Complete asks first: press it, then complete in the dialog. */
+async function pressComplete(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: /^complete…$/i }));
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Complete warping" }));
+}
+
+describe("asking before completing", () => {
+  it("one press of Complete only asks; nothing is sent", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole("button", { name: /^complete…$/i }));
+    expect(completeMutate).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("It can't be reopened.")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Not now" }));
+    expect(completeMutate).not.toHaveBeenCalled();
+  });
+});
+
 describe("completing while the yarn is still on the rack", () => {
   it("holds the refusal on screen rather than toasting it away", async () => {
     const user = userEvent.setup();
@@ -89,7 +108,7 @@ describe("completing while the yarn is still on the rack", () => {
     );
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /^complete$/i }));
+    await pressComplete(user);
 
     expect(screen.getByText(/still on the rack/i)).toBeInTheDocument();
     expect(screen.getByText(/created but not issued/i)).toBeInTheDocument();
@@ -102,7 +121,7 @@ describe("completing while the yarn is still on the rack", () => {
     refuseWith("WARPING_YARN_NOT_ISSUED", "not issued");
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /^complete$/i }));
+    await pressComplete(user);
     expect(screen.getByText(/moves the lot balances/i)).toBeInTheDocument();
   });
 
@@ -115,7 +134,7 @@ describe("completing while the yarn is still on the rack", () => {
     );
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /^complete$/i }));
+    await pressComplete(user);
 
     expect(toast).toHaveBeenCalledWith("Warping is not in progress", "error");
     expect(screen.queryByText(/still on the rack/i)).not.toBeInTheDocument();
@@ -126,7 +145,7 @@ describe("completing while the yarn is still on the rack", () => {
     refuseWith("WARPING_YARN_NOT_ISSUED", "not issued");
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /^complete$/i }));
+    await pressComplete(user);
     expect(completeMutate.mock.calls[0][0]).toEqual({ id: "w1", forceReason: undefined });
   });
 });
@@ -137,7 +156,7 @@ describe("completing anyway", () => {
     refuseWith("WARPING_YARN_NOT_ISSUED", "not issued");
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /^complete$/i }));
+    await pressComplete(user);
     await user.click(screen.getByRole("button", { name: /complete anyway…/i }));
 
     const box = screen.getByRole("textbox");
@@ -157,7 +176,7 @@ describe("completing anyway", () => {
     refuseWith("WARPING_YARN_NOT_ISSUED", "not issued");
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: /^complete$/i }));
+    await pressComplete(user);
     await user.click(screen.getByRole("button", { name: /complete anyway…/i }));
 
     await user.type(screen.getByRole("textbox"), "abc");

@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Plus, Check, X, Banknote, Download } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { FormScreen } from "@/components/ui/FormScreen";
@@ -82,7 +83,13 @@ export function ExpensesTab() {
         <span className="flex gap-1" onClick={(ev) => ev.stopPropagation()}>
           {e.status === "pending" && canApprove && (
             <>
-              <Button size="sm" variant="secondary" aria-label={`Approve ${e.expenseNo}`} onClick={() => approveExpense.mutate({ id: e._id }, { onSuccess: () => toast(`${e.expenseNo} approved`, "success"), onError: (err) => toast(err instanceof ApiError ? err.message : "Could not approve", "error") })}><Check className="h-4 w-4" /></Button>
+              {/* Approving posts it to the payee's account, so it asks in place, with the amount. */}
+              <InlineConfirm variant="secondary" aria-label={`Approve ${e.expenseNo}`} title="Approve"
+                question={`Approve ₹${money(e.totals?.grand)}?`} confirmLabel={`Approve ${e.expenseNo}`}
+                loading={approveExpense.isPending && approveExpense.variables?.id === e._id}
+                onConfirm={() => approveExpense.mutate({ id: e._id }, { onSuccess: () => toast(`${e.expenseNo} approved`, "success"), onError: (err) => toast(err instanceof ApiError ? err.message : "Could not approve", "error") })}>
+                <Check className="h-4 w-4" />
+              </InlineConfirm>
               <Button size="sm" variant="ghost" aria-label={`Reject ${e.expenseNo}`} onClick={() => setReject(e)}><X className="h-4 w-4" /></Button>
             </>
           )}

@@ -72,7 +72,8 @@ export function useOrderMutations() {
     onSuccess: invalidate,
   });
   const cancel = useMutation({
-    mutationFn: (id: string) => orderService.cancel(id),
+    mutationFn: (v: string | { id: string; reason?: string }) =>
+      typeof v === "string" ? orderService.cancel(v) : orderService.cancel(v.id, v.reason),
     onSuccess: invalidate,
   });
   const startProduction = useMutation({

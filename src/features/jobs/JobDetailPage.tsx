@@ -11,6 +11,7 @@ import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { JobQrPrint } from "./JobQrPrint";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ConfirmDialog, type Consequence } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -189,6 +190,8 @@ export function JobDetailPage() {
   // state (rather than toasting the message) means the user gets a list
   // they can read and act on, and the job status is visibly unchanged.
   const [weavingBlockers, setWeavingBlockers] = useState<string[] | null>(null);
+  // Jobs only move forward, so the move asks first and says what it does.
+  const [moveAsk, setMoveAsk] = useState(false);
   useTrackRecent("Job", `/jobs/${id}`, job ? `${job.jobNo} · ${job.customerName}` : undefined);
 
   if (isLoading) {
@@ -209,6 +212,53 @@ export function JobDetailPage() {
 
   const next = nextJobStatus[job.status];
   const terminal = job.status === "completed" || job.status === "cancelled";
+
+  const move = () =>
+    next &&
+    updateStatus.mutate(
+      { jobId: job.id, nextStatus: next },
+      {
+        onSuccess: () => toast(`Job moved to ${next}`, "success"),
+        onError: (e) => {
+          // Preparatory work still open: show the list of
+          // what is holding the job back rather than a
+          // one-line toast the user has to decode.
+          if (e instanceof ApiError && e.code === "WEAVING_NOT_READY") {
+            const details = e.data?.details as
+              | { blockers?: string[] }
+              | undefined;
+            setWeavingBlockers(
+              details?.blockers?.length ? details.blockers : [e.message]
+            );
+            return;
+          }
+          toast(e instanceof ApiError ? e.message : "Status update failed", "error");
+        },
+      }
+    );
+
+  // What this particular move does, in the server's terms.
+  const moveConsequences: Consequence[] = [];
+  if (next === "weaving") {
+    if (readiness.data && !readiness.data.ready) {
+      for (const b of readiness.data.blockers) moveConsequences.push({ text: b, tone: "warning" });
+    }
+    moveConsequences.push(
+      job.machine
+        ? { text: `Weaving runs on ${job.machine.machineName}.` }
+        : { text: "No machine is assigned yet.", tone: "warning" }
+    );
+  }
+  if (next === "finishing") {
+    if (job.machine) moveConsequences.push({ text: `${job.machine.machineName} is freed for the next job.` });
+    if (job.productionMode === "outsource") moveConsequences.push({ text: "The vendor record has to be complete first." });
+  }
+  if (next === "completed") {
+    moveConsequences.push({
+      text: job.orderNo ? `If it's the last open job on order #${job.orderNo}, the order closes too.` : "The job is closed.",
+    });
+  }
+  moveConsequences.push({ text: "Jobs only move forward: this can't be undone.", tone: "warning" });
 
   return (
     <>
@@ -264,38 +314,13 @@ export function JobDetailPage() {
               </Button>
             )}
             {next && (
-              <Button
-                loading={updateStatus.isPending}
-                onClick={() =>
-                  updateStatus.mutate(
-                    { jobId: job.id, nextStatus: next },
-                    {
-                      onSuccess: () => toast(`Job moved to ${next}`, "success"),
-                      onError: (e) => {
-                        // Preparatory work still open: show the list of
-                        // what is holding the job back rather than a
-                        // one-line toast the user has to decode.
-                        if (e instanceof ApiError && e.code === "WEAVING_NOT_READY") {
-                          const details = e.data?.details as
-                            | { blockers?: string[] }
-                            | undefined;
-                          setWeavingBlockers(
-                            details?.blockers?.length ? details.blockers : [e.message]
-                          );
-                          return;
-                        }
-                        toast(e instanceof ApiError ? e.message : "Status update failed", "error");
-                      },
-                    }
-                  )
-                }
-              >
-                <ArrowRight className="h-4 w-4" /> Move to {next}
+              <Button loading={updateStatus.isPending} onClick={() => setMoveAsk(true)}>
+                <ArrowRight className="h-4 w-4" /> Move to {next}…
               </Button>
             )}
             {!terminal && (
-              <Button variant="danger" onClick={() => setCancelOpen(true)}>
-                <XCircle className="h-4 w-4" /> Cancel job
+              <Button variant="secondary" onClick={() => setCancelOpen(true)}>
+                <XCircle className="h-4 w-4" /> Cancel job…
               </Button>
             )}
           </>
@@ -448,6 +473,21 @@ export function JobDetailPage() {
           onClose={() => setQtyOpen(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={moveAsk && !!next}
+        title={`Move ${job.jobNo} to ${next ?? ""}?`}
+        message={`From ${job.status} to ${next ?? ""}.`}
+        consequences={moveConsequences}
+        confirmLabel={`Move to ${next ?? ""}`}
+        cancelLabel="Not now"
+        loading={updateStatus.isPending}
+        onCancel={() => setMoveAsk(false)}
+        onConfirm={() => {
+          setMoveAsk(false);
+          move();
+        }}
+      />
 
       <Modal
         open={weavingBlockers !== null}

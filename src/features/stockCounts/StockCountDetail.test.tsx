@@ -184,7 +184,13 @@ describe("StockCountDetailPage", () => {
     } as StockCount);
     renderSheet();
 
-    await userEvent.click(screen.getByRole("button", { name: /post/i }));
+    await userEvent.click(screen.getByRole("button", { name: /post count…/i }));
+    // One press only opens the review; the difference has to be ticked as checked.
+    expect(postMutate).not.toHaveBeenCalled();
+    const review = screen.getByRole("dialog");
+    expect(within(review).getByText("Net change in stock value")).toBeInTheDocument();
+    await userEvent.click(within(review).getByRole("checkbox"));
+    await userEvent.click(within(review).getByRole("button", { name: /^post count #/i }));
 
     expect(postMutate).toHaveBeenCalledWith(false);
     expect(toast).toHaveBeenCalledWith(

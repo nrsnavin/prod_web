@@ -65,7 +65,9 @@ export const warpingService = {
       id,
       ...(force ? { force: true, forceReason: force.forceReason } : {}),
     }),
-  cancel: (id: string) => httpClient.patch(`/warping/cancel/${id}`),
+  // The reason goes on the job's timeline with the cancellation.
+  cancel: (id: string, remarks?: string) =>
+    remarks ? httpClient.patch(`/warping/cancel/${id}`, { remarks }) : httpClient.patch(`/warping/cancel/${id}`),
 
   async getPlan(warpingId: string): Promise<{ exists: boolean; plan?: WarpingPlan }> {
     return httpClient.get<{ exists: boolean; plan?: WarpingPlan }>("/warping/warpingPlan", {

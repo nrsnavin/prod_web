@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Cpu, KeyRound, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
@@ -124,8 +125,18 @@ export function LoomSensors() {
                   <td className="py-1.5 text-right tabular-nums">{d.lastReading ? `${Math.floor(d.lastReading.runSecondsTotal / 3600).toLocaleString("en-IN")} h` : "—"}</td>
                   <td className="py-1.5 text-right">
                     <span className="inline-flex gap-1">
-                      <Button size="sm" variant="ghost" aria-label={`New key for ${d.machine.ID}`} loading={rekey.isPending && rekey.variables === d.id} onClick={() => rekey.mutate(d.id)}><KeyRound className="h-4 w-4" aria-hidden /> New key</Button>
-                      <Button size="sm" variant="ghost" aria-label={`Remove the sensor on ${d.machine.ID}`} onClick={() => remove.mutate(d.id)}><Trash2 className="h-4 w-4" aria-hidden /></Button>
+                      {/* A new key retires the old one at once, and removing a board
+                          stops its readings: both ask in place first. */}
+                      <InlineConfirm aria-label={`New key for ${d.machine.ID}`} loading={rekey.isPending && rekey.variables === d.id}
+                        question={`Retire ${d.machine.ID ?? "this loom"}'s key? The board stops reporting until the new one is in it.`}
+                        confirmLabel="Make a new key" onConfirm={() => rekey.mutate(d.id)}>
+                        <KeyRound className="h-4 w-4" aria-hidden /> New key…
+                      </InlineConfirm>
+                      <InlineConfirm aria-label={`Remove the sensor on ${d.machine.ID}`} title="Remove sensor" danger
+                        question={`Remove the sensor on ${d.machine.ID ?? "this loom"}?`}
+                        confirmLabel="Remove sensor" onConfirm={() => remove.mutate(d.id)}>
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </InlineConfirm>
                     </span>
                   </td>
                 </tr>

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BadgeCheck, BellRing, Repeat, Settings2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { Input } from "@/components/ui/Input";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
@@ -117,7 +118,11 @@ export function ShiftEndReminderSettings() {
           <Input label="Minutes before" type="number" min={5} max={240} className="w-28" value={minutes ?? String(n.minutesBefore)} onChange={(e) => setMinutes(e.target.value)} />
           <Input label="WhatsApp numbers (comma between)" className="w-72" placeholder="Empty: the notification recipients" value={phones ?? n.phones.join(", ")} onChange={(e) => setPhones(e.target.value)} />
           <Button size="sm" variant="secondary" loading={busy} disabled={minutes === null && phones === null} onClick={() => save({ ...(minutes !== null ? { minutesBefore: Number(minutes) } : {}), ...(phones !== null ? { phones } : {}) })}>Save</Button>
-          <Button size="sm" variant="ghost" loading={sending} onClick={sendNow}>Send now</Button>
+          {/* A WhatsApp goes out at once, so it asks in place, naming who gets it. */}
+          <InlineConfirm loading={sending} onConfirm={() => void sendNow()} confirmLabel="Send reminder"
+            question={`Send the reminder now to ${n.phones.length ? n.phones.join(", ") : "the notification recipients"}?`}>
+            Send now…
+          </InlineConfirm>
         </div>
       )}
     </Card>
@@ -178,7 +183,10 @@ export function ShiftHandoverSettings() {
         <div className="mt-2 flex flex-wrap items-end gap-2">
           <Input label="Handover numbers (comma between)" className="w-72" placeholder="Empty: the notification recipients" value={phones ?? h.phones.join(", ")} onChange={(e) => setPhones(e.target.value)} />
           <Button size="sm" variant="secondary" loading={busy} disabled={phones === null} onClick={() => save({ phones: phones ?? "" })}>Save</Button>
-          <Button size="sm" variant="ghost" loading={busy} onClick={sendNow}>Send now</Button>
+          <InlineConfirm loading={busy} onConfirm={() => void sendNow()} confirmLabel="Send handover"
+            question={`Send the last shift's handover now to ${h.phones.length ? h.phones.join(", ") : "the notification recipients"}?`}>
+            Send now…
+          </InlineConfirm>
         </div>
       )}
       {preview && <pre role="note" className="mt-3 whitespace-pre-wrap rounded-lg bg-ink-50 p-3 font-sans text-sm text-ink-700">{preview}</pre>}

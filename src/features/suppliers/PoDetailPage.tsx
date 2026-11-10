@@ -609,8 +609,8 @@ export function PoDetailPage() {
                 <Button variant="secondary" onClick={() => setEditOpen(true)}>
                   <Pencil className="h-4 w-4" /> Edit
                 </Button>
-                <Button variant="danger" onClick={() => setDelOpen(true)}>
-                  <Trash2 className="h-4 w-4" /> Delete
+                <Button variant="secondary" onClick={() => setDelOpen(true)}>
+                  <Trash2 className="h-4 w-4" /> Delete PO…
                 </Button>
               </>
             )}

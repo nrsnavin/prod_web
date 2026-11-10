@@ -110,8 +110,8 @@ export function ElasticDetailPage() {
                 ? <><ArchiveRestore className="h-4 w-4" /> Reactivate</>
                 : <><Archive className="h-4 w-4" /> Mark inactive</>}
             </Button>
-            <Button variant="danger" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="h-4 w-4" /> Delete
+            <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4" /> Delete elastic…
             </Button>
           </>
         }

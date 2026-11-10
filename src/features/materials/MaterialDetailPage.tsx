@@ -203,16 +203,31 @@ export function MaterialDetailPage() {
             <Button
               variant="secondary"
               loading={setArchived.isPending}
-              onClick={() =>
+              onClick={() => {
+                // One press, so the toast can take it back.
+                const archived = !material.archived;
                 setArchived.mutate(
-                  { id: material._id, archived: !material.archived },
+                  { id: material._id, archived },
                   {
-                    onSuccess: (r) => toast(r.message ?? "Updated", "success"),
+                    onSuccess: (r) =>
+                      toast(r.message ?? "Updated", "success", {
+                        action: {
+                          label: "Undo",
+                          onClick: () =>
+                            setArchived.mutate(
+                              { id: material._id, archived: !archived },
+                              {
+                                onSuccess: () => toast(archived ? `${material.name} restored` : `${material.name} archived again`, "info"),
+                                onError: (e) => toast(e instanceof ApiError ? e.message : "Failed", "error"),
+                              }
+                            ),
+                        },
+                      }),
                     onError: (e) =>
                       toast(e instanceof ApiError ? e.message : "Failed", "error"),
                   }
-                )
-              }
+                );
+              }}
             >
               {material.archived ? (
                 <><ArchiveRestore className="h-4 w-4" /> Restore</>
@@ -223,7 +238,7 @@ export function MaterialDetailPage() {
             {/* Icon-only, so it needs a name of its own — otherwise it
                 is an unlabelled button to a screen reader. */}
             <Button
-              variant="danger"
+              variant="secondary"
               aria-label="Remove material"
               onClick={() => setDeleteOpen(true)}
             >

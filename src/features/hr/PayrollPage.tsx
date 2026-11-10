@@ -14,8 +14,10 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ReviewDialog } from "@/components/ui/ReviewDialog";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { ApiError } from "@/core/http/httpClient";
-import { payrollService, PayrollEmployeeRow, PayrollSettings, MonthRange, PayrollRangeRow } from "./api";
+import { payrollService, PayrollEmployeeRow, PayrollSettings, MonthRange, PayrollRangeRow, type AdvanceRequestRow } from "./api";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { formatDate } from "@/core/format/date";
@@ -209,6 +211,13 @@ function PayDialog({ row, onClose, flags = [] }: { row: PayrollEmployeeRow; onCl
   const settled = cash + recoverTotal;
   const invalid = settled <= 0 || settled > remaining;
   const partial = settled > 0 && settled < remaining;
+  // The button says what leaves the drawer, so the figure is read once more
+  // at the moment of paying.
+  const payLabel =
+    settled <= 0 ? "Pay"
+    : cash > 0 && recoverTotal > 0 ? `Pay ${inr(cash)} and recover ${inr(recoverTotal)}`
+    : cash > 0 ? `Pay ${inr(cash)}`
+    : `Recover ${inr(recoverTotal)} from advances`;
 
   return (
     <FormScreen open onClose={onClose} title={`Pay — ${row.name}`} width="max-w-md">
@@ -335,7 +344,7 @@ function PayDialog({ row, onClose, flags = [] }: { row: PayrollEmployeeRow; onCl
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="button" disabled={invalid} loading={pay.isPending} onClick={() => pay.mutate()}>
-            <Check className="h-4 w-4" /> {partial ? "Pay part" : "Pay in full"}
+            <Check className="h-4 w-4" /> {payLabel}
           </Button>
         </div>
       </div>
@@ -632,6 +641,10 @@ export function PayrollPage() {
   const payOutAdv = useMutation({ mutationFn: payrollService.payOutAdvance, onSuccess: invalidate });
   const [addAdvOpen, setAddAdvOpen] = useState(false);
   const [confirmGenerate, setConfirmGenerate] = useState(false);
+  // Approving fixes the month the advance is recovered in; paying out
+  // books cash to the employee. Both are asked about before they happen.
+  const [advAsk, setAdvAsk] = useState<{ kind: "approve" | "payout"; a: AdvanceRequestRow } | null>(null);
+  const failed = (e: unknown) => toast(e instanceof ApiError ? e.message : "Failed", "error");
 
   const runGenerate = () =>
     generate.mutate(undefined, {
@@ -908,50 +921,31 @@ export function PayrollPage() {
                     )}
                   </div>
                   {a.status === "requested" || a.status === "pending" ? (
-                    <span className="flex gap-1.5">
-                      <Button
-                        size="sm"
-                        loading={approveAdv.isPending}
-                        onClick={() =>
-                          approveAdv.mutate(a._id, {
-                            onSuccess: () => toast("Advance approved", "success"),
-                            onError: (e) =>
-                              toast(e instanceof ApiError ? e.message : "Failed", "error"),
-                          })
-                        }
-                      >
-                        <Check className="h-4 w-4" />
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <Button size="sm" onClick={() => setAdvAsk({ kind: "approve", a })}>
+                        <Check className="h-4 w-4" /> Approve…
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        loading={rejectAdv.isPending}
-                        onClick={() =>
+                      <InlineConfirm
+                        variant="secondary"
+                        question={`Reject ₹${a.amount.toLocaleString("en-IN")} for ${a.employee?.name ?? "this employee"}?`}
+                        confirmLabel="Reject request"
+                        danger
+                        loading={rejectAdv.isPending && rejectAdv.variables === a._id}
+                        onConfirm={() =>
                           rejectAdv.mutate(a._id, {
-                            onSuccess: () => toast("Advance rejected", "success"),
-                            onError: (e) =>
-                              toast(e instanceof ApiError ? e.message : "Failed", "error"),
+                            onSuccess: () => toast("Advance request rejected", "success"),
+                            onError: failed,
                           })
                         }
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
+                        <X className="h-4 w-4" /> Reject…
+                      </InlineConfirm>
                     </span>
                   ) : a.status === "approved" ? (
                     // Approved but the cash hasn't left yet — paying out is
                     // what puts it on the employee's ledger.
-                    <Button
-                      size="sm"
-                      loading={payOutAdv.isPending}
-                      onClick={() =>
-                        payOutAdv.mutate(a._id, {
-                          onSuccess: () => toast("Advance paid out", "success"),
-                          onError: (e) =>
-                            toast(e instanceof ApiError ? e.message : "Failed", "error"),
-                        })
-                      }
-                    >
-                      <Wallet className="h-4 w-4" /> Pay out
+                    <Button size="sm" onClick={() => setAdvAsk({ kind: "payout", a })}>
+                      <Wallet className="h-4 w-4" /> Pay out…
                     </Button>
                   ) : (
                     <StatusChip tone={advanceTone[a.status] ?? "neutral"}>
@@ -985,12 +979,65 @@ export function PayrollPage() {
 
       <ConfirmDialog
         open={confirmGenerate}
-        title={`Generate ${MONTHS[month - 1]} ${year} payroll?`}
-        message="This recomputes pay for every employee from attendance, bonuses and advances for the selected month, replacing any existing draft run."
-        confirmLabel="Generate"
+        title={`Work out ${MONTHS[month - 1]} ${year} pay?`}
+        message="Pay is worked out for everyone employed during the month, leavers included, from attendance, bonuses and advances. Anyone without an hourly rate is skipped and named afterwards."
+        consequences={[
+          ...((s?.draftCount ?? 0) > 0
+            ? [{ text: `${s!.draftCount} draft slip${s!.draftCount === 1 ? " is" : "s are"} worked out again and replaced.`, tone: "warning" as const }]
+            : []),
+          { text: "Finalised, paid and part-paid slips are kept as they are." },
+          { text: "Nothing is paid until you pay each slip." },
+        ]}
+        confirmLabel={`Work out ${MONTHS[month - 1]} pay`}
+        cancelLabel="Not now"
         loading={generate.isPending}
         onCancel={() => setConfirmGenerate(false)}
         onConfirm={runGenerate}
+      />
+
+      <ConfirmDialog
+        open={advAsk?.kind === "approve"}
+        title={`Approve ₹${(advAsk?.a.amount ?? 0).toLocaleString("en-IN")} for ${advAsk?.a.employee?.name ?? "this employee"}?`}
+        message={advAsk?.a.reason ? `“${advAsk.a.reason}”` : "No reason was given with the request."}
+        consequences={[
+          { text: <>Recovered from <span className="font-semibold">{MONTHS[month - 1]} {year}</span> pay, the month chosen at the top of this page.</>, tone: "warning" },
+          { text: "No cash moves yet: it is handed over with Pay out." },
+        ]}
+        confirmLabel={`Approve ₹${(advAsk?.a.amount ?? 0).toLocaleString("en-IN")}`}
+        cancelLabel="Not now"
+        loading={approveAdv.isPending}
+        onCancel={() => setAdvAsk(null)}
+        onConfirm={() =>
+          advAsk &&
+          approveAdv.mutate(advAsk.a._id, {
+            onSuccess: () => { setAdvAsk(null); toast("Advance approved", "success"); },
+            onError: failed,
+          })
+        }
+      />
+
+      <ReviewDialog
+        open={advAsk?.kind === "payout"}
+        title={`Pay out the advance to ${advAsk?.a.employee?.name ?? "this employee"}`}
+        rows={[
+          { label: "Employee", value: advAsk?.a.employee?.name ?? "—" },
+          { label: "Reason", value: advAsk?.a.reason || "—" },
+          ...(advAsk?.a.deductMonth && advAsk?.a.deductYear
+            ? [{ label: "Recovered from", value: `${MONTHS[advAsk.a.deductMonth - 1]} ${advAsk.a.deductYear} pay` }]
+            : []),
+          { label: "Cash to hand over", value: `₹${(advAsk?.a.amount ?? 0).toLocaleString("en-IN")}`, strong: true },
+        ]}
+        warning="This books the cash to the employee's ledger. It can't be taken back from here."
+        confirmLabel={`Pay out ₹${(advAsk?.a.amount ?? 0).toLocaleString("en-IN")}`}
+        loading={payOutAdv.isPending}
+        onCancel={() => setAdvAsk(null)}
+        onConfirm={() =>
+          advAsk &&
+          payOutAdv.mutate(advAsk.a._id, {
+            onSuccess: () => { setAdvAsk(null); toast("Advance paid out", "success"); },
+            onError: failed,
+          })
+        }
       />
     </>
   );

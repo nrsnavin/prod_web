@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -89,8 +90,8 @@ function BonusConfigPanel({ year }: { year: number }) {
               </>
             )}
           </p>
-          <Button variant="danger" size="sm" onClick={() => setResetOpen(true)}>
-            <RotateCcw className="h-4 w-4" /> Reset {year} bonus
+          <Button variant="secondary" size="sm" onClick={() => setResetOpen(true)}>
+            <RotateCcw className="h-4 w-4" /> Reset {year} bonus…
           </Button>
         </div>
       )}
@@ -266,19 +267,22 @@ export function BonusPage() {
       align: "right",
       render: (r) =>
         r.status !== "paid" ? (
-          <Button
-            size="sm"
+          // Paying posts to the employee's ledger and can't be taken back,
+          // so the row asks once, with the amount, before it does.
+          <InlineConfirm
             variant="secondary"
-            loading={pay.isPending}
-            onClick={() =>
+            question={`₹${r.bonusAmount.toLocaleString("en-IN")} to ${r.employee?.name ?? "this employee"}?`}
+            confirmLabel={`Mark ₹${r.bonusAmount.toLocaleString("en-IN")} paid`}
+            loading={pay.isPending && pay.variables === r._id}
+            onConfirm={() =>
               pay.mutate(r._id, {
                 onSuccess: () => toast("Bonus marked paid", "success"),
                 onError: (e) => toast(e instanceof ApiError ? e.message : "Failed", "error"),
               })
             }
           >
-            <Check className="h-4 w-4" /> Mark paid
-          </Button>
+            <Check className="h-4 w-4" /> Mark paid…
+          </InlineConfirm>
         ) : null,
     },
   ];
@@ -293,7 +297,7 @@ export function BonusPage() {
             <Button disabled={!pv?.canGenerate} onClick={() => setTriggerOpen(true)}>
               <Play className="h-4 w-4" />{" "}
               {pv?.canGenerate
-                ? `Generate ${year} bonus`
+                ? `Generate ${year} bonus…`
                 : diwaliLabel
                 ? `Available in ${diwaliLabel}`
                 : "Set Diwali date first"}
@@ -394,9 +398,20 @@ export function BonusPage() {
 
       <ConfirmDialog
         open={triggerOpen}
-        title={`Trigger ${year} bonus?`}
-        message="Bonus amounts are computed for all eligible employees from their attendance. Working-days config locks after triggering."
-        confirmLabel="Trigger"
+        title={`Generate the ${year} bonus?`}
+        message="Each eligible employee's bonus is worked out from the year's pay and attendance, and fixed."
+        consequences={[
+          ...(pv
+            ? [{ text: <>About <span className="font-semibold">₹{pv.totalPayout.toLocaleString("en-IN")}</span> across {(pv.rows ?? []).filter((r) => r.eligible !== false).length} employees, going by the prediction.</> }]
+            : []),
+          ...(pv?.ineligibleCount
+            ? [{ text: `${pv.ineligibleCount} below the ${pv.config?.minDaysForEligibility ?? 30}-day threshold get nothing.`, tone: "warning" as const }]
+            : []),
+          { text: "The working-days settings lock once it's generated.", tone: "warning" },
+          { text: "Nothing is paid until each record is marked paid." },
+        ]}
+        confirmLabel={`Generate ${year} bonus`}
+        cancelLabel="Not now"
         loading={trigger.isPending}
         onCancel={() => setTriggerOpen(false)}
         onConfirm={() =>

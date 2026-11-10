@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ConfirmDialog, type Consequence } from "@/components/ui/ConfirmDialog";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -362,7 +362,7 @@ export function OrderDetailPage() {
   }
 
   const act = (
-    mutation: typeof cancel,
+    mutation: { mutate: (id: string, opts: { onSuccess: () => void; onError: (e: unknown) => void }) => void },
     successMsg: string
   ) =>
     mutation.mutate(order._id, {
@@ -406,32 +406,77 @@ export function OrderDetailPage() {
       }
     );
 
-  const confirmMeta = {
+  // What each act does to this order, in its own figures: a dialog that
+  // only repeats its button teaches people to click through it.
+  const no = `#${order.orderNo}`;
+  const materials = order.rawMaterialRequired ?? [];
+  const drawKg = materials.reduce((sum, m) => sum + requirementRequired(m), 0);
+  const shortCount = materials.filter((m) => m.stockSufficient === false).length;
+  const sum = (k: "ordered" | "produced" | "delivered") => (order.elastics ?? []).reduce((t, e) => t + (e[k] ?? 0), 0);
+  const ordered = sum("ordered");
+  const produced = sum("produced");
+  const delivered = sum("delivered");
+  const m = (n: number) => `${Math.round(n).toLocaleString("en-IN")} m`;
+
+  const confirmMeta: Record<
+    "approve" | "start" | "complete" | "cancel",
+    { title: string; message: string; consequences: Consequence[]; confirmLabel: string; danger?: boolean; run: () => void; loading: boolean }
+  > = {
     approve: {
-      title: "Approve order?",
-      message: "Raw material stock will be deducted for the full order quantity. This is validated against current stock — if a material is short you'll be asked to confirm a force approval.",
+      title: `Approve order ${no}?`,
+      message: "Raw material is drawn from stock for the whole order.",
+      consequences: [
+        ...(materials.length
+          ? [
+              { text: `${materials.length} material${materials.length === 1 ? "" : "s"}, ${Math.round(drawKg).toLocaleString("en-IN")} kg in all, come out of stock.` },
+              shortCount
+                ? { text: `${shortCount} ${shortCount === 1 ? "is" : "are"} short; you'll be asked whether to approve anyway, with a reason.`, tone: "warning" as const }
+                : { text: "Stock covers every material." },
+            ]
+          : [{ text: "If a material turns out short, you'll be asked whether to approve anyway, with a reason." }]),
+        { text: "The order can't be edited after this; jobs can be raised for its elastics." },
+      ],
+      confirmLabel: `Approve order ${no}`,
       run: () => runApprove(),
       loading: approve.isPending,
     },
-    cancel: {
-      title: "Cancel order?",
-      message: `Order #${order.orderNo} will be cancelled.`,
-      run: () => act(cancel, "Order cancelled"),
-      loading: cancel.isPending,
-    },
     start: {
-      title: "Start production?",
-      message: "The order moves to In Production.",
+      title: `Start production on order ${no}?`,
+      message: "The order moves to In production.",
+      consequences: [{ text: "It then completes when its last job does, or from here once every job is finished." }],
+      confirmLabel: "Start production",
       run: () => act(startProduction, "Order moved to production"),
       loading: startProduction.isPending,
     },
     complete: {
-      title: "Complete order?",
-      message: "The order will be marked Completed.",
+      title: `Complete order ${no}?`,
+      message: "The order moves to Completed and can't be reopened.",
+      consequences: [
+        produced < ordered
+          ? { text: `${m(ordered - produced)} of ${m(ordered)} have not been produced.`, tone: "warning" as const }
+          : { text: `All ${m(ordered)} produced.` },
+        delivered <= 0
+          ? { text: "Nothing has been delivered yet.", tone: "warning" as const }
+          : delivered < ordered
+            ? { text: `${m(delivered)} of ${m(ordered)} delivered.`, tone: "warning" as const }
+            : { text: `All ${m(ordered)} delivered.` },
+        { text: "Stock still reserved for it is released." },
+      ],
+      confirmLabel: `Complete order ${no}`,
       run: () => act(complete, "Order completed"),
       loading: complete.isPending,
     },
-  } as const;
+    // Only an Open order is cancelled from here; an approved one asks for a reason below.
+    cancel: {
+      title: `Cancel order ${no}?`,
+      message: "Nothing has been drawn from stock for it yet.",
+      consequences: [{ text: "It can't be reopened. The owner is told on WhatsApp." }],
+      confirmLabel: `Cancel order ${no}`,
+      danger: true,
+      run: () => act(cancel, "Order cancelled"),
+      loading: cancel.isPending,
+    },
+  };
 
   return (
     <>
@@ -500,28 +545,28 @@ export function OrderDetailPage() {
                   <Pencil className="h-4 w-4" /> Edit
                 </Button>
                 <Button onClick={() => setConfirm("approve")}>
-                  <CheckCircle2 className="h-4 w-4" /> Approve
+                  <CheckCircle2 className="h-4 w-4" /> Approve…
                 </Button>
               </>
             )}
             {order.status === "Approved" && (
               <Button variant="secondary" onClick={() => setConfirm("start")}>
-                <Play className="h-4 w-4" /> Start production
+                <Play className="h-4 w-4" /> Start production…
               </Button>
             )}
             {order.status === "InProgress" && (
               <Button variant="secondary" onClick={() => setConfirm("complete")}>
-                <Flag className="h-4 w-4" /> Complete
+                <Flag className="h-4 w-4" /> Complete…
               </Button>
             )}
             {(order.status === "Open" || order.status === "Approved") && (
-              <Button variant="danger" onClick={() => setConfirm("cancel")}>
-                <XCircle className="h-4 w-4" /> Cancel
+              <Button variant="secondary" onClick={() => setConfirm("cancel")}>
+                <XCircle className="h-4 w-4" /> Cancel order…
               </Button>
             )}
             {order.status === "Open" && (
-              <Button variant="danger" onClick={() => setDelOpen(true)}>
-                <Trash2 className="h-4 w-4" /> Delete
+              <Button variant="secondary" onClick={() => setDelOpen(true)}>
+                <Trash2 className="h-4 w-4" /> Delete order…
               </Button>
             )}
           </>
@@ -681,18 +726,40 @@ export function OrderDetailPage() {
         <OrderYarnLots orderId={order._id} />
       </Section>
 
-      {confirm && (
+      {confirm && !(confirm === "cancel" && order.status !== "Open") && (
         <ConfirmDialog
           open
           title={confirmMeta[confirm].title}
           message={confirmMeta[confirm].message}
-          confirmLabel="Confirm"
-          danger={confirm === "cancel"}
+          consequences={confirmMeta[confirm].consequences}
+          confirmLabel={confirmMeta[confirm].confirmLabel}
+          cancelLabel="Not now"
+          danger={confirmMeta[confirm].danger}
           loading={confirmMeta[confirm].loading}
           onCancel={() => setConfirm(null)}
           onConfirm={confirmMeta[confirm].run}
         />
       )}
+      {/* Past Open, cancelling hands drawn stock back and pings the owner:
+          the server expects a reason with it, for the trail and the alert. */}
+      <ReasonDialog
+        open={confirm === "cancel" && order.status !== "Open"}
+        onClose={() => setConfirm(null)}
+        title={`Cancel order ${no}?`}
+        description="The raw material drawn at approval goes back to stock and reserved stock is released. It can't be reopened. The owner is told on WhatsApp, with your reason."
+        confirmLabel={`Cancel order ${no}`}
+        minLength={5}
+        loading={cancel.isPending}
+        onConfirm={(reason) =>
+          cancel.mutate(
+            { id: order._id, reason },
+            {
+              onSuccess: () => { setConfirm(null); toast("Order cancelled", "success"); },
+              onError: (e) => { setConfirm(null); toast(e instanceof ApiError ? e.message : "Action failed", "error"); },
+            }
+          )
+        }
+      />
 
       {addElasticOpen && (
         <OrderAddElasticModal

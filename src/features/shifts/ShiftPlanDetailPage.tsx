@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
 import { DataTable, Column } from "@/components/ui/DataTable";
@@ -319,17 +320,23 @@ export function ShiftPlanDetailPage() {
         actions={
           <>
             {plan.status === "draft" && (
-              <Button
+              // A confirmed plan can't go back to draft, so the button asks
+              // where it stands before it does.
+              <InlineConfirm
+                variant="primary"
+                size="md"
+                question="Confirm this plan? It can't go back to draft."
+                confirmLabel="Confirm plan"
                 loading={confirmPlan.isPending}
-                onClick={() =>
+                onConfirm={() =>
                   confirmPlan.mutate(plan._id, {
                     onSuccess: () => toast("Shift plan confirmed", "success"),
                     onError: (e) => toast(e instanceof ApiError ? e.message : "Could not confirm the plan", "error"),
                   })
                 }
               >
-                <CheckCircle2 className="h-4 w-4" /> Confirm plan
-              </Button>
+                <CheckCircle2 className="h-4 w-4" /> Confirm plan…
+              </InlineConfirm>
             )}
             <Button variant="secondary" onClick={downloadSheet} loading={downloading}>
               <Download className="h-4 w-4" /> Download sheet
@@ -337,8 +344,8 @@ export function ShiftPlanDetailPage() {
             <Button onClick={() => setUploadOpen(true)}>
               <UploadCloud className="h-4 w-4" /> Upload filled sheet
             </Button>
-            <Button variant="danger" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="h-4 w-4" /> Delete plan
+            <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4" /> Delete plan…
             </Button>
           </>
         }

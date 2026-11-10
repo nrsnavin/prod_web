@@ -42,4 +42,9 @@ describe("the warping lifecycle calls match the routes that serve them", () => {
     await warpingService.cancel("w1");
     expect(patch).toHaveBeenCalledWith("/warping/cancel/w1");
   });
+
+  it("sends the reason for cancelling, for the job's timeline", async () => {
+    await warpingService.cancel("w1", "Wrong beam count");
+    expect(patch).toHaveBeenCalledWith("/warping/cancel/w1", { remarks: "Wrong beam count" });
+  });
 });

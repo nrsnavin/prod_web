@@ -106,8 +106,10 @@ function renderPage() {
   );
 }
 
-const postBtn = () => screen.getByRole("button", { name: /^post/i });
+const postBtn = () => screen.getByRole("button", { name: /^post count…/i });
 const dialog = () => screen.getByRole("dialog");
+/** The review's own button: "Post count #7". */
+const confirmPost = () => within(dialog()).getByRole("button", { name: /^post count #7$/i });
 
 beforeEach(() => {
   postMutate.mockReset();
@@ -117,24 +119,19 @@ beforeEach(() => {
     line({ _id: "l2", name: "Spandex 40D", systemQty: 50 }),
     line({ _id: "l3", name: "Polyester 150D", systemQty: 12 }),
   ]);
-  // First attempt refused; a forced attempt succeeds.
+  // An unforced attempt is refused; a forced attempt succeeds.
   postMutate.mockImplementation(async (force: boolean) => {
     if (!force) throw new ApiError(OBJECTION, 400);
     return { ...count, countNo: 7, postedSummary: { linesVaried: 1, netValue: -660 } };
   });
 });
 
-describe("the override dialog", () => {
-  it("asks in a real dialog rather than the browser's", async () => {
+describe("posting asks first, with the lines it leaves out", () => {
+  it("one press of Post sends nothing: it opens a review in a real dialog", async () => {
     renderPage();
     await userEvent.click(postBtn());
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
-  });
-
-  it("repeats the server's objection word for word", async () => {
-    renderPage();
-    await userEvent.click(postBtn());
-    expect(await screen.findByText(OBJECTION)).toBeInTheDocument();
+    expect(postMutate).not.toHaveBeenCalled();
   });
 
   it("lists the lines that will be left out", async () => {
@@ -164,34 +161,30 @@ describe("the override dialog", () => {
 });
 
 describe("what each answer does", () => {
-  it("posts nothing when it is cancelled", async () => {
+  it("posts nothing when it is put off", async () => {
     renderPage();
     await userEvent.click(postBtn());
     await screen.findByRole("dialog");
-    postMutate.mockClear();
 
-    await userEvent.click(within(dialog()).getByRole("button", { name: /cancel/i }));
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Not now" }));
     expect(postMutate).not.toHaveBeenCalled();
   });
 
-  it("closes when it is cancelled", async () => {
+  it("closes when it is put off", async () => {
     renderPage();
     await userEvent.click(postBtn());
     await screen.findByRole("dialog");
-    await userEvent.click(within(dialog()).getByRole("button", { name: /cancel/i }));
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Not now" }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("posts once, forced, when it is confirmed", async () => {
+  it("posts once, forced, when it is confirmed: the review was the second asking", async () => {
     renderPage();
     await userEvent.click(postBtn());
     await screen.findByRole("dialog");
-    postMutate.mockClear();
 
-    await userEvent.click(
-      within(dialog()).getByRole("button", { name: /post the counted lines/i })
-    );
+    await userEvent.click(confirmPost());
 
     expect(postMutate).toHaveBeenCalledTimes(1);
     expect(postMutate).toHaveBeenCalledWith(true);
@@ -201,10 +194,48 @@ describe("what each answer does", () => {
     renderPage();
     await userEvent.click(postBtn());
     await screen.findByRole("dialog");
-    await userEvent.click(
-      within(dialog()).getByRole("button", { name: /post the counted lines/i })
-    );
+    await userEvent.click(confirmPost());
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("when the sheet changed underneath", () => {
+  // Every line looked counted here, so the review posted unforced, and
+  // the server knew better. Its objection is the only explanation.
+  beforeEach(() => {
+    count = sheet([line({ _id: "l1", name: "Nylon 70D", countedQty: 98, variance: -2 })]);
+  });
+
+  it("repeats the server's objection word for word", async () => {
+    renderPage();
+    await userEvent.click(postBtn());
+    await userEvent.click(confirmPost());
+    expect(postMutate).toHaveBeenCalledWith(false);
+    expect(await screen.findByText(OBJECTION)).toBeInTheDocument();
+  });
+
+  it("posts nothing more when the objection is cancelled", async () => {
+    renderPage();
+    await userEvent.click(postBtn());
+    await userEvent.click(confirmPost());
+    await screen.findByText(OBJECTION);
+    postMutate.mockClear();
+
+    await userEvent.click(within(dialog()).getByRole("button", { name: /cancel/i }));
+    expect(postMutate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("posts once, forced, when the objection is overridden", async () => {
+    renderPage();
+    await userEvent.click(postBtn());
+    await userEvent.click(confirmPost());
+    await screen.findByText(OBJECTION);
+    postMutate.mockClear();
+
+    await userEvent.click(within(dialog()).getByRole("button", { name: /post the counted lines/i }));
+    expect(postMutate).toHaveBeenCalledTimes(1);
+    expect(postMutate).toHaveBeenCalledWith(true);
   });
 });

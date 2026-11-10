@@ -49,6 +49,11 @@ describe("a plan made from the floor", () => {
     expect(screen.getByText(/A draft being entered on the floor, loom by loom/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /confirm plan/i }));
+    // One press asks in place; the safe answer has focus.
+    expect(confirmMutate).not.toHaveBeenCalled();
+    expect(screen.getByText("Confirm this plan? It can't go back to draft.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Keep" })).toHaveFocus();
+    await userEvent.click(screen.getByRole("button", { name: /^confirm plan$/i }));
     expect(confirmMutate).toHaveBeenCalledWith("p1", expect.anything());
     expect(toast).toHaveBeenCalledWith("Shift plan confirmed", "success");
   });

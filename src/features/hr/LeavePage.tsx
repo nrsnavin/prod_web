@@ -153,8 +153,8 @@ export function LeavePage() {
                 <Button size="sm" onClick={() => setDecision({ id: l.id, name, action: "approve" })}>
                   <Check className="h-4 w-4" /> Approve
                 </Button>
-                <Button size="sm" variant="danger" onClick={() => setDecision({ id: l.id, name, action: "reject" })}>
-                  <X className="h-4 w-4" /> Reject
+                <Button size="sm" variant="secondary" onClick={() => setDecision({ id: l.id, name, action: "reject" })}>
+                  <X className="h-4 w-4" /> Reject…
                 </Button>
               </LeaveCard>
             );

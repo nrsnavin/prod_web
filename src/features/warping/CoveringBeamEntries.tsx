@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Printer, ScanText, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -111,15 +112,20 @@ export function CoveringBeamEntries({ covering, openSheet = false }: { covering:
                   </div>
                 </div>
                 {editable && (
-                  <button
-                    type="button"
-                    onClick={() => remove(e)}
-                    disabled={deleteBeam.isPending}
-                    className="p-1 rounded text-ink-400 hover:text-status-danger disabled:opacity-40"
+                  // Removing a beam takes its weight off the covering's
+                  // total, so it asks in place before it goes.
+                  <InlineConfirm
                     aria-label={`Remove beam ${e.beamNo}`}
+                    title={`Remove beam ${e.beamNo}`}
+                    question={`Remove beam ${e.beamNo}, ${fmtKg(e.weight)} kg?`}
+                    confirmLabel={`Remove beam ${e.beamNo}`}
+                    danger
+                    disabled={deleteBeam.isPending}
+                    className="text-ink-400 hover:text-status-danger"
+                    onConfirm={() => remove(e)}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </InlineConfirm>
                 )}
               </li>
             );

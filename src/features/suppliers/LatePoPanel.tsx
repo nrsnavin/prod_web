@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, MessageCircle, Send } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
+import { ReviewDialog } from "@/components/ui/ReviewDialog";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { httpClient } from "@/core/http/httpClient";
@@ -41,6 +43,9 @@ export function LatePoPanel() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [open, setOpen] = useState<string | null>(null);
+  // Chasers go to suppliers on WhatsApp and can't be recalled: one asks in
+  // place, the batch shows who gets one first.
+  const [reviewDue, setReviewDue] = useState(false);
   const { data } = useQuery({ queryKey: ["po-chase"], queryFn: latePoService.list });
   const refresh = () => qc.invalidateQueries({ queryKey: ["po-chase"] });
   const send = useMutation({
@@ -73,8 +78,8 @@ export function LatePoPanel() {
               Send chasers each morning at {s.hour}:00
             </label>
           )}
-          <Button size="sm" disabled={!due} loading={sendDue.isPending} onClick={() => sendDue.mutate()}>
-            <Send className="h-4 w-4" /> Send {due} due
+          <Button size="sm" disabled={!due} loading={sendDue.isPending} onClick={() => setReviewDue(true)}>
+            <Send className="h-4 w-4" /> Send {due} due…
           </Button>
         </div>
       </div>
@@ -97,7 +102,10 @@ export function LatePoPanel() {
               <div className="flex gap-2">
                 <Button size="sm" variant="ghost" onClick={() => setOpen(open === r._id ? null : r._id)}>{open === r._id ? "Hide" : "Message"}</Button>
                 {r.waLink && <a href={r.waLink} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-ink-600 hover:bg-ink-100"><MessageCircle className="h-4 w-4" /> WhatsApp</a>}
-                <Button size="sm" variant="secondary" disabled={!r.supplier.phone || r.state === "promised"} loading={send.isPending && send.variables === r._id} onClick={() => send.mutate(r._id)}>Send chaser</Button>
+                <InlineConfirm variant="secondary" disabled={!r.supplier.phone || r.state === "promised"} loading={send.isPending && send.variables === r._id}
+                  question={`Send ${r.supplier.name} a chaser on WhatsApp?`} confirmLabel="Send chaser" onConfirm={() => send.mutate(r._id)}>
+                  Send chaser…
+                </InlineConfirm>
               </div>
             </div>
             {open === r._id && (
@@ -114,6 +122,20 @@ export function LatePoPanel() {
           </li>
         ))}
       </ul>
+      <ReviewDialog
+        open={reviewDue}
+        title={`Send ${due} chaser${due === 1 ? "" : "s"} on WhatsApp`}
+        intro="Each supplier below gets a chaser for what is still to come on their PO."
+        rows={rows.filter((r) => r.chaseDue).map((r) => ({
+          label: `PO #${r.poNo} · ${r.supplier.name}`,
+          value: `${r.daysLate} day${r.daysLate === 1 ? "" : "s"} late${r.chaseCount ? ` · chased ${r.chaseCount}×` : ""}`,
+        }))}
+        warning="A sent message can't be recalled."
+        confirmLabel={`Send ${due} chaser${due === 1 ? "" : "s"}`}
+        loading={sendDue.isPending}
+        onCancel={() => setReviewDue(false)}
+        onConfirm={() => sendDue.mutate(undefined, { onSettled: () => setReviewDue(false) })}
+      />
     </Card>
   );
 }

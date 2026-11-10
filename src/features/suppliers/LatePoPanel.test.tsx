@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -44,7 +44,23 @@ describe("LatePoPanel", () => {
     expect(await screen.findByText(/40s black 120 kg/)).toBeInTheDocument();
     expect(screen.getByText(/4 days late/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /send chaser/i }));
+    // A message to a supplier can't be recalled: one press only asks.
+    expect(post).not.toHaveBeenCalled();
+    expect(screen.getByText("Send Sri Murugan Yarns a chaser on WhatsApp?")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Send chaser" }));
     expect(post).toHaveBeenCalledWith("/supplier/po/p1/chase", {}, { timeoutMs: 75_000 }); // the chaser is drafted by the model
+  });
+
+  it("shows who the due chasers go to before sending any", async () => {
+    get.mockResolvedValue({ rows: [row()], settings: { auto: false, hour: 10, gapDays: 2, acknowledge: false } });
+    post.mockResolvedValue({ sent: [{ poNo: 501, sent: true }] });
+    renderPanel();
+    await userEvent.click(await screen.findByRole("button", { name: /send 1 due/i }));
+    expect(post).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("PO #501 · Sri Murugan Yarns");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Send 1 chaser" }));
+    expect(post).toHaveBeenCalledWith("/supplier/po/chase/send-due", {}, { timeoutMs: 75_000 });
   });
 
   it("names the customer order a promised date puts at risk, and does not chase it again", async () => {

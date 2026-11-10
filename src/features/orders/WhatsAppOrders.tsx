@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { httpClient, ApiError } from "@/core/http/httpClient";
@@ -87,10 +88,12 @@ export function WhatsAppOrders({ onOpen }: { onOpen: (r: OrderRequest) => void }
               </div>
               <div className="flex gap-1">
                 <Button size="sm" onClick={() => onOpen(r)}>Open as order{unmatched ? ` (${unmatched} to pick)` : ""}</Button>
-                <Button size="sm" variant="ghost" aria-label={`Dismiss the message from ${r.customerName}`} loading={decide.isPending}
-                  onClick={() => decide.mutate({ id: r._id, action: "dismissed" }, { onSuccess: () => toast("Dismissed", "success"), onError: (e) => toast(e instanceof ApiError ? e.message : "Could not dismiss", "error") })}>
+                {/* A dismissed message can't be brought back, so it asks in place. */}
+                <InlineConfirm aria-label={`Dismiss the message from ${r.customerName}`} title="Dismiss" loading={decide.isPending && decide.variables?.id === r._id}
+                  question="Not an order? It leaves this list for good." confirmLabel="Dismiss message"
+                  onConfirm={() => decide.mutate({ id: r._id, action: "dismissed" }, { onSuccess: () => toast("Dismissed", "success"), onError: (e) => toast(e instanceof ApiError ? e.message : "Could not dismiss", "error") })}>
                   <X className="h-4 w-4" />
-                </Button>
+                </InlineConfirm>
               </div>
             </li>
           );

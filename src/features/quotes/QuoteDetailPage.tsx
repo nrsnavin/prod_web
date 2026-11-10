@@ -56,11 +56,25 @@ export function QuoteDetailPage() {
     );
   }
 
-  const move = (status: QuoteStatus, msg: string) =>
+  // Any status can be set back on the server, and nothing else moves with
+  // it, so each is one press with an Undo rather than a question.
+  const move = (status: QuoteStatus, msg: string) => {
+    const from = quote.status;
     setStatus.mutate({ id: quote._id, status }, {
-      onSuccess: () => toast(msg, "success"),
+      onSuccess: () =>
+        toast(msg, "success", {
+          action: {
+            label: "Undo",
+            onClick: () =>
+              setStatus.mutate({ id: quote._id, status: from }, {
+                onSuccess: () => toast(`${quote.quoteNo} is back to ${from}`, "info"),
+                onError: (e) => toast(e instanceof ApiError ? e.message : "Update failed", "error"),
+              }),
+          },
+        }),
       onError: (e) => toast(e instanceof ApiError ? e.message : "Update failed", "error"),
     });
+  };
 
   const expired = new Date(quote.validTill) < new Date();
   const settled = quote.status === "accepted" || quote.status === "cancelled";

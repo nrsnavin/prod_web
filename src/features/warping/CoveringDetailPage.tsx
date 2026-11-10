@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { ApiError } from "@/core/http/httpClient";
 import { useCovering, useCoveringMutations } from "./hooks";
 import { ProgrammeChip, ElasticLines } from "./programmeShared";
@@ -21,6 +23,9 @@ export function CoveringDetailPage() {
   const { data: covering, isLoading, isError, error } = useCovering(id);
   const { start, complete, cancel } = useCoveringMutations();
   const [labelsOpen, setLabelsOpen] = useState(false);
+  // Neither completing nor cancelling can be reopened, so both ask first;
+  // cancelling also asks why, for the job's timeline.
+  const [asking, setAsking] = useState<"complete" | "cancel" | null>(null);
   const [params] = useSearchParams();
 
   if (isLoading) {
@@ -75,30 +80,13 @@ export function CoveringDetailPage() {
               </Button>
             )}
             {covering.status === "in_progress" && (
-              <Button
-                loading={complete.isPending}
-                onClick={() =>
-                  complete.mutate(
-                    { id: covering._id },
-                    { onSuccess: () => toast("Covering completed", "success"), onError }
-                  )
-                }
-              >
-                <CheckCircle2 className="h-4 w-4" /> Complete
+              <Button loading={complete.isPending} onClick={() => setAsking("complete")}>
+                <CheckCircle2 className="h-4 w-4" /> Complete…
               </Button>
             )}
             {(covering.status === "open" || covering.status === "in_progress") && (
-              <Button
-                variant="danger"
-                loading={cancel.isPending}
-                onClick={() =>
-                  cancel.mutate(
-                    { id: covering._id },
-                    { onSuccess: () => toast("Covering cancelled", "success"), onError }
-                  )
-                }
-              >
-                <XCircle className="h-4 w-4" /> Cancel
+              <Button variant="secondary" loading={cancel.isPending} onClick={() => setAsking("cancel")}>
+                <XCircle className="h-4 w-4" /> Cancel covering…
               </Button>
             )}
           </>
@@ -142,6 +130,40 @@ export function CoveringDetailPage() {
       <CoveringBeamEntries covering={covering} openSheet={params.get("sheet") === "read"} />
 
       <CoveringLabels open={labelsOpen} onClose={() => setLabelsOpen(false)} covering={covering} />
+      <ConfirmDialog
+        open={asking === "complete"}
+        title={`Complete covering for J-${covering.job?.jobOrderNo ?? ""}?`}
+        message="Covering is closed with today's date."
+        consequences={[
+          { text: "It can't be reopened, and no more beams can be entered against it.", tone: "warning" },
+          { text: "The job moves on to weaving once its warping is complete too." },
+        ]}
+        confirmLabel="Complete covering"
+        cancelLabel="Not now"
+        loading={complete.isPending}
+        onCancel={() => setAsking(null)}
+        onConfirm={() =>
+          complete.mutate(
+            { id: covering._id },
+            { onSuccess: () => { setAsking(null); toast("Covering completed", "success"); }, onError }
+          )
+        }
+      />
+      <ReasonDialog
+        open={asking === "cancel"}
+        onClose={() => setAsking(null)}
+        title={`Cancel covering for J-${covering.job?.jobOrderNo ?? ""}?`}
+        description="The job can't move on to weaving until it has a covering again. The reason goes on the job's timeline."
+        confirmLabel="Cancel covering"
+        minLength={5}
+        loading={cancel.isPending}
+        onConfirm={(reason) =>
+          cancel.mutate(
+            { id: covering._id, remarks: reason },
+            { onSuccess: () => { setAsking(null); toast("Covering cancelled", "success"); }, onError }
+          )
+        }
+      />
     </>
   );
 }

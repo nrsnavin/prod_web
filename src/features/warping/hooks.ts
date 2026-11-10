@@ -55,7 +55,10 @@ export function useWarpingMutations() {
       warpingService.complete(id, forceReason ? { forceReason } : undefined),
     onSuccess: invalidate,
   });
-  const cancel = useMutation({ mutationFn: warpingService.cancel, onSuccess: invalidate });
+  const cancel = useMutation({
+    mutationFn: ({ id, remarks }: { id: string; remarks?: string }) => warpingService.cancel(id, remarks),
+    onSuccess: invalidate,
+  });
   const createPlan = useMutation({
     mutationFn: warpingService.createPlan,
     onSuccess: invalidate,

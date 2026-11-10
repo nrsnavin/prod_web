@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { InvoiceDetailPage } from "./InvoiceDetailPage";
@@ -58,6 +58,14 @@ beforeEach(() => {
   toast.mockReset();
 });
 
+/** Register IRN now goes through a review: tick, then register. */
+async function registerThroughReview() {
+  await userEvent.click(screen.getByRole("button", { name: /register irn/i }));
+  const dialog = screen.getByRole("dialog");
+  await userEvent.click(within(dialog).getByRole("checkbox"));
+  await userEvent.click(within(dialog).getByRole("button", { name: "Register with GST portal" }));
+}
+
 describe("the invoice page", () => {
   it("shows both parties, the tax split and the totals", () => {
     open();
@@ -72,9 +80,20 @@ describe("the invoice page", () => {
     expect(screen.getByText("IRN pending")).toBeInTheDocument();
   });
 
-  it("with no GSP connected, Register IRN opens the paste dialog, and the pasted IRN is sent", async () => {
+  it("one press of Register IRN sends nothing: it opens a review of what the portal will receive", async () => {
     open();
     await userEvent.click(screen.getByRole("button", { name: /register irn/i }));
+    expect(registerMutate).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Buyer GSTIN")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Register with GST portal" })).toBeDisabled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Not now" }));
+    expect(registerMutate).not.toHaveBeenCalled();
+  });
+
+  it("with no GSP connected, Register IRN opens the paste dialog, and the pasted IRN is sent", async () => {
+    open();
+    await registerThroughReview();
     expect(registerMutate).toHaveBeenCalledWith("i1", expect.anything());
     registerMutate.mock.calls[0][1].onError(new ApiError("No e-invoice provider is connected.", 409, undefined, "EINVOICE_NOT_CONFIGURED"));
     expect(await screen.findByText("Paste the IRN for INV/2026-27/0001")).toBeInTheDocument();
@@ -87,7 +106,7 @@ describe("the invoice page", () => {
 
   it("lists what the portal would refuse when registration is refused for it", async () => {
     open();
-    await userEvent.click(screen.getByRole("button", { name: /register irn/i }));
+    await registerThroughReview();
     registerMutate.mock.calls[0][1].onError(new ApiError("not ready", 409, undefined, "EINVOICE_NOT_READY", { details: { problems: ["Sunrise Garments has no PIN code on the customer record."] } }));
     expect(await screen.findByText("Sunrise Garments has no PIN code on the customer record.")).toBeInTheDocument();
   });
@@ -103,10 +122,10 @@ describe("the invoice page", () => {
 
   it("cancelling needs a reason of 8 characters, and relays the portal note", async () => {
     open();
-    await userEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
-    const box = await screen.findByRole("textbox");
-    await userEvent.type(box, "Wrong rate agreed");
-    await userEvent.click(screen.getByRole("button", { name: /cancel invoice/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^cancel invoice…$/i }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByRole("textbox"), "Wrong rate agreed");
+    await userEvent.click(within(dialog).getByRole("button", { name: /^cancel invoice$/i }));
     expect(cancelMutate).toHaveBeenCalledWith({ id: "i1", reason: "Wrong rate agreed" }, expect.anything());
     cancelMutate.mock.calls[0][1].onSuccess({ portalNote: "Cancel it on the portal too." });
     expect(toast).toHaveBeenCalledWith("Invoice cancelled. Cancel it on the portal too.", "info");
@@ -117,6 +136,6 @@ describe("the invoice page", () => {
     open();
     expect(screen.getByText("Cancelled: Wrong rate agreed")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /register irn/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /^cancel$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^cancel invoice…$/i })).not.toBeInTheDocument();
   });
 });

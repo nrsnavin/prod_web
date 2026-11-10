@@ -11,6 +11,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
+import { ConfirmDialog, type Consequence } from "@/components/ui/ConfirmDialog";
+import { formatDate } from "@/core/format/date";
 import { ApiError } from "@/core/http/httpClient";
 import { useSuggestedPlan, useLatestPlan, useAcceptPlan } from "./hooks";
 import { AcceptedPlanPanel } from "./AcceptedPlanPanel";
@@ -177,6 +179,9 @@ export function PlanningPage() {
   // needs the original to show that an edit happened at all.
   const [edited, setEdited] = useState<MachinePlan[] | null>(null);
   const shown = edited ?? data?.machines ?? [];
+  // Accepting replaces the plan of record and, when edited, retrains the
+  // planner's weights, so it asks first.
+  const [acceptAsk, setAcceptAsk] = useState(false);
 
   // A fresh proposal invalidates any edit made against the previous one —
   // the line ids may not even exist any more.
@@ -229,6 +234,17 @@ export function PlanningPage() {
   };
 
   const obj = data?.objective;
+  const previous = latest.data?.plan;
+  const acceptConsequences: Consequence[] = obj
+    ? [
+        { text: `${obj.placed} of ${obj.lines} order lines on ${obj.machinesUsed} machines over ${horizon} days.` },
+        obj.late > 0
+          ? { text: `${obj.late} line${obj.late === 1 ? " finishes" : "s finish"} late: ${obj.totalLateDays} late-days in all.`, tone: "warning" }
+          : { text: "Every placed line meets its supply date." },
+        ...(previous ? [{ text: `It replaces the plan accepted on ${formatDate(previous.acceptedAt)}.` }] : []),
+        ...(edited ? [{ text: "The planner learns from your changes and weighs its next proposals differently." }] : []),
+      ]
+    : [];
 
   return (
     <>
@@ -359,9 +375,9 @@ export function PlanningPage() {
                 </>
               )}
               {isAdmin ? (
-                <Button onClick={() => onAccept(data)} loading={accept.isPending} disabled={obj.placed === 0}>
+                <Button onClick={() => setAcceptAsk(true)} loading={accept.isPending} disabled={obj.placed === 0}>
                   <CheckCircle2 className="h-4 w-4" />
-                  {edited ? "Accept my version" : "Accept plan"}
+                  {edited ? "Accept my version…" : "Accept plan…"}
                 </Button>
               ) : (
                 <span className="text-xs text-ink-500">An admin accepts the plan.</span>
@@ -440,6 +456,22 @@ export function PlanningPage() {
           </div>
         </>
       ) : null}
+      {data && (
+        <ConfirmDialog
+          open={acceptAsk}
+          title={edited ? "Accept your version of the plan?" : "Accept this plan?"}
+          message="It becomes the plan of record that the floor works to."
+          consequences={acceptConsequences}
+          confirmLabel={edited ? "Accept my version" : "Accept plan"}
+          cancelLabel="Not now"
+          loading={accept.isPending}
+          onCancel={() => setAcceptAsk(false)}
+          onConfirm={() => {
+            setAcceptAsk(false);
+            onAccept(data);
+          }}
+        />
+      )}
     </>
   );
 }

@@ -42,14 +42,27 @@ import { cn } from "./cn";
 // ══════════════════════════════════════════════════════════════════
 
 type ToastTone = "success" | "error" | "info";
+
+/**
+ * A button on the toast, for Undo. A change that can be reversed is
+ * made at once and offers its reversal here, instead of asking "are
+ * you sure?" first: the common path stays one click, and a slip costs
+ * one more.
+ */
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface ToastItem {
   id: number;
   tone: ToastTone;
   message: string;
+  action?: ToastAction;
 }
 
 interface ToastApi {
-  toast: (message: string, tone?: ToastTone) => void;
+  toast: (message: string, tone?: ToastTone, options?: { action?: ToastAction }) => void;
   /** Remove every toast currently on screen. Used when a view unmounts. */
   dismissAll: () => void;
 }
@@ -64,6 +77,9 @@ export function useToast(): ToastApi {
 
 /** How long a toast that is safe to miss stays on screen. */
 export const AUTO_DISMISS_MS = 3500;
+
+/** Long enough to notice a slip and reach Undo. */
+export const UNDO_MS = 8000;
 
 /** Tones that leave on their own. Anything else waits to be dismissed. */
 const AUTO_DISMISS: ToastTone[] = ["success", "info"];
@@ -94,15 +110,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toast = useCallback(
-    (message: string, tone: ToastTone = "info") => {
+    (message: string, tone: ToastTone = "info", options?: { action?: ToastAction }) => {
       const id = Date.now() + Math.random();
-      setItems((prev) => [...prev, { id, tone, message }]);
+      const action = options?.action;
+      setItems((prev) => [...prev, { id, tone, message, action }]);
 
-      // Only the tones that cost nothing to miss are put on a timer.
+      // Only the tones that cost nothing to miss are put on a timer; one
+      // carrying Undo stays long enough to reach the button.
       if (toneAutoDismisses(tone)) {
         const handle = window.setTimeout(() => {
           setItems((prev) => prev.filter((t) => t.id !== id));
-        }, AUTO_DISMISS_MS);
+        }, action ? UNDO_MS : AUTO_DISMISS_MS);
         timers.current.push(handle);
       }
     },
@@ -124,7 +142,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const errors = items.filter((t) => t.tone === "error");
   const rest = items.filter((t) => t.tone !== "error");
 
-  const card = ({ id, tone, message }: ToastItem) => {
+  const card = ({ id, tone, message, action }: ToastItem) => {
     const { className, Icon } = toneStyles[tone];
     const persistent = !toneAutoDismisses(tone);
     return (
@@ -137,6 +155,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       >
         <Icon className={cn("h-5 w-5 shrink-0", toneIconColor[tone])} />
         <span className="text-ink-900 flex-1">{message}</span>
+        {action && (
+          <button
+            type="button"
+            onClick={() => {
+              dismiss(id);
+              action.onClick();
+            }}
+            className="-my-1 shrink-0 rounded px-2 py-1 text-sm font-semibold text-brand-600 hover:bg-brand-50"
+          >
+            {action.label}
+          </button>
+        )}
         {/* Only on the ones that will not leave by themselves — a close
             button on a toast that is already going is one more thing to
             read and decide about. */}

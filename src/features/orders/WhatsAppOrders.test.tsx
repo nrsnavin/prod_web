@@ -46,6 +46,9 @@ describe("WhatsApp orders", () => {
   it("is dismissed when it was not an order", async () => {
     wrap();
     await userEvent.click(await screen.findByRole("button", { name: "Dismiss the message from Sunrise Garments" }));
+    // It can't be brought back, so one press only asks.
+    expect(post).not.toHaveBeenCalledWith("/order/requests/r1/dismissed", {});
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss message" }));
     expect(post).toHaveBeenCalledWith("/order/requests/r1/dismissed", {});
   });
 });

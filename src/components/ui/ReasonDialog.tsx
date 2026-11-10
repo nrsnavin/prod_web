@@ -10,7 +10,8 @@ export interface ReasonDialogProps {
   onConfirm: (reason: string) => void;
   title: string;
   description?: string;
-  confirmLabel?: string;
+  /** The act and its object ("Cancel bill"), never "Confirm". */
+  confirmLabel: string;
   tone?: "danger" | "default";
   loading?: boolean;
   /**
@@ -31,7 +32,7 @@ export function ReasonDialog({
   onConfirm,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel,
   tone = "danger",
   loading,
   minLength = 3,

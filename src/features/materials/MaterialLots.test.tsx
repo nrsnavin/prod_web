@@ -78,7 +78,15 @@ describe("MaterialLots", () => {
       { id: "lot1", status: "quarantined" },
       expect.anything()
     );
-    expect(toast).toHaveBeenCalledWith("Lot D-4471 held back", "success");
+    expect(toast).toHaveBeenCalledWith("Lot D-4471 held back", "success", expect.objectContaining({ action: expect.objectContaining({ label: "Undo" }) }));
+  });
+
+  it("offers Undo on a hold, which puts the lot back as it was", async () => {
+    renderLots([lot()]);
+    await userEvent.click(screen.getByRole("button", { name: /hold/i }));
+    const opts = toast.mock.calls.find((c) => c[0] === "Lot D-4471 held back")?.[2];
+    opts.action.onClick();
+    expect(statusMutate).toHaveBeenLastCalledWith({ id: "lot1", status: "open" }, expect.anything());
   });
 
   it("releases a quarantined lot instead of offering to hold it again", async () => {
