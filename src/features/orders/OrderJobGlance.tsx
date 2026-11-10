@@ -73,7 +73,7 @@ export function OrderJobGlance({ job }: { job: OrderJobRef }) {
             </p>
           ) : (
             <table className="w-full text-sm">
-              <thead className="text-xs uppercase tracking-wide text-ink-400">
+              <thead className="text-xs text-ink-500 font-medium">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Elastic</th>
                   <th className="px-3 py-2 text-right font-medium">Planned</th>

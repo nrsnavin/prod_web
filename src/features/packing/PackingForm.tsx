@@ -11,7 +11,7 @@ import { addable } from "@/features/common/quickCreateStore";
 const schema = z.object({
   job: z.string().min(1, "Select job"),
   elastic: z.string().min(1, "Select elastic"),
-  meter: z.coerce.number().positive("Meters > 0"),
+  meter: z.coerce.number().positive("Metres must be more than 0"),
   netWeight: z.coerce.number().min(0),
   tareWeight: z.coerce.number().min(0),
   grossWeight: z.coerce.number().min(0),
@@ -84,7 +84,7 @@ export function PackingForm({
         )} />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Input label="Meters *" type="number" step="0.01" error={errors.meter?.message} {...register("meter")} />
+        <Input label="Metres *" type="number" step="0.01" error={errors.meter?.message} {...register("meter")} />
         <Input label="Joints" type="number" {...register("joints")} />
       </div>
       <div className="grid grid-cols-3 gap-3">

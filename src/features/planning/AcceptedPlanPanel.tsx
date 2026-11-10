@@ -109,7 +109,7 @@ export function AcceptedPlanPanel({ plan }: { plan: AcceptedPlan }) {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[620px] text-sm">
                     <thead>
-                      <tr className="text-xs uppercase tracking-wide text-ink-400">
+                      <tr className="text-xs text-ink-500 font-medium">
                         <th className="pb-1 pr-3 text-left font-medium">#</th>
                         <th className="pb-1 pr-3 text-left font-medium">Elastic</th>
                         <th className="pb-1 pr-3 text-left font-medium">Order</th>

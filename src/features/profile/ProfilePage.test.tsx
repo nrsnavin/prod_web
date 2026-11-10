@@ -65,10 +65,10 @@ describe("ProfilePage", () => {
 
     await screen.findByText("Priya Sharma");
     // Granted (explicit or "always") — visible.
-    expect(screen.getByText("Job Orders")).toBeInTheDocument();
+    expect(screen.getByText("Job orders")).toBeInTheDocument();
     expect(screen.getByText("Dashboard")).toBeInTheDocument(); // always-on
     // Never granted here, and not admin/finance scope — must not appear.
-    expect(screen.queryByText("Purchase Orders")).not.toBeInTheDocument();
+    expect(screen.queryByText("Purchase orders")).not.toBeInTheDocument();
   });
 
   it("marks an always-on feature so it isn't mistaken for something granted specially", async () => {

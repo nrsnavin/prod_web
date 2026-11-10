@@ -39,7 +39,7 @@ function JobPackings({
 
   const columns: Column<PackingRecord>[] = [
     { key: "elastic", header: "Elastic", render: (p) => name(p.elastic) },
-    { key: "meter", header: "Meters", align: "right", render: (p) => p.meter.toLocaleString("en-IN") },
+    { key: "meter", header: "Metres", align: "right", render: (p) => p.meter.toLocaleString("en-IN") },
     { key: "net", header: "Net (kg)", align: "right", render: (p) => p.netWeight ?? "—" },
     { key: "gross", header: "Gross (kg)", align: "right", render: (p) => p.grossWeight ?? "—" },
     { key: "checked", header: "Checked by", render: (p) => name(p.checkedBy) },
@@ -148,7 +148,7 @@ function PackingEditModal({ record, onClose }: { record: PackingRecord; onClose:
 
   const save = () => {
     if (auditReason.trim().length < 3) { toast("Give a reason (min 3 chars) for the edit", "error"); return; }
-    if (!(Number(meter) > 0)) { toast("Meters must be greater than 0", "error"); return; }
+    if (!(Number(meter) > 0)) { toast("Metres must be more than 0", "error"); return; }
     update.mutate(
       { id: record._id, body: { meter: Number(meter), auditReason: auditReason.trim() } },
       {
@@ -161,7 +161,7 @@ function PackingEditModal({ record, onClose }: { record: PackingRecord; onClose:
   return (
     <FormScreen open onClose={onClose} title="Edit packing" width="max-w-md">
       <div className="space-y-4">
-        <Input label="Meters *" type="number" step="0.01" value={meter} onChange={(e) => setMeter(e.target.value)} />
+        <Input label="Metres *" type="number" step="0.01" value={meter} onChange={(e) => setMeter(e.target.value)} />
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink-600">Reason for edit *</label>
           <textarea
@@ -173,7 +173,7 @@ function PackingEditModal({ record, onClose }: { record: PackingRecord; onClose:
             className="w-full rounded-lg border border-ink-200 px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
           />
         </div>
-        <p className="text-xs text-ink-400">Adjusting meters re-derives the job's packed quantity, stock and produced counters by the difference.</p>
+        <p className="text-xs text-ink-400">Adjusting metres re-derives the job's packed quantity, stock and produced counters by the difference.</p>
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="button" loading={update.isPending} onClick={save}>Save changes</Button>

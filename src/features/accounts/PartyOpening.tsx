@@ -60,7 +60,7 @@ export function PartyOpening({ partyType, party, name }: { partyType: "customer"
       ) : (
         <table className="mt-3 w-full text-sm">
           <thead>
-            <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
+            <tr className="border-b border-ink-200 text-xs text-ink-500 font-medium">
               <th className="py-2 text-left font-medium">No.</th><th className="py-2 text-left font-medium">Balance</th><th className="py-2 text-left font-medium">Old ref</th><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-left font-medium">Due</th>
               <th className="py-2 text-right font-medium">Amount (₹)</th><th className="py-2 text-right font-medium">Still open (₹)</th><th className="py-2" />
             </tr>

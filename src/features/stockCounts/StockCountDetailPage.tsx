@@ -169,7 +169,7 @@ export function StockCountDetailPage() {
   return (
     <>
       <PageHeader
-        title={`Stock Count #${count.countNo ?? ""}`}
+        title={`Stock count #${count.countNo ?? ""}`}
         subtitle={count.label || "Untitled count"}
         actions={
           <div className="flex items-center gap-2">
@@ -249,7 +249,7 @@ export function StockCountDetailPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
+              <tr className="border-b border-ink-200 text-xs text-ink-500 font-medium">
                 <th className="py-2 text-left font-medium">Material</th>
                 <th className="py-2 text-right font-medium">System</th>
                 <th className="py-2 text-right font-medium">Counted</th>

@@ -69,7 +69,7 @@ function FactorTable({ rows }: { rows: RootCauseRow[] }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left text-xs uppercase tracking-wide text-ink-400">
+          <tr className="text-left text-xs text-ink-500 font-medium">
             <th className="pb-2 pr-4 font-medium">Value</th>
             <th className="pb-2 pr-4 font-medium">Checks</th>
             <th className="pb-2 pr-4 font-medium">Failed</th>

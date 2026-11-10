@@ -22,11 +22,11 @@ const COST_LINES = [
   { key: "material", label: "Yarn issued", hint: "At the price captured when it was issued" },
   { key: "booked", label: "Bought for this order", hint: "Dyeing, job work, transport billed to it (cost centre), net of GST claimed" },
   { key: "labour", label: "Wages", hint: "Scheduled shift hours × the operator's rate" },
-  { key: "jobWork", label: "Outsourced job-work", hint: "Vendor rate × meters returned" },
+  { key: "jobWork", label: "Outsourced job-work", hint: "Vendor rate × metres returned" },
   { key: "finishing", label: "Finishing", hint: "Rate card, or the job's own figure" },
   { key: "checking", label: "Checking", hint: "Rate card, or the job's own figure" },
   { key: "packing", label: "Packing", hint: "Rate card, or the job's own figure" },
-  { key: "overhead", label: "Overhead", hint: "Power, rent, depreciation per meter" },
+  { key: "overhead", label: "Overhead", hint: "Power, rent, depreciation per metre" },
 ] as const;
 
 // ── Selling rates ────────────────────────────────────────────────
@@ -108,7 +108,7 @@ function RevenueCard({ pnl }: { pnl: OrderPnl }) {
 
       {badRates.length > 0 && (
         <p className="mt-3 text-sm text-status-danger">
-          A rate must be between 0 and {MAX_RATE.toLocaleString("en-IN")} per meter.
+          A rate must be between 0 and {MAX_RATE.toLocaleString("en-IN")} per metre.
         </p>
       )}
 
@@ -166,7 +166,7 @@ function CostCard({ pnl }: { pnl: OrderPnl }) {
       </div>
       {pnl.totals.costPerMeter != null && (
         <div className="mt-1 flex justify-between text-sm text-ink-400">
-          <span>Per meter produced</span>
+          <span>Per metre produced</span>
           <span className="tabular-nums">{rupeePrecise(pnl.totals.costPerMeter)}</span>
         </div>
       )}
@@ -403,7 +403,7 @@ export function OrderPnlDetailPage() {
         </div>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-y border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+            <thead className="border-y border-ink-200 text-left text-xs text-ink-500 font-medium">
               <tr>
                 <th className="px-4 py-3 font-medium">Job</th>
                 <th className="px-4 py-3 font-medium">Made by</th>
@@ -438,7 +438,7 @@ export function OrderPnlDetailPage() {
           </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-y border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+              <thead className="border-y border-ink-200 text-left text-xs text-ink-500 font-medium">
                 <tr><th className="px-4 py-3 font-medium">Document</th><th className="px-4 py-3 font-medium">Party</th><th className="px-4 py-3 font-medium">What</th><th className="px-4 py-3 text-right font-medium">Amount</th></tr>
               </thead>
               <tbody className="divide-y divide-ink-100">
@@ -463,7 +463,7 @@ export function OrderPnlDetailPage() {
           </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-y border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+              <thead className="border-y border-ink-200 text-left text-xs text-ink-500 font-medium">
                 <tr>
                   <th className="px-4 py-3 font-medium">Material</th>
                   <th className="px-4 py-3 text-right font-medium">Quantity</th>

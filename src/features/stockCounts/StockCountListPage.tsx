@@ -106,7 +106,7 @@ export function StockCountListPage() {
   return (
     <>
       <PageHeader
-        title="Stock Counts"
+        title="Stock counts"
         subtitle="Count the racks, review the differences, post them together"
         actions={
           <Button onClick={() => setOpenForm(true)}>

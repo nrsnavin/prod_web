@@ -42,7 +42,7 @@ function Check({ c, isAdmin, onFix, fixing }: { c: HealthCheck; isAdmin: boolean
       {!c.ok && c.rows.length > 0 && cols.length > 0 && (
         <div className="mt-2 overflow-x-auto pl-8">
           <table className="w-full min-w-[420px] text-sm">
-            <thead><tr className="text-xs uppercase tracking-wide text-ink-400">{cols.map(([, h]) => <th key={h} className="py-1 pr-3 text-left font-medium">{h}</th>)}</tr></thead>
+            <thead><tr className="text-xs text-ink-500 font-medium">{cols.map(([, h]) => <th key={h} className="py-1 pr-3 text-left font-medium">{h}</th>)}</tr></thead>
             <tbody className="divide-y divide-ink-100">{c.rows.map((r, i) => <tr key={i}>{cols.map(([k]) => <td key={k} className="py-1 pr-3 tabular-nums">{val(r[k])}</td>)}</tr>)}</tbody>
           </table>
           {c.count > c.rows.length && <p className="mt-1 text-xs text-ink-400">and {c.count - c.rows.length} more</p>}

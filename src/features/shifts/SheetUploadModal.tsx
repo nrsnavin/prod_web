@@ -162,7 +162,7 @@ export function SheetUploadModal({
           {/* Review table */}
           <div className="max-h-[46vh] overflow-auto rounded-lg border border-ink-100">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-ink-100 text-xs uppercase text-ink-600">
+              <thead className="sticky top-0 bg-ink-100 text-xs text-ink-600 font-medium">
                 <tr>
                   <th className="p-2 text-left">✓</th>
                   <th className="p-2 text-left">Machine</th>

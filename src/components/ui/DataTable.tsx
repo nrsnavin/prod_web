@@ -555,14 +555,14 @@ function PhoneCards<T>({
   return (
     <div>
       {selection && (
-        <label className="flex items-center gap-2 border-b border-ink-100 px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-400">
+        <label className="flex items-center gap-2 border-b border-ink-100 px-4 py-2 text-sm font-medium text-ink-600">
           <SelectBox label="Select all shown" checked={selection.all} indeterminate={selection.some} onChange={selection.toggleAll} />
           Select all shown
         </label>
       )}
       {sortable.length > 0 && (
         <div className="flex items-center gap-2 border-b border-ink-100 px-4 py-2">
-          <label htmlFor={sortId} className="text-xs font-medium uppercase tracking-wide text-ink-400">
+          <label htmlFor={sortId} className="text-sm font-medium text-ink-600">
             Sort
           </label>
           <select

@@ -109,15 +109,15 @@ export const navSections: NavSection[] = [
       // profit on it are different things. Mirrors /order-pnl in
       // utils/features.js on the backend.
       { label: "Order P&L", path: "/order-pnl", icon: IndianRupee, departments: ["admin", "finance"] },
-      { label: "Audit Trail", path: "/audit", icon: Fingerprint, departments: ["admin"] },
+      { label: "Audit trail", path: "/audit", icon: Fingerprint, departments: ["admin"] },
     ],
   },
   {
     label: "Sales",
     items: [
       { label: "Orders", path: "/orders", icon: ShoppingCart, departments: ["admin", "finance"] },
-      { label: "Job Orders", path: "/jobs", icon: ClipboardList, departments: ["admin", "production", "packing"] },
-      { label: "Delivery Challans", path: "/delivery-challans", icon: Truck, departments: ["admin", "finance"] },
+      { label: "Job orders", path: "/jobs", icon: ClipboardList, departments: ["admin", "production", "packing"] },
+      { label: "Delivery challans", path: "/delivery-challans", icon: Truck, departments: ["admin", "finance"] },
       // Tax invoices raised against an order's challans. Mirrors
       // /invoices in utils/features.js.
       { label: "Invoices", path: "/invoices", icon: Receipt, departments: ["admin", "finance"] },
@@ -126,7 +126,7 @@ export const navSections: NavSection[] = [
       { label: "Accounts", path: "/accounts", icon: BookOpen, departments: ["admin", "finance"] },
       // Raised by sales, worked by production — both write to the log,
       // so both departments carry it. Mirrors /samples in utils/features.js.
-      { label: "Sample Requests", path: "/samples", icon: FlaskConical, departments: ["admin", "finance", "production"] },
+      { label: "Sample requests", path: "/samples", icon: FlaskConical, departments: ["admin", "finance", "production"] },
       // Packed jobs and finished samples, in delivery-urgency order.
       // Marketing sets the urgency, finance raises the challan, packing
       // sends it. Mirrors /dispatch in utils/features.js.
@@ -139,22 +139,22 @@ export const navSections: NavSection[] = [
       // Admin only, matching the server: every /planner route is
       // isAdmin("admin"), so offering it to production led to an empty
       // screen full of 403s.
-      { label: "Auto Planner", path: "/planner", icon: Wand2, departments: ["admin"] },
+      { label: "Auto planner", path: "/planner", icon: Wand2, departments: ["admin"] },
       { label: "Warping", path: "/warping", icon: Layers, departments: ["admin", "production"] },
       { label: "Covering", path: "/covering", icon: Disc3, departments: ["admin", "production"] },
       { label: "Packing", path: "/packing", icon: Package, departments: ["admin", "packing"] },
-      { label: "Quality Control", path: "/qc", icon: ScanLine, departments: ["admin", "packing"] },
+      { label: "Quality control", path: "/qc", icon: ScanLine, departments: ["admin", "packing"] },
       // Production is in the list because the containment half of the
       // blast-radius report — jobs still on the floor carrying the same
       // lot — is only actionable by the people who can stop them.
       { label: "Complaints", path: "/complaints", icon: PackageX, departments: ["admin", "packing", "production"] },
-      { label: "Shift Plans", path: "/shift-plans", icon: CalendarClock, departments: ["admin", "production"] },
-      { label: "Shift Verification", path: "/shift-verification", icon: ShieldCheck, departments: ["admin", "production"] },
+      { label: "Shift plans", path: "/shift-plans", icon: CalendarClock, departments: ["admin", "production"] },
+      { label: "Shift verification", path: "/shift-verification", icon: ShieldCheck, departments: ["admin", "production"] },
       // Part of verification, not a permission of its own: slips read from
       // a photo are submissions that land on Shift Verification, and the
       // server gates /api/v2/slips on the same key.
-      { label: "Production Slips", path: "/production-slips", icon: MessageSquareText, departments: ["admin", "production"], featureKey: "/shift-verification" },
-      { label: "Production View", path: "/production", icon: Factory, departments: ["admin", "production"] },
+      { label: "Production slips", path: "/production-slips", icon: MessageSquareText, departments: ["admin", "production"], featureKey: "/shift-verification" },
+      { label: "Production view", path: "/production", icon: Factory, departments: ["admin", "production"] },
       { label: "Wastage", path: "/wastage", icon: Trash2, departments: ["admin", "production"] },
     ],
   },
@@ -163,15 +163,15 @@ export const navSections: NavSection[] = [
     items: [
       { label: "Customers", path: "/customers", icon: Users, departments: ["admin", "finance"] },
       { label: "Suppliers", path: "/suppliers", icon: Building2, departments: ["admin", "finance"] },
-      { label: "Purchase Orders", path: "/purchase-orders", icon: FileText, departments: ["admin", "finance"] },
+      { label: "Purchase orders", path: "/purchase-orders", icon: FileText, departments: ["admin", "finance"] },
       { label: "Quotations", path: "/quotes", icon: FileText, departments: ["admin", "finance"] },
-      { label: "Raw Materials", path: "/materials", icon: Boxes, departments: ["admin", "finance"] },
+      { label: "Raw materials", path: "/materials", icon: Boxes, departments: ["admin", "finance"] },
       // Not a permission of its own — `featureKey` borrows Raw
       // Materials', which is also what the server gates it on. Anyone
       // who can see materials can see how they are grouped, with no
       // migration and no extra tickbox on the Users screen.
       {
-        label: "Material Groups",
+        label: "Material groups",
         path: "/materials/groups",
         icon: Layers,
         departments: ["admin", "finance"],
@@ -190,14 +190,14 @@ export const navSections: NavSection[] = [
       // Users screen saved nothing and the item stayed hidden with no
       // error to explain it.
       {
-        label: "Stock Counts",
+        label: "Stock counts",
         path: "/stock-counts",
         icon: ClipboardCheck,
         departments: ["admin", "finance"],
         featureKey: "/materials",
       },
-      { label: "Elastic Products", path: "/elastics", icon: Cable, departments: ["admin", "finance"] },
-      { label: "Elastic Groups", path: "/elastic-groups", icon: Layers, departments: ["admin"] },
+      { label: "Elastic products", path: "/elastics", icon: Cable, departments: ["admin", "finance"] },
+      { label: "Elastic groups", path: "/elastic-groups", icon: Layers, departments: ["admin"] },
       { label: "Machines", path: "/machines", icon: Cog, departments: ["admin", "production"] },
       { label: "Employees", path: "/employees", icon: UserRound, departments: ["admin", "finance"] },
     ],
@@ -217,9 +217,9 @@ export const navSections: NavSection[] = [
       { label: "Announcements", path: "/announcements", icon: Megaphone }, // all
       { label: "Feedback", path: "/feedback", icon: MessageSquareWarning }, // all
       { label: "Expense claims", path: "/claims", icon: HandCoins }, // all
-      { label: "Machine Issues", path: "/machine-issues", icon: Wrench }, // all
+      { label: "Machine issues", path: "/machine-issues", icon: Wrench }, // all
       { label: "Notifications", path: "/notification-settings", icon: BellRing, departments: ["admin"] },
-      { label: "AI Advisor", path: "/advisor", icon: Sparkles, departments: ["admin", "finance"] },
+      { label: "AI advisor", path: "/advisor", icon: Sparkles, departments: ["admin", "finance"] },
       { label: "Ask Jarvis", path: "/assistant", icon: Bot }, // all
     ],
   },
@@ -227,11 +227,11 @@ export const navSections: NavSection[] = [
     label: "Administration",
     items: [
       { label: "Users", path: "/users", icon: UserRound, departments: ["admin"] },
-      { label: "Data Import/Export", path: "/data-io", icon: Database, departments: ["admin"] },
+      { label: "Data import/export", path: "/data-io", icon: Database, departments: ["admin"] },
       // Admin-only to match the backend gate on GET /health/ai — the
       // report names the models, the prompt versions and the token
       // spend, which is operator detail rather than floor information.
-      { label: "AI Health", path: "/ai-health", icon: BrainCircuit, departments: ["admin"] },
+      { label: "AI health", path: "/ai-health", icon: BrainCircuit, departments: ["admin"] },
       // Settings is all-access: everyone can rearrange their own sidebar;
       // the document/branding tab inside is admin-gated by the backend.
       { label: "Settings", path: "/settings", icon: SlidersHorizontal },

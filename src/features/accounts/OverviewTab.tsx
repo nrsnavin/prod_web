@@ -93,7 +93,7 @@ export function OverviewTab({ inInbox = false }: { inInbox?: boolean } = {}) {
           </dl>
           <Link to="/accounts/reports" className="mt-2 inline-block text-sm text-brand-600 hover:underline">Full GST report</Link>
           <p className="mt-3 border-t border-ink-100 pt-3 text-xs text-ink-400">
-            Ask the books in plain words on <Link to="/assistant" className="text-brand-600 hover:underline">Ask Jarvis</Link> — "what does Sunrise owe us", "what did we pay Sri Yarn last quarter", "expenses by head this month".
+            Ask the books in plain words on <Link to="/assistant" className="text-brand-600 underline decoration-brand-600/40 underline-offset-2 hover:decoration-current">Ask Jarvis</Link> — "what does Sunrise owe us", "what did we pay Sri Yarn last quarter", "expenses by head this month".
           </p>
         </Card>
         <Card className="p-5">

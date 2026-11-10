@@ -75,7 +75,7 @@ export function MyElasticPage() {
               <h2 className="px-5 pt-5 font-semibold">Yarns</h2>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="text-xs uppercase tracking-wide text-ink-400">
+                  <thead className="text-xs text-ink-500 font-medium">
                     <tr>
                       <th className="px-5 py-2 text-left font-semibold">Part</th>
                       <th className="px-3 py-2 text-left font-semibold">Material</th>

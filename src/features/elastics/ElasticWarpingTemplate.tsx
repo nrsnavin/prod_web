@@ -107,7 +107,7 @@ export function ElasticWarpingTemplate({ elastic }: { elastic: Elastic }) {
                 </div>
                 <TableScroll>
                   <table className="w-full text-sm">
-                    <thead className="text-xs uppercase tracking-wide text-ink-400">
+                    <thead className="text-xs text-ink-500 font-medium">
                       <tr>
                         <th className="px-3 py-1.5 text-left font-medium">Warp yarn</th>
                         <th className="px-3 py-1.5 text-right font-medium">Ends</th>

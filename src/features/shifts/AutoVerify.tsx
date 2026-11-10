@@ -227,7 +227,7 @@ export function AutoVerifiedList() {
       <p className="text-xs text-ink-400">Each with what it was checked against. Open one from the shift plan to correct it, as with any verified entry.</p>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-1.5 text-left font-medium">Shift</th><th className="py-1.5 text-left font-medium">Loom</th><th className="py-1.5 text-left font-medium">Operator</th><th className="py-1.5 text-right font-medium">Run time</th><th className="py-1.5 text-right font-medium">Entered / head</th><th className="py-1.5 text-right font-medium">Expected</th></tr></thead>
+          <thead><tr className="border-b border-ink-200 text-xs text-ink-500 font-medium"><th className="py-1.5 text-left font-medium">Shift</th><th className="py-1.5 text-left font-medium">Loom</th><th className="py-1.5 text-left font-medium">Operator</th><th className="py-1.5 text-right font-medium">Run time</th><th className="py-1.5 text-right font-medium">Entered / head</th><th className="py-1.5 text-right font-medium">Expected</th></tr></thead>
           <tbody className="divide-y divide-ink-100">
             {data.map((r) => (
               <tr key={r._id}>

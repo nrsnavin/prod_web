@@ -41,7 +41,7 @@ function Lines({ lines, supplyType }: { lines?: TaxLine[]; supplyType: SupplyTyp
   return (
     <TableScroll>
       <table className="mt-4 w-full text-sm">
-        <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Description</th><th className="py-2 text-left font-medium">HSN</th><th className="py-2 text-right font-medium">Qty</th><th className="py-2 text-right font-medium">Rate</th><th className="py-2 text-right font-medium">Taxable</th><th className="py-2 text-right font-medium">GST</th><th className="py-2 text-right font-medium">{inter ? "IGST" : "CGST + SGST"}</th><th className="py-2 text-right font-medium">Amount</th></tr></thead>
+        <thead><tr className="border-b border-ink-200 text-xs text-ink-500 font-medium"><th className="py-2 text-left font-medium">Description</th><th className="py-2 text-left font-medium">HSN</th><th className="py-2 text-right font-medium">Qty</th><th className="py-2 text-right font-medium">Rate</th><th className="py-2 text-right font-medium">Taxable</th><th className="py-2 text-right font-medium">GST</th><th className="py-2 text-right font-medium">{inter ? "IGST" : "CGST + SGST"}</th><th className="py-2 text-right font-medium">Amount</th></tr></thead>
         <tbody className="divide-y divide-ink-100">
           {lines.map((l, i) => <tr key={i}><td className="py-2">{l.description}</td><td className="py-2">{l.hsn || "—"}</td><td className="py-2 text-right tabular-nums">{qty(l.quantity)} {l.unit}</td><td className="py-2 text-right tabular-nums">{money(l.rate)}</td><td className="py-2 text-right tabular-nums">{money(l.taxable)}</td><td className="py-2 text-right">{l.gstPercent}%</td><td className="py-2 text-right tabular-nums">{money(inter ? l.igst : l.cgst + l.sgst)}</td><td className="py-2 text-right tabular-nums font-medium">{money(l.amount)}</td></tr>)}
         </tbody>
@@ -335,7 +335,7 @@ export function PaymentDetailPage() {
         ]} />
         {p.allocations.length > 0 && (
           <table className="mt-4 w-full text-sm">
-            <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Settles</th><th className="py-2 text-right font-medium">Gross</th><th className="py-2 text-right font-medium">TDS</th><th className="py-2 text-right font-medium">Paid</th></tr></thead>
+            <thead><tr className="border-b border-ink-200 text-xs text-ink-500 font-medium"><th className="py-2 text-left font-medium">Settles</th><th className="py-2 text-right font-medium">Gross</th><th className="py-2 text-right font-medium">TDS</th><th className="py-2 text-right font-medium">Paid</th></tr></thead>
             <tbody className="divide-y divide-ink-100">{p.allocations.map((a) => <tr key={a.doc}><td className="py-2"><Link to={docPath(a.docType, a.doc)} className="text-brand-600 hover:underline">{a.docNo}</Link>{a.appliedAt && <span className="text-xs text-ink-400"> · applied {formatDate(a.appliedAt)}</span>}</td><td className="py-2 text-right tabular-nums">{money(a.amount)}</td><td className="py-2 text-right tabular-nums">{a.tds ? money(a.tds) : "—"}</td><td className="py-2 text-right tabular-nums font-medium">{money(a.amount - a.tds)}</td></tr>)}</tbody>
           </table>
         )}

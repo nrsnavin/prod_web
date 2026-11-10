@@ -59,7 +59,7 @@ function ShiftCard({
               <p className="text-2xl font-bold tabular-nums">
                 {(summary!.production ?? 0).toLocaleString("en-IN")}
               </p>
-              <p className="text-xs text-ink-400">meters</p>
+              <p className="text-xs text-ink-400">metres</p>
             </div>
             <div>
               <p className="text-2xl font-bold tabular-nums">{summary!.machinesRunning ?? 0}</p>

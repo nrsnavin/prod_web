@@ -126,7 +126,7 @@ function QcForm({ job, onClose }: { job: JobDetail; onClose: () => void }) {
         {anyFail && (
           <div className="grid grid-cols-2 gap-3">
             <Input label="Defect code" placeholder="e.g. WIDTH-OOS" value={defectCode} onChange={(e) => setDefectCode(e.target.value)} />
-            <Input label="Rejected meters" type="number" value={rejected} onChange={(e) => setRejected(e.target.value)} />
+            <Input label="Rejected metres" type="number" value={rejected} onChange={(e) => setRejected(e.target.value)} />
           </div>
         )}
         <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />

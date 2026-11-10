@@ -94,7 +94,7 @@ export function ElasticCostSheet({ elasticId }: { elasticId: string }) {
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[34rem] text-sm">
             <thead>
-              <tr className="border-y border-ink-100 text-left text-xs uppercase tracking-wide text-ink-400">
+              <tr className="border-y border-ink-100 text-left text-xs text-ink-500 font-medium">
                 <th className="px-5 py-2 font-medium">Material</th>
                 <th className="px-3 py-2 text-right font-medium">g / m</th>
                 <th className="px-3 py-2 text-right font-medium">Price / kg</th>

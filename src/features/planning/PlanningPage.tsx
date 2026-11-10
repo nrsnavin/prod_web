@@ -249,7 +249,7 @@ export function PlanningPage() {
   return (
     <>
       <PageHeader
-        title="Auto Planner"
+        title="Auto planner"
         subtitle="AI-proposed machine schedule over your Bayesian production rates. Review, then accept."
         actions={
           <Button variant="secondary" onClick={() => refetch()} loading={isFetching}>

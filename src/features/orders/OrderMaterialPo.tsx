@@ -162,7 +162,7 @@ export function OrderMaterialPo({ orderId }: { orderId: string }) {
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-ink-100/40 text-xs uppercase tracking-wide text-ink-600">
+              <thead className="bg-ink-100/40 text-xs text-ink-600 font-medium">
                 <tr>
                   <th className="px-5 py-2 text-left font-semibold">Material</th>
                   <th className="px-3 py-2 text-left font-semibold">Supplier</th>

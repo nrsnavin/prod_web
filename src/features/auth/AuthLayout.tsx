@@ -3,36 +3,26 @@ import { BrandMark } from "@/components/layout/BrandMark";
 import { Card } from "@/components/ui/Card";
 import { config } from "@/app/config";
 
-// Shared split-screen chrome for the unauthenticated pages (login,
-// forgot-password, reset-password) so they stay visually identical.
+// Shared chrome for the unauthenticated pages (login, forgot-password,
+// reset-password) so they stay visually identical.
+//
+// One calm column: the red J (the one place the brand colour lives), the
+// form, and a line on what the app is. It used to be half a screen of
+// solid colour beside the form, louder than anything inside the app.
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      {/* Brand panel */}
-      <div className="hidden lg:flex flex-col justify-between bg-accent text-white p-12">
-        <div className="flex items-center gap-2.5">
-          {/* Sits on the always-red brand panel, so it is a white scrim in
-              both themes rather than the themeable surface token. */}
-          <span className="h-10 w-10 rounded-xl bg-white/15 grid place-items-center">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4 py-10">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 flex items-center justify-center gap-2.5">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-logo text-white">
             <BrandMark className="h-7 w-7" />
           </span>
-          <span className="text-xl font-bold tracking-tight">{config.appName}</span>
+          <span className="text-xl font-bold tracking-tight text-ink-900">{config.appName}</span>
         </div>
-        <div>
-          <h1 className="text-4xl font-bold leading-tight max-w-md">
-            Run your elastic factory from one screen.
-          </h1>
-          <p className="mt-4 text-white/80 max-w-md">
-            Orders, production, machines, people and payroll — everything the
-            mobile app does, now on the big screen.
-          </p>
-        </div>
-        <p className="text-sm text-white/60">© {new Date().getFullYear()} — Internal ERP</p>
-      </div>
-
-      {/* Form panel */}
-      <div className="flex items-center justify-center p-6 bg-canvas">
-        <Card className="w-full max-w-sm p-8">{children}</Card>
+        <Card className="p-8">{children}</Card>
+        <p className="mt-6 text-center text-xs text-ink-500">
+          Orders, production, machines, people and payroll, in one place.
+        </p>
       </div>
     </div>
   );

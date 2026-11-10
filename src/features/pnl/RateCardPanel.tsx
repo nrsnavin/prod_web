@@ -58,7 +58,7 @@ export function RateCardPanel({ bare = false }: { bare?: boolean } = {}) {
             </h2>
           )}
           <p className="mt-0.5 text-sm text-ink-400">
-            Charged per meter produced. A job that actually cost something else
+            Charged per metre produced. A job that actually cost something else
             carries its own figure, which wins over these.
           </p>
         </div>

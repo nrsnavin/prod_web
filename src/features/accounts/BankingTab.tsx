@@ -152,7 +152,7 @@ function ChequesInHand({ cheques, loading, onDeposit }: { cheques: ChequeInHand[
       ) : (
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
-            <thead><tr className="border-b border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+            <thead><tr className="border-b border-ink-200 text-left text-xs text-ink-500 font-medium">
               <th className="py-2 pr-2" /><th className="py-2 pr-2 font-medium">Cheque</th><th className="py-2 pr-2 font-medium">From</th><th className="py-2 pr-2 font-medium">Drawn on</th><th className="py-2 pr-2 font-medium">Dated</th><th className="py-2 text-right font-medium">Amount (₹)</th>
             </tr></thead>
             <tbody className="divide-y divide-ink-100">

@@ -50,7 +50,7 @@ function Delta({ value, pct, invert }: { value: number; pct?: number | null; inv
 
 const columns: Column<ProductionRow>[] = [
   { key: "label", header: "", render: (r) => <span className="font-medium">{r.label}</span> },
-  { key: "meters", header: "Meters", render: (r) => <span className="tabular-nums">{nf(r.meters)}</span> },
+  { key: "meters", header: "Metres", render: (r) => <span className="tabular-nums">{nf(r.meters)}</span> },
   { key: "shifts", header: "Shifts", render: (r) => <span className="tabular-nums">{r.shifts}</span> },
   { key: "avg", header: "Avg / shift", render: (r) => <span className="tabular-nums">{nf(r.avgPerShift)}</span> },
 ];
@@ -94,7 +94,7 @@ export function ProductionReportPage() {
     <>
       <PageHeader
         title="Production report"
-        subtitle={data ? `${data.rangeLabel} · ${nf(s?.meters)} m produced` : "Meters produced over a period"}
+        subtitle={data ? `${data.rangeLabel} · ${nf(s?.meters)} m produced` : "Metres produced over a period"}
       />
 
       <ReportFilterBar
@@ -110,7 +110,7 @@ export function ProductionReportPage() {
 
       {/* Summary tiles */}
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        <Tile label="Meters produced" value={nf(s?.meters)} sub={cmp && <Delta value={cmp.delta.meters} pct={cmp.delta.metersPct} />} />
+        <Tile label="Metres produced" value={nf(s?.meters)} sub={cmp && <Delta value={cmp.delta.meters} pct={cmp.delta.metersPct} />} />
         <Tile label="Shifts" value={nf(s?.shifts)} sub={cmp && <Delta value={cmp.delta.shifts} />} />
         <Tile label="Avg / shift" value={nf(s?.avgPerShift)} />
         <Tile label="Machine-days" value={nf(s?.machineDays)} />

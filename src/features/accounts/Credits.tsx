@@ -58,7 +58,7 @@ export function ApplyCreditDialog({ credit, partyType, party, onClose }: { credi
       ) : (
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2" /><th className="py-2 text-left font-medium">Document</th><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-right font-medium">Outstanding</th><th className="py-2 text-right font-medium">Apply</th></tr></thead>
+            <thead><tr className="border-b border-ink-200 text-xs text-ink-500 font-medium"><th className="py-2" /><th className="py-2 text-left font-medium">Document</th><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-right font-medium">Outstanding</th><th className="py-2 text-right font-medium">Apply</th></tr></thead>
             <tbody className="divide-y divide-ink-100">
               {docs.map((d) => (
                 <tr key={d.id}>

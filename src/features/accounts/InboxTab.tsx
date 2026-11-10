@@ -16,18 +16,20 @@ function Box({ icon: I, title, count, amount, to, children, empty, badge }: {
 }) {
   return (
     // min-w-0: a long line inside must not widen the grid column past the screen.
-    <Card className={`min-w-0 p-4 ${count ? "" : "opacity-70"}`}>
+    // Nothing waiting reads quieter (no figure in colour), not faded:
+    // a faded card took its text below what can be read.
+    <Card className="min-w-0 p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <Link to={to} className="flex items-center gap-2 font-semibold hover:underline"><I className="h-4 w-4 shrink-0 text-brand-600" /> {title}</Link>
           {badge}
         </div>
         <span className="shrink-0 text-right">
-          <span className={`block text-xl font-bold tabular-nums ${count ? "" : "text-ink-400"}`}>{count}</span>
+          <span className={`block text-xl font-bold tabular-nums ${count ? "" : "text-ink-500"}`}>{count}</span>
           {amount ? <span className="whitespace-nowrap text-xs tabular-nums text-ink-500">₹{money(amount)}</span> : null}
         </span>
       </div>
-      {count ? <div className="mt-2 text-sm">{children}</div> : <p className="mt-2 flex items-center gap-1 text-sm text-ink-400"><CheckCircle2 className="h-4 w-4 shrink-0" /> {empty}</p>}
+      {count ? <div className="mt-2 text-sm">{children}</div> : <p className="mt-2 flex items-center gap-1 text-sm text-ink-500"><CheckCircle2 className="h-4 w-4 shrink-0 text-status-success" /> {empty}</p>}
     </Card>
   );
 }

@@ -185,7 +185,7 @@ function Body({ data }: { data: QuoteWinLoss }) {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-ink-400">
+            <tr className="text-left text-xs text-ink-500 font-medium">
               <th className="pb-2 pr-4 font-medium">Margin</th>
               <th className="pb-2 pr-4 font-medium">Won</th>
               <th className="pb-2 pr-4 font-medium">Win rate</th>

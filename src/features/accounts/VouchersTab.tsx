@@ -144,7 +144,7 @@ function JournalsList({ open, onOpen }: { open: string | null; onOpen: (id: stri
           <div className="space-y-3 text-sm">
             <p><span className="text-ink-500">{PURPOSE_LABEL[opened.purpose] ?? opened.purpose}</span>{opened.narration ? ` · ${opened.narration}` : ""}</p>
             <table className="w-full text-sm" aria-label="Journal lines">
-              <thead><tr className="border-y border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Ledger</th><th className="py-2 text-right font-medium">Debit</th><th className="py-2 text-right font-medium">Credit</th></tr></thead>
+              <thead><tr className="border-y border-ink-200 text-xs text-ink-500 font-medium"><th className="py-2 text-left font-medium">Ledger</th><th className="py-2 text-right font-medium">Debit</th><th className="py-2 text-right font-medium">Credit</th></tr></thead>
               <tbody className="divide-y divide-ink-100">
                 {opened.lines.map((l, i) => (
                   <tr key={i}>
@@ -415,7 +415,7 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs,
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
+                  <tr className="border-b border-ink-200 text-xs text-ink-500 font-medium">
                     <th className="py-2" /><th className="py-2 text-left font-medium">Document</th><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-right font-medium">Outstanding</th>
                     <th className="py-2 text-right font-medium">Settle (gross)</th>{kind === "payment" && <th className="py-2 text-right font-medium">TDS</th>}{kind === "payment" && <th className="py-2 text-right font-medium">Pay</th>}
                   </tr>

@@ -196,7 +196,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
           </div>
           <div className="mt-3 max-h-96 overflow-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="py-2 text-left font-medium">Line</th><th className="py-2 text-left font-medium">Party</th><th className="py-2 text-left font-medium">Balance</th><th className="py-2 text-left font-medium">Ref</th><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-right font-medium">Amount</th><th className="py-2 text-left font-medium" /></tr></thead>
+              <thead><tr className="border-b border-ink-200 text-xs text-ink-500 font-medium"><th className="py-2 text-left font-medium">Line</th><th className="py-2 text-left font-medium">Party</th><th className="py-2 text-left font-medium">Balance</th><th className="py-2 text-left font-medium">Ref</th><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-right font-medium">Amount</th><th className="py-2 text-left font-medium" /></tr></thead>
               <tbody className="divide-y divide-ink-100">
                 {rows.map((r) => (
                   <tr key={r.line} className={r.problem ? "text-status-danger" : ""}>

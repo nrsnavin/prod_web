@@ -109,7 +109,7 @@ export function OrderSuggestedPlan({
               </p>
               <div className="overflow-x-auto rounded-lg border border-ink-100">
                 <table className="w-full text-sm">
-                  <thead className="bg-ink-100 text-xs uppercase text-ink-500">
+                  <thead className="bg-ink-100 text-xs text-ink-500 font-medium">
                     <tr>
                       <th className="px-3 py-2 text-left">Machines</th>
                       <th className="px-3 py-2 text-right">Working days</th>

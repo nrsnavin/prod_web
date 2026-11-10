@@ -203,7 +203,7 @@ export function StatementsTab() {
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
+                <tr className="border-b border-ink-200 text-xs text-ink-500 font-medium">
                   <th className="py-2 text-left font-medium">Party</th>
                   {ageing.buckets.map((b) => <th key={b.key} className="py-2 text-right font-medium">{b.label}</th>)}
                   <th className="py-2 text-right font-medium">Total</th>

@@ -123,7 +123,7 @@ export function ResultView({ data, loading, error }: { data?: RunResult; loading
           <thead className="sticky top-0 z-10 bg-ink-50">
             <tr>
               {columns.map((c) => (
-                <th key={c.key} scope="col" className={`whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-500 ${isNum(c.type) ? "text-right" : "text-left"}`}>
+                <th key={c.key} scope="col" className={`whitespace-nowrap px-3 py-2 text-xs font-semibold text-ink-500 ${isNum(c.type) ? "text-right" : "text-left"}`}>
                   <button type="button" className="inline-flex items-center gap-1 hover:text-ink-800" onClick={() => setSort((s) => (s?.key === c.key ? { key: c.key, dir: (s.dir * -1) as 1 | -1 } : { key: c.key, dir: isNum(c.type) ? -1 : 1 }))}>
                     {c.label}{sort?.key === c.key ? (sort.dir === 1 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : null}
                   </button>

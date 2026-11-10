@@ -44,7 +44,7 @@ export function OrderExcessPlanning({ rows }: { rows: ExcessPlanningRow[] }) {
 
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="border-y border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+          <thead className="border-y border-ink-200 text-left text-xs text-ink-500 font-medium">
             <tr>
               <th className="px-4 py-3 font-medium">Elastic</th>
               <th className="px-4 py-3 font-medium">Job</th>

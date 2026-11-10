@@ -93,7 +93,7 @@ export function LinesEditor({ lines, onChange, supplyType, showMaterial = false 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
+            <tr className="border-b border-ink-200 text-xs text-ink-500 font-medium">
               <th className="py-2 text-left font-medium">Description</th>
               <th className="py-2 text-left font-medium">HSN</th>
               <th className="py-2 text-right font-medium">Qty</th>

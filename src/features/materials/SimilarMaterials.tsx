@@ -102,7 +102,7 @@ export function MergeDialog({ group, onClose }: { group: DuplicateGroup; onClose
       <div className="space-y-3">
         <Input label="Name to keep" value={name} onChange={(e) => setName(e.target.value)} />
         <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs uppercase tracking-wide text-ink-400"><th className="py-1">Keep</th><th>Merge</th><th>Material</th><th className="text-right">Stock</th><th className="text-right">Used in</th></tr></thead>
+          <thead><tr className="text-left text-xs text-ink-500 font-medium"><th className="py-1">Keep</th><th>Merge</th><th>Material</th><th className="text-right">Stock</th><th className="text-right">Used in</th></tr></thead>
           <tbody>
             {group.members.map((m) => (
               <tr key={m._id} className="border-t border-ink-100">

@@ -32,7 +32,7 @@ export function ForecastTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm" aria-label="Cash forecast">
             <thead>
-              <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
+              <tr className="border-b border-ink-200 text-xs text-ink-500 font-medium">
                 <th className="px-4 py-2 text-left font-medium">Week of</th><th className="py-2 text-left font-medium">In and out</th>
                 <th className="py-2 text-right font-medium">In</th><th className="py-2 text-right font-medium">Out</th><th className="px-4 py-2 text-right font-medium">Cash at the end</th>
               </tr>

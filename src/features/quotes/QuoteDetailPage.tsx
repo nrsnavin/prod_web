@@ -154,7 +154,7 @@ export function QuoteDetailPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-y border-ink-100 bg-ink-50 text-xs uppercase tracking-wide text-ink-400">
+                <tr className="border-y border-ink-100 bg-ink-50 text-xs text-ink-500 font-medium">
                   <th className="px-5 py-2 text-left font-semibold">Material</th>
                   <th className="px-5 py-2 text-right font-semibold">Weight (g)</th>
                   <th className="px-5 py-2 text-right font-semibold">Rate (₹/kg)</th>

@@ -123,7 +123,7 @@ function PayslipModal({
           <TableScroll>
             <table className="mt-3 w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+                <tr className="border-b border-ink-200 text-left text-xs text-ink-500 font-medium">
                   <th className="py-2 font-medium">Description</th>
                   <th className="py-2 text-right font-medium">Amount</th>
                 </tr>
@@ -796,7 +796,7 @@ export function PayrollPage() {
       {tab === "payroll" && (
         <>
           <p className="mb-3 text-sm text-ink-500">
-            Finalised slips reach the books from <Link to={`/accounts/statutory?section=payroll&month=${year}-${String(month).padStart(2, "0")}`} className="text-brand-600 hover:underline">Accounts → Statutory → Payroll</Link>: the salary journal, the cash paid out, and PF / ESI deposits by the 15th.
+            Finalised slips reach the books from <Link to={`/accounts/statutory?section=payroll&month=${year}-${String(month).padStart(2, "0")}`} className="text-brand-600 underline decoration-brand-600/40 underline-offset-2 hover:decoration-current">Accounts → Statutory → Payroll</Link>: the salary journal, the cash paid out, and PF / ESI deposits by the 15th.
           </p>
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <div className="flex gap-1 rounded-lg bg-ink-100 p-1">

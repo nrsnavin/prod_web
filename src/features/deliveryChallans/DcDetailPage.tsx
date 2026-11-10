@@ -226,7 +226,7 @@ export function DcDetailPage() {
           <TableScroll>
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-ink-100 text-xs uppercase tracking-wide text-ink-900">
+                <tr className="bg-ink-100 text-xs text-ink-900 font-medium">
                   <th className="border border-ink-300 px-2 py-1.5 text-left font-semibold">S.No</th>
                   <th className="border border-ink-300 px-2 py-1.5 text-left font-semibold">
                     Description of Goods

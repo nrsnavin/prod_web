@@ -105,7 +105,7 @@ export function ReconcileCard() {
               <p className="font-medium">Parties whose balance differs ({differ.length})</p>
               <div className="mt-1 overflow-x-auto">
                 <table className="w-full min-w-[520px]">
-                  <thead><tr className="text-xs uppercase tracking-wide text-ink-400"><th className="py-1 text-left font-medium">Party</th><th className="py-1 text-right font-medium">Here (sent)</th><th className="py-1 text-right font-medium">Tally</th><th className="py-1 text-right font-medium">Difference</th></tr></thead>
+                  <thead><tr className="text-xs text-ink-500 font-medium"><th className="py-1 text-left font-medium">Party</th><th className="py-1 text-right font-medium">Here (sent)</th><th className="py-1 text-right font-medium">Tally</th><th className="py-1 text-right font-medium">Difference</th></tr></thead>
                   <tbody className="divide-y divide-ink-100">
                     {differ.map((p) => (
                       <tr key={p.party}><td className="py-1.5">{p.tallyName || p.name} <span className="text-xs text-ink-400">{p.partyType}</span></td><td className="py-1.5 text-right tabular-nums">{money(p.appSent)}</td><td className="py-1.5 text-right tabular-nums">{money(p.tally ?? 0)}</td><td className="py-1.5 text-right tabular-nums font-semibold text-status-danger">{money(p.difference ?? 0)}</td></tr>

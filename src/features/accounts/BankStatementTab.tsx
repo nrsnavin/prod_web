@@ -443,7 +443,7 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
           {result.continuity && <ContinuityNote c={result.continuity} />}
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-sm">
-              <thead><tr className="border-y border-ink-200 text-xs uppercase tracking-wide text-ink-400"><th className="px-5 py-2" /><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-left font-medium">Narration</th><th className="py-2 text-right font-medium">Amount</th><th className="py-2 text-left font-medium">Placed as</th></tr></thead>
+              <thead><tr className="border-y border-ink-200 text-xs text-ink-500 font-medium"><th className="px-5 py-2" /><th className="py-2 text-left font-medium">Date</th><th className="py-2 text-left font-medium">Narration</th><th className="py-2 text-right font-medium">Amount</th><th className="py-2 text-left font-medium">Placed as</th></tr></thead>
               <tbody className="divide-y divide-ink-100">
                 {result.rows.filter((r) => filter === "all" || (!posted[r.index] && needsLook(r))).map((r) => {
                   const d = decisions[r.index];

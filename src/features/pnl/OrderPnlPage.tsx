@@ -148,7 +148,7 @@ export function OrderPnlPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="border-b border-ink-200 text-left text-xs uppercase tracking-wide text-ink-400">
+                <thead className="border-b border-ink-200 text-left text-xs text-ink-500 font-medium">
                   <tr>
                     <th className="px-4 py-3 font-medium">Order</th>
                     <th className="px-4 py-3 font-medium">Customer</th>
@@ -203,7 +203,7 @@ export function OrderPnlPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <Link to={`/order-pnl/${r.id}`} className="text-ink-400 hover:text-ink-900">
+                        <Link to={`/order-pnl/${r.id}`} className="text-ink-400 hover:text-ink-900" aria-label={`P&L of order #${r.orderNo}`}>
                           <ArrowRight className="h-4 w-4" />
                         </Link>
                       </td>

@@ -88,7 +88,7 @@ function AdviceDialog({ customer, onClose, onUse }: { customer?: string; onClose
             </div>
             {p.allocations.length > 0 && (
               <table className="w-full">
-                <thead><tr className="text-xs uppercase tracking-wide text-ink-400"><th className="text-left font-medium">Invoice</th><th className="text-right font-medium">Settles</th><th className="text-right font-medium">Paid</th><th className="text-right font-medium">TDS</th><th className="text-right font-medium">Discount</th></tr></thead>
+                <thead><tr className="text-xs text-ink-500 font-medium"><th className="text-left font-medium">Invoice</th><th className="text-right font-medium">Settles</th><th className="text-right font-medium">Paid</th><th className="text-right font-medium">TDS</th><th className="text-right font-medium">Discount</th></tr></thead>
                 <tbody className="divide-y divide-ink-100">
                   {p.allocations.map((a) => (
                     <tr key={a.doc}>

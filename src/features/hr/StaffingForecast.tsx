@@ -93,7 +93,7 @@ function Body({ data }: { data: Forecast }) {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
-            <tr className="text-xs uppercase tracking-wide text-ink-400">
+            <tr className="text-xs text-ink-500 font-medium">
               <th className="pb-2 pr-3 text-left font-medium">Shift</th>
               {DAY_ORDER.map((d) => (
                 <th key={d} className="px-2 pb-2 text-center font-medium">{d}</th>

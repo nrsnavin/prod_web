@@ -101,7 +101,7 @@ export function SampleListPage() {
   return (
     <>
       <PageHeader
-        title="Sample Requests"
+        title="Sample requests"
         subtitle="One log per request — what was asked for, and everything that happened to it."
         actions={
           <Button onClick={() => setCreating(true)}>

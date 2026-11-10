@@ -105,7 +105,7 @@ export function LoomSensors() {
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
+              <tr className="border-b border-ink-200 text-xs text-ink-500 font-medium">
                 <th className="py-1.5 text-left font-medium">Loom</th>
                 <th className="py-1.5 text-left font-medium">Board</th>
                 <th className="py-1.5 text-left font-medium">Heard from</th>

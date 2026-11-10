@@ -32,16 +32,19 @@ export function EmptyState({ title, description, icon, action, compact }: EmptyS
       </div>
     );
   }
+  // Calm, not a poster: on a fresh database every list is empty, and
+  // half-screen boxes with a big icon made the whole app look broken.
+  // The icon is drawn small whatever size it was handed at.
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="text-ink-200 mb-4">
-        {icon ?? <PackageOpen className="h-12 w-12" />}
+    <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+      <div className="mb-3 text-ink-300 [&>svg]:h-8 [&>svg]:w-8" aria-hidden>
+        {icon ?? <PackageOpen />}
       </div>
-      <h3 className="text-base font-semibold text-ink-900">{title}</h3>
+      <h3 className="text-sm font-semibold text-ink-900">{title}</h3>
       {description && (
-        <p className="mt-1 text-sm text-ink-400 max-w-sm">{description}</p>
+        <p className="mt-1 max-w-sm text-sm text-ink-500">{description}</p>
       )}
-      {action && <div className="mt-4">{action}</div>}
+      {action && <div className="mt-3">{action}</div>}
     </div>
   );
 }

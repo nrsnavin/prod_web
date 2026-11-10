@@ -57,7 +57,7 @@ export function OpeningOnboardingCard() {
         <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-status-success" />
         <div className="flex-1 text-sm">
           <p className="font-semibold text-ink-900">Every opening balance is set</p>
-          <p className="text-ink-500">Each customer's and supplier's account starts from the right figure. They are listed under <Link className="text-brand-600 hover:underline" to="/accounts/opening">Accounts → Opening balances</Link>.</p>
+          <p className="text-ink-500">Each customer's and supplier's account starts from the right figure. They are listed under <Link className="text-brand-600 underline decoration-brand-600/40 underline-offset-2 hover:decoration-current" to="/accounts/opening">Accounts → Opening balances</Link>.</p>
         </div>
         <Button size="sm" variant="ghost" aria-label="Dismiss" onClick={() => setFinished(false)}><X className="h-4 w-4" /></Button>
       </Card>
@@ -198,7 +198,7 @@ function BillWise({ p, asOn, onClose }: { p: OpeningOnboardingParty; asOn: strin
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm" aria-label="Bills">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-ink-400">
+            <tr className="text-left text-xs text-ink-500 font-medium">
               <th className="pb-1 font-medium">Old bill no.</th><th className="pb-1 font-medium">Bill date</th><th className="pb-1 font-medium">Due</th><th className="pb-1 font-medium">Which way</th><th className="pb-1 text-right font-medium">Amount (₹)</th><th />
             </tr>
           </thead>

@@ -372,7 +372,7 @@ export function QcPage() {
   return (
     <>
       <PageHeader
-        title="Quality Control"
+        title="Quality control"
         subtitle="AI-assisted defect capture at the checking stage. Snap a photo, verify, save."
         actions={
           <Button onClick={() => setOpen(true)}>

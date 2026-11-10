@@ -43,7 +43,7 @@ export function ReportTable<T extends Record<string, unknown>>({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-ink-100 text-left text-xs uppercase tracking-wide text-ink-400">
+            <tr className="border-b border-ink-100 text-left text-xs text-ink-500 font-medium">
               {columns.map((c) => (
                 <th
                   key={c.key}

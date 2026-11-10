@@ -240,7 +240,7 @@ export function AiHealthPage() {
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs uppercase tracking-wide text-ink-400">
+                    <tr className="text-left text-xs text-ink-500 font-medium">
                       <th className="pb-2 pr-4 font-medium">Feature</th>
                       <th className="pb-2 pr-4 font-medium">Suggestions</th>
                       <th className="pb-2 pr-4 font-medium">Clean</th>

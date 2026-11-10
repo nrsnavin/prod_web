@@ -146,7 +146,7 @@ function BeamSections({
               {...register(`warpingPlanTemplate.beams.${beamIndex}.sections.${s}.ends`)}
             />
             <Input
-              aria-label={`Max meters for beam ${beamIndex + 1} section ${s + 1}`}
+              aria-label={`Max metres for beam ${beamIndex + 1} section ${s + 1}`}
               type="number"
               placeholder="Max m"
               {...register(`warpingPlanTemplate.beams.${beamIndex}.sections.${s}.maxMeters`)}

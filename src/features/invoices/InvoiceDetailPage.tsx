@@ -363,7 +363,7 @@ export function InvoiceDetailPage() {
         <TableScroll>
           <table className="mt-6 w-full text-sm">
             <thead>
-              <tr className="border-b border-ink-200 text-xs uppercase tracking-wide text-ink-400">
+              <tr className="border-b border-ink-200 text-xs text-ink-500 font-medium">
                 <th className="py-2 text-left font-medium">#</th>
                 <th className="py-2 text-left font-medium">Description</th>
                 <th className="py-2 text-left font-medium">HSN</th>
