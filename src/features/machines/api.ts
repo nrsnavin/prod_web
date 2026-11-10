@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import {
   Machine,
   MachineDetail,
@@ -204,7 +205,7 @@ export const machineService = {
   },
 
   async healthAdvice(id: string): Promise<{ machineID: string; aiGenerated: boolean; advice: string }> {
-    return httpClient.get(`/machine/health-advice/${id}`);
+    return httpClient.get(`/machine/health-advice/${id}`, undefined, { timeoutMs: MODEL_TIMEOUT_MS });
   },
 
   async maintenanceDue(days = 14): Promise<{

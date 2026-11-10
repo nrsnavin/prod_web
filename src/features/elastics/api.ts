@@ -229,7 +229,7 @@ export const elasticService = {
   bulkUpload(file: File): Promise<BulkUploadResult> {
     const form = new FormData();
     form.append("file", file);
-    return httpClient.post<BulkUploadResult>("/elastic/bulk/upload", form);
+    return httpClient.upload<BulkUploadResult>("/elastic/bulk/upload", form);
   },
 
   async materialsByCategory(): Promise<MaterialsByCategory> {

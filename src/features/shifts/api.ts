@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import {
   ProductionSettings, AutoVerifiedRow,
   PendingShift,
@@ -69,7 +70,7 @@ export const shiftService = {
   /** The shift-end reminder, now, for the running shift. */
   sendShiftEndNudge: async () => httpClient.post<{ success: boolean; sent: boolean; why?: string; looms?: string[]; text?: string }>("/shift/shift-end-nudge/send", {}),
   /** The handover note for the shift just ended (or one named), as it would be sent. */
-  handover: async () => httpClient.get<{ success: boolean; text: string; by: "model" | "rules" }>("/shift/handover"),
+  handover: async () => httpClient.get<{ success: boolean; text: string; by: "model" | "rules" }>("/shift/handover", undefined, { timeoutMs: MODEL_TIMEOUT_MS }),
   sendHandover: async () => httpClient.post<{ success: boolean; sent: boolean; why?: string }>("/shift/handover/send", {}),
   autoVerified: async (days = 2) => (await httpClient.get<{ success: boolean; rows: AutoVerifiedRow[] }>("/shift/auto-verified", { days })).rows,
   async pendingVerification(): Promise<{ count: number; shifts: PendingShift[] }> {

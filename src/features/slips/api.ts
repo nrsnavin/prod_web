@@ -19,7 +19,7 @@ export const slipService = {
     if (fields.caption) form.append("caption", fields.caption);
     if (fields.dateKey) form.append("dateKey", fields.dateKey);
     if (fields.shift) form.append("shift", fields.shift);
-    return (await httpClient.post<{ slip: Slip }>("/slips/upload", form)).slip;
+    return (await httpClient.upload<{ slip: Slip }>("/slips/upload", form)).slip;
   },
   async setShift(id: string, dateKey: string, shift: Shift): Promise<Slip> {
     return (await httpClient.post<{ slip: Slip }>(`/slips/${encodeURIComponent(id)}/shift`, { dateKey, shift })).slip;

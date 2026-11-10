@@ -90,7 +90,7 @@ export const sheetService = {
   async ingest(planId: string, file: File): Promise<IngestResult> {
     const form = new FormData();
     form.append("file", file);
-    return httpClient.post<IngestResult>(`/shift/${planId}/ingest-sheet`, form);
+    return httpClient.upload<IngestResult>(`/shift/${planId}/ingest-sheet`, form);
   },
 
   // Stage reviewed values into pending-verification via the existing route.

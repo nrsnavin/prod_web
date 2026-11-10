@@ -20,7 +20,7 @@ export const orderService = {
   intakePo(file: File): Promise<PoIntakeResult> {
     const form = new FormData();
     form.append("file", file);
-    return httpClient.post<PoIntakeResult>("/order/intake-po", form);
+    return httpClient.upload<PoIntakeResult>("/order/intake-po", form);
   },
 
   // Paged. The endpoint used to return every order ever placed; it now caps

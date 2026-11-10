@@ -1,17 +1,24 @@
 import axios, { AxiosError, AxiosInstance } from "axios";
 import { config } from "@/app/config";
+import { DEFAULT_TIMEOUT_MS, MODEL_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from "./timeouts";
 
 // ── DIP boundary ────────────────────────────────────────────────────────
 // Feature code depends on this interface, never on axios directly.
 // Swapping the transport (fetch, mock for tests) touches only this file.
+/** How one call differs from the ordinary. */
+export interface CallOptions {
+  /** How long to wait for the answer — see MODEL_TIMEOUT_MS. */
+  timeoutMs?: number;
+}
+
 export interface HttpClient {
-  get<T>(url: string, params?: Record<string, unknown>): Promise<T>;
+  get<T>(url: string, params?: Record<string, unknown>, options?: CallOptions): Promise<T>;
   getBlob(url: string, params?: Record<string, unknown>): Promise<Blob>;
   postBlob(url: string, body?: unknown): Promise<Blob>;
-  post<T>(url: string, body?: unknown): Promise<T>;
+  post<T>(url: string, body?: unknown, options?: CallOptions): Promise<T>;
   /** A form with files. Waits longer than an ordinary call — see UPLOAD_TIMEOUT_MS. */
   upload<T>(url: string, form: FormData): Promise<T>;
-  put<T>(url: string, body?: unknown): Promise<T>;
+  put<T>(url: string, body?: unknown, options?: CallOptions): Promise<T>;
   patch<T>(url: string, body?: unknown): Promise<T>;
   delete<T>(url: string, params?: Record<string, unknown>): Promise<T>;
 }
@@ -77,13 +84,11 @@ export function toApiError(error: unknown): ApiError {
   return new ApiError("Unexpected error", undefined, error);
 }
 
-/**
- * How long a file upload may take. Most of them are read by the model
- * on the way in (a bill, a statement, a timer photo), and the server
- * gives one such read up to 90 seconds; the ordinary 20 would give up
- * on a read that was about to succeed.
- */
-export const UPLOAD_TIMEOUT_MS = 120_000;
+// The waits themselves live in ./timeouts; re-exported for the code that
+// already takes them from here.
+export { DEFAULT_TIMEOUT_MS, MODEL_TIMEOUT_MS, UPLOAD_TIMEOUT_MS };
+
+const wait = (options?: CallOptions) => (options?.timeoutMs ? { timeout: options.timeoutMs } : {});
 
 class AxiosHttpClient implements HttpClient {
   private readonly instance: AxiosInstance;
@@ -95,7 +100,7 @@ class AxiosHttpClient implements HttpClient {
     this.instance = axios.create({
       baseURL,
       withCredentials: true,
-      timeout: 20_000,
+      timeout: DEFAULT_TIMEOUT_MS,
     });
 
     this.instance.interceptors.response.use(
@@ -109,8 +114,8 @@ class AxiosHttpClient implements HttpClient {
     );
   }
 
-  async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
-    const { data } = await this.instance.get<T>(url, { params });
+  async get<T>(url: string, params?: Record<string, unknown>, options?: CallOptions): Promise<T> {
+    const { data } = await this.instance.get<T>(url, { params, ...wait(options) });
     return data;
   }
   async getBlob(url: string, params?: Record<string, unknown>): Promise<Blob> {
@@ -121,8 +126,8 @@ class AxiosHttpClient implements HttpClient {
     const { data } = await this.instance.post(url, body, { responseType: "blob" });
     return data as Blob;
   }
-  async post<T>(url: string, body?: unknown): Promise<T> {
-    const { data } = await this.instance.post<T>(url, body);
+  async post<T>(url: string, body?: unknown, options?: CallOptions): Promise<T> {
+    const { data } = await this.instance.post<T>(url, body, wait(options));
     return data;
   }
   async upload<T>(url: string, form: FormData): Promise<T> {
@@ -130,8 +135,8 @@ class AxiosHttpClient implements HttpClient {
     const { data } = await this.instance.post<T>(url, form, { timeout: UPLOAD_TIMEOUT_MS });
     return data;
   }
-  async put<T>(url: string, body?: unknown): Promise<T> {
-    const { data } = await this.instance.put<T>(url, body);
+  async put<T>(url: string, body?: unknown, options?: CallOptions): Promise<T> {
+    const { data } = await this.instance.put<T>(url, body, wait(options));
     return data;
   }
   async patch<T>(url: string, body?: unknown): Promise<T> {

@@ -45,7 +45,7 @@ export const timerOcrService: TimerOcrService = {
     const form = new FormData();
     if (shiftId) form.append("shiftId", shiftId); // before the file, so it is read first
     form.append("photo", photo, "timer.jpg");
-    return httpClient.post<OcrResponse>("/ocr/timer", form);
+    return httpClient.upload<OcrResponse>("/ocr/timer", form);
   },
   /** The kept photo the run time was filled from; settles its reading too. Best effort. */
   used(photoId: string, runTime: string, meter?: { start: number; end: number }, counter?: number) {

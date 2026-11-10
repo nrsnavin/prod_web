@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { AxiosError } from "axios";
-import { ApiError, toApiError } from "./httpClient";
+import { ApiError, toApiError, DEFAULT_TIMEOUT_MS, MODEL_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from "./httpClient";
 
 // Build an AxiosError shaped like a real failed response so we exercise
 // the same branch the response interceptor hits in the browser.
@@ -55,5 +55,16 @@ describe("toApiError", () => {
     err.code = "ECONNABORTED";
     const mapped = toApiError(err);
     expect(mapped.message).toMatch(/timed out/i);
+  });
+});
+
+describe("how long a call waits", () => {
+  it("a call handed to the model waits past the model's own two tries; an upload longer still", () => {
+    // The server gives the model 30 s and tries twice (utils/aiGateway.js);
+    // one photo read is given 90 s.
+    expect(DEFAULT_TIMEOUT_MS).toBe(20_000);
+    expect(MODEL_TIMEOUT_MS).toBeGreaterThan(2 * 30_000);
+    expect(UPLOAD_TIMEOUT_MS).toBeGreaterThan(90_000);
+    expect(UPLOAD_TIMEOUT_MS).toBeGreaterThan(MODEL_TIMEOUT_MS);
   });
 });

@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import type {
   CollectionEntry, ScanResult, StatementPostRow, StatementResult, BankAlias,
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
@@ -154,7 +155,7 @@ export const accountsService = {
   runAutoRemind: () => httpClient.post<{ success: boolean; sent?: number; why?: string }>("/accounts/collections/auto-remind/run", {}),
   collections: (held = false) => httpClient.get<{ success: boolean; rows: CollectionEntry[]; total: number; whatsapp: boolean }>("/accounts/collections", held ? { held: "true" } : undefined),
   draftReminder: (customer: string, tone: "gentle" | "firm" = "gentle") =>
-    httpClient.post<{ success: boolean; message: string; byModel: boolean; to: string; entry: CollectionEntry }>("/accounts/collections/draft", { customer, tone }),
+    httpClient.post<{ success: boolean; message: string; byModel: boolean; to: string; entry: CollectionEntry }>("/accounts/collections/draft", { customer, tone }, { timeoutMs: MODEL_TIMEOUT_MS }),
   sendReminder: (to: string, message: string, extra: { customer?: string; tone?: string } = {}) =>
     httpClient.post<{ success: boolean; sent: boolean; dryRun?: boolean; error?: string; to: string }>("/accounts/collections/send", { to, message, ...extra }),
   logCollection: (body: { customer: string; kind: "call" | "promise" | "note"; note?: string; promiseDate?: string; promiseAmount?: number; channel?: string }) =>
@@ -176,7 +177,7 @@ export const accountsService = {
   journal: async (id: string) => (await httpClient.get<{ success: boolean; journal: Journal }>(`/accounts/journals/${id}`)).journal,
   /** Narrations for the journal being written: the house's own for the same ledgers first. */
   journalNarration: async (body: { purpose?: JournalPurpose; lines: JournalLineInput[] }) =>
-    httpClient.post<{ suggestions: { text: string; from: "past" | "model" | "rule" }[]; aiSuggestion: string | null }>("/accounts/journals/narration", body),
+    httpClient.post<{ suggestions: { text: string; from: "past" | "model" | "rule" }[]; aiSuggestion: string | null }>("/accounts/journals/narration", body, { timeoutMs: MODEL_TIMEOUT_MS }),
   createJournal: async (body: { date?: string; purpose?: JournalPurpose; narration?: string; reason: string; lines: JournalLineInput[]; requestId?: string; aiSuggestion?: string }) =>
     (await httpClient.post<{ success: boolean; journal: Journal }>("/accounts/journals", body)).journal,
   cancelJournal: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; journal: Journal }>(`/accounts/journals/${id}/cancel`, { reason })).journal,
@@ -300,7 +301,7 @@ export const accountsService = {
   pasteNoteIrn: (id: string, body: { irn: string; ackNo?: string; ackDate?: string; signedQr?: string }) =>
     httpClient.post<{ success: boolean; note: AccountNote }>(`/accounts/notes/${id}/irn`, body),
   shareDraft: (body: { kind: "payment" | "note" | "statement"; id?: string; partyType?: "customer" | "supplier"; party?: string; from?: string; to?: string }) =>
-    httpClient.post<{ success: boolean; to: string; message: string }>("/accounts/share/draft", body),
+    httpClient.post<{ success: boolean; to: string; message: string }>("/accounts/share/draft", body, { timeoutMs: MODEL_TIMEOUT_MS }),
 
   // ── Inbox and insights ──
   inbox: () => httpClient.get<Inbox & { success: boolean }>("/accounts/inbox"),

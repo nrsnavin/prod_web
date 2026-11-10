@@ -44,7 +44,7 @@ describe("LatePoPanel", () => {
     expect(await screen.findByText(/40s black 120 kg/)).toBeInTheDocument();
     expect(screen.getByText(/4 days late/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /send chaser/i }));
-    expect(post).toHaveBeenCalledWith("/supplier/po/p1/chase", {});
+    expect(post).toHaveBeenCalledWith("/supplier/po/p1/chase", {}, { timeoutMs: 75_000 }); // the chaser is drafted by the model
   });
 
   it("names the customer order a promised date puts at risk, and does not chase it again", async () => {

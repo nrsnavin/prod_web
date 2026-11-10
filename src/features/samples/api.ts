@@ -51,7 +51,7 @@ export const sampleService = {
     const form = new FormData();
     form.append("photo", file);
     form.append("caption", caption);
-    const res = await httpClient.post<{ sample: SampleDetail }>(`/sample/${id}/photo`, form);
+    const res = await httpClient.upload<{ sample: SampleDetail }>(`/sample/${id}/photo`, form);
     return res.sample;
   },
 

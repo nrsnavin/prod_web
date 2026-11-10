@@ -17,7 +17,7 @@ describe("the month review", () => {
     render(<QueryClientProvider client={new QueryClient()}><MonthReview month="2026-10" /></QueryClientProvider>);
     expect(get).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: /Write the month review/ }));
-    expect(get).toHaveBeenCalledWith("/accounts/month-review", { month: "2026-10" });
+    expect(get).toHaveBeenCalledWith("/accounts/month-review", { month: "2026-10" }, { timeoutMs: 75_000 }); // waits for the model
     expect(await screen.findByRole("note")).toHaveTextContent("Power: ₹70,000 against a usual ₹41,000.");
     expect(screen.getByText("₹1.2")).toBeInTheDocument();
     expect(screen.getByText("▲ 9.1%")).toBeInTheDocument();

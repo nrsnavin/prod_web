@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 
 // ══════════════════════════════════════════════════════════════════
 //  "Issue 20 kg 40s black to job 512" — said into the phone (the browser
@@ -51,7 +52,7 @@ export function StoresVoiceDialog({ onClose }: { onClose: () => void }) {
     if (!line.trim()) return;
     setReading(true);
     try {
-      const r = await httpClient.post<StoresDraft>("/materials/command", { text: line });
+      const r = await httpClient.post<StoresDraft>("/materials/command", { text: line }, { timeoutMs: MODEL_TIMEOUT_MS });
       setRes(r);
       setAction(r.draft.action ?? "issue");
       setMaterialId(r.draft.material?._id ?? "");

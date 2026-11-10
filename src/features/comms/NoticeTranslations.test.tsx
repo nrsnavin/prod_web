@@ -30,6 +30,6 @@ describe("NoticeTranslations", () => {
   it("translates again on asking", async () => {
     wrap(<NoticeTranslations id="a1" />);
     await userEvent.click(screen.getByRole("button", { name: /translate again/i }));
-    expect(post).toHaveBeenCalledWith("/announcement/a1/translate", {});
+    expect(post).toHaveBeenCalledWith("/announcement/a1/translate", {}, { timeoutMs: 75_000 }); // waits for the model
   });
 });

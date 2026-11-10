@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import { formatDate } from "@/core/format/date";
 
 // ══════════════════════════════════════════════════════════════════
@@ -31,8 +32,8 @@ interface ChaseSettings { auto: boolean; hour: number; gapDays: number; acknowle
 
 export const latePoService = {
   list: () => httpClient.get<{ rows: LatePo[]; settings: ChaseSettings }>("/supplier/po/chase"),
-  send: (id: string) => httpClient.post<{ sent: boolean; dryRun: boolean; error?: string }>(`/supplier/po/${id}/chase`, {}),
-  sendDue: () => httpClient.post<{ sent: { poNo: number; sent: boolean }[] }>("/supplier/po/chase/send-due", {}),
+  send: (id: string) => httpClient.post<{ sent: boolean; dryRun: boolean; error?: string }>(`/supplier/po/${id}/chase`, {}, { timeoutMs: MODEL_TIMEOUT_MS }),
+  sendDue: () => httpClient.post<{ sent: { poNo: number; sent: boolean }[] }>("/supplier/po/chase/send-due", {}, { timeoutMs: MODEL_TIMEOUT_MS }),
   settings: (body: Partial<ChaseSettings>) => httpClient.put("/supplier/po/chase/settings", body),
 };
 

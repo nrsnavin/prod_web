@@ -10,7 +10,9 @@ import { TimerPhotoReader } from "./TimerPhotoReader";
 const post = vi.fn();
 vi.mock("@/core/http/httpClient", async () => {
   const actual = await vi.importActual<typeof import("@/core/http/httpClient")>("@/core/http/httpClient");
-  return { ...actual, httpClient: { post: (...a: unknown[]) => post(...a) } };
+  // The photo goes through upload() (it waits for the read); the answers
+  // through post(). One stand-in takes both, so the calls read in order.
+  return { ...actual, httpClient: { post: (...a: unknown[]) => post(...a), upload: (...a: unknown[]) => post(...a) } };
 });
 
 beforeEach(() => {

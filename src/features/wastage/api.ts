@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import {
   JobOperator,
   WastageAnalytics,
@@ -52,7 +53,7 @@ export const wastageService = {
   },
 
   async rootCause(days = 30): Promise<WastageRootCause> {
-    return httpClient.get<WastageRootCause>("/wastage/root-cause", { days });
+    return httpClient.get<WastageRootCause>("/wastage/root-cause", { days }, { timeoutMs: MODEL_TIMEOUT_MS });
   },
 
   // requestId: see core/hooks/useRequestId; the server records each id once.

@@ -183,7 +183,7 @@ export const materialService = {
   stockTakePreview(file: File): Promise<StockTakePreview> {
     const form = new FormData();
     form.append("file", file);
-    return httpClient.post<StockTakePreview>("/materials/stock-take/preview", form);
+    return httpClient.upload<StockTakePreview>("/materials/stock-take/preview", form);
   },
   bulkArchive(ids: string[], archived: boolean) {
     return httpClient.post<BulkResult>("/materials/bulk/archive", { ids, archived });

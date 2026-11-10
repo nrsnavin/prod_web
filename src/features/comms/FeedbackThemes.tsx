@@ -4,6 +4,7 @@ import { Lightbulb } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 
 // ══════════════════════════════════════════════════════════════════
 //  What the workers keep raising: exact counts always, themes once there
@@ -20,7 +21,7 @@ export function FeedbackThemes() {
   const [days, setDays] = useState("90");
   const { data } = useQuery({
     queryKey: ["feedback", "themes", days],
-    queryFn: async () => (await httpClient.get<{ data: ThemesData }>("/feedback/themes", { days })).data,
+    queryFn: async () => (await httpClient.get<{ data: ThemesData }>("/feedback/themes", { days }, { timeoutMs: MODEL_TIMEOUT_MS })).data,
   });
   if (!data || !data.total) return null;
   const cats = Object.entries(data.byCategory).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);

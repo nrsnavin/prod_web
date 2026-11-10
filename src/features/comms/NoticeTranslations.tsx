@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 
 // ══════════════════════════════════════════════════════════════════
 //  A notice in the workers' languages: what the employee app shows in
@@ -28,7 +29,7 @@ export function NoticeTranslations({ id, translations }: { id: string; translati
     onError: (e) => toast(e instanceof Error ? e.message : "Not saved", "error"),
   });
   const again = useMutation({
-    mutationFn: () => httpClient.post<{ translated: boolean }>(`/announcement/${id}/translate`, {}),
+    mutationFn: () => httpClient.post<{ translated: boolean }>(`/announcement/${id}/translate`, {}, { timeoutMs: MODEL_TIMEOUT_MS }),
     onSuccess: (r) => { toast(r.translated ? "Translated" : "Translation is not set up on this server", r.translated ? "success" : "info"); done(); },
   });
 

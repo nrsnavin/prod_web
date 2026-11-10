@@ -106,6 +106,25 @@ describe("nothing writes an API path out by hand", () => {
     expect(found).toEqual([]);
   });
 
+  it("a form with files goes through upload(), which waits for it to be read", () => {
+    // Eight uploads were posted as ordinary calls. The base address was
+    // right, the wait was not: a photo the model takes 40 seconds over
+    // was given up on at 20, as "check your connection".
+    const found: string[] = [];
+    for (const f of files) {
+      const rel = relative(SRC, f);
+      if (EXEMPT.has(rel)) continue;
+      const src = readFileSync(f, "utf8");
+      if (!/new FormData\(/.test(src)) continue;
+      const forms = [...src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*new FormData\(/g)].map((m) => m[1]);
+      for (const { line, n } of code(f)) {
+        const m = /httpClient\.(?:post|put|patch)(?:<[^(]*>)?\(([^)]*)\)/.exec(line);
+        if (m && forms.some((name) => new RegExp(`,\\s*${name}\\s*$`).test(m[1].trim()))) found.push(`${rel}:${n}`);
+      }
+    }
+    expect(found).toEqual([]);
+  });
+
   it("the scan is really reading the app", () => {
     expect(files.length).toBeGreaterThan(300);
   });

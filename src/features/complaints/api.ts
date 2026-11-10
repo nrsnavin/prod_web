@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import type {
   ComplaintRow, ComplaintCategory, ComplaintStatus, TraceResult, ThemesReport,
 } from "./types";
@@ -53,7 +54,7 @@ export const complaintService = {
   },
 
   async replyDraft(id: string) {
-    return (await httpClient.get<{ success: boolean; data: ReplyDraft }>(`/complaint/${id}/reply-draft`)).data;
+    return (await httpClient.get<{ success: boolean; data: ReplyDraft }>(`/complaint/${id}/reply-draft`, undefined, { timeoutMs: MODEL_TIMEOUT_MS })).data;
   },
 
   replySent(id: string, body: { text: string; aiSuggestion?: string | null }) {
@@ -73,6 +74,6 @@ export const complaintService = {
   },
 
   themes(days = 365) {
-    return httpClient.get<{ success: boolean; data: ThemesReport }>("/complaint/themes", { days });
+    return httpClient.get<{ success: boolean; data: ThemesReport }>("/complaint/themes", { days }, { timeoutMs: MODEL_TIMEOUT_MS });
   },
 };

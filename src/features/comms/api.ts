@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import { config } from "@/app/config";
 import { Announcement } from "@/features/dashboard/api";
 import { uploadForm } from "@/core/http/upload";
@@ -143,7 +144,8 @@ export const advisorService = {
   briefing: (cards: unknown[]) =>
     httpClient.post<{ success: boolean; summary?: string; message?: string }>(
       "/advisor/briefing",
-      { cards }
+      { cards },
+      { timeoutMs: MODEL_TIMEOUT_MS }
     ),
 };
 

@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import { QcCreateBody, QcJob, QcRecentRecord, QcVisionResponse, RootCause } from "./types";
 
 export const qcService = {
@@ -16,7 +17,7 @@ export const qcService = {
     const form = new FormData();
     form.append("image", file);
     form.append("elasticId", elasticId);
-    return httpClient.post<QcVisionResponse>("/qc/vision-draft", form);
+    return httpClient.upload<QcVisionResponse>("/qc/vision-draft", form);
   },
 
   create(body: QcCreateBody): Promise<{ success: boolean; jobOrderNo: number }> {
@@ -26,7 +27,7 @@ export const qcService = {
   // Read-only. Narrative is opt-in so the page does not spend a model
   // call on every refresh of a report whose numbers are the product.
   rootCause(days = 90, narrative = true): Promise<RootCause> {
-    return httpClient.get<RootCause>("/qc/root-cause", { days, ...(narrative ? { narrative: 1 } : {}) });
+    return httpClient.get<RootCause>("/qc/root-cause", { days, ...(narrative ? { narrative: 1 } : {}) }, narrative ? { timeoutMs: MODEL_TIMEOUT_MS } : undefined);
   },
 
   trainingReadiness(): Promise<TrainingReadiness> {

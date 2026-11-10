@@ -1,4 +1,5 @@
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import type { EngineQuery, Period } from "@/features/reports/engine/api";
 
 export interface ChatMessage {
@@ -22,6 +23,6 @@ export interface AssistantReport {
 
 export const assistantService = {
   chat(messages: ChatMessage[]): Promise<{ success: boolean; reply: string; toolsUsed: string[]; reports?: AssistantReport[] }> {
-    return httpClient.post("/assistant/chat", { messages });
+    return httpClient.post("/assistant/chat", { messages }, { timeoutMs: MODEL_TIMEOUT_MS });
   },
 };

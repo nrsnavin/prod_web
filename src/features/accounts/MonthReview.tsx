@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { httpClient } from "@/core/http/httpClient";
+import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import { money } from "./shared";
 
 // ══════════════════════════════════════════════════════════════════
@@ -33,7 +34,7 @@ export function MonthReview({ month }: { month: string }) {
   const [asked, setAsked] = useState(false);
   const { data, isFetching } = useQuery({
     queryKey: ["accounts", "month-review", month],
-    queryFn: () => httpClient.get<MonthReviewData>("/accounts/month-review", { month }),
+    queryFn: () => httpClient.get<MonthReviewData>("/accounts/month-review", { month }, { timeoutMs: MODEL_TIMEOUT_MS }),
     enabled: asked,
     staleTime: 5 * 60_000,
   });
