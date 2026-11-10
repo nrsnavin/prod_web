@@ -101,3 +101,29 @@ describe("splitOrdered", () => {
     expect(s["Produced, not packed"]).toBe(200);
   });
 });
+
+// ── Every chart can be read as figures ─────────────────────────────
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { OrderAnalytics } from "./OrderAnalytics";
+
+describe("the elastics chart as a table", () => {
+  it("switches to a table of the same figures, with a total row", async () => {
+    render(
+      <OrderAnalytics
+        elastics={[
+          { id: "a", name: "20mm Knitted", ordered: 14000, produced: 3500, packed: 0, delivered: 0, undelivered: 14000, notAssigned: 0, pendingDelivery: 14000, pending: 0 },
+          { id: "b", name: "12mm Woven", ordered: 6000, produced: 6000, packed: 4000, delivered: 2000, undelivered: 4000, notAssigned: 0, pendingDelivery: 2000, pending: 0 },
+        ]}
+      />
+    );
+    // The key is in words, not colour alone.
+    expect(screen.getAllByText("Produced, not packed").length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: "table" }));
+    const table = screen.getByRole("table");
+    const knitted = within(table).getByText("20mm Knitted").closest("tr")!;
+    expect(knitted).toHaveTextContent("14,0003,5000010,500");
+    const all = within(table).getByText("All, in metres").closest("tr")!;
+    expect(all).toHaveTextContent("20,0009,5004,0002,00010,500");
+  });
+});
