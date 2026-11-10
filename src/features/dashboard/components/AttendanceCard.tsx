@@ -18,9 +18,12 @@ interface Segment {
 export function AttendanceCard({
   data,
   loading,
+  canOpen = () => true,
 }: {
   data?: DashboardKpis["attendanceToday"];
   loading: boolean;
+  /** Whether the person can open the attendance screen; no link otherwise. */
+  canOpen?: (path: string) => boolean;
 }) {
   if (loading || !data) {
     return (
@@ -50,14 +53,24 @@ export function AttendanceCard({
     <Card className="p-5">
       <div className="flex items-baseline justify-between">
         <h3 className="font-semibold">Attendance today</h3>
-        <Link to="/attendance" className="text-sm font-medium text-brand-600 hover:underline">
-          View all
-        </Link>
+        {canOpen("/attendance") && (
+          <Link to="/attendance" className="text-sm font-medium text-brand-600 hover:underline">
+            View all
+          </Link>
+        )}
       </div>
-      <p className="mt-1 text-sm text-ink-400">
-        <span className="text-2xl font-bold text-ink-900">{data.attendancePct}%</span>{" "}
-        effective · {data.totalMarked} of {data.totalEmployees} marked
-      </p>
+      {/* Nobody marked yet is not 0% attendance: it is a register not yet taken. */}
+      {data.totalMarked === 0 ? (
+        <p className="mt-1 text-sm text-ink-500">
+          <span className="text-2xl font-semibold text-ink-900">Not marked yet</span>
+          <span className="block">{data.totalEmployees} {data.totalEmployees === 1 ? "person" : "people"} on the register</span>
+        </p>
+      ) : (
+        <p className="mt-1 text-sm text-ink-400">
+          <span className="text-2xl font-bold text-ink-900">{data.attendancePct}%</span>{" "}
+          effective · {data.totalMarked} of {data.totalEmployees} marked
+        </p>
+      )}
 
       {/* Stacked split bar — 2px surface gaps between segments */}
       <div className="mt-4 flex h-3 w-full overflow-hidden rounded-full bg-ink-100 gap-[2px]">

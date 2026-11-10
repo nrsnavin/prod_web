@@ -8,6 +8,20 @@ export function useDashboardKpis() {
   });
 }
 
+/**
+ * The home screen's figures. Refreshed each minute: the server shares one
+ * computation per role for thirty seconds, and the forecast behind
+ * "orders at risk" doesn't move faster than that.
+ */
+export function useDashboardOverview(enabled = true) {
+  return useQuery({
+    queryKey: ["dashboard", "overview"],
+    queryFn: dashboardService.getOverview,
+    refetchInterval: 60_000,
+    enabled,
+  });
+}
+
 export function usePendingShiftCount(enabled = true) {
   return useQuery({
     queryKey: ["dashboard", "pendingShifts"],
