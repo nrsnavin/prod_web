@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UserCheck } from "lucide-react";
+import { Pencil, UserCheck } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { attendanceService, AttendanceRecord } from "./api";
 import { ShiftTimerPanel } from "./ShiftTimerPanel";
+import { CorrectMarkModal, STATUS_OPTIONS, TOO_LONG_FOR_A_SHIFT_MIN, clockTime, stampLabel } from "./CorrectMarkModal";
 import { toISODate } from "@/features/analytics/components/FilterBar";
 
 function fmtWorked(mins?: number): string {
@@ -32,9 +33,19 @@ const statusTone: Record<string, ChipTone> = {
   on_leave: "neutral",
 };
 
-const STATUS_OPTIONS = ["present", "late", "half_day", "absent", "on_leave"];
+/**
+ * The Out column. Typed times when there are any; otherwise what the
+ * timer has — and a timer that is still going says so, since a shift
+ * nobody clocked out of is the thing this column is looked at for.
+ */
+function outOf(r: AttendanceRecord) {
+  if (r.checkOut) return r.checkOut;
+  if (r.clockOutAt) return stampLabel(r.clockOutAt, r.clockInAt);
+  if (r.clockInAt) return <span className="text-status-warning">not clocked out</span>;
+  return "—";
+}
 
-const columns: Column<AttendanceRecord>[] = [
+const baseColumns: Column<AttendanceRecord>[] = [
   {
     key: "name",
     header: "Employee",
@@ -55,13 +66,20 @@ const columns: Column<AttendanceRecord>[] = [
       <StatusChip tone={statusTone[r.status] ?? "neutral"}>{r.status.replace("_", " ")}</StatusChip>
     ),
   },
-  { key: "in", header: "In", render: (r) => r.checkIn || "—" },
-  { key: "out", header: "Out", render: (r) => r.checkOut || "—" },
+  { key: "in", header: "In", render: (r) => r.checkIn || clockTime(r.clockInAt) || "—" },
+  { key: "out", header: "Out", render: outOf },
   {
     key: "worked",
     header: "Worked",
     align: "right",
-    render: (r) => <span className="tabular-nums">{fmtWorked(r.workedMinutes)}</span>,
+    render: (r) => (
+      <span
+        className={`tabular-nums ${(r.workedMinutes ?? 0) > TOO_LONG_FOR_A_SHIFT_MIN ? "text-status-warning font-medium" : ""}`}
+        title={(r.workedMinutes ?? 0) > TOO_LONG_FOR_A_SHIFT_MIN ? "Longer than a shift — check the clock-out" : undefined}
+      >
+        {fmtWorked(r.workedMinutes)}
+      </span>
+    ),
   },
   {
     key: "late",
@@ -189,11 +207,34 @@ export function AttendancePage() {
   const [date, setDate] = useState(toISODate(new Date()));
   const [shift, setShift] = useState<"all" | "DAY" | "NIGHT">("all");
   const [markOpen, setMarkOpen] = useState(false);
+  const [correcting, setCorrecting] = useState<AttendanceRecord | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["attendance", date, shift],
     queryFn: () => attendanceService.byDate(date, shift),
   });
+
+  const columns = useMemo<Column<AttendanceRecord>[]>(
+    () => [
+      ...baseColumns,
+      {
+        key: "correct",
+        header: "Correct",
+        align: "right",
+        render: (r) => (
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label={`Correct the mark for ${r.employee?.name ?? r.name ?? "this employee"}`}
+            onClick={() => setCorrecting(r)}
+          >
+            <Pencil className="h-4 w-4" /> Edit
+          </Button>
+        ),
+      },
+    ],
+    []
+  );
 
   const b = data?.breakdown ?? {};
 
@@ -264,6 +305,8 @@ export function AttendancePage() {
           emptyDescription="Pick a date or mark the unmarked employees."
         />
       </Card>
+
+      {correcting && <CorrectMarkModal record={correcting} onClose={() => setCorrecting(null)} />}
 
       {markOpen && data && (
         <MarkModal

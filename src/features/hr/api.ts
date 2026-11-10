@@ -21,6 +21,31 @@ export interface AttendanceRecord {
   leaveType?: string;
   notes?: string;
   shift?: string;
+  date?: string;
+  dateLabel?: string;
+  /** Who last marked or corrected it; "leave_approval" for a row an approval wrote. */
+  markedBy?: string;
+}
+
+/** A correction to one mark: only the fields to change (PUT /attendance/:id). */
+export interface MarkCorrection {
+  status?: string;
+  checkIn?: string;
+  checkOut?: string;
+  workedMinutes?: number;
+  lateMinutes?: number;
+  overtimeMinutes?: number;
+  leaveType?: string;
+  notes?: string;
+}
+
+export interface MarkCorrected {
+  success: boolean;
+  /** False when what was sent is how the mark already stood. */
+  changed: boolean;
+  /** The month's payslip was finalised before this: the pay on it does not change. */
+  payslipFinal: boolean;
+  data: AttendanceRecord;
 }
 
 export interface AttendanceDay {
@@ -84,6 +109,9 @@ export const attendanceService = {
       notes?: string;
     }>;
   }) => httpClient.post("/attendance/mark", body),
+  /** Put one mark right. Minutes given for a timed shift move the timer's record with them. */
+  correct: (id: string, body: MarkCorrection) =>
+    httpClient.put<MarkCorrected>(`/attendance/${id}`, body),
   // ── Live shift timer ──
   async active(date: string): Promise<AttendanceRecord[]> {
     const res = await httpClient.get<{ success: boolean; data: AttendanceRecord[] }>(
@@ -518,16 +546,35 @@ export interface BonusPreview {
 }
 
 // ── Leave ───────────────────────────────────────────────────────────────
+// As the server sends a request (api/leave.js fmtLeave): flat, with the
+// employee's name beside it. This used to describe a nested `employee`
+// and a `type`, which the server has never sent — so the page of pending
+// requests showed no names, and asked "approve the request from this
+// worker?".
 export interface LeaveRow {
-  _id?: string;
-  id?: string;
-  employee?: { _id: string; name: string; department?: string } | null;
+  id: string;
+  employeeId?: string;
+  employeeName?: string;
+  employeeDept?: string;
+  /** "YYYY-MM-DD" */
   date?: string;
-  toDate?: string;
+  dateLabel?: string;
+  shift?: "DAY" | "NIGHT" | "BOTH";
+  leaveType?: string;
   reason?: string;
-  type?: string;
-  status: string;
+  status: string; // pending | approved | rejected
+  reviewNotes?: string;
+  reviewedAt?: string | null;
   createdAt?: string;
+}
+
+export interface LeaveWithdrawn {
+  success: boolean;
+  /** Shifts by what became of them on the attendance sheet. */
+  attendance: { removed: number; unapproved: number; kept: number };
+  /** The month's payslip was finalised with this leave on it: it does not change. */
+  payslipFinal: boolean;
+  data: LeaveRow;
 }
 
 export interface LeaveCreateInput {
@@ -561,8 +608,16 @@ export const leaveService = {
     );
     return res.data;
   },
+  /** Requests by what became of them, from a day on (latest day first). */
+  async list(query: { status?: "pending" | "approved" | "rejected"; from?: string; to?: string }): Promise<LeaveRow[]> {
+    const res = await httpClient.get<{ success: boolean; data: LeaveRow[] }>("/leave/all", query);
+    return res.data;
+  },
   approve: (id: string, note?: string) => httpClient.put(`/leave/${id}/approve`, { note }),
   reject: (id: string, note?: string) => httpClient.put(`/leave/${id}/reject`, { note }),
+  /** Take an approval back; the leave comes off the attendance sheet with it. */
+  withdraw: (id: string, note?: string) =>
+    httpClient.put<LeaveWithdrawn>(`/leave/${id}/withdraw`, { note }),
   // Admin raises leave on an employee's behalf; autoApprove creates it
   // already approved (and syncs attendance).
   create: (body: LeaveCreateInput) => httpClient.post("/leave/admin-request", body),
