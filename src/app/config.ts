@@ -66,6 +66,8 @@ export const config = {
   apiBaseUrl: resolved.apiBaseUrl,
   apiSource: resolved.apiSource,
   appName: "Jarvis ERP",
+  /** Where customers sign in to see their orders (portal.html, its own build). */
+  portalUrl: (import.meta.env.VITE_PORTAL_URL as string | undefined) || "https://portal.baluelastics.com",
 } as const;
 
 /**

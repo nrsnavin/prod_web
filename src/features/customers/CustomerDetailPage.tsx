@@ -22,6 +22,7 @@ import { useTrackRecent } from "@/core/ui/uiStore";
 import { CustomerElasticGroups } from "@/features/elasticGroups/CustomerElasticGroups";
 import { CustomerOrdersCard } from "./CustomerOrdersCard";
 import { CustomerRecentCard } from "./CustomerRecentCard";
+import { PortalLoginsCard } from "./PortalLoginsCard";
 import { formatDate } from "@/core/format/date";
 
 export function CustomerDetailPage() {
@@ -148,6 +149,9 @@ export function CustomerDetailPage() {
 
       {/* The paperwork behind those orders: what went out, what was billed. */}
       <CustomerRecentCard customerId={customer._id} />
+
+      {/* Who at the customer can sign in to the customer portal. */}
+      <PortalLoginsCard customerId={customer._id} customerName={customer.name} />
 
       <CustomerElasticGroups customerId={customer._id} />
 
