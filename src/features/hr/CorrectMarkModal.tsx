@@ -263,7 +263,7 @@ export function CorrectMarkModal({ record, onClose }: { record: AttendanceRecord
         )}
         {form.status === "on_leave" && (
           <p className="text-xs text-ink-400">
-            Leave is paid only when an approved request covers the shift — its type is then the one approved.
+            Leave counts as approved only when an approved request covers the shift, and its type is then the one approved. Approved leave is unpaid, but it is not charged as an absence.
           </p>
         )}
 

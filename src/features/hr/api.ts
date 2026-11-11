@@ -301,7 +301,7 @@ export const payrollService = {
 export type LedgerKind =
   | "shift_salary" | "overtime" | "bonus" | "diwali_bonus" | "penalty"
   | "absence" | "statutory" | "advance_issued" | "advance_recovered"
-  | "payment" | "adjustment";
+  | "payment" | "adjustment" | "write_off";
 
 export interface LedgerRow {
   _id: string;
@@ -325,6 +325,8 @@ export interface EmployeeLedger {
   totals: {
     earnings: number; bonuses: number; penalties: number;
     statutory: number; advances: number; payments: number;
+    /** Deductions beyond a month's pay, written off (the slip stopped at ₹0). */
+    writtenOff?: number;
   };
 }
 

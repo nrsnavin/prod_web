@@ -177,7 +177,7 @@ const KIND_LABEL: Record<string, string> = {
   diwali_bonus: "Diwali bonus", penalty: "Penalty", absence: "Absence",
   statutory: "PF / ESI", advance_issued: "Advance paid out",
   advance_recovered: "Advance recovered", payment: "Salary paid",
-  adjustment: "Adjustment",
+  adjustment: "Adjustment", write_off: "Written off",
 };
 
 // Full money trail for one employee over a date range: every shift's pay,
@@ -217,6 +217,8 @@ function LedgerView({ empId }: { empId: string }) {
             <Stat label="PF / ESI" value={inr(t?.statutory)} />
             <Stat label="Advances (net)" value={inr(t?.advances)} />
             <Stat label="Paid out" value={inr(t?.payments)} />
+            {/* Deductions beyond a month's pay, given up: rare, so only when there are some. */}
+            {t?.writtenOff ? <Stat label="Written off" value={inr(t.writtenOff)} /> : null}
           </div>
 
           <div className="mt-3 flex flex-wrap justify-between gap-3 text-sm">
