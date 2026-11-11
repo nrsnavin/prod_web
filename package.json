@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:portal": "vite -c vite.portal.config.ts",
     "build": "tsc -b && vite build",
+    "build:portal": "tsc -b && vite build -c vite.portal.config.ts",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
