@@ -9,9 +9,25 @@ import axios, { AxiosError } from "axios";
 //  proxies /api there, so the cookie is same-origin while developing.
 // ══════════════════════════════════════════════════════════════════
 
-export const PORTAL_API =
-  (import.meta.env.VITE_PORTAL_API_BASE as string | undefined) ||
-  (import.meta.env.PROD ? "https://api.baluelastics.com/api/v3/portal" : "/api/v3/portal");
+/** Where a portal build sends requests when nothing else is configured. */
+export const DEFAULT_PORTAL_API = "https://api.baluelastics.com/api/v3/portal";
+
+/**
+ * The portal's API address. A built portal is served from its own host and
+ * the API from another, so a build gets the API host's full address; only
+ * the dev server, which forwards /api, gets a relative one.
+ */
+export function resolvePortalApi(env: { VITE_PORTAL_API_BASE?: string; PROD?: boolean }): string {
+  if (env.VITE_PORTAL_API_BASE) return env.VITE_PORTAL_API_BASE;
+  return env.PROD ? DEFAULT_PORTAL_API : "/api/v3/portal";
+}
+
+// Read as direct member accesses, so Vite replaces each one at build time
+// (see app/config.ts for why passing import.meta.env whole is not safe).
+export const PORTAL_API = resolvePortalApi({
+  VITE_PORTAL_API_BASE: import.meta.env.VITE_PORTAL_API_BASE as string | undefined,
+  PROD: import.meta.env.PROD,
+});
 
 export class PortalError extends Error {
   constructor(message: string, readonly status: number) {

@@ -7,7 +7,7 @@ import { StatTile } from "@/components/ui/StatTile";
 import { formatDate } from "@/core/format/date";
 import { rupees, rupeesPrecise } from "@/core/format/money";
 import { portal, pdfUrl, PortalError } from "../api";
-import { PageTitle, PdfLink } from "../ui";
+import { PageTitle, PdfLink, ScrollRegion } from "../ui";
 import { NotFoundPage } from "./NotFoundPage";
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -77,7 +77,7 @@ export function StatementPage() {
         {q.isLoading || !s ? (
           <div className="p-5">{q.isError ? <p className="text-sm text-ink-500">{(q.error as Error).message}</p> : <Skeleton className="h-48 w-full" />}</div>
         ) : (
-          <div className="overflow-x-auto">
+          <ScrollRegion label="Statement">
             <table className="w-full min-w-[40rem] text-sm">
               <thead>
                 <tr className="border-b border-ink-100 bg-surface-muted text-left text-xs font-medium text-ink-500">
@@ -123,7 +123,7 @@ export function StatementPage() {
                 </tr>
               </tfoot>
             </table>
-          </div>
+          </ScrollRegion>
         )}
       </Card>
       <p className="mt-3 text-xs text-ink-500">Dr means you owe the balance; Cr means it is in your favour.</p>

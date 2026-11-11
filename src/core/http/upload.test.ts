@@ -80,8 +80,12 @@ describe("nothing writes an API path out by hand", () => {
     }
   })(SRC);
 
-  // The two places that are allowed to know the address or the transport.
-  const EXEMPT = new Set(["app/config.ts", "core/http/httpClient.ts", "features/floor/floorClient.ts"]);
+  // The places allowed to know an address or the transport: the staff
+  // app's config and client, the floor's own client, and the customer
+  // portal's own client (a separate app on its own host, which builds an
+  // absolute address and keeps a relative one for its dev server only).
+  // Everything else in the portal is held to the rule like the rest.
+  const EXEMPT = new Set(["app/config.ts", "core/http/httpClient.ts", "features/floor/floorClient.ts", "portal/api.ts"]);
   const code = (file: string) => readFileSync(file, "utf8").split("\n")
     .map((line, i) => ({ line, n: i + 1 }))
     .filter(({ line }) => !/^\s*(\/\/|\*|\/\*)/.test(line));

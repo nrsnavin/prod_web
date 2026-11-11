@@ -213,7 +213,7 @@ function Shell({ children }: { children: ReactNode }) {
         <footer className="mx-auto max-w-5xl px-4 pb-8 text-xs text-ink-500 sm:px-6 print:hidden">
           Questions about an order? {company.phone && <>Call {company.phone}</>}
           {company.phone && company.email && " or "}
-          {company.email && <>write to <a className="text-brand-600 underline-offset-2 hover:underline" href={`mailto:${company.email}`}>{company.email}</a></>}.
+          {company.email && <>write to <a className="text-brand-600 underline underline-offset-2 hover:decoration-2" href={`mailto:${company.email}`}>{company.email}</a></>}.
         </footer>
       )}
     </div>

@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDate } from "@/core/format/date";
 import { portal } from "../api";
-import { BackLink, orderName, PageTitle } from "../ui";
+import { BackLink, orderName, PageTitle, ScrollRegion } from "../ui";
 import { NotFoundPage } from "./NotFoundPage";
 
 // The test certificate for what an order (or one dispatch) carried: the
@@ -58,7 +58,7 @@ export function CertificatesPage({ of }: { of: "order" | "dispatch" }) {
                   {cert.checkedBy && <span className="block">by {cert.checkedBy}</span>}
                 </p>
               </div>
-              <div className="mt-4 overflow-x-auto">
+              <ScrollRegion label={`${cert.name} test results`} className="mt-4">
                 <table className="w-full min-w-[28rem] text-sm">
                   <thead>
                     <tr className="border-y border-ink-100 bg-surface-muted text-left text-xs font-medium text-ink-500">
@@ -85,7 +85,7 @@ export function CertificatesPage({ of }: { of: "order" | "dispatch" }) {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollRegion>
             </Card>
           ))}
         </div>

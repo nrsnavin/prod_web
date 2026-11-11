@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDate } from "@/core/format/date";
 import { portal, pdfUrl, type OrderDetail, type Stage } from "../api";
-import { BackLink, Fact, m, orderName, PageTitle, PdfLink, Progress, SectionTitle, StageChip } from "../ui";
+import { BackLink, Fact, m, orderName, PageTitle, PdfLink, Progress, ScrollRegion, SectionTitle, StageChip } from "../ui";
 import { NotFoundPage } from "./NotFoundPage";
 
 const ORDER = ["received", "confirmed", "in_production", "completed"] as const;
@@ -105,7 +105,7 @@ export function OrderPage() {
             <span className="tabular-nums">{m(o.totals.toCome)} of {m(o.totals.ordered)}</span>
           </li>
         </ul>
-        <div className="hidden overflow-x-auto sm:block">
+        <ScrollRegion label="What you ordered" className="hidden sm:block">
           <table className="w-full min-w-[34rem] text-sm">
             <thead>
               <tr className="border-y border-ink-100 bg-surface-muted text-left text-xs font-medium text-ink-500">
@@ -140,7 +140,7 @@ export function OrderPage() {
               </tr>
             </tfoot>
           </table>
-        </div>
+        </ScrollRegion>
       </Card>
 
       <Card className="mt-4 p-5">

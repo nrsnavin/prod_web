@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, FileDown } from "lucide-react";
 import { StatusChip, type ChipTone } from "@/components/ui/StatusChip";
@@ -97,6 +97,40 @@ export function Progress({ done, of, label }: { done: number; of: number; label:
       className="h-1.5 w-full overflow-hidden rounded-full bg-ink-100"
     >
       <div className={cn("h-full rounded-full", pct >= 100 ? "bg-status-success" : "bg-brand-500")} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+/**
+ * A table that may scroll sideways on a narrow screen. While it does, the
+ * box takes keyboard focus and carries a name, so it can be scrolled
+ * without a mouse; while the table fits, it is a plain box and adds no tab
+ * stop.
+ */
+export function ScrollRegion({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [scrolls, setScrolls] = useState(false);
+  useLayoutEffect(() => {
+    const box = ref.current;
+    if (!box) return;
+    const check = () => setScrolls(box.scrollWidth > box.clientWidth + 1);
+    check();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(check);
+    ro.observe(box);
+    if (box.firstElementChild) ro.observe(box.firstElementChild);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-500",
+        className,
+      )}
+      {...(scrolls ? { role: "region", "aria-label": label, tabIndex: 0 } : {})}
+    >
+      {children}
     </div>
   );
 }
