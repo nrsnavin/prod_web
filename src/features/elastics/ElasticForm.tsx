@@ -182,7 +182,7 @@ export function ElasticForm({
 
       <p className="text-sm font-semibold text-ink-600 pt-1">Composition (weights in g/m)</p>
 
-      <div className="grid grid-cols-[1fr_110px] gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
         <Controller control={control} name="warpSpandex.id" render={({ field }) => (
           <Combobox
             {...addable("material")}
@@ -197,7 +197,7 @@ export function ElasticForm({
         <Input label="Weight" type="number" step="0.01" error={errors.warpSpandex?.weight?.message} {...register("warpSpandex.weight")} />
       </div>
 
-      <div className="grid grid-cols-[1fr_110px] gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
         <Controller control={control} name="spandexCovering.id" render={({ field }) => (
           <Combobox
             {...addable("material")}
@@ -212,7 +212,7 @@ export function ElasticForm({
         <Input label="Weight" type="number" step="0.01" error={errors.spandexCovering?.weight?.message} {...register("spandexCovering.weight")} />
       </div>
 
-      <div className="grid grid-cols-[1fr_110px] gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
         <Controller control={control} name="weftYarn.id" render={({ field }) => (
           <Combobox
             {...addable("material")}
@@ -231,7 +231,7 @@ export function ElasticForm({
         <p className="text-sm font-medium text-ink-600 mb-1.5">Warp yarns *</p>
         <div className="space-y-2">
           {fields.map((field, i) => (
-            <div key={field.id} className="grid grid-cols-[1fr_110px_36px] gap-2 items-start">
+            <div key={field.id} className="grid grid-cols-[minmax(0,1fr)_110px_36px] gap-2 items-start">
               <Controller control={control} name={`warpYarn.${i}.id`} render={({ field }) => (
                 <Combobox {...addable("material")} aria-label="Select warp yarn"
                   placeholder="Select warp yarn"

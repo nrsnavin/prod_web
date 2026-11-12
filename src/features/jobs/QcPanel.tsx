@@ -97,20 +97,28 @@ function QcForm({ job, onClose }: { job: JobDetail; onClose: () => void }) {
         />
         <div>
           <p className="text-sm font-medium text-ink-600 mb-1.5">Test results *</p>
-          <div className="grid grid-cols-[1fr_90px_90px_52px_32px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Parameter</span><span>Expected</span><span>Measured</span><span>Pass</span><span className="sr-only">Remove</span></div>
+          {/* A table from sm up; on a phone each test is a block: the parameter
+              across, expected, measured, pass and Remove beneath, labelled. */}
+          <div className="hidden grid-cols-[minmax(0,1fr)_90px_90px_52px_32px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400 sm:grid"><span>Parameter</span><span>Expected</span><span>Measured</span><span>Pass</span><span className="sr-only">Remove</span></div>
           <div className="space-y-2">
             {rows.map((r, i) => (
-              <div key={i} className="grid grid-cols-[1fr_90px_90px_52px_32px] gap-2 items-center">
-                <Input aria-label="Parameter (e.g. Width mm)" placeholder="Parameter (e.g. Width mm)" value={r.parameter} onChange={(e) => setRow(i, { parameter: e.target.value })} />
-                <Input aria-label="Expected" placeholder="Expected" value={r.expected} onChange={(e) => setRow(i, { expected: e.target.value })} />
-                <Input aria-label="Measured" placeholder="Measured" value={r.measured} onChange={(e) => setRow(i, { measured: e.target.value })} />
-                <label className="flex items-center gap-1 text-xs">
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] items-end gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_90px_90px_52px_32px] sm:items-center sm:rounded-none sm:border-0 sm:p-0">
+                <Input wrapperClassName="col-span-4 min-w-0 sm:col-span-1" aria-label="Parameter (e.g. Width mm)" placeholder="Parameter (e.g. Width mm)" value={r.parameter} onChange={(e) => setRow(i, { parameter: e.target.value })} />
+                <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Expected</span>
+                  <Input aria-label="Expected" value={r.expected} onChange={(e) => setRow(i, { expected: e.target.value })} />
+                </div>
+                <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Measured</span>
+                  <Input aria-label="Measured" value={r.measured} onChange={(e) => setRow(i, { measured: e.target.value })} />
+                </div>
+                <label className="flex h-10 items-center gap-1 text-xs">
                   <input type="checkbox" className="accent-brand-500" checked={r.pass} onChange={(e) => setRow(i, { pass: e.target.checked })} />
                   Pass
                 </label>
                 <button
                   onClick={() => rows.length > 1 && setRows((rs) => rs.filter((_, x) => x !== i))}
-                  className="p-1 rounded text-ink-400 hover:text-status-danger disabled:opacity-40"
+                  className="grid h-10 place-items-center rounded p-1 text-ink-400 hover:text-status-danger disabled:opacity-40"
                   disabled={rows.length <= 1}
                   aria-label="Remove row"
                 >

@@ -210,12 +210,12 @@ function NewQcModal({ onClose }: { onClose: () => void }) {
                 {overall === "pass" ? "PASS" : "FAIL"}
               </StatusChip>
             </div>
-            <div className="hidden grid-cols-[1fr_90px_1fr_70px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+            <div className="hidden grid-cols-[minmax(0,1fr)_90px_minmax(0,1fr)_70px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
               <span>Parameter</span><span>Expected</span><span>Measured</span><span className="text-center">Pass</span>
             </div>
             <div className="space-y-2">
               {results.map((r, i) => (
-                <div key={i} className="grid grid-cols-[1fr_90px_1fr_70px] items-center gap-2">
+                <div key={i} className="grid grid-cols-[minmax(0,1fr)_90px_minmax(0,1fr)_70px] items-center gap-2">
                   <span className="truncate text-sm">{r.parameter}</span>
                   <span className="text-sm text-ink-400">{r.expected || "—"}</span>
                   <Input aria-label={`Measured value for ${r.parameter}`} value={r.measured} onChange={(e) => setRow(i, { measured: e.target.value })} placeholder="value" />

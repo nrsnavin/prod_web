@@ -208,10 +208,10 @@ export function OrderForm({
 
       <div>
         <p className="text-sm font-medium text-ink-600 mb-1.5">Elastics ordered *</p>
-        <div className="grid grid-cols-[1fr_110px_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Elastic</span><span>Qty (m)</span><span className="sr-only">Remove</span></div>
+        <div className="grid grid-cols-[minmax(0,1fr)_110px_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Elastic</span><span>Qty (m)</span><span className="sr-only">Remove</span></div>
         <div className="space-y-2">
           {fields.map((field, i) => (
-            <div key={field.id} className="grid grid-cols-[1fr_110px_36px] gap-2 items-start">
+            <div key={field.id} className="grid grid-cols-[minmax(0,1fr)_110px_36px] gap-2 items-start">
               <Controller
                 control={control}
                 name={`elasticOrdered.${i}.elastic`}

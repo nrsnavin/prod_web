@@ -230,7 +230,9 @@ export function DcEditModal({
           <p className="mb-1.5 text-sm font-medium text-ink-600">
             Items * {itemsMoved && <span className="text-status-warning">· stock will move</span>}
           </p>
-          <div className="hidden grid-cols-[1fr_90px_100px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+          {/* A table from sm up; on a phone each line is a block, the elastic
+              across the top and Qty, Rate and Remove beneath it (DcForm says why). */}
+          <div className="hidden grid-cols-[minmax(0,1fr)_90px_100px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
             <span>{isElastic ? "Elastic" : "Part description"}</span>
             <span className="text-right">Qty</span>
             <span className="text-right">Rate (₹)</span>
@@ -238,7 +240,11 @@ export function DcEditModal({
           </div>
           <div className="space-y-2">
             {lines.map((l, i) => (
-              <div key={i} className="grid grid-cols-[1fr_90px_100px_32px] items-start gap-2">
+              <div
+                key={i}
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_90px_100px_32px] sm:rounded-none sm:border-0 sm:p-0"
+              >
+                <div className="col-span-3 min-w-0 sm:col-span-1">
                 {isElastic ? (
                   <AsyncCombobox
                     {...addable("elastic")}
@@ -259,27 +265,34 @@ export function DcEditModal({
                     onChange={(e) => setLine(i, { description: e.target.value })}
                   />
                 )}
-                <Input
-                  type="number"
-                  step="0.01"
-                  aria-label="Quantity"
-                  placeholder="Qty"
-                  value={l.quantity}
-                  onChange={(e) => setLine(i, { quantity: e.target.value })}
-                />
-                <Input
-                  type="number"
-                  step="0.01"
-                  aria-label="Rate in rupees (internal — not printed on the challan)"
-                  placeholder="Rate"
-                  title="Internal only — used by the Dispatch Report. Never printed on the challan."
-                  value={l.rate}
-                  onChange={(e) => setLine(i, { rate: e.target.value })}
-                />
+                </div>
+                <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Qty</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    aria-label="Quantity"
+                    placeholder="Qty"
+                    value={l.quantity}
+                    onChange={(e) => setLine(i, { quantity: e.target.value })}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Rate ₹ (internal)</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    aria-label="Rate in rupees (internal — not printed on the challan)"
+                    placeholder="Rate"
+                    title="Internal only — used by the Dispatch Report. Never printed on the challan."
+                    value={l.rate}
+                    onChange={(e) => setLine(i, { rate: e.target.value })}
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => removeLine(i)}
-                  className="grid h-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40"
+                  className="mt-5 grid h-10 w-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40 sm:mt-0 sm:w-auto"
                   disabled={lines.length <= 1}
                   aria-label="Remove line"
                 >
@@ -288,7 +301,7 @@ export function DcEditModal({
               </div>
             ))}
           </div>
-          <div className="mt-2 flex items-center justify-between">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <Button type="button" variant="ghost" size="sm" onClick={addLine}>
               <Plus className="h-4 w-4" /> Add item
             </Button>
@@ -304,7 +317,7 @@ export function DcEditModal({
           <Input label="Customer name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
           <Input label="Dispatch date" type="date" value={dispatchDate} onChange={(e) => setDispatchDate(e.target.value)} />
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Input label="Vehicle no" value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} />
           <Input label="Driver" value={driverName} onChange={(e) => setDriverName(e.target.value)} />
           <Input label="Transporter" value={transporter} onChange={(e) => setTransporter(e.target.value)} />

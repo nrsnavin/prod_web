@@ -791,7 +791,11 @@ function BeamFields({
           </button>
         )}
       </div>
-      <div className="grid grid-cols-[1fr_1fr_80px_80px_32px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Warp yarn</span><span>Dye lot</span><span>Ends</span><span>Length</span><span className="sr-only">Remove</span></div>
+      {/* A table from sm up. On a phone each section is a block: the yarn and
+          the dye lot across, ends, length and Remove beneath, each labelled;
+          beside 80 + 80 + 32 px of fixed columns the two pickers were about
+          47px each on a phone. */}
+      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1fr)_80px_80px_32px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400 sm:grid"><span>Warp yarn</span><span>Dye lot</span><span>Ends</span><span>Length</span><span className="sr-only">Remove</span></div>
       <div className="space-y-2">
         {sections.fields.map((s, si) => {
           // Lots are offered only for the yarn actually chosen on this
@@ -804,13 +808,18 @@ function BeamFields({
             .map(([id, k]) => ({ value: id, label: k.label }));
           const lotCount = (forYarn?.lots.length ?? 0) + keptLots.length;
           return (
-            <div key={s.id} className="grid grid-cols-[1fr_1fr_80px_80px_32px] gap-2 items-start">
+            <div key={s.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_80px_80px_32px] sm:rounded-none sm:border-0 sm:p-0">
+              <div className="col-span-3 min-w-0 sm:col-span-1">
+              <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Warp yarn</span>
               <Select aria-label="Warp yarn"
                 placeholder="Warp yarn"
                 options={yarnOptions}
                 error={errors.beams?.[index]?.sections?.[si]?.warpYarn?.message}
                 {...register(`beams.${index}.sections.${si}.warpYarn`)}
               />
+              </div>
+              <div className="col-span-3 min-w-0 sm:col-span-1">
+              <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Dye lot</span>
               <Select aria-label="Dye lot"
                 placeholder={
                   !chosenYarn
@@ -833,12 +842,18 @@ function BeamFields({
                 }))]}
                 {...register(`beams.${index}.sections.${si}.yarnLot`)}
               />
+              </div>
+              <div className="min-w-0">
+              <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Ends</span>
               <Input aria-label="Ends"
                 type="number"
                 placeholder="Ends"
                 error={errors.beams?.[index]?.sections?.[si]?.ends?.message}
                 {...register(`beams.${index}.sections.${si}.ends`)}
               />
+              </div>
+              <div className="min-w-0">
+              <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Length</span>
               <Input
                 aria-label="Length"
                 type="number"
@@ -850,10 +865,11 @@ function BeamFields({
                 className={lengthLocked ? "bg-ink-100/50 text-ink-400" : undefined}
                 {...register(`beams.${index}.sections.${si}.maxMeters`)}
               />
+              </div>
               <button
                 type="button"
                 onClick={() => sections.fields.length > 1 && sections.remove(si)}
-                className="h-10 grid place-items-center rounded-lg text-ink-400 hover:text-status-danger disabled:opacity-40"
+                className="mt-5 grid h-10 w-10 place-items-center rounded-lg text-ink-400 hover:text-status-danger disabled:opacity-40 sm:mt-0 sm:w-auto"
                 disabled={sections.fields.length <= 1}
                 aria-label="Remove section"
               >

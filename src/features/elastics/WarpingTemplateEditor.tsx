@@ -125,7 +125,11 @@ function BeamSections({
     <>
       <div className="space-y-2">
         {fields.map((f, s) => (
-          <div key={f.id} className="grid grid-cols-[1fr_90px_110px_36px] items-start gap-2">
+          // On a phone: the yarn across the top, ends, max metres and Remove
+          // beneath, each labelled; a row from sm up. (90 + 110 + 36 px of
+          // fixed columns left the yarn about 60px on a phone.)
+          <div key={f.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_90px_110px_36px] sm:rounded-none sm:border-0 sm:p-0">
+            <div className="col-span-3 min-w-0 sm:col-span-1">
             <Controller
               control={control}
               name={`warpingPlanTemplate.beams.${beamIndex}.sections.${s}.warpYarn`}
@@ -139,24 +143,31 @@ function BeamSections({
                 />
               )}
             />
-            <Input
-              aria-label={`Ends for beam ${beamIndex + 1} section ${s + 1}`}
-              type="number"
-              placeholder="Ends"
-              {...register(`warpingPlanTemplate.beams.${beamIndex}.sections.${s}.ends`)}
-            />
-            <Input
-              aria-label={`Max metres for beam ${beamIndex + 1} section ${s + 1}`}
-              type="number"
-              placeholder="Max m"
-              {...register(`warpingPlanTemplate.beams.${beamIndex}.sections.${s}.maxMeters`)}
-            />
+            </div>
+            <div className="min-w-0">
+              <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Ends</span>
+              <Input
+                aria-label={`Ends for beam ${beamIndex + 1} section ${s + 1}`}
+                type="number"
+                placeholder="Ends"
+                {...register(`warpingPlanTemplate.beams.${beamIndex}.sections.${s}.ends`)}
+              />
+            </div>
+            <div className="min-w-0">
+              <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Max metres</span>
+              <Input
+                aria-label={`Max metres for beam ${beamIndex + 1} section ${s + 1}`}
+                type="number"
+                placeholder="Max m"
+                {...register(`warpingPlanTemplate.beams.${beamIndex}.sections.${s}.maxMeters`)}
+              />
+            </div>
             <button
               type="button"
               onClick={() => fields.length > 1 && remove(s)}
               disabled={fields.length <= 1}
               aria-label={`Remove section ${s + 1} of beam ${beamIndex + 1}`}
-              className="h-10 grid place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40"
+              className="mt-5 grid h-10 w-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40 sm:mt-0 sm:w-auto"
             >
               <Trash2 className="h-4 w-4" />
             </button>

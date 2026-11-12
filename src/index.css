@@ -372,6 +372,29 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   A DATE FIELD AS WIDE AS ITS COLUMN, ON AN IPHONE
+   Safari on iOS draws a date field at a width of its own, whatever the
+   page gives it, so in a two-column row the dispatch date ran past the
+   card's edge. Without the native look it takes the width it is given;
+   tapping it still opens the iPhone's picker. The @supports test is
+   true only on iOS, so no other browser's date fields change.
+   ══════════════════════════════════════════════════════════════════ */
+@supports (-webkit-touch-callout: none) {
+  input[type="date"],
+  input[type="month"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    min-width: 0;
+  }
+  input::-webkit-date-and-time-value {
+    text-align: left;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
    FORM ACTIONS STAY UNDER THE THUMB
    On a phone a full-screen form's last row of buttons (the one with
    the submit) sticks to the bottom of the screen, so Save is never

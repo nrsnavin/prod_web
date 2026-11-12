@@ -276,7 +276,11 @@ export function InwardForm({
       </div>
       {/* Column headers label the repeating row inputs below — the inputs
           themselves only carried placeholders, which vanish once typed. */}
-      <div className="grid grid-cols-[1fr_90px_100px_100px] gap-2 px-1 text-xs font-medium text-ink-400">
+      {/* A table from sm up. On a phone each line is a block: the material
+          and what is pending across the top, qty, lot and shade beneath, each
+          labelled. Beside 90 + 100 + 100 px of fields the material's name had
+          a few pixels on a phone. */}
+      <div className="hidden grid-cols-[minmax(0,1fr)_90px_100px_100px] gap-2 px-1 text-xs font-medium text-ink-400 sm:grid">
         <span>Material</span>
         <span>Qty received</span>
         <span>Lot no</span>
@@ -292,8 +296,8 @@ export function InwardForm({
           const over = overageFor(it);
           return (
             <div key={idKey}>
-            <div className="grid grid-cols-[1fr_90px_100px_100px] gap-2 items-center">
-              <div>
+            <div className="grid grid-cols-3 items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_90px_100px_100px] sm:items-center sm:rounded-none sm:border-0 sm:p-0">
+              <div className="col-span-3 min-w-0 sm:col-span-1">
                 <p className="text-sm font-medium">{materialName(it)}</p>
                 <p className="text-xs text-ink-400">
                   {remaining > 0
@@ -303,27 +307,36 @@ export function InwardForm({
               </div>
               {/* No max: over-receipt is allowed. The overage notice below
                   says what it will cost — a reason, past 10%. */}
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                aria-label={`Quantity received for ${materialName(it)}`}
-                placeholder="Qty"
-                value={qty[idKey] ?? ""}
-                onChange={(e) => setQty((q) => ({ ...q, [idKey]: e.target.value }))}
-              />
-              <Input
-                aria-label={`Lot number for ${materialName(it)}`}
-                placeholder="Lot no"
-                value={lots[idKey] ?? ""}
-                onChange={(e) => setLots((l) => ({ ...l, [idKey]: e.target.value }))}
-              />
-              <Input
-                aria-label={`Shade for ${materialName(it)}`}
-                placeholder="Shade"
-                value={shades[idKey] ?? ""}
-                onChange={(e) => setShades((s) => ({ ...s, [idKey]: e.target.value }))}
-              />
+              <div className="min-w-0">
+                <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Qty received</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  aria-label={`Quantity received for ${materialName(it)}`}
+                  placeholder="Qty"
+                  value={qty[idKey] ?? ""}
+                  onChange={(e) => setQty((q) => ({ ...q, [idKey]: e.target.value }))}
+                />
+              </div>
+              <div className="min-w-0">
+                <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Lot no</span>
+                <Input
+                  aria-label={`Lot number for ${materialName(it)}`}
+                  placeholder="Lot no"
+                  value={lots[idKey] ?? ""}
+                  onChange={(e) => setLots((l) => ({ ...l, [idKey]: e.target.value }))}
+                />
+              </div>
+              <div className="min-w-0">
+                <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Shade</span>
+                <Input
+                  aria-label={`Shade for ${materialName(it)}`}
+                  placeholder="Shade"
+                  value={shades[idKey] ?? ""}
+                  onChange={(e) => setShades((s) => ({ ...s, [idKey]: e.target.value }))}
+                />
+              </div>
             </div>
 
             {/* Live feedback as the quantity is typed, so the overage is
@@ -441,7 +454,9 @@ function PoEditModal({
 
         <div>
           <p className="mb-1.5 text-sm font-medium text-ink-600">Line items *</p>
-          <div className="hidden grid-cols-[1fr_90px_100px_90px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+          {/* A table from sm up; on a phone each line is a block: material and
+              Remove on top, qty, rate and amount beneath, each labelled. */}
+          <div className="hidden grid-cols-[minmax(0,1fr)_90px_100px_90px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
             <span>Material</span>
             <span className="text-right">Qty</span>
             <span className="text-right">Rate (₹)</span>
@@ -450,26 +465,37 @@ function PoEditModal({
           </div>
           <div className="space-y-2">
             {lines.map((l, i) => (
-              <div key={i} className="grid grid-cols-[1fr_90px_100px_90px_32px] items-start gap-2">
-                <Combobox
-                  {...addable("material")}
-                  aria-label="Material"
-                  placeholder={materials.isLoading ? "Loading…" : "Material"}
-                  options={materialOptions}
-                  value={l.rawMaterial}
-                  onChange={(v) => setLine(i, { rawMaterial: v })}
-                />
-                <Input type="number" step="0.01" aria-label="Quantity" placeholder="Qty"
-                  value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} />
-                <Input type="number" step="0.01" aria-label="Rate in rupees" placeholder="Rate"
-                  value={l.price} onChange={(e) => setLine(i, { price: e.target.value })} />
-                <div className="flex h-10 items-center justify-end text-sm tabular-nums text-ink-600">
-                  {((Number(l.quantity) || 0) * (Number(l.price) || 0)).toLocaleString("en-IN")}
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_90px_100px_90px_32px] sm:rounded-none sm:border-0 sm:p-0">
+                <div className="col-span-3 min-w-0 sm:col-span-1">
+                  <Combobox
+                    {...addable("material")}
+                    aria-label="Material"
+                    placeholder={materials.isLoading ? "Loading…" : "Material"}
+                    options={materialOptions}
+                    value={l.rawMaterial}
+                    onChange={(v) => setLine(i, { rawMaterial: v })}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Qty</span>
+                  <Input type="number" step="0.01" aria-label="Quantity" placeholder="Qty"
+                    value={l.quantity} onChange={(e) => setLine(i, { quantity: e.target.value })} />
+                </div>
+                <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Rate ₹</span>
+                  <Input type="number" step="0.01" aria-label="Rate in rupees" placeholder="Rate"
+                    value={l.price} onChange={(e) => setLine(i, { price: e.target.value })} />
+                </div>
+                <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden text-right">Amount</span>
+                  <div className="flex h-10 items-center justify-end text-sm tabular-nums text-ink-600">
+                    {((Number(l.quantity) || 0) * (Number(l.price) || 0)).toLocaleString("en-IN")}
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => removeLine(i)}
-                  className="grid h-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40"
+                  className="col-start-4 row-start-1 grid h-10 w-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40 sm:col-start-auto sm:row-start-auto sm:w-auto"
                   disabled={lines.length <= 1}
                   aria-label="Remove line"
                 >

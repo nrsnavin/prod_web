@@ -158,7 +158,10 @@ export function DcForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      <div className="grid grid-cols-2 gap-3">
+      {/* One field to a row on a phone, two side by side from sm up: at
+          half a phone's width a select read "Elastic (deduc" and the
+          customer's name and GSTIN were cut off. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Select
           label="Type *"
           options={[
@@ -176,17 +179,17 @@ export function DcForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input label="Customer name *" error={errors.customerName?.message} {...register("customerName")} />
         <Input label="Phone" {...register("customerPhone")} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Input label="GSTIN" {...register("customerGstin")} />
         <Input label="Dispatch date" type="date" {...register("dispatchDate")} />
       </div>
       <Input label="Address" {...register("customerAddress")} />
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Input label="Vehicle no" {...register("vehicleNo")} />
         <Input label="Driver" {...register("driverName")} />
         <Input label="Transporter" {...register("transporter")} />
@@ -201,11 +204,19 @@ export function DcForm({
             tax invoice, so the document carries quantity only. The value is
             kept because the Dispatch Report is built on it. Saying so here
             stops it looking like an omission on the printed challan. */}
-        <div className="grid grid-cols-[1fr_90px_100px_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400">
+        {/* The row is a table from sm up. On a phone each line is a block:
+            the elastic across the top, Qty, Rate and Remove beneath it, each
+            field with its own label. A fixed 90 + 100 + 36 px beside the
+            elastic, which could not shrink below its name, pushed a line
+            to twice a phone's width and the whole form slid sideways.
+            minmax(0, 1fr) lets the name column shrink, and the name ends in
+            an ellipsis instead. */}
+        <div className="hidden grid-cols-[minmax(0,1fr)_90px_100px_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400 sm:grid">
           <span>{type === "elastic" ? "Elastic" : "Part description"}</span>
           <span>Qty</span>
-          <span className="flex items-center gap-1">
-            Rate (₹)
+          {/* On one line: "Rate (₹)" beside its badge wrapped in the 100px column. */}
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            Rate ₹
             <span
               title="Internal only — used by the Dispatch Report. Never printed on the challan."
               className="cursor-help rounded bg-ink-100 px-1 text-[10px] font-semibold uppercase tracking-wide text-ink-500"
@@ -217,7 +228,11 @@ export function DcForm({
         </div>
         <div className="space-y-2">
           {fields.map((field, i) => (
-            <div key={field.id} className="grid grid-cols-[1fr_90px_100px_36px] gap-2 items-start">
+            <div
+              key={field.id}
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_90px_100px_36px] sm:rounded-none sm:border-0 sm:p-0"
+            >
+              <div className="col-span-3 min-w-0 sm:col-span-1">
               {type === "elastic" ? (
                 <Controller
                   control={control}
@@ -248,26 +263,36 @@ export function DcForm({
                   {...register(`items.${i}.description`)}
                 />
               )}
-              <Input
-                type="number"
-                step="0.01"
-                aria-label="Quantity"
-                placeholder="Qty"
-                error={errors.items?.[i]?.quantity?.message}
-                {...register(`items.${i}.quantity`)}
-              />
-              <Input
-                type="number"
-                step="0.01"
-                aria-label="Rate in rupees (internal — not printed on the challan)"
-                placeholder="Rate ₹"
-                title="Internal only — used by the Dispatch Report. Never printed on the challan."
-                {...register(`items.${i}.rate`)}
-              />
+              </div>
+              {/* The words above each field are for the eye on a phone, where
+                  the column headings are hidden; the fields keep their own
+                  names for a screen reader. */}
+              <div className="min-w-0">
+                <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Qty</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  aria-label="Quantity"
+                  placeholder="Qty"
+                  error={errors.items?.[i]?.quantity?.message}
+                  {...register(`items.${i}.quantity`)}
+                />
+              </div>
+              <div className="min-w-0">
+                <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Rate ₹ (internal)</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  aria-label="Rate in rupees (internal — not printed on the challan)"
+                  placeholder="Rate ₹"
+                  title="Internal only — used by the Dispatch Report. Never printed on the challan."
+                  {...register(`items.${i}.rate`)}
+                />
+              </div>
               <button
                 type="button"
                 onClick={() => fields.length > 1 && remove(i)}
-                className="h-10 grid place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40"
+                className="mt-5 grid h-10 w-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40 sm:mt-0 sm:w-auto"
                 disabled={fields.length <= 1}
                 aria-label="Remove item"
               >

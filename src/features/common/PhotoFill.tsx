@@ -43,7 +43,13 @@ export function PhotoFillButton<T extends { read?: { problem?: string | null } }
   return (
     <div className="flex flex-wrap items-center gap-2">
       <input ref={ref} type="file" accept="image/*,application/pdf" capture="environment" multiple={multiple} className="hidden" aria-label={`${what} photo`} onChange={(e) => send(e.target.files)} />
-      <Button type="button" size="sm" variant="secondary" loading={busy} onClick={() => ref.current?.click()}><Camera className="h-4 w-4" /> {label}</Button>
+      {/* The label sits in its own span. A button holding only an icon and
+          bare text matches the touch rule for icon buttons in index.css
+          (CSS cannot see text nodes), which stops it shrinking: a long
+          label such as "Fill from the supplier's challan or cone labels"
+          then ran past its card on a phone. In a span it wraps to a
+          second line instead; leading-4 keeps two lines inside h-8. */}
+      <Button type="button" size="sm" variant="secondary" loading={busy} onClick={() => ref.current?.click()}><Camera className="h-4 w-4 shrink-0" /><span className="min-w-0 text-left leading-4">{label}</span></Button>
       {note && <span className="text-xs text-ink-500" role="status">{note}</span>}
     </div>
   );

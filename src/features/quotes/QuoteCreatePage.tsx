@@ -346,7 +346,11 @@ export function QuoteCreatePage() {
                     weight in grams, rate in rupees per kilogram
                   </span>
                 </p>
-                <div className="hidden grid-cols-[1fr_100px_110px_110px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+                {/* A table from sm up. On a phone each material is a block: its
+                    name and Remove on top, weight, rate and cost beneath, each
+                    with its own label. The fixed 352px of number columns left
+                    the name a sliver and pushed cost and Remove off the card. */}
+                <div className="hidden grid-cols-[minmax(0,1fr)_100px_110px_110px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
                   <span>Material</span>
                   <span className="text-right">Weight (g)</span>
                   <span className="text-right">Rate (₹/kg)</span>
@@ -357,8 +361,9 @@ export function QuoteCreatePage() {
                   {p.materials.map((m) => {
                     const cost = priced?.rows.find((r) => r.key === m.key)?.cost ?? 0;
                     return (
-                      <div key={m.key} className="grid grid-cols-[1fr_100px_110px_110px_32px] items-start gap-2">
+                      <div key={m.key} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_100px_110px_110px_32px] sm:rounded-none sm:border-0 sm:p-0">
                         <Input
+                          wrapperClassName="col-span-3 min-w-0 sm:col-span-1"
                           aria-label={m.fixed
                             ? `${m.label} name in product ${pi + 1}`
                             : `Material name in product ${pi + 1}`}
@@ -368,26 +373,36 @@ export function QuoteCreatePage() {
                           onChange={(e) => setRow(p.key, m.key, { label: e.target.value })}
                           className={m.fixed ? "bg-ink-50" : undefined}
                         />
-                        <Input
-                          type="number" step="0.001" min="0"
-                          aria-label={`Weight in grams for ${m.label || "material"} in product ${pi + 1}`}
-                          placeholder="0" value={m.weightGrams}
-                          onChange={(e) => setRow(p.key, m.key, { weightGrams: e.target.value })}
-                        />
-                        <Input
-                          type="number" step="0.01" min="0"
-                          aria-label={`Rate per kilogram for ${m.label || "material"} in product ${pi + 1}`}
-                          placeholder="0" value={m.ratePerKg}
-                          onChange={(e) => setRow(p.key, m.key, { ratePerKg: e.target.value })}
-                        />
-                        <div className="flex h-10 items-center justify-end text-sm tabular-nums text-ink-900">
-                          ₹{rupees(cost, 4)}
+                        <div className="min-w-0">
+                          <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Weight g</span>
+                          <Input
+                            type="number" step="0.001" min="0"
+                            aria-label={`Weight in grams for ${m.label || "material"} in product ${pi + 1}`}
+                            placeholder="0" value={m.weightGrams}
+                            onChange={(e) => setRow(p.key, m.key, { weightGrams: e.target.value })}
+                          />
                         </div>
+                        <div className="min-w-0">
+                          <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Rate ₹/kg</span>
+                          <Input
+                            type="number" step="0.01" min="0"
+                            aria-label={`Rate per kilogram for ${m.label || "material"} in product ${pi + 1}`}
+                            placeholder="0" value={m.ratePerKg}
+                            onChange={(e) => setRow(p.key, m.key, { ratePerKg: e.target.value })}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden text-right">Cost / m</span>
+                          <div className="flex h-10 items-center justify-end text-sm tabular-nums text-ink-900">
+                            ₹{rupees(cost, 4)}
+                          </div>
+                        </div>
+                        {/* Beside the name on a phone (row 1, column 4); last in the row from sm up. */}
                         <button
                           type="button"
                           onClick={() => removeRow(p.key, m.key)}
                           aria-label={`Remove ${m.label || "row"} from product ${pi + 1}`}
-                          className="grid h-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger"
+                          className="col-start-4 row-start-1 grid h-10 w-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger sm:col-start-auto sm:row-start-auto sm:w-auto"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

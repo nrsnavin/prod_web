@@ -86,10 +86,10 @@ export function ShiftPlanForm({
         <p className="text-sm font-medium text-ink-600 mb-1.5">
           Machine assignments * (running machines carry their job)
         </p>
-        <div className="grid grid-cols-[1fr_1fr_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Machine</span><span>Operator</span><span className="sr-only">Remove</span></div>
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400"><span>Machine</span><span>Operator</span><span className="sr-only">Remove</span></div>
         <div className="space-y-2">
           {fields.map((field, i) => (
-            <div key={field.id} className="grid grid-cols-[1fr_1fr_36px] gap-2 items-start">
+            <div key={field.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_36px] gap-2 items-start">
               <Controller control={control} name={`machines.${i}.machine`} render={({ field }) => (
                 <Combobox aria-label="Machine"
                   placeholder="Machine"

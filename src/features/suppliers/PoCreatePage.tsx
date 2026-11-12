@@ -229,7 +229,7 @@ export function PoCreatePage() {
           <Card className="p-5">
             <h3 className="mb-3 font-semibold">Line items</h3>
             {/* Column header */}
-            <div className="hidden grid-cols-[1fr_90px_110px_120px_36px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+            <div className="hidden grid-cols-[minmax(0,1fr)_90px_110px_120px_36px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
               <span>Material</span>
               <span className="text-right">Qty</span>
               <span className="text-right">Rate (₹)</span>
@@ -243,7 +243,7 @@ export function PoCreatePage() {
                 return (
                   <div
                     key={field.id}
-                    className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_90px_110px_120px_36px] sm:items-start"
+                    className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_90px_110px_120px_36px] sm:items-start"
                   >
                     <div className="col-span-2 sm:col-span-1">
                       <Controller
@@ -281,7 +281,9 @@ export function PoCreatePage() {
                     <button
                       type="button"
                       onClick={() => fields.length > 1 && remove(i)}
-                      className="hidden h-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40 sm:grid"
+                      // Beside the amount on a phone (it was hidden there, so a
+                      // line could not be taken off); its own column from sm up.
+                      className="grid h-10 w-10 place-items-center justify-self-end rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40 sm:w-auto sm:justify-self-auto"
                       disabled={fields.length <= 1}
                       aria-label="Remove item"
                     >
