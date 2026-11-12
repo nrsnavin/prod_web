@@ -17,7 +17,8 @@ import { accountsService } from "./api";
 import { ACCOUNTS_KEY, useCategories } from "./hooks";
 import { money, today, RangePicker, defaultPeriod } from "./shared";
 import { ChequesSection, ConfirmationsSection, InterestSection } from "./PartyRegisters";
-import type { AssetBlock, FixedAssetBody, FixedAssetRow, BudgetRow } from "./types";
+import { JournalForm } from "./JournalForm";
+import type { AssetBlock, FixedAssetBody, FixedAssetRow, BudgetRow, JournalDraft } from "./types";
 
 type Section = "assets" | "stock" | "budgets" | "costcentres" | "cheques" | "confirmations" | "interest" | "sales" | "purchase";
 const SECTIONS: Section[] = ["assets", "stock", "budgets", "costcentres", "cheques", "confirmations", "interest", "sales", "purchase"];
@@ -108,7 +109,7 @@ function AssetForm({ blocks, onDone, onCancel }: { blocks: Array<{ key: AssetBlo
   );
 }
 
-function DisposeForm({ asset, onDone, onCancel }: { asset: FixedAssetRow; onDone: () => void; onCancel: () => void }) {
+function DisposeForm({ asset, onDone, onCancel }: { asset: FixedAssetRow; onDone: (after: { status: FixedAssetRow["status"]; journal?: JournalDraft | null }) => void; onCancel: () => void }) {
   const { toast } = useToast();
   const [how, setHow] = useState<"sold" | "scrapped">("sold");
   const [date, setDate] = useState(today());
@@ -117,7 +118,7 @@ function DisposeForm({ asset, onDone, onCancel }: { asset: FixedAssetRow; onDone
   const [busy, setBusy] = useState(false);
   const save = async () => {
     setBusy(true);
-    try { const r = await accountsService.disposeFixedAsset(asset._id, { how, date, amount: how === "sold" ? Number(amount) || 0 : 0, reason }); toast(`${asset.name} ${how}${r.year.disposal ? ` — ${r.year.disposal.gainLoss >= 0 ? "gain" : "loss"} ₹${money(Math.abs(r.year.disposal.gainLoss))} against the written-down value` : ""}`, "success"); onDone(); }
+    try { const r = await accountsService.disposeFixedAsset(asset._id, { how, date, amount: how === "sold" ? Number(amount) || 0 : 0, reason }); toast(`${asset.name} ${how}${r.year.disposal ? ` — ${r.year.disposal.gainLoss >= 0 ? "gain" : "loss"} ₹${money(Math.abs(r.year.disposal.gainLoss))} against the written-down value` : ""}`, "success"); onDone({ status: r.asset.status, journal: r.journal }); }
     catch (e) { toast(e instanceof ApiError ? e.message : "Could not record it", "error"); }
     finally { setBusy(false); }
   };
@@ -130,7 +131,38 @@ function DisposeForm({ asset, onDone, onCancel }: { asset: FixedAssetRow; onDone
         {how === "sold" && <Input label="Sold for (₹)" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))} />}
         <Input label="Reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Replaced, beyond repair…" />
       </div>
+      <p className="text-xs text-ink-400">Recording it takes the asset off the register. Its journal — cost and depreciation off the books, the gain or loss on it — is drafted next, for you to post.</p>
       <div className="flex justify-end gap-2"><Button variant="secondary" onClick={onCancel}>Cancel</Button><Button loading={busy} onClick={save}>Record</Button></div>
+    </div>
+  );
+}
+
+/**
+ * The journal that takes a sold or scrapped asset off the books: drafted
+ * by the server from the register, checked and posted here. One journal
+ * an asset — posting a changed one takes the earlier one's place.
+ */
+function DisposalJournal({ asset, draft, onDone, onCancel }: { asset: FixedAssetRow; draft: JournalDraft; onDone: () => void; onCancel: () => void }) {
+  const f = draft.figures;
+  return (
+    <div className="space-y-4">
+      {f && (
+        <dl className="grid gap-3 rounded-lg bg-ink-50 p-3 text-sm sm:grid-cols-5" aria-label="What the journal is worked from">
+          <div><dt className="text-xs text-ink-400">Cost</dt><dd className="font-medium tabular-nums">₹{money(f.cost)}</dd></div>
+          <div><dt className="text-xs text-ink-400">Depreciation so far</dt><dd className="font-medium tabular-nums">₹{money(f.accumulated)}</dd></div>
+          <div><dt className="text-xs text-ink-400">Written-down value</dt><dd className="font-medium tabular-nums">₹{money(f.wdv)}</dd></div>
+          <div><dt className="text-xs text-ink-400">{asset.status === "scrapped" ? "Scrapped for" : "Sold for"}</dt><dd className="font-medium tabular-nums">₹{money(f.amount)}</dd></div>
+          <div><dt className="text-xs text-ink-400">{f.gainLoss >= 0 ? "Profit" : "Loss"}</dt><dd className={`font-medium tabular-nums ${f.gainLoss < 0 ? "text-status-danger" : ""}`}>₹{money(Math.abs(f.gainLoss))}</dd></div>
+        </dl>
+      )}
+      <p className="text-sm text-ink-500">
+        {draft.posted
+          ? <>{draft.posted.journalNo} is in the books for {asset.assetNo}. Posting this again with something changed takes its place; unchanged, nothing is posted.</>
+          : <>Nothing is in the books for {asset.assetNo} yet: its cost is still on the asset ledger.</>}
+        {" "}Check each ledger against its name in Tally{f && f.amount > 0 ? ", pick the account the money came into," : ""} and post. If GST was charged on the sale, add a line for it.
+      </p>
+      <JournalForm draft={draft} onCancel={onCancel} onDone={onDone}
+        post={async (body) => { const r = await accountsService.postDisposalJournal(asset._id, body); return { _id: r.journal._id, journalNo: r.journal.journalNo, replay: r.replay, replaced: r.replaced }; }} />
     </div>
   );
 }
@@ -141,8 +173,17 @@ function FixedAssetsSection({ fy }: { fy: string }) {
   const q = useQuery({ queryKey: [ACCOUNTS_KEY, "fixed-assets", fy], queryFn: () => accountsService.fixedAssets(fy) });
   const [adding, setAdding] = useState(false);
   const [disposing, setDisposing] = useState<FixedAssetRow | null>(null);
+  // The journal for an asset gone, open to be checked and posted.
+  const [drafting, setDrafting] = useState<{ asset: FixedAssetRow; draft: JournalDraft } | null>(null);
+  const [opening, setOpening] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   const refresh = () => qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "fixed-assets"] });
+  const openDraft = async (a: FixedAssetRow) => {
+    setOpening(a._id);
+    try { setDrafting({ asset: a, draft: await accountsService.disposalJournal(a._id) }); }
+    catch (e) { toast(e instanceof ApiError ? e.message : "Could not draft its journal", "error"); }
+    finally { setOpening(null); }
+  };
   const post = async () => {
     setPosting(true);
     try { const r = await accountsService.postDepreciation(fy); qc.setQueryData([ACCOUNTS_KEY, "fixed-assets", fy], r.register); toast(`${r.journal.journalNo} posted: depreciation ₹${money(r.journal.total)} for ${fy}`, "success"); qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "journals"] }); }
@@ -154,7 +195,13 @@ function FixedAssetsSection({ fy }: { fy: string }) {
   return (
     <div className="space-y-4">
       <FormScreen open={adding} onClose={() => setAdding(false)} title="Add a fixed asset" width="max-w-3xl">{adding && <AssetForm blocks={r.blockTable} onDone={() => { setAdding(false); refresh(); }} onCancel={() => setAdding(false)} />}</FormScreen>
-      <FormScreen open={!!disposing} onClose={() => setDisposing(null)} title="Sold or scrapped" width="max-w-lg">{disposing && <DisposeForm asset={disposing} onDone={() => { setDisposing(null); refresh(); }} onCancel={() => setDisposing(null)} />}</FormScreen>
+      <FormScreen open={!!disposing} onClose={() => setDisposing(null)} title="Sold or scrapped" width="max-w-lg">
+        {disposing && <DisposeForm asset={disposing} onCancel={() => setDisposing(null)}
+          onDone={({ status, journal }) => { const a = disposing; setDisposing(null); refresh(); if (journal) setDrafting({ asset: { ...a, status }, draft: journal }); }} />}
+      </FormScreen>
+      <FormScreen open={!!drafting} onClose={() => setDrafting(null)} title={drafting ? `Take ${drafting.asset.assetNo} off the books` : "Off the books"} width="max-w-4xl">
+        {drafting && <DisposalJournal asset={drafting.asset} draft={drafting.draft} onCancel={() => setDrafting(null)} onDone={() => { setDrafting(null); refresh(); qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "journals"] }); }} />}
+      </FormScreen>
       <Card className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -189,7 +236,17 @@ function FixedAssetsSection({ fy }: { fy: string }) {
                   <td className="py-1.5">{a.blockLabel}<span className="block text-xs text-ink-400">{a.method.toUpperCase()}{a.year.companiesAct.rate !== null ? ` ${a.year.companiesAct.rate}%` : ""} · IT {a.year.incomeTax.rate}%{a.year.halfRate ? " (half)" : ""}</span></td>
                   <td className="py-1.5 whitespace-nowrap">{formatDate(a.putToUse)}{a.addedThisYear && <StatusChip tone="info" className="ml-1">new</StatusChip>}</td>
                   <td className={num}>{money(a.cost)}</td><td className={num}>{money(a.year.companiesAct.opening)}</td><td className={`${num} font-medium`}>{money(a.year.companiesAct.depreciation)}</td><td className={num}>{money(a.year.companiesAct.closing)}</td><td className={num}>{money(a.year.incomeTax.depreciation)}</td><td className={num}>{money(a.year.incomeTax.closing)}</td>
-                  <td className="py-1.5 text-right">{a.status === "active" ? <Button size="sm" variant="ghost" onClick={() => setDisposing(a)}>Sold / scrapped</Button> : <StatusChip tone="neutral">{a.status}{a.year.disposal ? ` · ${a.year.disposal.gainLoss >= 0 ? "gain" : "loss"} ₹${money(Math.abs(a.year.disposal.gainLoss))}` : ""}</StatusChip>}</td>
+                  <td className="py-1.5 text-right">
+                    {a.status === "active" ? <Button size="sm" variant="ghost" onClick={() => setDisposing(a)}>Sold / scrapped</Button> : (
+                      <span className="inline-flex flex-wrap items-center justify-end gap-1">
+                        <StatusChip tone="neutral">{a.status}{a.year.disposal ? ` · ${a.year.disposal.gainLoss >= 0 ? "gain" : "loss"} ₹${money(Math.abs(a.year.disposal.gainLoss))}` : ""}</StatusChip>
+                        {/* Gone from the register is not gone from the books until its journal is posted. */}
+                        {a.disposalJournal
+                          ? <><StatusChip tone="success">{a.disposalJournal.journalNo}</StatusChip><Button size="sm" variant="ghost" loading={opening === a._id} onClick={() => openDraft(a)} aria-label={`Post ${a.assetNo}'s journal again`}>Post again</Button></>
+                          : <Button size="sm" variant="secondary" loading={opening === a._id} onClick={() => openDraft(a)} aria-label={`Post ${a.assetNo}'s journal`}>Not in the books — post its journal</Button>}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

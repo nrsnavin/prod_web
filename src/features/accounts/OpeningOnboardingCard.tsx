@@ -181,12 +181,16 @@ function BillWise({ p, asOn, onClose }: { p: OpeningOnboardingParty; asOn: strin
     filled.map((l) => ({ partyType: p.partyType, party: p._id, kind: l.kind, refNo: l.refNo.trim(), date: l.date, dueDate: l.dueDate || null, amount: Number(l.amount), requestId: `onboard:${l.id}:${l.date}:${l.amount}:${l.kind}` })),
     {
       onSuccess: (r) => {
-        if (r.failed === 0) { toast(`${p.name}: ${r.posted} ${r.posted === 1 ? "bill" : "bills"} posted`, "success"); onClose(); return; }
-        // Keep what failed on screen with why; what posted is done.
-        const bad = r.results.filter((x) => !x.ok);
-        setLines(bad.map((x) => filled[x.index]));
-        setProblems(Object.fromEntries(bad.map((x, i) => [i, x.error ?? "Not posted"])));
-        toast(`${r.posted} posted, ${r.failed} not — see the rows left`, "error");
+        // A bill already in the books — the same party, side, date, number and amount — is answered
+        // with the balance that is there, and not posted a second time.
+        const again = r.results.filter((x) => x.ok && x.replay);
+        const fresh = r.posted - again.length;
+        if (r.failed === 0 && again.length === 0) { toast(`${p.name}: ${r.posted} ${r.posted === 1 ? "bill" : "bills"} posted`, "success"); onClose(); return; }
+        // Keep on screen what failed, with why, and what was already there, as what; what posted is done.
+        const left = r.results.filter((x) => !x.ok || x.replay);
+        setLines(left.map((x) => filled[x.index]));
+        setProblems(Object.fromEntries(left.map((x, i) => [i, x.ok ? `Already in the books${x.docNo ? ` as ${x.docNo}` : ""}, not posted again. If this is another bill, give it its own number.` : x.error ?? "Not posted"])));
+        toast(`${fresh} posted${again.length ? `, ${again.length} already there` : ""}${r.failed ? `, ${r.failed} not` : ""} — see the rows left`, r.failed ? "error" : "info");
       },
       onError: (e) => toast(err(e, "Could not post"), "error"),
     },

@@ -208,7 +208,12 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
         costCentre: costCentreBody(costCentre),
       },
       {
-        onSuccess: (bill) => { toast(`Bill ${bill.billNo} entered`, "success"); onDone(bill._id); },
+        onSuccess: (bill) => {
+          toast(`Bill ${bill.billNo} entered`, "success");
+          // Entered, but its file could not be attached: said, so it is attached by hand and not thought to be there.
+          for (const w of bill.warnings ?? []) toast(w, "info");
+          onDone(bill._id);
+        },
         onError: (e) => {
           if (e instanceof ApiError && e.code === "BILL_VARIANCE") {
             setVariance((e.data?.details as BillVariance | undefined) ?? null);

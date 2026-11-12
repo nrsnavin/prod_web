@@ -44,6 +44,7 @@ export const useOpeningOnboarding = (q: { partyType?: string; search?: string; l
 export const useOpeningBalances = (q: Record<string, unknown>) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "opening", q], queryFn: () => accountsService.openingBalances(q), placeholderData: (p) => p });
 export const useAccountsSettings = () => useQuery({ queryKey: [ACCOUNTS_KEY, "settings"], queryFn: accountsService.accountsSettings, staleTime: 60_000 });
+export const useLockHistory = (enabled = true) => useQuery({ queryKey: [ACCOUNTS_KEY, "lock-history"], queryFn: accountsService.lockHistory, enabled });
 
 export function useAccountsMutations() {
   const qc = useQueryClient();
@@ -69,6 +70,7 @@ export function useAccountsMutations() {
     cancelPayment: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelPayment(id, reason), onSuccess: invalidate }),
     applyCredit: useMutation({ mutationFn: accountsService.applyCredit, onSuccess: invalidate }),
     createDeposit: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createDeposit>[0]) => accountsService.createDeposit(once(b)), onSuccess: done }),
+    cancelDeposit: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelDeposit(id, reason), onSuccess: invalidate }),
     createContra: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createContra>[0]) => accountsService.createContra(once(b)), onSuccess: done }),
     createJournal: useMutation({ mutationFn: (b: Parameters<typeof accountsService.createJournal>[0]) => accountsService.createJournal(once(b)), onSuccess: done }),
     cancelJournal: useMutation({ mutationFn: ({ id, reason }: { id: string; reason: string }) => accountsService.cancelJournal(id, reason), onSuccess: done }),

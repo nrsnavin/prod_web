@@ -141,6 +141,9 @@ export function OpeningForm({ onClose, fixed, onPosted }: {
   );
 }
 
+/** How a row says it was in the books before this import. */
+const ALREADY_THERE = "already there";
+
 function ImportDialog({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   const { bulkOpening } = useAccountsMutations();
@@ -168,13 +171,17 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
   const good = (rows ?? []).filter((r) => !r.problem && (r.date || asOn));
   const undated = (rows ?? []).filter((r) => !r.problem && !r.date).length;
   const post = () => bulkOpening.mutate(
+    // The id is kept for an older server; the server now knows a balance by what it is, whatever the file is called.
     good.map((r) => ({ ...r, date: r.date || asOn, requestId: `${file}:${r.line}:${r.amount}` })),
     {
       onSuccess: (res) => {
         const next: Record<number, string> = {};
-        res.results.forEach((x) => { const row = good[x.index]; if (row) next[row.line] = x.ok ? x.docNo! : `✗ ${x.error}`; });
+        // A balance already in the books (the same file again, or a row entered before) is answered with its number, not posted twice.
+        res.results.forEach((x) => { const row = good[x.index]; if (row) next[row.line] = !x.ok ? `✗ ${x.error}` : x.replay ? `${ALREADY_THERE}${x.docNo ? ` as ${x.docNo}` : ""}` : x.docNo || "posted"; });
         setResults(next);
-        toast(`${res.posted} posted${res.failed ? `, ${res.failed} failed` : ""}`, res.failed ? "info" : "success");
+        const already = res.results.filter((x) => x.ok && x.replay).length;
+        const fresh = res.posted - already;
+        toast(`${fresh} posted${already ? ` · ${already} already in the books, not posted again` : ""}${res.failed ? `, ${res.failed} failed` : ""}`, res.failed || already ? "info" : "success");
       },
       onError: (e) => toast(e instanceof ApiError ? e.message : "Could not post", "error"),
     }
@@ -206,7 +213,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
                     <td className="py-1.5">{r.refNo || "—"}</td>
                     <td className="py-1.5">{r.date ? formatDate(r.date) : asOn ? formatDate(asOn) : "—"}</td>
                     <td className="py-1.5 text-right tabular-nums">{money(r.amount)}</td>
-                    <td className="py-1.5 text-xs">{results[r.line] ? <StatusChip tone={results[r.line].startsWith("✗") ? "danger" : "success"}>{results[r.line]}</StatusChip> : r.problem}</td>
+                    <td className="py-1.5 text-xs">{results[r.line] ? <StatusChip tone={results[r.line].startsWith("✗") ? "danger" : results[r.line].startsWith(ALREADY_THERE) ? "info" : "success"}>{results[r.line]}</StatusChip> : r.problem}</td>
                   </tr>
                 ))}
               </tbody>

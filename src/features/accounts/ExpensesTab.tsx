@@ -1,4 +1,4 @@
-import { FlagList, useFlags } from "./Flags";
+import { FlagList, riskFlags, useFlags } from "./Flags";
 import { quickCreate } from "@/features/common/quickCreateStore";
 import { accountsService } from "./api";
 import { CostCentreField, costCentreBody } from "./CostCentreField";
@@ -27,25 +27,46 @@ import { stateCodeFromGstin } from "@/features/invoices/gst";
 import type { SupplyType } from "@/features/invoices/types";
 import { useAccountsMutations, useBankAccounts, useCategories, useExpenses } from "./hooks";
 import { LinesEditor, PartyPicker, blankLine, expenseLabel, expenseTone, money, priceInputs, today } from "./shared";
-import type { Expense, ExpenseStatus, LineInput, CostCentreInput } from "./types";
+import type { Expense, ExpenseStatus, Flag, LineInput, CostCentreInput } from "./types";
 import type { ScanDraft } from "./ScanBill";
 
-/** Which account the money goes from, for paying an expense. */
-export function PayDialog({ title, amount, onClose, onConfirm, loading }: { title: string; amount: number; onClose: () => void; onConfirm: (body: { account: string; reference?: string }) => void; loading?: boolean }) {
+export type PayBody = { account: string; reference?: string; confirmRisk?: boolean; riskNote?: string };
+
+/**
+ * Which account the money goes from, for paying an expense.
+ *
+ * Paying an expense goes through the same checks as any payment. When
+ * the server stops it — the supplier's bank account changed lately, or
+ * is another supplier's too — the caller hands the checks back through
+ * `onRisk`, and the dialog asks how it was confirmed before paying.
+ */
+export function PayDialog({ title, amount, onClose, onConfirm, loading }: { title: string; amount: number; onClose: () => void; onConfirm: (body: PayBody, onRisk: (flags: Flag[]) => void) => void; loading?: boolean }) {
   const { data: accounts } = useBankAccounts();
   const [account, setAccount] = useState("");
   const [reference, setReference] = useState("");
+  const [risk, setRisk] = useState<Flag[] | null>(null);
+  const [riskNote, setRiskNote] = useState("");
   const list = (accounts ?? []).filter((a) => a.active !== false);
   const chosen = account || list.find((a) => a.isDefault)?._id || list[0]?._id || "";
+  const pay = (confirmed: boolean) => onConfirm({ account: chosen, reference: reference.trim() || undefined, ...(confirmed ? { confirmRisk: true, riskNote: riskNote.trim() } : {}) }, setRisk);
   return (
     <Modal open onClose={onClose} title={title} width="max-w-md">
       <div className="space-y-3">
         <p className="text-sm">₹{money(amount)} goes out from:</p>
         <Select label="Account" value={chosen} onChange={(e) => setAccount(e.target.value)} options={list.map((a) => ({ value: a._id, label: `${a.name} (₹${money(a.balance)})` }))} />
         <Input label="Reference (UTR, cheque, UPI ref)" value={reference} onChange={(e) => setReference(e.target.value)} />
+        {risk && (
+          <div role="alert" aria-label="Payment stopped" className="space-y-2 rounded-lg border border-status-danger/40 bg-status-dangerBg p-3 text-sm">
+            <p className="font-semibold text-status-danger">Stopped before the money goes</p>
+            <FlagList flags={risk} />
+            <Input label="How you confirmed it *" value={riskNote} onChange={(e) => setRiskNote(e.target.value)} placeholder="e.g. Called Mr. Raju on the number on file; he confirmed the new account" />
+          </div>
+        )}
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => onConfirm({ account: chosen, reference: reference.trim() || undefined })} disabled={!chosen} loading={loading}>Pay</Button>
+          <Button variant="secondary" onClick={onClose}>{risk ? "Don't pay" : "Cancel"}</Button>
+          {risk
+            ? <Button variant="danger" onClick={() => pay(true)} disabled={!chosen || riskNote.trim().length < 8} loading={loading}>Confirmed — pay</Button>
+            : <Button onClick={() => pay(false)} disabled={!chosen} loading={loading}>Pay</Button>}
         </div>
       </div>
     </Modal>
@@ -123,7 +144,10 @@ export function ExpensesTab() {
         onConfirm={(reason) => reject && rejectExpense.mutate({ id: reject._id, reason }, { onSuccess: () => { setReject(null); toast("Expense rejected", "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not reject", "error") })} />
       {pay && (
         <PayDialog title={`Pay ${pay.expenseNo}`} amount={pay.totals.grand - pay.paidAmount} loading={payExpense.isPending} onClose={() => setPay(null)}
-          onConfirm={(body) => payExpense.mutate({ id: pay._id, body }, { onSuccess: (r) => { setPay(null); toast(`Paid — voucher ${r.voucher.voucherNo}`, "success"); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not pay", "error") })} />
+          onConfirm={(body, onRisk) => payExpense.mutate({ id: pay._id, body }, {
+            onSuccess: (r) => { setPay(null); toast(`Paid — voucher ${r.voucher.voucherNo}`, "success"); },
+            onError: (e) => { const flags = riskFlags(e); if (flags) return onRisk(flags); toast(e instanceof ApiError ? e.message : "Could not pay", "error"); },
+          })} />
       )}
     </>
   );
@@ -190,7 +214,9 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
       },
       {
         onSuccess: (r) => { toast(r.voucher ? `${r.expense.expenseNo} paid — voucher ${r.voucher.voucherNo}` : r.expense.status === "pending" ? `${r.expense.expenseNo} sent for approval` : `${r.expense.expenseNo} recorded`, "success"); onDone(); },
-        onError: (e) => toast(e instanceof ApiError ? e.message : "Could not record the expense", "error"),
+        // Paying on the spot goes through the payment checks. Stopped by one, the expense is not recorded either:
+        // record it without paying, and pay it from the list, which asks how the payment was confirmed.
+        onError: (e) => toast(riskFlags(e) ? `${(e as ApiError).message}. Record it without "Already paid", then pay it from the list.` : e instanceof ApiError ? e.message : "Could not record the expense", "error"),
       }
     );
 

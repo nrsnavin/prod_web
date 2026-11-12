@@ -9,10 +9,15 @@ import { ApiError } from "@/core/http/httpClient";
 import { useAccountsMutations, useBankAccounts, useCategories, useOpenDocs } from "./hooks";
 import { accountsService } from "./api";
 import { PartyPicker, money, today } from "./shared";
-import type { JournalLineInput, JournalPurpose, OpenDoc, SettleDocType } from "./types";
+import type { JournalDraft, JournalLineInput, JournalPurpose, OpenDoc, SettleDocType } from "./types";
 
-type Line = { kind: JournalLineInput["kind"]; ledger: string; partyType: "customer" | "supplier"; party: string; partyName: string; account: string; category: string; debit: number | ""; credit: number | ""; refs: Record<string, number> };
+type Line = { kind: JournalLineInput["kind"]; ledger: string; partyType: "customer" | "supplier"; party: string; partyName: string; account: string; category: string; debit: number | ""; credit: number | ""; refs: Record<string, number>; /** What a drafted line is for, shown under it. */ hint?: string };
 const blank = (): Line => ({ kind: "ledger", ledger: "", partyType: "customer", party: "", partyName: "", account: "", category: "", debit: "", credit: "", refs: {} });
+/** A drafted journal's lines, as the form holds them: the account of a bank line is left for the person to pick. */
+const fromDraft = (d: JournalDraft): Line[] => d.lines.map((l) => ({ ...blank(), kind: l.kind, ledger: l.ledger ?? "", account: l.account ?? "", debit: l.debit > 0 ? l.debit : "", credit: l.credit > 0 ? l.credit : "", hint: l.note }));
+
+/** What a drafted journal is posted with, in place of the general journal route. */
+export type DraftPost = (body: { lines: JournalLineInput[]; narration?: string; reason: string }) => Promise<{ _id: string; journalNo: string; replay?: boolean; replaced?: string | null }>;
 
 const PURPOSES: Array<{ value: JournalPurpose; label: string }> = [
   { value: "setoff", label: "Set-off (customer who is also a supplier)" }, { value: "writeoff", label: "Write-off" }, { value: "accrual", label: "Accrual / provision" },
@@ -54,20 +59,26 @@ function Refs({ line, onChange }: { line: Line; onChange: (refs: Record<string, 
  * A journal: any number of debit and credit lines, each a party, a
  * bank or cash account, an expense head, or a Tally ledger by name.
  * Debits must equal credits. A reason is always required.
+ *
+ * With a `draft` (the journal that takes a sold asset off the books)
+ * the form opens filled in, for the person to pick the account and
+ * check the ledger names; `post` then sends it where that journal is
+ * kept, and its date and purpose are the draft's.
  */
-export function JournalForm({ onDone, onCancel }: { onDone: (id: string) => void; onCancel: () => void }) {
+export function JournalForm({ onDone, onCancel, draft, post }: { onDone: (id: string) => void; onCancel: () => void; draft?: JournalDraft; post?: DraftPost }) {
   const { toast } = useToast();
   const { createJournal } = useAccountsMutations();
   const { data: accounts } = useBankAccounts();
   const { data: categories } = useCategories();
-  const [date, setDate] = useState(today());
-  const [purpose, setPurpose] = useState<JournalPurpose>("other");
-  const [reason, setReason] = useState("");
-  const [narration, setNarration] = useState("");
+  const [date, setDate] = useState(draft ? String(draft.date).slice(0, 10) : today());
+  const [purpose, setPurpose] = useState<JournalPurpose>(draft?.purpose ?? "other");
+  const [reason, setReason] = useState(draft?.reason ?? "");
+  const [narration, setNarration] = useState(draft?.narration ?? "");
   const [ideas, setIdeas] = useState<{ text: string; from: string }[]>([]);
   const [ideaId, setIdeaId] = useState<string | null>(null);
   const [thinking, setThinking] = useState(false);
-  const [lines, setLines] = useState<Line[]>([{ ...blank(), kind: "party" }, blank()]);
+  const [sending, setSending] = useState(false);
+  const [lines, setLines] = useState<Line[]>(() => (draft ? fromDraft(draft) : [{ ...blank(), kind: "party" }, blank()]));
   const set = (i: number, patch: Partial<Line>) => setLines((ls) => ls.map((l, k) => (k === i ? { ...l, ...patch } : l)));
   const dr = lines.reduce((t, l) => t + (Number(l.debit) || 0), 0);
   const cr = lines.reduce((t, l) => t + (Number(l.credit) || 0), 0);
@@ -90,21 +101,30 @@ export function JournalForm({ onDone, onCancel }: { onDone: (id: string) => void
     } catch (e) { toast(e instanceof ApiError ? e.message : "Fill in the lines first", "error"); } finally { setThinking(false); }
   };
 
-  const submit = () => createJournal.mutate({
+  // A drafted journal goes where it is kept (one for the thing it is for), and says what became of the one before.
+  const sendDraft = async (send: DraftPost) => {
+    setSending(true);
+    try {
+      const j = await send({ lines: toLines(), narration: narration.trim() || undefined, reason: reason.trim() });
+      toast(j.replay ? `${j.journalNo} is already in the books for it — nothing posted again` : `${j.journalNo} posted${j.replaced ? `, in place of ${j.replaced}` : ""}`, j.replay ? "info" : "success");
+      onDone(j._id);
+    } catch (e) {
+      toast(e instanceof ApiError ? e.message : "Could not post", "error");
+    } finally {
+      setSending(false);
+    }
+  };
+  const submit = () => (post ? void sendDraft(post) : createJournal.mutate({
     date, purpose, reason: reason.trim(), narration: narration.trim() || undefined, ...(ideaId ? { aiSuggestion: ideaId } : {}),
-    lines: lines.map((l) => ({
-      kind: l.kind, ledger: l.kind === "ledger" ? l.ledger.trim() : undefined, partyType: l.kind === "party" ? l.partyType : undefined, party: l.kind === "party" ? l.party : undefined,
-      account: l.kind === "bank" ? l.account : undefined, category: l.kind === "head" ? l.category : undefined,
-      debit: Number(l.debit) || 0, credit: Number(l.credit) || 0,
-      refs: Object.entries(l.refs).filter(([, v]) => v > 0).map(([k, v]) => { const [docType, doc] = k.split("|"); return { docType: docType as SettleDocType, doc, amount: v }; }),
-    })),
-  }, { onSuccess: (j) => { toast(`${j.journalNo} posted`, "success"); onDone(j._id); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not post", "error") });
+    lines: toLines(),
+  }, { onSuccess: (j) => { toast(`${j.journalNo} posted`, "success"); onDone(j._id); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not post", "error") }));
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <Select label="What for" value={purpose} onChange={(e) => setPurpose(e.target.value as JournalPurpose)} options={PURPOSES} />
+        {/* A drafted journal is dated and filed by what it is for: the day the asset went. */}
+        <Input label="Date" type="date" value={date} disabled={!!post} onChange={(e) => setDate(e.target.value)} />
+        <Select label="What for" value={purpose} disabled={!!post} onChange={(e) => setPurpose(e.target.value as JournalPurpose)} options={PURPOSES} />
         <div className="flex items-end gap-1">
           <Input label="Narration" className="flex-1" value={narration} onChange={(e) => setNarration(e.target.value)} placeholder="Shown on the ledger and in Tally" />
           <Button type="button" size="sm" variant="ghost" title="Suggest a narration" aria-label="Suggest a narration" loading={thinking} disabled={!balanced || !complete} onClick={suggestNarration}><Sparkles className="h-4 w-4" /></Button>
@@ -139,6 +159,7 @@ export function JournalForm({ onDone, onCancel }: { onDone: (id: string) => void
               <Input label="Credit" type="number" step="0.01" min={0} value={l.credit} onChange={(e) => set(i, { credit: e.target.value === "" ? "" : Number(e.target.value), debit: "" })} />
               <div className="flex items-end"><Button variant="ghost" size="sm" aria-label={`Remove line ${i + 1}`} disabled={lines.length <= 2} onClick={() => setLines((ls) => ls.filter((_, k) => k !== i))}><Trash2 className="h-4 w-4" /></Button></div>
             </div>
+            {l.hint && <p className="mt-1 text-xs text-ink-400">{l.hint}</p>}
             {l.kind === "party" && <div className="mt-2"><Refs line={l} onChange={(refs) => set(i, { refs })} /></div>}
           </div>
         ))}
@@ -152,7 +173,7 @@ export function JournalForm({ onDone, onCancel }: { onDone: (id: string) => void
       <Input label="Reason *" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why this entry: at least 8 characters, kept with the voucher" />
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button disabled={!ready} loading={createJournal.isPending} onClick={submit}>Post journal</Button>
+        <Button disabled={!ready} loading={createJournal.isPending || sending} onClick={submit}>Post journal</Button>
       </div>
     </div>
   );

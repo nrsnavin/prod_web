@@ -11,6 +11,7 @@ import { formatDate } from "@/core/format/date";
 import { useAccountsMutations, useOpeningBalances } from "./hooks";
 import { OpeningForm, kindLabel } from "./OpeningTab";
 import { money } from "./shared";
+import { round2 } from "@/features/invoices/gst";
 import type { OpeningBalance } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
@@ -34,7 +35,7 @@ export function PartyOpening({ partyType, party, name }: { partyType: "customer"
   const rows = data?.rows ?? [];
   const due = rows.filter((o) => o.kind === "due");
   const advance = rows.filter((o) => o.kind === "advance");
-  const sum = (xs: OpeningBalance[], f: (o: OpeningBalance) => number) => Math.round(xs.reduce((s, o) => s + f(o), 0) * 100) / 100;
+  const sum = (xs: OpeningBalance[], f: (o: OpeningBalance) => number) => round2(xs.reduce((s, o) => s + f(o), 0));
 
   return (
     <Card className="mt-4 p-5" aria-label="Opening balance">

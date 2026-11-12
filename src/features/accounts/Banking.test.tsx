@@ -24,11 +24,12 @@ const banking: Banking = {
 };
 
 const depositMutate = vi.fn();
+const cancelMutate = vi.fn();
 let role = "admin";
 vi.mock("./hooks", () => ({
   useBanking: () => ({ data: banking, isLoading: false }),
   useDeposits: () => ({ data: { slips: [{ _id: "s0", slipNo: "DEP/2026-27/0001", date: "2026-11-01", account: "k", accountName: "Kotak CA", cheques: [{}], cash: 5000, total: 15000 }] } }),
-  useAccountsMutations: () => ({ createDeposit: { mutate: depositMutate, isPending: false }, saveBankAccount: { mutate: vi.fn(), isPending: false } }),
+  useAccountsMutations: () => ({ createDeposit: { mutate: depositMutate, isPending: false }, cancelDeposit: { mutate: cancelMutate, isPending: false }, saveBankAccount: { mutate: vi.fn(), isPending: false } }),
 }));
 vi.mock("@/core/auth/useAuth", () => ({ useAuth: () => ({ user: { role } }) }));
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
@@ -42,7 +43,7 @@ const wrap = () => render(
   </QueryClientProvider>
 );
 
-beforeEach(() => { depositMutate.mockReset(); role = "admin"; });
+beforeEach(() => { depositMutate.mockReset(); cancelMutate.mockReset(); role = "admin"; });
 
 describe("banking", () => {
   it("shows every account with what is in it, waiting on it, and owed on a card", () => {
@@ -112,5 +113,24 @@ describe("banking", () => {
     expect(within(dialog).getByRole("button", { name: /Deposit ₹/ })).toBeDisabled();
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.getByRole("link", { name: "Print DEP/2026-27/0001" })).toHaveAttribute("href", "/api/v2/accounts/deposits/s0/pdf");
+  });
+
+  // A slip made by mistake is taken back as a whole: its cheques are in hand
+  // again and its cash goes back to the box. It asks why first.
+  it("cancels a deposit slip whole, with a reason", async () => {
+    wrap();
+    const slips = screen.getByLabelText("Recent deposits");
+    await userEvent.click(within(slips).getByRole("button", { name: "Cancel" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Cancel DEP/2026-27/0001?");
+    expect(dialog).toHaveTextContent("1 cheque goes back in hand, and the ₹5,000.00 of cash goes back to the cash box");
+    const confirm = within(dialog).getByRole("button", { name: "Cancel slip" });
+    // Without a reason it does not go.
+    await userEvent.click(confirm);
+    expect(cancelMutate).not.toHaveBeenCalled();
+    expect(dialog).toHaveTextContent("Give a reason of at least 8 characters.");
+    await userEvent.type(within(dialog).getByRole("textbox"), "Entered against the wrong bank");
+    await userEvent.click(confirm);
+    expect(cancelMutate.mock.calls[0][0]).toEqual({ id: "s0", reason: "Entered against the wrong bank" });
   });
 });

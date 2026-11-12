@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
+import { ReasonDialog } from "@/components/ui/ReasonDialog";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
@@ -18,7 +19,7 @@ import { accountsService } from "./api";
 import { useAccountsMutations, useBanking, useDeposits } from "./hooks";
 import { AccountDialog } from "./SettingsTab";
 import { money, today } from "./shared";
-import type { AccountKind, BankAccount, BankingAccount, ChequeInHand } from "./types";
+import type { AccountKind, BankAccount, BankingAccount, ChequeInHand, DepositSlip } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
 //  BANKING — every account at a glance
@@ -245,21 +246,37 @@ function DepositDialog({ cheques, into, accounts, onClose }: { cheques: ChequeIn
 
 function RecentDeposits() {
   const { data } = useDeposits();
+  const { toast } = useToast();
+  const { cancelDeposit } = useAccountsMutations();
+  // A slip made by mistake is taken back as a whole, with a reason.
+  const [cancelling, setCancelling] = useState<DepositSlip | null>(null);
   const slips = data?.slips ?? [];
   if (!slips.length) return null;
   return (
     <Card className="p-4" aria-label="Recent deposits">
       <h3 className="font-semibold">Recent deposits</h3>
       <ul className="mt-2 divide-y divide-ink-100 text-sm">
-        {slips.slice(0, 8).map((s) => (
-          <li key={s._id} className="flex flex-wrap items-center gap-2 py-1.5">
-            <span className="font-medium">{s.slipNo}</span>
-            <span className="text-ink-500">{formatDate(s.date)} · {s.accountName} · {s.cheques.length} cheque{s.cheques.length === 1 ? "" : "s"}{s.cash > 0 ? " and cash" : ""}</span>
-            <span className="ml-auto tabular-nums">₹{money(s.total)}</span>
-            <a href={accountsService.depositPdfUrl(s._id)} target="_blank" rel="noreferrer" aria-label={`Print ${s.slipNo}`} className="text-brand-600 hover:underline"><Printer className="h-4 w-4" /></a>
-          </li>
-        ))}
+        {slips.slice(0, 8).map((s) => {
+          const cancelled = s.status === "cancelled";
+          return (
+            <li key={s._id} className="flex flex-wrap items-center gap-2 py-1.5">
+              <span className={cancelled ? "font-medium text-ink-400 line-through" : "font-medium"}>{s.slipNo}</span>
+              {cancelled && <StatusChip tone="neutral">Cancelled</StatusChip>}
+              <span className="text-ink-500">{formatDate(s.date)} · {s.accountName} · {s.cheques.length} cheque{s.cheques.length === 1 ? "" : "s"}{s.cash > 0 ? " and cash" : ""}</span>
+              <span className={cancelled ? "ml-auto tabular-nums text-ink-400 line-through" : "ml-auto tabular-nums"}>₹{money(s.total)}</span>
+              <a href={accountsService.depositPdfUrl(s._id)} target="_blank" rel="noreferrer" aria-label={`Print ${s.slipNo}`} className="text-brand-600 hover:underline"><Printer className="h-4 w-4" /></a>
+              {!cancelled && <button type="button" className="text-xs text-status-danger hover:underline" onClick={() => setCancelling(s)}>Cancel</button>}
+            </li>
+          );
+        })}
       </ul>
+      <ReasonDialog open={!!cancelling} onClose={() => setCancelling(null)} title={`Cancel ${cancelling?.slipNo ?? "the slip"}?`}
+        description={cancelling ? `Its ${cancelling.cheques.length ? `${cancelling.cheques.length} cheque${cancelling.cheques.length === 1 ? " goes" : "s go"} back in hand` : "cheques go back in hand"}${cancelling.cash > 0 ? `, and the ₹${money(cancelling.cash)} of cash goes back to the cash box` : ""}. It cannot be cancelled once the bank has cleared or returned a cheque on it.` : undefined}
+        confirmLabel="Cancel slip" minLength={8} loading={cancelDeposit.isPending}
+        onConfirm={(reason) => cancelling && cancelDeposit.mutate({ id: cancelling._id, reason }, {
+          onSuccess: (r) => { setCancelling(null); toast(r.note || `${r.slip.slipNo} cancelled${r.chequesBack.length ? `: ${r.chequesBack.length} cheque${r.chequesBack.length === 1 ? "" : "s"} back in hand` : ""}`, "success"); },
+          onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel the slip", "error"),
+        })} />
     </Card>
   );
 }

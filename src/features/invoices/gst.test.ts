@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftLines, priceLines, stateCodeFromGstin } from "./gst";
+import { draftLines, priceLines, round2, stateCodeFromGstin } from "./gst";
 import type { InvoiceDcOption, InvoiceDraftLine } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
@@ -66,5 +66,44 @@ describe("stateCodeFromGstin", () => {
     expect(stateCodeFromGstin("33AAECB1234F1Z5")).toBe("33");
     expect(stateCodeFromGstin(" 29aaeps1111f1z2 ")).toBe("29");
     expect(stateCodeFromGstin("nope")).toBe("");
+  });
+});
+
+// The server rounds a half-paisa up (utils/money.js toPaise); the screen
+// must come to the same paisa, or a preview and the saved document
+// differ by one. These are the server's own cases.
+describe("round2", () => {
+  it("takes a half-paisa up, which Math.round(n * 100) / 100 did not", () => {
+    expect(round2(1.005)).toBe(1.01);
+    expect(round2(2.675)).toBe(2.68);
+    expect(round2(8.345)).toBe(8.35);
+    expect(round2(10.235)).toBe(10.24);
+    expect(round2(1234567.895)).toBe(1234567.9);
+    // GST of 5% on 100.10 is 5.005: five rupees and one paisa.
+    expect(round2(100.10 * 0.05)).toBe(5.01);
+  });
+
+  it("rounds away from zero on both sides, and leaves what is honestly below the half", () => {
+    expect(round2(-1.005)).toBe(-1.01);
+    expect(round2(-0.005)).toBe(-0.01);
+    expect(round2(1.0049)).toBe(1);
+    expect(round2(1.004999)).toBe(1);
+    expect(round2(123.454)).toBe(123.45);
+    expect(round2(0.1 + 0.2)).toBe(0.3);
+    expect(round2(1e9 + 0.004)).toBe(1e9);
+  });
+
+  it("counts what is not a number as nothing, so a column still adds up", () => {
+    expect(round2(Number("abc"))).toBe(0);
+    expect(round2(undefined as unknown as number)).toBe(0);
+    expect([100, NaN, 50.555].reduce((t, v) => round2(t + round2(v)), 0)).toBe(150.56);
+  });
+
+  it("prices a line to the same paisa as the server", () => {
+    // 77 m at ₹1.30 is 100.10; 5% on it is 5.005.
+    const { lines, totals } = priceLines([{ elastic: "a", name: "x", unit: "m", quantity: 77, rate: 1.3, hsn: "5806", gstPercent: 5, dcNumbers: [], rateSource: "order" }], "inter");
+    expect(lines[0].taxable).toBe(100.1);
+    expect(lines[0].igst).toBe(5.01);
+    expect(totals.tax).toBe(5.01);
   });
 });

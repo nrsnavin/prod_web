@@ -9,8 +9,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
-import { useAccountsMutations, useAccountsSettings } from "./hooks";
-import type { TallyLedgerKey } from "./types";
+import { useAccountsMutations, useAccountsSettings, useLockHistory } from "./hooks";
+import type { LockEvent, TallyLedgerKey } from "./types";
 
 const LEDGERS: Array<{ key: TallyLedgerKey; label: string; placeholder?: string; hint?: string }> = [
   { key: "companyName", label: "Tally company (as named in Tally)", placeholder: "e.g. Balu Elastics 2026-27", hint: "Blank: the company name on your invoices" },
@@ -47,7 +47,7 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
   const [journalAbove, setJournalAbove] = useState<number | "">("");
   const [q194, setQ194] = useState<{ enabled: boolean; limit: number; rate: number }>({ enabled: false, limit: 5000000, rate: 0.1 });
   const [ccTally, setCcTally] = useState(false);
-  const [interest, setInterest] = useState<{ interestRate: number | ""; graceDays: number | "" }>({ interestRate: "", graceDays: "" });
+  const [interest, setInterest] = useState<{ interestRate: number | ""; graceDays: number | ""; interestBasis: "balance" | "payments" }>({ interestRate: "", graceDays: "", interestBasis: "balance" });
   const [lut, setLut] = useState<{ number: string; validFrom: string; validTo: string }>({ number: "", validFrom: "", validTo: "" });
   useEffect(() => {
     if (!settings) return;
@@ -58,7 +58,7 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
     setJournalAbove(settings.journals?.approvalAbove ?? 0);
     setQ194(settings.tds?.purchase194q ?? { enabled: false, limit: 5000000, rate: 0.1 });
     setCcTally(!!settings.costCentres?.tally);
-    setInterest({ interestRate: settings.receivables?.interestRate ?? 0, graceDays: settings.receivables?.graceDays ?? 0 });
+    setInterest({ interestRate: settings.receivables?.interestRate ?? 0, graceDays: settings.receivables?.graceDays ?? 0, interestBasis: settings.receivables?.interestBasis ?? "balance" });
     setLut({ number: settings.lut?.number ?? "", validFrom: settings.lut?.validFrom ? settings.lut.validFrom.slice(0, 10) : "", validTo: settings.lut?.validTo ? settings.lut.validTo.slice(0, 10) : "" });
   }, [settings]);
   const current = settings?.lockDate ? settings.lockDate.slice(0, 10) : "";
@@ -82,6 +82,7 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
           </div>
         ) : <p className="mt-2 text-xs text-ink-400">An admin closes and reopens the books.</p>}
         <p className="mt-2 text-xs text-ink-400">Lock a month once it has gone to Tally, so it cannot change underneath the accountant.</p>
+        <LockHistory />
       </Card>
 
       <Card className="p-5">
@@ -111,6 +112,11 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
           <Input label="Interest on overdue invoices (% a year)" type="number" min={0} max={100} step="0.5" value={interest.interestRate} disabled={!isAdmin} onChange={(e) => setInterest({ ...interest, interestRate: e.target.value === "" ? "" : Number(e.target.value) })} hint="0: none. A customer's own rate wins." />
           <Input label="Grace days past due" type="number" min={0} max={365} value={interest.graceDays} disabled={!isAdmin} onChange={(e) => setInterest({ ...interest, graceDays: e.target.value === "" ? "" : Number(e.target.value) })} />
+          <div>
+            <Select label="Interest is worked on" value={interest.interestBasis} disabled={!isAdmin} onChange={(e) => setInterest({ ...interest, interestBasis: e.target.value === "payments" ? "payments" : "balance" })}
+              options={[{ value: "balance", label: "What the invoice still owes today" }, { value: "payments", label: "Each part, for the days it was unpaid" }]} />
+            <p className="mt-1 text-xs text-ink-400">{interest.interestBasis === "payments" ? "An invoice paid late is charged for its lateness, even when it is paid in full by now." : "An invoice paid late in full bears no interest; a part paid late is not charged for those days."}</p>
+          </div>
           <Input label="LUT number (exports without IGST)" value={lut.number} disabled={!isAdmin} onChange={(e) => setLut({ ...lut, number: e.target.value.toUpperCase() })} placeholder="AD330326000123K" hint="The Letter of Undertaking on the GST portal, one a year" />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Valid from" type="date" value={lut.validFrom} disabled={!isAdmin} onChange={(e) => setLut({ ...lut, validFrom: e.target.value })} />
@@ -118,7 +124,7 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
           </div>
         </div>
         <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5" checked={ccTally} disabled={!isAdmin} onChange={(e) => setCcTally(e.target.checked)} /><span>Send cost centres to Tally<span className="block text-xs text-ink-400">Each bill's and expense's cost centre (an order, a machine, a department) goes on the voucher as a cost-centre allocation. Switch on cost centres in the Tally company first.</span></span></label>
-        {isAdmin && <div className="mt-3 flex justify-end"><Button variant="secondary" loading={saveAccountsSettings.isPending} onClick={() => saveAccountsSettings.mutate({ costCentres: { tally: ccTally }, receivables: { interestRate: Number(interest.interestRate) || 0, graceDays: Number(interest.graceDays) || 0 }, lut: { number: lut.number, validFrom: lut.validFrom || null, validTo: lut.validTo || null } }, { onSuccess: () => toast("Saved", "success"), onError: fail })}>Save</Button></div>}
+        {isAdmin && <div className="mt-3 flex justify-end"><Button variant="secondary" loading={saveAccountsSettings.isPending} onClick={() => saveAccountsSettings.mutate({ costCentres: { tally: ccTally }, receivables: { interestRate: Number(interest.interestRate) || 0, graceDays: Number(interest.graceDays) || 0, interestBasis: interest.interestBasis }, lut: { number: lut.number, validFrom: lut.validFrom || null, validTo: lut.validTo || null } }, { onSuccess: () => toast("Saved", "success"), onError: fail })}>Save</Button></div>}
       </Card>
 
       <Card className="p-5 lg:col-span-2">
@@ -156,3 +162,42 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
     </>
   );
 }
+
+const LOCK_KIND: Record<LockEvent["kind"], string> = { closed: "Closed", moved: "Moved", reopened: "Reopened", override: "Let through" };
+
+/**
+ * What has happened to the lock: each time the books were closed, moved
+ * or reopened, and each entry an admin let through it, with who and why.
+ * Folded away until asked for.
+ */
+function LockHistory() {
+  const [open, setOpen] = useState(false);
+  const { data, isLoading } = useLockHistory(open);
+  return (
+    <div className="mt-3 border-t border-ink-100 pt-3">
+      <button type="button" className="text-sm font-medium text-brand-600 hover:underline" aria-expanded={open} onClick={() => setOpen((v) => !v)}>{open ? "Hide the lock's history" : "Show the lock's history"}</button>
+      {open && (isLoading ? <p className="mt-2 text-sm text-ink-400">Loading…</p> : !data?.length ? <p className="mt-2 text-sm text-ink-400">Nothing yet: the books have not been closed.</p> : (
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full text-sm" aria-label="Lock history">
+            <thead><tr className="text-left text-xs text-ink-500"><th className="py-1 pr-3 font-medium">When</th><th className="py-1 pr-3 font-medium">What</th><th className="py-1 pr-3 font-medium">By</th><th className="py-1 font-medium">Why</th></tr></thead>
+            <tbody>
+              {data.map((e) => (
+                <tr key={e._id} className="border-t border-ink-100 align-top">
+                  <td className="whitespace-nowrap py-1.5 pr-3 tabular-nums">{formatDate(e.at)}</td>
+                  <td className="py-1.5 pr-3">
+                    {e.kind === "override"
+                      ? <>{LOCK_KIND.override}: {e.entry?.cancelling ? "a cancellation" : "an entry"} dated {e.entry?.date ? formatDate(e.entry.date) : "inside the closed period"}</>
+                      : <>{LOCK_KIND[e.kind]}{e.lockDate ? ` up to ${formatDate(e.lockDate)}` : ": the books are open"}{e.previousLockDate && e.kind !== "closed" ? ` (was ${formatDate(e.previousLockDate)})` : ""}</>}
+                  </td>
+                  <td className="py-1.5 pr-3">{e.byName || (e.via === "before-history" ? "—" : "")}</td>
+                  <td className="py-1.5 text-ink-600">{e.reason || (e.via === "tally-export" ? "Sent to Tally" : e.via === "before-history" ? "As it stood when the history began" : "")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
+  );
+}
+

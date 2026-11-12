@@ -3,7 +3,25 @@
 
 import type { InvoiceDcOption, InvoiceDraftLine, InvoiceLineOverride, InvoiceTotals, SupplyType } from "./types";
 
-export const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
+/**
+ * To paise, a half-paisa going up (away from zero): the same sum the
+ * server does (utils/money.js toPaise), so a total worked out on screen
+ * is the total the server stores.
+ *
+ * `Math.round(n * 100) / 100` is not that sum. 1.005 is held as
+ * 1.00499999999999989…, times 100 is 100.49999999999999, and that
+ * rounds DOWN: GST of 5% on 100.10 came to 5.00 here and 5.01 on a
+ * calculator. A value a hair under a half-paisa — by the error one
+ * multiplication leaves — is that half-paisa, and is nudged up by a
+ * billionth of a paisa before rounding. A value honestly below the
+ * half (1.0049) is nowhere near that and still rounds down.
+ */
+export const round2 = (n: number) => {
+  const v = Number(n) || 0;
+  const y = Math.abs(v) * 100;
+  const paise = Math.round(y + Math.max(1e-9, y * 2e-15));
+  return (v < 0 ? -paise : paise) / 100;
+};
 
 export const money = (n: number | undefined | null) =>
   (Number(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

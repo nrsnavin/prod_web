@@ -1,13 +1,14 @@
 import { httpClient } from "@/core/http/httpClient";
+import { newRequestId } from "@/core/hooks/useRequestId";
 import { MODEL_TIMEOUT_MS } from "@/core/http/timeouts";
 import type {
-  CollectionEntry, ScanResult, StatementPostRow, StatementResult, BankAlias,
+  CollectionEntry, ScanResult, StatementPostRow, StatementPostResult, StatementResult, BankAlias,
   AccountNote, BankAccount, BillCreateBody, BillPoInfo, CashbookReport, DaybookReport, Expense, ExpenseCategory, ExpenseCreateBody,
   ExpenseReport, GstReport, NoteCreateBody, OpenDoc, OutstandingResult, Overview, Payment, PaymentCreateBody, Statement, SupplierBill, TdsReport,
-  AccountsSettings, Contra, Credit, OpeningBalance, OpeningImportRow, OpeningOnboarding, Banking, DepositSlip,
+  AccountsSettings, LockEvent, Contra, Credit, OpeningBalance, OpeningImportRow, OpeningOnboarding, Banking, DepositSlip,
   Reconciliation, StoredStatement, StoredStatementFull, BankFeedStatus, BankFeedRun, TallyBatch, TallyPreview, TallyConnectorStatus, TallyReconcile, BooksHealth,
   AiSurfaceStats, CloseChecklist, Flag, Forecast, Inbox, RecurringExpense, GroupSummary,
-  MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalLineInput, JournalPurpose,
+  MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalDraft, JournalLineInput, JournalPurpose,
   TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
   PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult, Gstr2bFollowUp,
@@ -18,6 +19,23 @@ import { apiUrl } from "@/app/config";
 type Page<K extends string, T> = { success: boolean; total: number; page: number; pages: number } & Record<K, T[]>;
 
 const clean = (q: Record<string, unknown>) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== "" && v !== "all"));
+
+// One id for one event. A posting sent twice — a second click, a resend
+// after a timeout whose first attempt did land — carries the same id,
+// and the server answers the second with what the first made. The id is
+// kept while the same thing is sent again unchanged, and let go once it
+// has gone through: the next send is a new event. (The forms that go
+// through useAccountsMutations keep theirs with useRequestId; these are
+// the calls made straight from a screen, which sent none.)
+const pendingIds = new Map<string, string>();
+async function once<B extends object, T>(what: string, body: B, send: (b: B & { requestId: string }) => Promise<T>): Promise<T> {
+  const sig = `${what}:${JSON.stringify(body)}`;
+  const requestId = pendingIds.get(sig) ?? newRequestId();
+  pendingIds.set(sig, requestId);
+  const out = await send({ ...body, requestId });
+  pendingIds.delete(sig);
+  return out;
+}
 
 export const accountsService = {
   overview: () => httpClient.get<Overview & { success: boolean }>("/accounts/overview"),
@@ -31,6 +49,9 @@ export const accountsService = {
   deposits: async (q: { account?: string; page?: number } = {}) => httpClient.get<{ success: boolean; slips: DepositSlip[]; total: number; pages: number }>("/accounts/deposits", clean(q)),
   createDeposit: async (body: { account: string; date: string; cheques: string[]; cash?: number; cashFrom?: string; bankSlipNo?: string; requestId?: string }) =>
     (await httpClient.post<{ success: boolean; slip: DepositSlip }>("/accounts/deposits", body)).slip,
+  /** A slip made by mistake, taken back whole: its cheques are in hand again and its cash contra is cancelled with it. */
+  cancelDeposit: (id: string, reason: string) =>
+    httpClient.post<{ success: boolean; slip: DepositSlip; chequesBack: string[]; note?: string }>(`/accounts/deposits/${id}/cancel`, { reason }),
   depositPdfUrl: (id: string) => apiUrl(`/accounts/deposits/${id}/pdf`),
   categories: async () => (await httpClient.get<{ success: boolean; categories: ExpenseCategory[] }>("/accounts/categories")).categories,
   createCategory: async (body: Partial<ExpenseCategory>) => (await httpClient.post<{ success: boolean; category: ExpenseCategory }>("/accounts/categories", body)).category,
@@ -40,7 +61,12 @@ export const accountsService = {
   bills: (q: Record<string, unknown>) => httpClient.get<Page<"bills", SupplierBill>>("/accounts/bills", clean(q)),
   bill: async (id: string) => httpClient.get<{ success: boolean; bill: SupplierBill; payments: Array<Payment & Partial<{ amount: number; tds: number }>>; notes: AccountNote[] }>(`/accounts/bills/${id}`),
   billPoInfo: (poId: string) => httpClient.get<BillPoInfo & { success: boolean }>("/accounts/bills/po-info", { id: poId }),
-  createBill: async (body: BillCreateBody) => (await httpClient.post<{ success: boolean; bill: SupplierBill }>("/accounts/bills", body)).bill,
+  // `warnings`: the bill is entered, but something beside it did not happen (the mailed file or the
+  // service log's photo could not be attached) and is for the person to do by hand.
+  createBill: async (body: BillCreateBody): Promise<SupplierBill & { warnings?: string[] }> => {
+    const r = await httpClient.post<{ success: boolean; bill: SupplierBill; warnings?: string[] }>("/accounts/bills", body);
+    return r.warnings?.length ? { ...r.bill, warnings: r.warnings } : r.bill;
+  },
   cancelBill: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; bill: SupplierBill }>(`/accounts/bills/${id}/cancel`, { reason })).bill,
 
   // ── Expenses ──
@@ -50,8 +76,8 @@ export const accountsService = {
   approveExpense: (id: string, body: { note?: string; payNow?: { account: string; mode?: string; reference?: string } } = {}) =>
     httpClient.post<{ success: boolean; expense: Expense; voucher: { _id: string; voucherNo: string } | null }>(`/accounts/expenses/${id}/approve`, body),
   rejectExpense: (id: string, reason: string) => httpClient.post<{ success: boolean; expense: Expense }>(`/accounts/expenses/${id}/reject`, { reason }),
-  payExpense: (id: string, body: { account: string; mode?: string; reference?: string; date?: string }) =>
-    httpClient.post<{ success: boolean; expense: Expense; voucher: { _id: string; voucherNo: string } }>(`/accounts/expenses/${id}/pay`, body),
+  payExpense: (id: string, body: { account: string; mode?: string; reference?: string; date?: string; confirmRisk?: boolean; riskNote?: string }) =>
+    once(`pay-expense:${id}`, body, (b) => httpClient.post<{ success: boolean; expense: Expense; voucher: { _id: string; voucherNo: string }; replay?: boolean }>(`/accounts/expenses/${id}/pay`, b)),
   cancelExpense: (id: string, reason: string) => httpClient.post<{ success: boolean; expense: Expense }>(`/accounts/expenses/${id}/cancel`, { reason }),
 
   // ── Notes ──
@@ -116,7 +142,7 @@ export const accountsService = {
     return uploadForm<StatementResult>("/accounts/bank/statement", fd, "Could not read the statement");
   },
   postStatement: (account: string, rows: StatementPostRow[], statement?: string) =>
-    httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; voucherNo?: string; _id?: string; error?: string }>; posted: number; failed: number }>("/accounts/bank/statement/post", { account, rows, statement }),
+    httpClient.post<{ success: boolean; results: StatementPostResult[]; posted: number; failed: number }>("/accounts/bank/statement/post", { account, rows, statement }),
   statements: async (account?: string) => (await httpClient.get<{ success: boolean; statements: StoredStatement[] }>("/accounts/bank/statements", clean({ account }))).statements,
   storedStatement: async (id: string) => (await httpClient.get<{ success: boolean; statement: StoredStatementFull }>(`/accounts/bank/statements/${id}`)).statement,
   rematchStatement: async (id: string) => (await httpClient.post<{ success: boolean; changed: number; statement: StoredStatementFull }>(`/accounts/bank/statements/${id}/rematch`, {})),
@@ -125,6 +151,8 @@ export const accountsService = {
   ignoreLine: (statement: string, index: number, reason: string) => httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/ignore`, { reason }),
   linkLine: (statement: string, index: number, voucherType: "Payment" | "Contra", voucher: string) =>
     httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/link`, { voucherType, voucher }),
+  /** A wrong match undone: the line goes back to be placed, and the entry is free to answer its own line. */
+  unlinkLine: (statement: string, index: number) => httpClient.post<{ success: boolean }>(`/accounts/bank/statements/${statement}/lines/${index}/unlink`, {}),
   bankFeed: async () => (await httpClient.get<{ success: boolean; feed: BankFeedStatus }>("/accounts/bank/feed")).feed,
   runBankFeed: async () => httpClient.post<{ success: boolean; result: BankFeedRun; feed: BankFeedStatus }>("/accounts/bank/feed/run", {}),
   setBankFeed: async (body: { autoPost: boolean }) => (await httpClient.put<{ success: boolean; feed: BankFeedStatus }>("/accounts/bank/feed", body)).feed,
@@ -167,7 +195,7 @@ export const accountsService = {
   credits: async (partyType: "customer" | "supplier", party: string) =>
     (await httpClient.get<{ success: boolean; credits: Credit[] }>("/accounts/credits", { partyType, party })).credits,
   applyCredit: (body: { source: { type: Credit["sourceType"]; id: string }; allocations: Array<{ docType: OpenDoc["docType"]; doc: string; amount: number }> }) =>
-    httpClient.post<{ success: boolean; applied: number; source: { docNo: string } }>("/accounts/credits/apply", body),
+    once("apply-credit", body, (b) => httpClient.post<{ success: boolean; applied: number; source: { docNo: string }; replay?: boolean }>("/accounts/credits/apply", b)),
 
   // ── Contras ──
   contras: (q: Record<string, unknown>) => httpClient.get<Page<"contras", Contra>>("/accounts/contras", clean(q)),
@@ -196,18 +224,19 @@ export const accountsService = {
   gstr2bFollowUps: async (period: string) => (await httpClient.get<{ success: boolean; suppliers: Gstr2bFollowUp[] }>("/accounts/gstr2b/follow-ups", { period })).suppliers,
   reconcileGstr2b: (period: string) => httpClient.post<Gstr2bSummary & { success: boolean }>("/accounts/gstr2b/reconcile", { period }),
   itcReversal: (month?: string) => httpClient.get<ItcReversalMonth & { success: boolean }>("/accounts/itc-reversal", clean({ month })),
-  itcReverse: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number }>(`/accounts/bills/${bill}/itc-reverse`, { month }),
-  itcReclaim: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number }>(`/accounts/bills/${bill}/itc-reclaim`, { month }),
+  // `amount` is the step just recorded; `reversed` and `reclaimed` the bill's running totals after it.
+  itcReverse: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number; period?: string; reversed?: number; reclaimed?: number }>(`/accounts/bills/${bill}/itc-reverse`, { month }),
+  itcReclaim: (bill: string, month: string) => httpClient.post<{ success: boolean; billNo: string; amount: number; period?: string; reversed?: number; reclaimed?: number }>(`/accounts/bills/${bill}/itc-reclaim`, { month }),
   gstr1: (month?: string) => httpClient.get<Gstr1 & { success: boolean }>("/accounts/gstr1", clean({ month })),
   gstr1JsonUrl: (month: string) => apiUrl(`/accounts/gstr1/json?month=${month}`),
   tdsRegister: (month?: string) => httpClient.get<TdsRegister & { success: boolean }>("/accounts/tds/register", clean({ month })),
   addTdsChallan: (body: { month: string; section: string; amount: number; interest?: number; bsrCode?: string; challanNo?: string; depositedOn: string; account?: string }) =>
-    httpClient.post<{ success: boolean; register: TdsRegister }>("/accounts/tds/challans", body),
+    once("tds-challan", body, (b) => httpClient.post<{ success: boolean; register: TdsRegister; replay?: boolean }>("/accounts/tds/challans", b)),
   form26q: (fy?: string, q?: string) => httpClient.get<Form26q & { success: boolean }>("/accounts/tds/26q", clean({ fy, q })),
   form26qXlsxUrl: (fy: string, q: string) => apiUrl(`/accounts/tds/26q?fy=${fy}&q=${q}&format=xlsx`),
   tdsCertificates: async (fy?: string) => (await httpClient.get<{ success: boolean; fy: string; rows: TdsCertificateRow[] }>("/accounts/tds/certificates", clean({ fy }))).rows,
   addTdsCertificate: (body: { kind: "issued" | "received"; party: string; fy: string; quarter: string; certNo?: string; section?: string; amount: number; on?: string; note?: string }) =>
-    httpClient.post<{ success: boolean; certificate: TdsCertificateRow }>("/accounts/tds/certificates", body),
+    once("tds-certificate", body, (b) => httpClient.post<{ success: boolean; certificate: TdsCertificateRow; replay?: boolean }>("/accounts/tds/certificates", b)),
   tdsReceivable: (fy?: string) => httpClient.get<TdsReceivable & { success: boolean }>("/accounts/tds/receivable", clean({ fy })),
   async upload26as(file: File, fy: string): Promise<{ lines: number; matched: number; unmatched: Array<{ deductorName: string; tan: string; tds: number }>; receivable: TdsReceivable }> {
     const fd = new FormData();
@@ -220,7 +249,7 @@ export const accountsService = {
   postPayrollSalary: (month: string) => httpClient.post<{ success: boolean; journal: Journal; summary: PayrollBooks }>("/accounts/payroll-books/salary", { month }),
   postPayrollPaid: (month: string) => httpClient.post<{ success: boolean; journal: Journal; summary: PayrollBooks }>("/accounts/payroll-books/paid", { month }),
   addStatutoryDeposit: (body: { kind: "pf" | "esi" | "pt"; month: string; amount: number; challanNo?: string; depositedOn: string }) =>
-    httpClient.post<{ success: boolean; deposit: StatutoryDepositRow; summary: PayrollBooks }>("/accounts/payroll-books/deposits", body),
+    once("statutory-deposit", body, (b) => httpClient.post<{ success: boolean; deposit: StatutoryDepositRow; summary: PayrollBooks; replay?: boolean }>("/accounts/payroll-books/deposits", b)),
   serviceBillDraft: (id: string) => httpClient.get<{ success: boolean; entered: string | null; draft: ServiceBillDraft | null }>(`/accounts/service-bills/${id}/draft`),
   creditNoteLimit: (invoice: string) => httpClient.get<CreditNoteLimit & { success: boolean }>("/accounts/credit-note-limit", { invoice }),
   gstr1XlsxUrl: (month: string) => apiUrl(`/accounts/gstr1/xlsx?month=${month}`),
@@ -230,7 +259,12 @@ export const accountsService = {
   fixedAssetsXlsxUrl: (fy: string) => apiUrl(`/accounts/fixed-assets/register.xlsx?fy=${fy}`),
   fixedAsset: (id: string) => httpClient.get<{ success: boolean; asset: FixedAsset; years: AssetYear[] }>(`/accounts/fixed-assets/${id}`),
   addFixedAsset: (body: FixedAssetBody) => httpClient.post<{ success: boolean; asset: FixedAsset; year: AssetYear }>("/accounts/fixed-assets", body),
-  disposeFixedAsset: (id: string, body: { how: "sold" | "scrapped"; date: string; amount?: number; reason?: string }) => httpClient.post<{ success: boolean; asset: FixedAsset; year: AssetYear }>(`/accounts/fixed-assets/${id}/dispose`, body),
+  // Disposing records the day and the price and posts nothing: `journal` is the draft that takes it off the books.
+  disposeFixedAsset: (id: string, body: { how: "sold" | "scrapped"; date: string; amount?: number; reason?: string }) => httpClient.post<{ success: boolean; asset: FixedAsset; year: AssetYear; journal?: JournalDraft | null }>(`/accounts/fixed-assets/${id}/dispose`, body),
+  disposalJournal: async (id: string) => (await httpClient.get<{ success: boolean; journal: JournalDraft }>(`/accounts/fixed-assets/${id}/disposal-journal`)).journal,
+  // One journal an asset: the same again is answered by the one in the books (`replay`), a changed one takes its place (`replaced`).
+  postDisposalJournal: (id: string, body: { lines: JournalLineInput[]; narration?: string; reason?: string }) =>
+    httpClient.post<{ success: boolean; journal: Journal; replaced: string | null; replay?: boolean }>(`/accounts/fixed-assets/${id}/disposal-journal`, body),
   postDepreciation: (fy: string) => httpClient.post<{ success: boolean; journal: Journal; register: FixedAssetRegister }>("/accounts/fixed-assets/depreciation", { fy }),
   closingStock: (asOf?: string) => httpClient.get<ClosingStock & { success: boolean }>("/accounts/closing-stock", clean({ asOf })),
   postClosingStock: (asOf: string) => httpClient.post<{ success: boolean; closing: Journal; opening: Journal; valuation: ClosingStock }>("/accounts/closing-stock", { asOf }),
@@ -265,8 +299,10 @@ export const accountsService = {
     fd.append("file", file);
     return uploadForm("/accounts/opening-balances/import", fd, "Could not read the file");
   },
+  // A balance is known by what it is (whose, which side, its date, reference and amount): one already
+  // in the books is answered with its number and `replay`, and is not posted again.
   bulkOpening: (rows: Array<Partial<OpeningImportRow> & { requestId?: string }>) =>
-    httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; docNo?: string; error?: string }>; posted: number; failed: number }>("/accounts/opening-balances/bulk", { rows }),
+    httpClient.post<{ success: boolean; results: Array<{ index: number; ok: boolean; docNo?: string; error?: string; replay?: boolean }>; posted: number; failed: number }>("/accounts/opening-balances/bulk", { rows }),
   openingTemplateUrl: apiUrl("/accounts/opening-balances/template.xlsx"),
   // Set once, from the dashboard: who is left, the day they are as on.
   openingOnboarding: (q: { partyType?: string; search?: string; limit?: number }) =>
@@ -284,6 +320,8 @@ export const accountsService = {
     (await httpClient.put<{ success: boolean }>("/accounts/settings", { collections })),
   lockBooks: async (lockDate: string | null, reason?: string) =>
     (await httpClient.post<{ success: boolean; settings: AccountsSettings }>("/accounts/lock", { lockDate, reason })).settings,
+  /** Every time the books were closed, moved or reopened, and every entry an admin let through the lock, newest first. */
+  lockHistory: async () => (await httpClient.get<{ success: boolean; events: LockEvent[] }>("/accounts/lock/history")).events,
 
   // ── Documents for the other side ──
   notePdfUrl: (id: string) => apiUrl(`/accounts/notes/${id}/pdf`),

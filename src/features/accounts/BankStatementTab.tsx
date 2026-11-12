@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Upload, Check, EyeOff, Mail, RefreshCw, Server, AlertTriangle, BookmarkCheck, Trash2, Sparkles, ArrowLeftRight } from "lucide-react";
+import { Upload, Check, EyeOff, Mail, RefreshCw, Server, AlertTriangle, BookmarkCheck, Trash2, Sparkles, ArrowLeftRight, Unlink } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -10,13 +10,14 @@ import { FilterChips } from "@/components/ui/FilterChips";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ReasonDialog } from "@/components/ui/ReasonDialog";
+import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/core/format/date";
 import { useAuth } from "@/core/auth/useAuth";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY, useBankAccounts, useCategories } from "./hooks";
 import { PartyPicker, money, today } from "./shared";
-import type { BankAlias, BankFeedMail, BankFeedRun, StatementContinuity, StatementPostRow, StatementResult, StatementRow, StoredStatementFull, StoredStatementLine } from "./types";
+import type { BankAlias, BankFeedMail, BankFeedRun, StatementContinuity, StatementPostResult, StatementPostRow, StatementResult, StatementRow, StoredStatementFull, StoredStatementLine } from "./types";
 
 type Decision = {
   use: boolean; partyType: "customer" | "supplier" | "other"; party?: string; partyName?: string; allocations: NonNullable<StatementRow["suggestion"]>["allocations"];
@@ -355,11 +356,15 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
       });
       const res = await accountsService.postStatement(result.account._id, rows, result.statement);
       const next = { ...posted };
-      res.results.forEach((x) => { const row = toPost[x.index]; if (row) next[row.index] = x.ok ? x.voucherNo! : `✗ ${x.error}`; });
+      // A line someone else placed meanwhile (or this very request, sent twice) is
+      // answered with the voucher it already has: said as such, not as a new posting.
+      res.results.forEach((x) => { const row = toPost[x.index]; if (row) next[row.index] = !x.ok ? `✗ ${x.error}` : wasThere(x) ? `${ALREADY}${x.voucherNo ? ` as ${x.voucherNo}` : ""}` : x.voucherNo || "posted"; });
       setPosted(next);
       qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
-      const remembered = res.results.filter((x) => (x as { remembered?: boolean }).remembered).length;
-      toast(`${res.posted} voucher${res.posted === 1 ? "" : "s"} posted${res.failed ? `, ${res.failed} failed` : ""}${remembered ? ` · ${remembered} payer${remembered === 1 ? "" : "s"} remembered for next time` : ""}`, res.failed ? "info" : "success");
+      const remembered = res.results.filter((x) => x.remembered).length;
+      const already = res.results.filter((x) => x.ok && wasThere(x)).length;
+      const fresh = res.posted - already;
+      toast(`${fresh} voucher${fresh === 1 ? "" : "s"} posted${already ? ` · ${already} line${already === 1 ? " was" : "s were"} already in the books, nothing posted again` : ""}${res.failed ? `, ${res.failed} failed` : ""}${remembered ? ` · ${remembered} payer${remembered === 1 ? "" : "s"} remembered for next time` : ""}`, res.failed || already ? "info" : "success");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Could not post", "error");
     } finally {
@@ -455,7 +460,7 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
                       <td className="py-2 pr-3"><span className="block max-w-md truncate" title={r.narration}>{r.narration}</span>{r.ref && <span className="text-xs text-ink-400">{r.ref}</span>}</td>
                       <td className={`py-2 text-right tabular-nums ${r.direction === "in" ? "text-status-success" : ""}`}>{r.direction === "in" ? "+" : "−"}{money(r.amount)}</td>
                       <td className="py-2 pr-5">
-                        {posted[r.index] ? <StatusChip tone={posted[r.index].startsWith("✗") ? "danger" : "success"}>{posted[r.index]}</StatusChip>
+                        {posted[r.index] ? <StatusChip tone={posted[r.index].startsWith("✗") ? "danger" : posted[r.index].startsWith(ALREADY) ? "info" : "success"}>{posted[r.index]}</StatusChip>
                           : r.status === "recorded" ? <span>Already recorded as {r.recorded?.voucherNo}{r.recorded?.partyName ? ` · ${r.recorded.partyName}` : ""}</span>
                           : r.status === "ignored" ? <span>Set aside{r.note ? ` — ${r.note}` : ""}</span>
                           : r.status === "matched" && r.suggestion ? (
@@ -606,6 +611,10 @@ export function ReconcileView({ account }: { account: string }) {
   );
 }
 
+/** How a row says it was in the books before this posting. */
+const ALREADY = "already in the books";
+const wasThere = (x: StatementPostResult) => !!(x.already || x.replay);
+
 const LINE_TONE: Record<StoredStatementLine["status"], "success" | "info" | "warning" | "neutral"> = { recorded: "success", posted: "info", matched: "warning", unmatched: "warning", ignored: "neutral" };
 
 function PastView({ account, initial = null, onMatch }: { account: string; initial?: string | null; onMatch?: (statement: string) => void }) {
@@ -616,6 +625,21 @@ function PastView({ account, initial = null, onMatch }: { account: string; initi
   const list = useQuery({ queryKey: [ACCOUNTS_KEY, "statements", account], queryFn: () => accountsService.statements(account) });
   const one = useQuery({ queryKey: [ACCOUNTS_KEY, "statement-stored", open], queryFn: () => accountsService.storedStatement(open!), enabled: !!open });
   const toPlace = (one.data?.lines ?? []).filter((l) => l.status === "unmatched" || l.status === "matched").length;
+  const [unlinking, setUnlinking] = useState<number | null>(null);
+  // A line matched to the wrong entry: back to be placed, and the entry free for its own line.
+  const unlink = async (l: StoredStatementLine) => {
+    if (!open) return;
+    setUnlinking(l.index);
+    try {
+      await accountsService.unlinkLine(open, l.index);
+      qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
+      toast(`${l.voucherNo || "The entry"} is off this line — the line is back to be placed`, "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not undo the match", "error");
+    } finally {
+      setUnlinking(null);
+    }
+  };
   const ignore = async (reason: string) => {
     if (!ignoring || !open) return;
     try {
@@ -664,7 +688,17 @@ function PastView({ account, initial = null, onMatch }: { account: string; initi
                       <td className="py-1.5 pr-2"><span className="block max-w-sm truncate" title={l.narration}>{l.narration}</span></td>
                       <td className={`py-1.5 pr-2 text-right tabular-nums ${l.direction === "in" ? "text-status-success" : ""}`}>{l.direction === "in" ? "+" : "−"}{money(l.amount)}</td>
                       <td className="py-1.5"><StatusChip tone={LINE_TONE[l.status]}>{l.voucherNo || (l.status === "matched" ? "suggested, not posted" : l.status === "unmatched" ? "to place" : l.status)}</StatusChip>{l.note && <span className="ml-1 text-xs text-ink-400">{l.note}</span>}</td>
-                      <td className="py-1.5 pl-2 text-right">{(l.status === "unmatched" || l.status === "matched") && <Button size="sm" variant="ghost" onClick={() => setIgnoring(l)}><EyeOff className="h-4 w-4" /> Set aside</Button>}</td>
+                      <td className="py-1.5 pl-2 text-right">
+                        {(l.status === "unmatched" || l.status === "matched") && <Button size="sm" variant="ghost" onClick={() => setIgnoring(l)}><EyeOff className="h-4 w-4" /> Set aside</Button>}
+                        {/* Matched to an entry that was already in the books: the match can be undone here.
+                            A voucher posted from the line is undone by cancelling the voucher. */}
+                        {l.status === "recorded" && l.voucher && (
+                          <InlineConfirm question={`Take ${l.voucherNo || "the entry"} off this line?`} confirmLabel="Undo the match" loading={unlinking === l.index} onConfirm={() => unlink(l)}
+                            title="Matched to the wrong entry? The line goes back to be placed">
+                            <Unlink className="h-4 w-4" /> Undo match
+                          </InlineConfirm>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

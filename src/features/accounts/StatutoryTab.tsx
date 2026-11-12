@@ -15,6 +15,7 @@ import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
 import { money } from "./shared";
+import { round2 } from "@/features/invoices/gst";
 import { NoticesSection } from "./NoticesSection";
 import type { Gstr2bRow, MsmeDue, TdsRegister } from "./types";
 
@@ -89,6 +90,45 @@ function ChallanForm({ month, sections, onDone }: { month: string; sections: str
   );
 }
 
+/**
+ * TDS on bills booked and not yet paid. The books deduct at payment; the
+ * law asks at the bill or the payment, whichever is first. Until the firm
+ * decides to book it at the bill, this is the list to act on.
+ */
+function NotDeducted({ month, d }: { month: string; d: NonNullable<TdsRegister["notDeducted"]> }) {
+  const [all, setAll] = useState(false);
+  const rows = all ? d.rows : d.rows.slice(0, 8);
+  return (
+    <Card className="p-5" aria-label="TDS not yet deducted">
+      <h3 className="font-semibold">Booked and not yet paid · ₹{money(d.total)} of TDS not deducted</h3>
+      <p className="text-sm text-ink-500">
+        These books deduct TDS when a bill is paid. The law asks for it when the bill is booked or paid, whichever comes first.
+        {" "}{d.rows.length} bill{d.rows.length === 1 ? "" : "s"} of this year {d.rows.length === 1 ? "was" : "were"} still unpaid at the end of {monthLabel(month)}: the tax on {d.rows.length === 1 ? "it" : "them"} fell due in the month each was booked, and is not on the register above.
+        Pay them, or ask your accountant whether TDS should be booked at the bill.
+      </p>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full max-w-4xl text-sm" aria-label="Bills with TDS not deducted">
+          <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Supplier</th><th className={`${th} text-left`}>Bill</th><th className={`${th} text-left`}>Booked</th><th className={`${th} text-left`}>Section</th><th className={`${th} text-right`}>Unpaid</th><th className={`${th} text-right`}>Taxable share</th><th className={`${th} text-right`}>TDS</th></tr></thead>
+          <tbody className="divide-y divide-ink-100">
+            {rows.map((r) => (
+              <tr key={r._id}>
+                <td className="py-1.5">{r.supplierName}</td>
+                <td className="py-1.5"><Link to={`/accounts/bills/${r._id}`} className="text-brand-600 hover:underline">{r.billNo}</Link>{r.supplierBillNo && <span className="block text-xs text-ink-400">{r.supplierBillNo}</span>}</td>
+                <td className="py-1.5 whitespace-nowrap">{formatDate(r.billDate)}<span className="block text-xs text-ink-400">due for {monthLabel(r.month)}</span></td>
+                <td className="py-1.5">{r.section || "—"} · {r.rate}%</td>
+                <td className={num}>{money(r.unpaid)}</td>
+                <td className={num}>{money(r.base)}</td>
+                <td className={`${num} font-medium text-status-danger`}>{money(r.tds)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {d.rows.length > 8 && <Button size="sm" variant="ghost" className="mt-2" onClick={() => setAll((x) => !x)}>{all ? "Show fewer" : `Show all ${d.rows.length}`}</Button>}
+    </Card>
+  );
+}
+
 function TdsSection({ month }: { month: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -127,6 +167,7 @@ function TdsSection({ month }: { month: string }) {
           <div className="mt-4"><ChallanForm month={month} sections={reg.data.rows.map((r) => r.section)} onDone={(r) => qc.setQueryData([ACCOUNTS_KEY, "tds-register", month], r)} /></div>
         </Card>
       ))}
+      {view === "register" && reg.data?.notDeducted && reg.data.notDeducted.rows.length > 0 && <NotDeducted month={month} d={reg.data.notDeducted} />}
       {view === "26q" && (f26.isLoading || !f26.data ? <Skeleton className="h-48 w-full" /> : (
         <Card className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -138,7 +179,7 @@ function TdsSection({ month }: { month: string }) {
             <table className="w-full text-sm" aria-label="26Q rows">
               <thead><tr className="border-y border-ink-200"><th className={`${th} text-left`}>Deductee</th><th className={`${th} text-left`}>PAN</th><th className={`${th} text-left`}>Section</th><th className={`${th} text-left`}>Paid on</th><th className={`${th} text-right`}>Amount</th><th className={`${th} text-right`}>TDS</th><th className={`${th} text-left pl-3`}>Challan</th></tr></thead>
               <tbody className="divide-y divide-ink-100">
-                {f26.data.rows.map((r) => <tr key={r.voucherNo}><td className="py-1.5">{r.deductee}<span className="block text-xs text-ink-400">{r.voucherNo} · {r.docs.join(", ")}</span></td><td className={`py-1.5 font-mono text-xs ${r.pan ? "" : "text-status-danger"}`}>{r.pan || "missing"}</td><td className="py-1.5">{r.section} @ {r.rate}%</td><td className="py-1.5 whitespace-nowrap">{formatDate(r.date)}</td><td className={num}>{money(r.amountPaid)}</td><td className={num}>{money(r.tds)}</td><td className="py-1.5 pl-3 text-xs">{r.challan || <span className="text-status-warning">not deposited</span>}</td></tr>)}
+                {f26.data.rows.map((r) => <tr key={`${r.voucherNo}:${r.section}`}><td className="py-1.5">{r.deductee}<span className="block text-xs text-ink-400">{r.voucherNo} · {r.docs.join(", ")}</span></td><td className={`py-1.5 font-mono text-xs ${r.pan ? "" : "text-status-danger"}`}>{r.pan || "missing"}</td><td className="py-1.5">{r.section} @ {r.rate}%</td><td className="py-1.5 whitespace-nowrap">{formatDate(r.date)}</td><td className={num}>{money(r.amountPaid)}</td><td className={num}>{money(r.tds)}</td><td className="py-1.5 pl-3 text-xs">{r.challan || <span className="text-status-warning">not deposited</span>}</td></tr>)}
                 {f26.data.rows.length === 0 && <tr><td className="py-3 text-ink-400" colSpan={7}>No TDS deducted this quarter.</td></tr>}
               </tbody>
             </table>
@@ -538,9 +579,15 @@ function Rule37Section({ month }: { month: string }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: [ACCOUNTS_KEY, "itc-reversal", month], queryFn: () => accountsService.itcReversal(month) });
   const [busy, setBusy] = useState<string | null>(null);
-  const act = async (fn: () => Promise<{ billNo: string; amount: number }>, id: string, verb: string) => {
+  const act = async (fn: () => Promise<{ billNo: string; amount: number; reversed?: number; reclaimed?: number }>, id: string, verb: string) => {
     setBusy(id);
-    try { const r = await fn(); qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] }); toast(`${r.billNo}: ₹${money(r.amount)} ${verb} in ${monthLabel(month)}`, "success"); }
+    try {
+      const r = await fn();
+      qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
+      // What still stands reversed on the bill after this step, when the server says.
+      const standing = r.reversed === undefined ? null : Math.max(0, round2((r.reversed ?? 0) - (r.reclaimed ?? 0)));
+      toast(`${r.billNo}: ₹${money(r.amount)} ${verb} in ${monthLabel(month)}${standing === null ? "" : standing > 0 ? ` · ₹${money(standing)} stands reversed` : " · nothing left reversed"}`, "success");
+    }
     catch (e) { toast(e instanceof ApiError ? e.message : "Could not record it", "error"); }
     finally { setBusy(null); }
   };
@@ -571,7 +618,11 @@ function Rule37Section({ month }: { month: string }) {
                   <td className="py-1.5 whitespace-nowrap">{formatDate(b.day180)}{!b.inMonth && <span className="block text-xs text-status-danger">{b.overdueDays}d ago, still not reversed</span>}</td>
                   <td className={num}>{money(b.outstanding)}<span className="block text-xs text-ink-400">of {money(b.grand)}</span></td>
                   <td className={num}>{money(b.itc)}</td>
-                  <td className={`${num} font-medium text-status-danger`}>{money(b.reverse)}</td>
+                  <td className={`${num} font-medium text-status-danger`}>
+                    {money(b.reverse)}
+                    {/* Reversed before: this is what is still to go back, not the whole credit again. */}
+                    {(b.reversed ?? 0) > 0 && <span className="block text-xs font-normal text-ink-400">{b.again ? "unpaid again · " : "more · "}{money(b.reversed ?? 0)} reversed{(b.reclaimed ?? 0) > 0 ? `, ${money(b.reclaimed ?? 0)} re-claimed` : ""} so far</span>}
+                  </td>
                   <td className="py-1.5 pl-3 text-right"><Button size="sm" variant="secondary" loading={busy === b._id} onClick={() => act(() => accountsService.itcReverse(b._id, month), b._id, "reversed")}>Record reversal</Button></td>
                 </tr>
               ))}
@@ -586,7 +637,7 @@ function Rule37Section({ month }: { month: string }) {
           <div className="mt-2 overflow-x-auto">
             <table className="w-full text-sm" aria-label="ITC to re-claim">
               <tbody className="divide-y divide-ink-100">
-                {d.toReclaim.map((b) => <tr key={b._id}><td className="py-1.5">{b.supplierName}</td><td className="py-1.5"><Link to={`/accounts/bills/${b._id}`} className="text-brand-600 hover:underline">{b.billNo}</Link><span className="block text-xs text-ink-400">reversed ₹{money(b.reversed)} in {b.reversedPeriod}{b.fully ? " · now paid in full" : ` · ₹${money(b.outstanding)} still unpaid`}</span></td><td className={`${num} font-medium text-status-success`}>re-claim {money(b.reclaim)}</td><td className="py-1.5 pl-3 text-right"><Button size="sm" variant="secondary" loading={busy === b._id} onClick={() => act(() => accountsService.itcReclaim(b._id, month), b._id, "re-claimed")}>Record re-claim</Button></td></tr>)}
+                {d.toReclaim.map((b) => <tr key={b._id}><td className="py-1.5">{b.supplierName}</td><td className="py-1.5"><Link to={`/accounts/bills/${b._id}`} className="text-brand-600 hover:underline">{b.billNo}</Link><span className="block text-xs text-ink-400">reversed ₹{money(b.reversed)}{b.reversedPeriod ? ` in ${b.reversedPeriod}` : ""}{(b.reclaimed ?? 0) > 0 ? ` · ₹${money(b.reclaimed ?? 0)} re-claimed so far` : ""}{b.fully ? " · now paid in full" : ` · ₹${money(b.outstanding)} still unpaid, its credit stays reversed`}</span></td><td className={`${num} font-medium text-status-success`}>re-claim {money(b.reclaim)}</td><td className="py-1.5 pl-3 text-right"><Button size="sm" variant="secondary" loading={busy === b._id} onClick={() => act(() => accountsService.itcReclaim(b._id, month), b._id, "re-claimed")}>Record re-claim</Button></td></tr>)}
                 {d.done.reversed.map((b) => <tr key={`r${b._id}`} className="text-ink-500"><td className="py-1.5">{b.supplierName}</td><td className="py-1.5">{b.billNo}</td><td className={num}>reversed {money(b.amount)}</td><td className="py-1.5 pl-3 text-right text-xs">{formatDate(b.at)}</td></tr>)}
                 {d.done.reclaimed.map((b) => <tr key={`c${b._id}`} className="text-ink-500"><td className="py-1.5">{b.supplierName}</td><td className="py-1.5">{b.billNo}</td><td className={num}>re-claimed {money(b.amount)}</td><td className="py-1.5 pl-3 text-right text-xs">{formatDate(b.at)}</td></tr>)}
               </tbody>

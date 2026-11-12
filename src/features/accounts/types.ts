@@ -567,6 +567,17 @@ export interface StatementContinuity {
 export interface StatementResult { statement?: string; account: { _id: string; name: string }; rows: StatementRow[]; counts: { recorded: number; matched: number; unmatched: number; ignored?: number }; file: string; closingBalance?: number | null; continuity?: StatementContinuity }
 /** A payer or payee remembered from a statement line: narrations carrying `text` are this party. */
 export interface BankAlias { _id: string; text: string; direction: "in" | "out"; partyType: "customer" | "supplier" | "other"; party: string | null; partyName: string; headName?: string; incomeLedger?: "" | "interest"; createdByName?: string; lastMatchedAt?: string | null; createdAt: string; updatedAt: string }
+/** What became of one posted statement row. `index` is its place in the rows sent. */
+export interface StatementPostResult {
+  index: number; ok: boolean; voucherNo?: string; _id?: string | null; error?: string;
+  /** Answered by a voucher already there: the same request again, or … */
+  replay?: boolean;
+  /** … the line was already in the books (posted or matched from somewhere else); nothing was posted. */
+  already?: boolean;
+  contra?: boolean;
+  remembered?: boolean;
+}
+
 export interface StatementPostRow {
   /** The line's index on the stored statement. */
   index?: number;
@@ -678,7 +689,7 @@ export interface AccountsSettings {
   /** Send each bill's and expense's cost centre to Tally as an allocation. */
   costCentres?: { tally: boolean };
   /** Interest on overdue invoices, % a year, past the grace days; 0 = none. */
-  receivables?: { interestRate: number; graceDays: number };
+  receivables?: { interestRate: number; graceDays: number; interestBasis?: "balance" | "payments" };
   /** The Letter of Undertaking exports go under, and the year it covers. */
   lut?: { number: string; validFrom: string | null; validTo: string | null };
 }
@@ -688,7 +699,21 @@ export interface TdsRegister {
   month: string; due: string;
   rows: Array<{ section: string; deducted: number; count: number; deposited: number; interestPaid: number; balance: number; interestDue: number; late: boolean; challans: Array<{ _id: string; amount: number; interest: number; bsrCode: string; challanNo: string; depositedOn: string }> }>;
   totals: { deducted: number; deposited: number; balance: number; interestDue: number };
+  /** One row a voucher and section: a payment settling bills under two sections has two. */
   vouchers: Array<{ _id: string; voucherNo: string; date: string; partyName: string; section: string; rate: number; base: number; tds: number; docs: string[] }>;
+  /**
+   * Bills of the financial year carrying a TDS section that were still unpaid at the month's end.
+   * These books deduct when a bill is paid; the law asks for it when the bill is booked or paid,
+   * whichever is first, so this is the tax that was due and is not on the register yet.
+   */
+  notDeducted?: { asOf: string; rows: TdsNotDeductedRow[]; total: number; base: number };
+}
+export interface TdsNotDeductedRow {
+  _id: string; billNo: string; supplierBillNo: string; supplierName: string; billDate: string; section: string; rate: number;
+  /** Unpaid on the bill, its share of the taxable value, and the tax on that. */
+  unpaid: number; base: number; tds: number;
+  /** The month the bill was booked: when its TDS fell due. */
+  month: string;
 }
 export interface Form26q {
   fy: string; quarter: "Q1" | "Q2" | "Q3" | "Q4"; from: string; to: string;
@@ -754,8 +779,13 @@ export interface Gstr2bSummary {
 }
 export interface ItcReversalMonth {
   month: string;
-  toReverse: Array<{ _id: string; billNo: string; supplierBillNo: string; supplierName: string; billDate: string; day180: string; overdueDays: number; grand: number; outstanding: number; itc: number; reverse: number; inMonth: boolean }>;
-  toReclaim: Array<{ _id: string; billNo: string; supplierBillNo: string; supplierName: string; billDate: string; reversed: number; reversedPeriod: string; outstanding: number; reclaim: number; fully: boolean }>;
+  /**
+   * `reverse` / `reclaim` is the next step only: the credit on the unpaid share against what already
+   * stands reversed (`reversed` less `reclaimed`, the bill's running totals). A bill paid in parts is
+   * re-claimed in parts; `again` marks one reversed before, re-claimed, and unpaid once more.
+   */
+  toReverse: Array<{ _id: string; billNo: string; supplierBillNo: string; supplierName: string; billDate: string; day180: string; overdueDays: number; grand: number; outstanding: number; itc: number; reverse: number; inMonth: boolean; reversed?: number; reclaimed?: number; again?: boolean }>;
+  toReclaim: Array<{ _id: string; billNo: string; supplierBillNo: string; supplierName: string; billDate: string; reversed: number; reclaimed?: number; reversedPeriod: string; outstanding: number; reclaim: number; fully: boolean }>;
   totals: { reverse: number; reclaim: number; reversed: number; reclaimed: number };
   done: { reversed: Array<{ _id: string; billNo: string; supplierName: string; amount: number; at: string }>; reclaimed: Array<{ _id: string; billNo: string; supplierName: string; amount: number; at: string }> };
 }
@@ -928,7 +958,22 @@ export interface FixedAsset {
   openingWdv?: { fy?: string; companiesAct?: number; incomeTax?: number };
   status: "active" | "sold" | "scrapped"; disposal?: { date?: string; amount?: number; reason?: string };
 }
-export interface FixedAssetRow extends FixedAsset { year: AssetYear; blockLabel: string; addedThisYear: boolean }
+export interface FixedAssetRow extends FixedAsset {
+  year: AssetYear; blockLabel: string; addedThisYear: boolean;
+  /** For an asset sold or scrapped: the journal that took it off the books, or null while that is still to be posted. */
+  disposalJournal?: { _id: string; journalNo: string; date: string; total: number } | null;
+}
+/**
+ * The journal that takes a disposed asset off the books, as the server drafts it: for the person to
+ * pick the account the money came into, check the ledger names against Tally's, and post.
+ */
+export interface JournalDraft {
+  date: string; purpose: JournalPurpose; narration: string; reason: string;
+  lines: Array<{ kind: "ledger" | "bank"; ledger?: string; account?: string | null; debit: number; credit: number; note?: string }>;
+  figures?: { cost: number; accumulated: number; wdv: number; amount: number; gainLoss: number };
+  /** The journal already in the books for it, if one is: posting a changed one takes its place. */
+  posted?: { _id: string; journalNo: string; date: string; total: number } | null;
+}
 export interface AssetBlockTotals { block: AssetBlock; label: string; itRate: number; count: number; cost: number; caOpening: number; caDep: number; caClosing: number; itOpening: number; itDep: number; itClosing: number }
 export interface FixedAssetRegister {
   fy: string; from: string; to: string; rows: FixedAssetRow[]; blocks: AssetBlockTotals[];
@@ -1106,4 +1151,22 @@ export interface DepositSlip {
   cash: number;
   contraNo?: string;
   total: number;
+  /** A slip stored before slips could be cancelled has none: it is posted. */
+  status?: "posted" | "cancelled";
+  cancel?: { reason?: string; at?: string };
 }
+
+// ── The books lock's history ──
+export interface LockEvent {
+  _id: string;
+  /** closed: locked for the first time or moved forward · moved: set to another date · reopened: moved back or lifted · override: an admin let one entry through */
+  kind: "closed" | "moved" | "reopened" | "override";
+  lockDate: string | null;
+  previousLockDate?: string | null;
+  reason?: string;
+  via?: string;
+  byName?: string;
+  at: string;
+  entry?: { date?: string; cancelling?: boolean; method?: string; path?: string };
+}
+

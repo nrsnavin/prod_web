@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, Info, ShieldAlert } from "lucide-react";
+import { ApiError } from "@/core/http/httpClient";
 import { accountsService } from "./api";
 import type { Flag } from "./types";
+
+/**
+ * The checks that stopped a payment, when that is why the server refused
+ * it (a supplier's bank account changed lately, or shared with another
+ * supplier): the form then asks how it was confirmed, and sends the
+ * payment again with the answer. Null for any other error.
+ */
+export const riskFlags = (e: unknown): Flag[] | null =>
+  e instanceof ApiError && e.code === "PAYMENT_RISK" ? (((e.data?.details as { flags?: Flag[] } | undefined)?.flags) ?? []) : null;
 
 /**
  * What the books notice about a bill or expense while it is being typed

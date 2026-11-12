@@ -52,6 +52,7 @@ const books = vi.hoisted(() => ({
 vi.mock("@/features/accounts/hooks", () => ({
   useAccountsSettings: () => books.settings,
   useAccountsMutations: () => books.mutations,
+  useLockHistory: () => ({ data: [], isLoading: false }),
 }));
 
 // ── Quotes ─────────────────────────────────────────────────────────

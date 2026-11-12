@@ -47,6 +47,43 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler): void {
   onUnauthorized = handler;
 }
 
+// The books lock. A posting or a cancellation dated inside a period that
+// has been closed is refused with BOOKS_LOCKED; an admin may let it
+// through by saying why (the server keeps the reason on the entry and in
+// the lock history). The UI registers one asker — a dialog — and every
+// write that meets the lock is offered it, then sent again with the
+// reason. Without an asker, or when it answers null (not an admin, or
+// they decided against it), the refusal goes back to the caller as it
+// always did. The HTTP layer knows nothing of dialogs or roles.
+type LockOverrideAsker = (error: ApiError) => Promise<string | null>;
+let askLockOverride: LockOverrideAsker | undefined;
+export function setLockOverrideAsker(asker: LockOverrideAsker | undefined): void {
+  askLockOverride = asker;
+}
+
+/** `body` with the override reason added: a plain object, or a form with files. */
+function withOverride(body: unknown, reason: string): unknown {
+  if (typeof FormData !== "undefined" && body instanceof FormData) {
+    const next = new FormData();
+    body.forEach((v, k) => next.append(k, v));
+    next.set("lockOverride", reason);
+    return next;
+  }
+  return { ...((body && typeof body === "object" ? body : {}) as Record<string, unknown>), lockOverride: reason };
+}
+
+/** Send; if the books lock refuses it and an admin gives a reason, send it once more with the reason. */
+export async function throughLock<T>(body: unknown, send: (b: unknown) => Promise<T>): Promise<T> {
+  try {
+    return await send(body);
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.code !== "BOOKS_LOCKED" || !askLockOverride) throw err;
+    const reason = await askLockOverride(err);
+    if (!reason) throw err;
+    return send(withOverride(body, reason));
+  }
+}
+
 // Exported for unit tests — the interceptor uses it to normalise every
 // axios failure into an ApiError, preserving route-supplied diagnostics.
 export function toApiError(error: unknown): ApiError {
@@ -127,21 +164,17 @@ class AxiosHttpClient implements HttpClient {
     return data as Blob;
   }
   async post<T>(url: string, body?: unknown, options?: CallOptions): Promise<T> {
-    const { data } = await this.instance.post<T>(url, body, wait(options));
-    return data;
+    return throughLock(body, async (b) => (await this.instance.post<T>(url, b, wait(options))).data);
   }
   async upload<T>(url: string, form: FormData): Promise<T> {
     // No Content-Type here: the browser writes it, with the boundary.
-    const { data } = await this.instance.post<T>(url, form, { timeout: UPLOAD_TIMEOUT_MS });
-    return data;
+    return throughLock(form, async (b) => (await this.instance.post<T>(url, b, { timeout: UPLOAD_TIMEOUT_MS })).data);
   }
   async put<T>(url: string, body?: unknown, options?: CallOptions): Promise<T> {
-    const { data } = await this.instance.put<T>(url, body, wait(options));
-    return data;
+    return throughLock(body, async (b) => (await this.instance.put<T>(url, b, wait(options))).data);
   }
   async patch<T>(url: string, body?: unknown): Promise<T> {
-    const { data } = await this.instance.patch<T>(url, body);
-    return data;
+    return throughLock(body, async (b) => (await this.instance.patch<T>(url, b)).data);
   }
   async delete<T>(url: string, params?: Record<string, unknown>): Promise<T> {
     const { data } = await this.instance.delete<T>(url, { params });

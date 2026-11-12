@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { AxiosError } from "axios";
-import { ApiError, toApiError, DEFAULT_TIMEOUT_MS, MODEL_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from "./httpClient";
+import { ApiError, toApiError, throughLock, setLockOverrideAsker, DEFAULT_TIMEOUT_MS, MODEL_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from "./httpClient";
 
 // Build an AxiosError shaped like a real failed response so we exercise
 // the same branch the response interceptor hits in the browser.
@@ -68,3 +68,44 @@ describe("how long a call waits", () => {
     expect(UPLOAD_TIMEOUT_MS).toBeGreaterThan(MODEL_TIMEOUT_MS);
   });
 });
+
+describe("a write that meets the books lock", () => {
+  afterEach(() => setLockOverrideAsker(undefined));
+  const locked = () => new ApiError("The books are closed up to 31 Mar 2026", 409, undefined, "BOOKS_LOCKED", { details: { lockDate: "2026-03-31T00:00:00.000Z" } });
+
+  it("is sent again with the reason an admin gives, once", async () => {
+    const send = vi.fn().mockRejectedValueOnce(locked()).mockResolvedValueOnce({ ok: true });
+    const asker = vi.fn().mockResolvedValue("Auditor asked for the March entry");
+    setLockOverrideAsker(asker);
+    await expect(throughLock({ amount: 100 }, send)).resolves.toEqual({ ok: true });
+    expect(asker).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenNthCalledWith(1, { amount: 100 });
+    expect(send).toHaveBeenNthCalledWith(2, { amount: 100, lockOverride: "Auditor asked for the March entry" });
+  });
+
+  it("goes back to the caller as refused when nobody may override, or they decide not to", async () => {
+    const send = vi.fn().mockRejectedValue(locked());
+    await expect(throughLock({ a: 1 }, send)).rejects.toMatchObject({ code: "BOOKS_LOCKED" });   // no asker
+    setLockOverrideAsker(vi.fn().mockResolvedValue(null));
+    await expect(throughLock({ a: 1 }, send)).rejects.toMatchObject({ code: "BOOKS_LOCKED" });   // asked, declined
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("asks nothing for any other refusal, and carries the reason on a form with files too", async () => {
+    const asker = vi.fn().mockResolvedValue("Auditor asked for the March entry");
+    setLockOverrideAsker(asker);
+    const other = vi.fn().mockRejectedValue(new ApiError("No", 409, undefined, "PAYMENT_RISK"));
+    await expect(throughLock({}, other)).rejects.toMatchObject({ code: "PAYMENT_RISK" });
+    expect(asker).not.toHaveBeenCalled();
+
+    const form = new FormData();
+    form.append("fy", "2025-26");
+    const sent: FormData[] = [];
+    const send = vi.fn(async (b: unknown) => { sent.push(b as FormData); if (sent.length === 1) throw locked(); return "done"; });
+    await expect(throughLock(form, send)).resolves.toBe("done");
+    expect(sent[1].get("fy")).toBe("2025-26");
+    expect(sent[1].get("lockOverride")).toBe("Auditor asked for the March entry");
+    expect(form.get("lockOverride")).toBeNull();   // the form the caller holds is not changed
+  });
+});
+

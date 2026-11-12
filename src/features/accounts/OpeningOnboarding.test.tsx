@@ -89,6 +89,24 @@ describe("opening balances on the dashboard", () => {
     expect(toast).toHaveBeenCalledWith("Kumar Knits: 2 bills posted", "success");
   });
 
+  it("a bill already in the books is said as such, and is not counted as posted", async () => {
+    svc.openingOnboarding.mockResolvedValue(active);
+    // The first is new; the second is the same party, date, number and amount as a balance already there.
+    svc.bulkOpening.mockResolvedValue({ success: true, posted: 2, failed: 0, results: [{ index: 0, ok: true, docNo: "OB/2025-26/0007" }, { index: 1, ok: true, docNo: "OB/2025-26/0003", replay: true }] });
+    wrap();
+    const card = await screen.findByLabelText("Opening balances");
+    await userEvent.click(within(card).getByRole("button", { name: "Kumar Knits: bill by bill" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Bill 1 amount"), "30000");
+    await userEvent.type(within(dialog).getByLabelText("Bill 2 amount"), "18500");
+    await userEvent.click(within(dialog).getByRole("button", { name: /Post 2 bills/ }));
+    expect(toast).toHaveBeenCalledWith("1 posted, 1 already there — see the rows left", "info");
+    // The dialog stays, with the one that was already there and what to do if it is another bill.
+    expect(within(dialog).getByLabelText("Bill 1 amount")).toHaveValue(18500);
+    expect(within(dialog).queryByLabelText("Bill 2 amount")).not.toBeInTheDocument();
+    expect(dialog).toHaveTextContent("Already in the books as OB/2025-26/0003, not posted again. If this is another bill, give it its own number.");
+  });
+
   it("an admin may stop it", async () => {
     role = "admin";
     svc.openingOnboarding.mockResolvedValue(active);

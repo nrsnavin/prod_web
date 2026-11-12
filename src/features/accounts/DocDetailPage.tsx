@@ -21,6 +21,7 @@ import { useAuth } from "@/core/auth/useAuth";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY, useAccountsMutations, useBill, useExpense, useNote, usePayment } from "./hooks";
 import { PayDialog } from "./ExpensesTab";
+import { riskFlags } from "./Flags";
 import { VoucherForm } from "./VouchersTab";
 import { ApplyCreditDialog } from "./Credits";
 import { ChequeCard } from "./Cheque";
@@ -227,7 +228,10 @@ export function ExpenseDetailPage() {
       <ReasonDialog open={dialog === "cancel"} onClose={() => setDialog(null)} title={`Cancel ${e.expenseNo}?`} confirmLabel="Cancel expense" minLength={8} loading={cancelExpense.isPending}
         onConfirm={(reason) => cancelExpense.mutate({ id: e._id, reason }, { onSuccess: () => { setDialog(null); toast("Cancelled", "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not cancel", "error") })} />
       {dialog === "pay" && <PayDialog title={`Pay ${e.expenseNo}`} amount={e.totals.grand - e.paidAmount} loading={payExpense.isPending} onClose={() => setDialog(null)}
-        onConfirm={(body) => payExpense.mutate({ id: e._id, body }, { onSuccess: (r) => { setDialog(null); toast(`Paid — voucher ${r.voucher.voucherNo}`, "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not pay", "error") })} />}
+        onConfirm={(body, onRisk) => payExpense.mutate({ id: e._id, body }, {
+          onSuccess: (r) => { setDialog(null); toast(`Paid — voucher ${r.voucher.voucherNo}`, "success"); },
+          onError: (err) => { const flags = riskFlags(err); if (flags) return onRisk(flags); toast(err instanceof ApiError ? err.message : "Could not pay", "error"); },
+        })} />}
     </>
   );
 }
