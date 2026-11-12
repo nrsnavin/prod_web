@@ -1,7 +1,8 @@
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Pencil, RotateCcw, UserMinus } from "lucide-react";
+import { ArrowLeft, Pencil, QrCode, RotateCcw, UserMinus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -24,6 +25,7 @@ import { EmployeeBonusCard } from "./EmployeeBonusCard";
 import { SkillProfileCard } from "./SkillProfileCard";
 import { WorkerAccessCard } from "./WorkerAccessCard";
 import { AadhaarValue } from "./AadhaarValue";
+import { AadhaarQrDialog, signatureWords } from "./AadhaarQrDialog";
 import { useAuth } from "@/core/auth/useAuth";
 import { canAccessPath } from "@/app/navigation";
 import { formatDate } from "@/core/format/date";
@@ -56,6 +58,9 @@ export function EmployeeDetailPage() {
   // newer version than the one the person was looking at.
   const [editVersion, setEditVersion] = useState<number | undefined>(undefined);
   const [perf, setPerf] = useState<number | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: ["employees"] });
   const { user } = useAuth();
   // Giving a worker a login is an admin's, through the Users permission.
   const canGrantAccess = user?.role === "admin" && canAccessPath("/users", user);
@@ -137,6 +142,31 @@ export function EmployeeDetailPage() {
                 label: "Aadhaar",
                 value: <AadhaarValue empId={emp.id} masked={emp.aadhar} canReveal={user?.role === "admin"} />,
               },
+              {
+                label: "Aadhaar QR",
+                value: (
+                  <span className="flex flex-wrap items-center gap-2">
+                    {emp.aadhaarCheck ? (
+                      <>
+                        <StatusChip tone={signatureWords(emp.aadhaarCheck.signature).tone}>{signatureWords(emp.aadhaarCheck.signature).title}</StatusChip>
+                        <span className="text-xs text-ink-500">
+                          {formatDate(emp.aadhaarCheck.at)}{emp.aadhaarCheck.byName ? ` · ${emp.aadhaarCheck.byName}` : ""}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-ink-400">Not checked</span>
+                    )}
+                    {user?.role === "admin" && !left && (
+                      <Button type="button" size="sm" variant="ghost" onClick={() => setQrOpen(true)}>
+                        <QrCode className="h-4 w-4" aria-hidden /> Check
+                      </Button>
+                    )}
+                  </span>
+                ),
+              },
+              { label: "Date of birth", value: emp.dob ? emp.dob.split("-").reverse().join("/") : undefined },
+              { label: "Gender", value: emp.gender ? <span className="capitalize">{emp.gender === "other" ? "Transgender / other" : emp.gender}</span> : undefined },
+              { label: "Address", value: emp.address ? `${emp.address}${emp.pincode ? ` – ${emp.pincode}` : ""}` : undefined },
               { label: "Skill", value: emp.skill },
               { label: "Total shifts", value: emp.totalShifts },
             ]}
@@ -254,6 +284,33 @@ export function EmployeeDetailPage() {
         }
       />
 
+      <AadhaarQrDialog
+        open={qrOpen}
+        onClose={() => setQrOpen(false)}
+        personName={emp.name}
+        employeeId={emp.id}
+        onChecked={() => void refresh()}
+        fillLabel="Use the card's details on the record"
+        onFill={({ read }) => {
+          const f = read.fields;
+          if (!f) return;
+          const body = {
+            ...(f.dob ? { dob: f.dob } : {}),
+            ...(f.gender ? { gender: f.gender } : {}),
+            ...(f.address ? { address: f.address } : {}),
+            ...(f.pincode ? { pincode: f.pincode } : {}),
+          };
+          if (!Object.keys(body).length) return;
+          update.mutate(
+            { id: emp.id, body: { ...body, ...(emp.__v === undefined ? {} : { expectedVersion: emp.__v }) } },
+            {
+              onSuccess: () => toast("Date of birth, gender and address taken from the card", "success"),
+              onError: (e) => toast(e instanceof ApiError ? e.message : "Could not save the card's details", "error"),
+            }
+          );
+        }}
+      />
+
       <FormScreen open={editOpen} onClose={() => setEditOpen(false)} title="Edit employee">
         <EmployeeForm
           initial={{
@@ -264,7 +321,13 @@ export function EmployeeDetailPage() {
             aadhar: undefined,
             hourlyRate: emp.hourlyRate,
             skillProfile: emp.skillProfile ?? undefined,
+            dob: emp.dob,
+            gender: emp.gender,
+            address: emp.address,
+            pincode: emp.pincode,
           }}
+          employeeId={emp.id}
+          onAadhaarChecked={refresh}
           aadhaarOnFile={emp.aadhar}
           canEditAadhaar={user?.role === "admin"}
           submitting={update.isPending}

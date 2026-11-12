@@ -134,6 +134,13 @@ export interface EmployeeDetail {
   skill?: number;
   hourlyRate?: number;
   skillProfile?: SkillProfile | null;
+  /** As on their Aadhaar card ("" when not recorded). */
+  dob?: string;
+  gender?: "male" | "female" | "other" | "";
+  address?: string;
+  pincode?: string;
+  /** The last check of their Aadhaar card's QR code; null until someone checks it. */
+  aadhaarCheck?: AadhaarCheck | null;
   status?: "active" | "offboarded";
   offboarding?: Offboarding | null;
   pastOffboardings?: PastOffboarding[];
@@ -149,6 +156,77 @@ export interface EmployeeFormValues {
   aadhar?: string;
   hourlyRate?: number;
   skillProfile?: SkillProfile;
+  dob?: string;
+  gender?: "male" | "female" | "other" | "";
+  address?: string;
+  pincode?: string;
+  /** A new employee's Aadhaar QR code, scanned on the form: the server reads it again and keeps the check. */
+  aadhaarQr?: string;
+  aadhaarQrConsent?: boolean;
+}
+
+// ── The QR code on an Aadhaar card (POST /employee/aadhaar-qr) ──────
+
+export type AadhaarSignature = "valid" | "invalid" | "unchecked" | "unsigned";
+export type NameMatch = "same" | "close" | "different";
+
+export interface AadhaarQrFields {
+  name: string;
+  /** YYYY-MM-DD (a year alone comes as YYYY-01-01), or null when unreadable. */
+  dob: string | null;
+  gender: "male" | "female" | "other" | null;
+  careOf: string;
+  address: string;
+  pincode: string;
+}
+
+export interface AadhaarQrRead {
+  /** "secure": the signed code on cards since 2019; "old": the earlier XML code, unsigned. */
+  kind: "secure" | "old";
+  version: string | null;
+  /** Whether the fields could be read: "guessed" is a newer layout whose fields all had their shape. */
+  layout: "known" | "guessed" | "unreadable";
+  signature: AadhaarSignature;
+  /** The UIDAI certificate it verified against. */
+  key: string | null;
+  last4: string | null;
+  issuedAt: string | null;
+  fields: AadhaarQrFields | null;
+  /** The full number: only the old XML code carries it. */
+  aadhaar: string | null;
+  mobileLast4: string | null;
+}
+
+export interface AadhaarQrMatches {
+  last4: boolean | null;
+  name: NameMatch | null;
+  phone: boolean | null;
+}
+
+/** What is kept on the employee: the outcome only. */
+export interface AadhaarCheck {
+  method: "qr";
+  kind: "secure" | "old";
+  version?: string;
+  layout: "known" | "guessed" | "unreadable";
+  signature: AadhaarSignature;
+  key?: string;
+  last4?: string;
+  issuedAt?: string | null;
+  nameOnCard?: string;
+  dobOnCard?: string;
+  genderOnCard?: string;
+  matches: AadhaarQrMatches;
+  consent: boolean;
+  at: string;
+  byName?: string;
+}
+
+export interface AadhaarQrResult {
+  read: AadhaarQrRead;
+  matches: AadhaarQrMatches;
+  /** Set when an employee was named: the outcome kept on their record. */
+  check: AadhaarCheck | null;
 }
 
 export const DEPARTMENTS = [

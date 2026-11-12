@@ -3,6 +3,7 @@ import {
   Employee,
   EmployeeDetail,
   EmployeeFormValues,
+  AadhaarQrResult,
   EmployeeStatusFilter,
   OffboardReason,
   OffboardResult,
@@ -36,6 +37,21 @@ export const employeeService = {
       { id }
     );
     return res.employee;
+  },
+
+  /**
+   * An Aadhaar card's QR code: its details, UIDAI's signature, and how it
+   * compares with the employee (or with what the form holds). Needs the
+   * employee's consent; with an employeeId the outcome is kept on them.
+   */
+  async checkAadhaarQr(body: {
+    qr: string;
+    consent: true;
+    employeeId?: string;
+    compare?: { name?: string; phoneNumber?: string; aadhar?: string };
+  }): Promise<AadhaarQrResult> {
+    const res = await httpClient.post<{ success: boolean } & AadhaarQrResult>("/employee/aadhaar-qr", body);
+    return { read: res.read, matches: res.matches, check: res.check };
   },
 
   async create(body: EmployeeFormValues): Promise<Employee> {

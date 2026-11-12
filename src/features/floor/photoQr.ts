@@ -11,7 +11,11 @@ import { barcodeDetector } from "./QrScanner";
 //  and once more smaller when that finds nothing.
 // ══════════════════════════════════════════════════════════════════
 
-export async function qrFromPhoto(photo: Blob): Promise<string | null> {
+/**
+ * The QR code in a photo, or null. `sizes` are the longest sides jsQR
+ * tries, largest first: a dense code (an Aadhaar card's) needs more.
+ */
+export async function qrFromPhoto(photo: Blob, sizes: number[] = [1600, 900]): Promise<string | null> {
   if (typeof createImageBitmap !== "function") return null;
   let bitmap: ImageBitmap | null = null;
   try {
@@ -29,7 +33,7 @@ export async function qrFromPhoto(photo: Blob): Promise<string | null> {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return null;
-    for (const maxSide of [1600, 900]) {
+    for (const maxSide of sizes) {
       const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
       canvas.width = Math.round(bitmap.width * scale);
       canvas.height = Math.round(bitmap.height * scale);

@@ -66,7 +66,37 @@ type Phase = "starting" | "scanning" | "no-camera" | "insecure" | "denied" | "fa
 
 const REPEAT_MS = 3000;
 
-export function QrScanner({ onCode, paused = false }: { onCode: (code: string) => void; paused?: boolean }) {
+/** What the camera is pointed at, and what to do instead when it cannot be used. */
+export interface ScannerWords {
+  /** The line over the picture while scanning. */
+  hint: string;
+  /** The video's accessible name. */
+  ariaLabel: string;
+  insecure: string;
+  noCamera: string;
+  denied: string;
+  failed: string;
+}
+
+const LOOM_WORDS: ScannerWords = {
+  hint: "Point at the label on the loom",
+  ariaLabel: "Camera, pointed at the loom's label",
+  insecure: "The camera only works when the page is opened over https://. Open the secure address to scan, or pick the loom from the list below.",
+  noCamera: "This browser has no camera access. Pick the loom from the list below, or type its ID.",
+  denied: "Camera access was refused. Allow it in the browser's site settings to scan, or pick the loom from the list below.",
+  failed: "The camera could not be started. Pick the loom from the list below, or type its ID.",
+};
+
+export function QrScanner({ onCode, paused = false, dense = false, words = LOOM_WORDS }: {
+  onCode: (code: string) => void;
+  paused?: boolean;
+  /**
+   * A dense code (an Aadhaar card's carries about 3,000 digits): the
+   * camera is asked for a sharper picture, and jsQR reads it larger.
+   */
+  dense?: boolean;
+  words?: ScannerWords;
+}) {
   const video = useRef<HTMLVideoElement>(null);
   const [phase, setPhase] = useState<Phase>("starting");
   const last = useRef<{ code: string; at: number } | null>(null);
@@ -87,10 +117,15 @@ export function QrScanner({ onCode, paused = false }: { onCode: (code: string) =
     let busy = false;
 
     (async () => {
-      const read = (await nativeReader()) ?? (await bundledReader().catch(() => null));
+      const read = (await nativeReader()) ?? (await bundledReader(dense ? 1600 : 640).catch(() => null));
       if (!read) { setPhase("failed"); return; }
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: dense
+            ? { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+            : { facingMode: { ideal: "environment" } },
+          audio: false,
+        });
       } catch (e) {
         setPhase(e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "SecurityError") ? "denied" : "failed");
         return;
@@ -129,10 +164,10 @@ export function QrScanner({ onCode, paused = false }: { onCode: (code: string) =
       <div className="flex items-start gap-3 rounded-xl border border-dashed border-ink-200 bg-surface-muted p-3 text-sm text-ink-600" data-testid="scanner-off">
         <CameraOff className="mt-0.5 h-5 w-5 shrink-0 text-ink-400" aria-hidden />
         <p>
-          {phase === "insecure" && "The camera only works when the page is opened over https://. Open the secure address to scan, or pick the loom from the list below."}
-          {phase === "no-camera" && "This browser has no camera access. Pick the loom from the list below, or type its ID."}
-          {phase === "denied" && "Camera access was refused. Allow it in the browser's site settings to scan, or pick the loom from the list below."}
-          {phase === "failed" && "The camera could not be started. Pick the loom from the list below, or type its ID."}
+          {phase === "insecure" && words.insecure}
+          {phase === "no-camera" && words.noCamera}
+          {phase === "denied" && words.denied}
+          {phase === "failed" && words.failed}
         </p>
       </div>
     );
@@ -140,13 +175,13 @@ export function QrScanner({ onCode, paused = false }: { onCode: (code: string) =
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-black" style={{ aspectRatio: "4 / 3" }} data-testid="scanner">
-      <video ref={video} muted playsInline className="h-full w-full object-cover" aria-label="Camera, pointed at the loom's label" />
+      <video ref={video} muted playsInline className="h-full w-full object-cover" aria-label={words.ariaLabel} />
       <div className="pointer-events-none absolute inset-0 grid place-items-center">
         <div className="h-3/5 w-3/5 rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]" />
       </div>
       <p className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-6 text-center text-xs font-medium text-white">
         <ScanLine className="h-4 w-4" aria-hidden />
-        {phase === "starting" ? "Starting the camera…" : paused ? "Paused" : "Point at the label on the loom"}
+        {phase === "starting" ? "Starting the camera…" : paused ? "Paused" : words.hint}
       </p>
     </div>
   );
