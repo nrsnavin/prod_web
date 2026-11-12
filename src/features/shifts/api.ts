@@ -23,6 +23,23 @@ export interface FloorPin {
   failedAttempts: number;
 }
 
+/**
+ * The settings with every part present. A record saved by an older
+ * server can lack parts added since (no handover, no reminder phone
+ * list); the server fills them in now, and the page does not depend on
+ * it: the settings page once failed reading `phones.length`.
+ */
+export function completeSettings(s: Partial<ProductionSettings> | null | undefined): ProductionSettings {
+  const a = s?.autoVerify;
+  const n = s?.shiftEndNudge;
+  const h = s?.shiftHandover;
+  return {
+    autoVerify: { enabled: !!a?.enabled, tolerancePct: a?.tolerancePct ?? 10, minShifts: a?.minShifts ?? 8 },
+    shiftEndNudge: { enabled: !!n?.enabled, minutesBefore: n?.minutesBefore ?? 30, phones: Array.isArray(n?.phones) ? n.phones : [] },
+    shiftHandover: { enabled: !!h?.enabled, withinMinutes: h?.withinMinutes ?? 60, phones: Array.isArray(h?.phones) ? h.phones : [] },
+  };
+}
+
 export const shiftService = {
   /** The shift's floor PIN, made the first time it is asked for. */
   async floorPin(date: string, shift: "DAY" | "NIGHT"): Promise<FloorPin> {
@@ -64,9 +81,9 @@ export const shiftService = {
   confirmPlan: (id: string) => httpClient.post<{ success: boolean; status: string }>("/shift/confirm-shift-plan", { id }),
   deletePlan: (id: string) => httpClient.delete("/shift/deletePlan", { id }),
 
-  productionSettings: async () => (await httpClient.get<{ success: boolean; settings: ProductionSettings }>("/shift/production-settings")).settings,
+  productionSettings: async () => completeSettings((await httpClient.get<{ success: boolean; settings: Partial<ProductionSettings> }>("/shift/production-settings")).settings),
   saveProductionSettings: async (body: { autoVerify?: Partial<ProductionSettings["autoVerify"]>; shiftEndNudge?: Partial<Omit<ProductionSettings["shiftEndNudge"], "phones">> & { phones?: string[] | string }; shiftHandover?: { enabled?: boolean; withinMinutes?: number; phones?: string[] | string } }) =>
-    (await httpClient.put<{ success: boolean; settings: ProductionSettings }>("/shift/production-settings", body)).settings,
+    completeSettings((await httpClient.put<{ success: boolean; settings: Partial<ProductionSettings> }>("/shift/production-settings", body)).settings),
   /** The shift-end reminder, now, for the running shift. */
   sendShiftEndNudge: async () => httpClient.post<{ success: boolean; sent: boolean; why?: string; looms?: string[]; text?: string }>("/shift/shift-end-nudge/send", {}),
   /** The handover note for the shift just ended (or one named), as it would be sent. */
