@@ -13,7 +13,8 @@ import {
   SupplierOption,
   YarnLot,
   YarnLotStatus,
- StockTakePreview } from "./types";
+ StockTakePreview, LotCertificate, LotCertificateRead, LotCompare, LotSearchRow, LotTest } from "./types";
+import { uploadForm } from "@/core/http/upload";
 
 /**
  * What the server takes.
@@ -257,6 +258,31 @@ export const materialService = {
       `/yarn-lots/${id}`
     );
     return res.lot;
+  },
+
+  /** A lot's test certificate read from its photo or PDF: the lot it is for, the tests, the checks. Nothing is saved. */
+  async readLotCertificate(files: File[], lot?: string): Promise<LotCertificateRead> {
+    const fd = new FormData();
+    if (lot) fd.append("lot", lot);
+    for (const f of files) fd.append("files", f);
+    return uploadForm<LotCertificateRead>("/yarn-lots/certificate/read", fd, "Could not read the certificate");
+  },
+  /** Keep the confirmed certificate on the lot; a newer one replaces it. */
+  async saveLotCertificate(id: string, body: { certNo?: string; date?: string; issuer?: string; product?: string; result?: "" | "pass" | "fail"; tests: Array<Omit<LotTest, "key"> & { key?: string }>; aiSuggestion?: string | null }): Promise<LotCertificate> {
+    return (await httpClient.put<{ success: boolean; certificate: LotCertificate }>(`/yarn-lots/${id}/certificate`, body)).certificate;
+  },
+  /** Lots whose certificate has the property in the range. */
+  async searchLotCertificates(q: { material?: string; key: string; min?: number | ""; max?: number | "" }): Promise<LotSearchRow[]> {
+    const query: Record<string, unknown> = { key: q.key };
+    if (q.material) query.material = q.material;
+    if (q.min !== undefined && q.min !== "") query.min = q.min;
+    if (q.max !== undefined && q.max !== "") query.max = q.max;
+    return (await httpClient.get<{ success: boolean; lots: LotSearchRow[] }>("/yarn-lots/certificates/search", query)).lots;
+  },
+  /** The certified lots of a yarn side by side. */
+  async compareLots(material: string): Promise<LotCompare> {
+    const { success: _ok, ...rest } = await httpClient.get<LotCompare & { success: boolean }>("/yarn-lots/certificates/compare", { material });
+    return rest as LotCompare;
   },
 
   /**

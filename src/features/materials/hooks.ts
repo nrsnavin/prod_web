@@ -143,7 +143,11 @@ export function useLotMutations() {
       materialService.adjustLot(id, { delta, reason }),
     onSuccess: invalidate,
   });
-  return { create, setStatus, adjust };
+  const saveCertificate = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Parameters<typeof materialService.saveLotCertificate>[1] }) => materialService.saveLotCertificate(id, body),
+    onSuccess: invalidate,
+  });
+  return { create, setStatus, adjust, saveCertificate };
 }
 
 /**

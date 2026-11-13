@@ -10,6 +10,7 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { LotAge, LotLedger } from "./LotLedger";
 import { LotAdjustDialog } from "./LotAdjustDialog";
+import { LotCertificateButton, LotCompare } from "./LotCertificate";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -252,6 +253,8 @@ export function MaterialLots({
                 <span className="tabular-nums font-semibold">
                   {lot.balance.toLocaleString("en-IN")} kg
                 </span>
+                {/* The supplier's test certificate: read onto the lot, so lots can be compared. */}
+                <LotCertificateButton lot={lot} />
                 {/* The rows behind the balance. Loaded on demand — the
                     ledger is select:false server-side and no one wants
                     every lot's history in a list they have not opened. */}
@@ -325,6 +328,8 @@ export function MaterialLots({
           </div>
         )}
       </Card>
+
+      {lots.some((l) => l.certificate) && <LotCompare materialId={materialId} />}
 
       <FormScreen open={addOpen} onClose={() => setAddOpen(false)} title="Add a dye lot">
         <AddLotForm

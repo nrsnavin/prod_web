@@ -261,7 +261,33 @@ export interface YarnLot {
   ageBucket?: "fresh" | "watch" | "late" | "critical" | null;
   /** Only on the detail read — see GET /yarn-lots/:id. */
   movements?: LotMovement[];
+  /** The supplier's test certificate, once one is kept. */
+  certificate?: LotCertificate | null;
 }
+
+// ── A lot's test certificate (services/lotCertificates.js) ──
+/** One property as printed, under a key lots are compared by (denier, tenacity …; "other:…" for the rest). */
+export interface LotTest { key: string; label: string; value: number; unit: string; min: number | null; max: number | null }
+export interface LotFlag { code: string; severity: "danger" | "warning" | "info"; message: string; key?: string }
+export interface LotCertificate {
+  certNo: string; date: string | null; issuer: string; product: string; result: "" | "pass" | "fail";
+  tests: LotTest[]; flags: LotFlag[]; byName?: string; at?: string | null;
+}
+export interface LotRef { _id: string; lotNo: string; shade: string; status: string; rawMaterial: string; materialName: string; supplierName: string; hasCertificate: boolean }
+/** What POST /yarn-lots/certificate/read returns: the lot it is for, the tests, the checks. */
+export interface LotCertificateRead {
+  read: { problem: null | "not_a_certificate" | "unreadable"; issuer?: string; certNo?: string; date?: string; lotNo?: string; product?: string; result?: "pass" | "fail" | null };
+  lot: LotRef | null; candidates: LotRef[]; tests: LotTest[];
+  history: Record<string, { avg: number; n: number }>;
+  checks: LotFlag[]; aiSuggestion: string | null;
+}
+/** The certified lots of a yarn side by side: a row a property. */
+export interface LotCompare {
+  lots: Array<{ _id: string; lotNo: string; shade: string; status: string; certNo: string; date: string | null; result: string; flags: number }>;
+  rows: Array<{ key: string; label: string; unit: string; cells: Array<{ value: number; min: number | null; max: number | null; outOfSpec: boolean } | null>; avg: number | null; low: number | null; high: number | null }>;
+  keys: Array<{ key: string; label: string; unit: string }>;
+}
+export interface LotSearchRow extends LotRef { balance: number; value: number; unit: string; min: number | null; max: number | null; certNo: string; date: string | null; outOfSpec: boolean }
 
 /**
  * One move on a lot's own ledger.
