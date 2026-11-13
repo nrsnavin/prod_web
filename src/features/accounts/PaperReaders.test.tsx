@@ -239,6 +239,23 @@ describe("TDS papers, into the registers", () => {
     expect(screen.getByRole("button", { name: "Save the certificate" })).toBeDisabled();
   });
 
+  it("a Form 16A can be typed in when there is no reader, and is saved without a read", async () => {
+    wrap(<StatutoryTab />, "/accounts/statutory?section=tds&month=2026-10");
+    await userEvent.click(await screen.findByRole("button", { name: "Deducted by customers" }));
+    await userEvent.click(await screen.findByRole("button", { name: /read a form 16a/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Type it in instead" }));
+    const form = screen.getByLabelText("The certificate");
+    const save = within(form).getByRole("button", { name: "Save the certificate" });
+    expect(save).toBeDisabled();
+    await userEvent.click(within(form).getByText("pick party"));
+    await userEvent.type(within(form).getByLabelText("Financial year"), "2026-27");
+    await userEvent.selectOptions(within(form).getByLabelText("Quarter"), "Q3");
+    await userEvent.type(within(form).getByLabelText("TDS (₹)"), "300");
+    await userEvent.click(save);
+    expect(readTdsPaper).not.toHaveBeenCalled();
+    expect(addTdsCertificate).toHaveBeenCalledWith(expect.objectContaining({ kind: "received", party: "c2", fy: "2026-27", quarter: "Q3", amount: 300, tdsSuggestion: undefined }));
+  });
+
   it("Form 26AS as a PDF goes to the reader; the CSV still goes to the parser", async () => {
     read26asPdf.mockResolvedValue({ kind: "26as", read: { pan: "AABFB1234C", assessmentYear: "2027-28", lines: 2 }, stored: { fy: "2026-27", lines: 2, matched: 2, unmatched: [] }, receivable, aiSuggestion: "ai-26" });
     upload26as.mockResolvedValue({ lines: 3, matched: 3, unmatched: [], receivable });

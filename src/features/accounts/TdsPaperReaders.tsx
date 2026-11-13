@@ -113,6 +113,9 @@ function Form16aDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (fy
   const [section, setSection] = useState("");
   const [amount, setAmount] = useState<number | "">("");
   const [on, setOn] = useState("");
+  // Typed in, not read: when there is no reader on the server, or the read failed.
+  const [typing, setTyping] = useState(false);
+  const typeIt = () => { setResult(null); setTyping(true); if (!on) setOn(new Date().toISOString().slice(0, 10)); };
 
   const read = async (files: File[]) => {
     setBusy(true);
@@ -140,25 +143,38 @@ function Form16aDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (fy
   };
 
   const r = result;
+  const showForm = (r && !r.read.problem) || typing;
   return (
-    <Modal open onClose={onClose} title="Read a Form 16A" width="max-w-xl" confirmDirtyClose={false}>
+    <Modal open onClose={onClose} title={typing ? "Enter a Form 16A" : "Read a Form 16A"} width="max-w-xl" confirmDirtyClose={false}>
       <div className="space-y-4">
-        {!r && (
+        {!r && !typing && (
           <>
             <p className="text-sm text-ink-600">The TDS certificate a customer sent: the PDF from TRACES or a photo of it. Who issued it is found by TAN, and the year, quarter and tax are read for you to check.</p>
-            <PaperPicker label="Form 16A file" max={3} busy={busy} onFiles={read} />
+            <div className="flex flex-wrap items-center gap-2">
+              <PaperPicker label="Form 16A file" max={3} busy={busy} onFiles={read} />
+              <Button type="button" variant="ghost" onClick={typeIt}>Type it in instead</Button>
+            </div>
           </>
         )}
-        {r?.read.problem && <ReadProblem>{r.read.problem === "not_a_form16a" ? "That does not look like a Form 16A." : "The certificate could not be read. Try the PDF from TRACES."}</ReadProblem>}
-        {r && !r.read.problem && (
-          <div className="space-y-3 text-sm" aria-label="What the certificate says">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold">{r.read.deductorName || "Deductor not read"}</span>
-              {r.read.deductorTan && <span className="font-mono text-xs text-ink-500">TAN {r.read.deductorTan}</span>}
-              {r.customer ? <StatusChip tone={r.customer.matchedBy === "tan" ? "success" : "warning"}>{r.customer.matchedBy === "tan" ? "by TAN" : "by name: confirm"}</StatusChip> : <StatusChip tone="danger">pick the customer</StatusChip>}
-            </div>
-            <PaperChecks checks={r.checks} label="Checks on the certificate" />
-            {r.duplicate && <p role="alert" className="rounded-lg bg-status-dangerBg px-3 py-2 text-status-danger">This certificate is recorded already, for ₹{money(r.duplicate.amount)}.</p>}
+        {r?.read.problem && (
+          <>
+            <ReadProblem>{r.read.problem === "not_a_form16a" ? "That does not look like a Form 16A." : "The certificate could not be read. Try the PDF from TRACES."}</ReadProblem>
+            <Button type="button" variant="ghost" onClick={typeIt}>Type it in instead</Button>
+          </>
+        )}
+        {showForm && (
+          <div className="space-y-3 text-sm" aria-label={r ? "What the certificate says" : "The certificate"}>
+            {r && (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{r.read.deductorName || "Deductor not read"}</span>
+                  {r.read.deductorTan && <span className="font-mono text-xs text-ink-500">TAN {r.read.deductorTan}</span>}
+                  {r.customer ? <StatusChip tone={r.customer.matchedBy === "tan" ? "success" : "warning"}>{r.customer.matchedBy === "tan" ? "by TAN" : "by name: confirm"}</StatusChip> : <StatusChip tone="danger">pick the customer</StatusChip>}
+                </div>
+                <PaperChecks checks={r.checks} label="Checks on the certificate" />
+                {r.duplicate && <p role="alert" className="rounded-lg bg-status-dangerBg px-3 py-2 text-status-danger">This certificate is recorded already, for ₹{money(r.duplicate.amount)}.</p>}
+              </>
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2"><PartyPicker partyType="customer" value={party} knownName={partyName || undefined} onChange={(id, name) => { setParty(id); setPartyName(name); }} /></div>
               <Input label="Financial year" value={fy} onChange={(e) => setFy(e.target.value.trim())} placeholder="2026-27" error={fy && !FY.test(fy) ? "As 2026-27" : undefined} />
@@ -169,8 +185,8 @@ function Form16aDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (fy
               <Input label="Received on" type="date" value={on} onChange={(e) => setOn(e.target.value)} />
             </div>
             <div className="flex flex-wrap justify-end gap-2 pt-1">
-              <Button variant="secondary" onClick={() => setResult(null)}>Read another</Button>
-              <Button onClick={save} disabled={!ready || !!r.duplicate} loading={saving}>Save the certificate</Button>
+              {r && <Button variant="secondary" onClick={() => setResult(null)}>Read another</Button>}
+              <Button onClick={save} disabled={!ready || !!r?.duplicate} loading={saving}>Save the certificate</Button>
             </div>
           </div>
         )}
