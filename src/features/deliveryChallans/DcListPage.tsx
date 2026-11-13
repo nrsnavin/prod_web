@@ -48,6 +48,13 @@ const columns: Column<DeliveryChallan>[] = [
     render: (d) => d.totalQuantity?.toLocaleString("en-IN") ?? "—",
   },
   {
+    key: "boxes",
+    header: "Boxes",
+    align: "right",
+    // The list carries no lines, so a challan from before boxes were kept shows "—".
+    render: (d) => (Number(d.totalBoxes) > 0 ? Number(d.totalBoxes).toLocaleString("en-IN") : "—"),
+  },
+  {
     key: "amount",
     header: "Amount (₹)",
     align: "right",

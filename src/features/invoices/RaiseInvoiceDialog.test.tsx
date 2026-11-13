@@ -109,6 +109,50 @@ describe("raising an invoice", () => {
     expect(screen.getByText(/No rate for 20mm Knitted/)).toBeInTheDocument();
   });
 
+  it("carries the challans' boxes, added up, with nothing to type", async () => {
+    info = {
+      ...info,
+      dcs: info.dcs.map((d) =>
+        d._id === "d1" ? { ...d, totalBoxes: 12, items: [{ ...d.items[0], boxes: 12 }] }
+          : d._id === "d2" ? { ...d, totalBoxes: 8, items: [{ ...d.items[0], boxes: 8 }] } : d),
+    };
+    open();
+    expect(screen.queryByLabelText(/boxes for/i)).not.toBeInTheDocument();
+    expect(screen.getByText("20 boxes")).toBeInTheDocument();
+    expect(screen.getByTestId("invoice-total-boxes")).toHaveTextContent("20");
+    // Untick one challan: its boxes leave with it.
+    await userEvent.click(screen.getByLabelText("Include E-26/27-0002"));
+    expect(screen.getByTestId("invoice-total-boxes")).toHaveTextContent("12");
+    await userEvent.click(screen.getByRole("button", { name: /raise invoice/i }));
+    const body = createMutate.mock.calls[0][0];
+    expect(JSON.stringify(body.lines ?? [])).not.toContain("boxes");
+  });
+
+  it("folds a long list of what the portal will refuse, grouped by where to fix it", async () => {
+    info = {
+      ...info,
+      problems: [
+        "Your GSTIN is missing or not valid (Settings → Documents).",
+        "Your PIN code is missing (Settings → Invoice).",
+        "Sunrise Garments has no PIN code on the customer record.",
+        "Line 1 (20mm Knitted) has no HSN code.",
+      ],
+    };
+    open();
+    const alert = screen.getByRole("alert");
+    expect(within(alert).getByText("4 details are missing for the e-invoice portal.")).toBeInTheDocument();
+    const show = within(alert).getByRole("button", { name: /show what's missing/i });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    // Folded means not there at all, not merely marked hidden.
+    expect(within(alert).queryByText("Your company settings")).not.toBeInTheDocument();
+    await userEvent.click(show);
+    expect(within(alert).getByText("Your company settings")).toBeVisible();
+    expect(within(alert).getByText("The customer, Sunrise Garments")).toBeVisible();
+    expect(within(alert).getByText("The lines")).toBeVisible();
+    expect(within(alert).getByText("Line 1 (20mm Knitted) has no HSN code.")).toBeVisible();
+    expect(screen.getByRole("button", { name: /raise invoice/i })).toBeEnabled();
+  });
+
   it("warns what the portal will refuse, without blocking the invoice", () => {
     info = { ...info, problems: ["Sunrise Garments has no PIN code on the customer record."] };
     open();

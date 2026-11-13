@@ -21,6 +21,17 @@ const defaults = { hsn: "5806", gstPercent: 5 };
 describe("draftLines", () => {
   const dcs = [dc("0001", [["a", "20mm Knitted", 600]]), dc("0002", [["a", "20mm Knitted", 400], ["b", "38mm Woven", 300]])];
 
+  it("adds up the ticked challans' boxes per product, whatever was typed", () => {
+    const boxed: InvoiceDcOption[] = [
+      { ...dc("0001", [["a", "20mm Knitted", 600]]), items: [{ elastic: "a", elasticName: "20mm Knitted", quantity: 600, unit: "m", boxes: 6 }] },
+      { ...dc("0002", []), items: [{ elastic: "a", elasticName: "20mm Knitted", quantity: 400, unit: "m", boxes: 4 }, { elastic: "b", elasticName: "38mm Woven", quantity: 300, unit: "m", boxes: 3 }] },
+    ];
+    const lines = draftLines(boxed, new Set(["0001", "0002"]), proposed, { a: { elastic: "a", rate: 10 } }, defaults);
+    expect(lines.find((l) => l.elastic === "a")?.boxes).toBe(10);
+    expect(lines.find((l) => l.elastic === "b")?.boxes).toBe(3);
+    expect(draftLines(boxed, new Set(["0001"]), proposed, {}, defaults)[0].boxes).toBe(6);
+  });
+
   it("merges the ticked challans' items per product and names the challans", () => {
     const lines = draftLines(dcs, new Set(["0001", "0002"]), proposed, {}, defaults);
     expect(lines).toHaveLength(2);

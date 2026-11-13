@@ -46,7 +46,9 @@ export interface PricedLine extends InvoiceDraftLine {
 /**
  * The lines an invoice would carry for the ticked challans: the
  * challans' items merged per elastic, with the rate, HSN and GST % the
- * server proposed for that elastic (or what was typed over them).
+ * server proposed for that elastic (or what was typed over them). The
+ * boxes are the challans' own, added up, as the server does it
+ * (services/invoiceBoxes.js): they are not typed on the invoice.
  */
 export function draftLines(
   dcs: InvoiceDcOption[],
@@ -72,8 +74,10 @@ export function draftLines(
         gstPercent: base?.gstPercent ?? defaults.gstPercent,
         dcNumbers: [],
         rateSource: base?.rateSource ?? "none",
+        boxes: 0,
       };
       row.quantity = Math.round((row.quantity + (Number(item.quantity) || 0)) * 1000) / 1000;
+      row.boxes = (row.boxes ?? 0) + (Number(item.boxes) || 0);
       if (!row.dcNumbers.includes(dc.dcNumber)) row.dcNumbers.push(dc.dcNumber);
       merged.set(item.elastic, row);
     }
@@ -86,7 +90,6 @@ export function draftLines(
       rate: o.rate !== undefined && o.rate !== "" ? Number(o.rate) : row.rate,
       hsn: o.hsn !== undefined ? o.hsn : row.hsn,
       gstPercent: o.gstPercent !== undefined && o.gstPercent !== "" ? Number(o.gstPercent) : row.gstPercent,
-      boxes: o.boxes !== undefined && o.boxes !== "" ? Number(o.boxes) : row.boxes,
       rateSource: o.rate !== undefined && o.rate !== "" ? "entered" : row.rateSource,
     };
   });

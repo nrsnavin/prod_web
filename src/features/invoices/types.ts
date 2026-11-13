@@ -137,7 +137,9 @@ export interface InvoiceDcOption {
   /** The invoice this challan is already on, if any. */
   invoicedOn: string | null;
   eligible: boolean;
-  items: Array<{ elastic?: string; elasticName?: string; quantity: number; unit?: string }>;
+  /** Every box on the challan's lines. */
+  totalBoxes?: number;
+  items: Array<{ elastic?: string; elasticName?: string; quantity: number; unit?: string; boxes?: number }>;
 }
 
 export interface InvoiceDraftLine {
@@ -145,6 +147,7 @@ export interface InvoiceDraftLine {
   name: string;
   unit: string;
   quantity: number;
+  /** The ticked challans' boxes of this elastic, added up: not typed on the invoice. */
   boxes?: number;
   rate: number;
   hsn: string;
@@ -169,12 +172,12 @@ export interface InvoiceOrderInfo {
   export?: { suggested: ExportKind | ""; kinds: Array<{ kind: ExportKind; label: string; zeroRated: boolean; needsLut: boolean }>; lut: { number: string; validFrom: string | null; validTo: string | null }; currency: string; country: string; sez: boolean };
 }
 
+/** What the form changed on a line. Boxes are not here: they are the challans'. */
 export interface InvoiceLineOverride {
   elastic: string;
   rate?: number | "";
   hsn?: string;
   gstPercent?: number | "";
-  boxes?: number | "";
 }
 
 export interface InvoiceCreateBody {

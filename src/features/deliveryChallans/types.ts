@@ -10,6 +10,8 @@ export interface DcItem {
   quantity: number;
   rate: number;
   amount?: number;
+  /** Boxes (cartons) the line went out in. The invoice takes its boxes from these. */
+  boxes?: number;
 }
 
 export interface DeliveryChallan {
@@ -35,6 +37,8 @@ export interface DeliveryChallan {
   items?: DcItem[];
   totalQuantity?: number;
   totalAmount?: number;
+  /** Every line's boxes added up. */
+  totalBoxes?: number;
   remarks?: string;
   /** When it was delivered, who took it, and what they wrote on the copy. */
   pod?: DcPod | null;
@@ -87,8 +91,12 @@ export interface DcFormItem {
   elastic?: string;
   elasticName?: string;
   description?: string;
+  /** Kept as loaded on an edit, so a line in pieces is not turned into metres. */
+  unit?: string;
   quantity: number;
   rate: number;
+  /** Whole boxes; blank is none. */
+  boxes?: number;
 }
 
 /**

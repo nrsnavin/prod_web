@@ -31,19 +31,25 @@ export type EditLine = {
   description: string;
   quantity: string;
   rate: string;
+  /** Whole boxes, as typed; blank is none. */
+  boxes: string;
+  /** As loaded, sent back unchanged: a line in pieces stays in pieces. */
+  unit?: string;
 };
+
+const blankLine = (): EditLine => ({ elastic: "", elasticName: "", description: "", quantity: "", rate: "", boxes: "" });
 
 export function linesFromDc(dc: DeliveryChallan): EditLine[] {
   const items = dc.items ?? [];
-  if (items.length === 0) {
-    return [{ elastic: "", elasticName: "", description: "", quantity: "", rate: "" }];
-  }
+  if (items.length === 0) return [blankLine()];
   return items.map((it) => ({
     elastic: itemElasticId(it),
     elasticName: itemElasticName(it),
     description: it.description ?? "",
     quantity: String(it.quantity ?? ""),
     rate: String(it.rate ?? ""),
+    boxes: Number(it.boxes) > 0 ? String(it.boxes) : "",
+    ...(it.unit ? { unit: it.unit } : {}),
   }));
 }
 
@@ -67,6 +73,16 @@ export function linesChanged(before: EditLine[], after: EditLine[]): boolean {
       Number(b.rate) !== Number(a.rate)
     );
   });
+}
+
+/**
+ * Did only the boxes change? Then the lines are still sent (the count is
+ * on them), but the server corrects it in place: no stock moves for a
+ * recount (api/deliveryChallan.js `onlyBoxesDiffer`).
+ */
+export function boxesChanged(before: EditLine[], after: EditLine[]): boolean {
+  if (before.length !== after.length) return false;
+  return before.some((b, i) => (Number(b.boxes) || 0) !== (Number(after[i].boxes) || 0));
 }
 
 export function DcEditModal({
@@ -137,20 +153,19 @@ export function DcEditModal({
 
   const setLine = (i: number, patch: Partial<EditLine>) =>
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-  const addLine = () =>
-    setLines((ls) => [
-      ...ls,
-      { elastic: "", elasticName: "", description: "", quantity: "", rate: "" },
-    ]);
+  const addLine = () => setLines((ls) => [...ls, blankLine()]);
   const removeLine = (i: number) =>
     setLines((ls) => (ls.length > 1 ? ls.filter((_, idx) => idx !== i) : ls));
 
   const totalQty = lines.reduce((s, l) => s + (Number(l.quantity) || 0), 0);
+  const totalBoxes = lines.reduce((s, l) => s + (Number(l.boxes) || 0), 0);
   const totalValue = lines.reduce(
     (s, l) => s + (Number(l.quantity) || 0) * (Number(l.rate) || 0),
     0
   );
+  // Stock moves when the goods change; a recount of boxes alone does not.
   const itemsMoved = linesChanged(original, lines);
+  const sendLines = itemsMoved || boxesChanged(original, lines);
 
   const save = () => {
     if (auditReason.trim().length < 3) {
@@ -159,6 +174,10 @@ export function DcEditModal({
     }
     if (lines.some((l) => !(Number(l.quantity) > 0))) {
       toast("Every line needs a quantity greater than 0", "error");
+      return;
+    }
+    if (lines.some((l) => l.boxes.trim() !== "" && !(Number.isInteger(Number(l.boxes)) && Number(l.boxes) >= 0))) {
+      toast("Boxes must be a whole number, 0 or more", "error");
       return;
     }
     if (isElastic && lines.some((l) => !l.elastic)) {
@@ -179,15 +198,17 @@ export function DcEditModal({
       transporter,
       lrNumber,
       remarks,
-      // Only when they changed — see `linesChanged`.
-      ...(itemsMoved
+      // Only when they changed — see `linesChanged` and `boxesChanged`.
+      ...(sendLines
         ? {
             items: lines.map((l) => ({
               elastic: l.elastic || undefined,
               elasticName: l.elasticName,
               description: l.description,
+              ...(l.unit ? { unit: l.unit } : {}),
               quantity: Number(l.quantity) || 0,
               rate: Number(l.rate) || 0,
+              boxes: Number(l.boxes) || 0,
             })),
           }
         : {}),
@@ -199,7 +220,7 @@ export function DcEditModal({
       onSuccess: () => {
         setStockShort(null);
         toast(
-          body.items ? "Challan updated — stock adjusted" : "Challan updated",
+          body.items && itemsMoved ? "Challan updated — stock adjusted" : "Challan updated",
           "success"
         );
         onClose();
@@ -232,9 +253,10 @@ export function DcEditModal({
           </p>
           {/* A table from sm up; on a phone each line is a block, the elastic
               across the top and Qty, Rate and Remove beneath it (DcForm says why). */}
-          <div className="hidden grid-cols-[minmax(0,1fr)_90px_100px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+          <div className="hidden grid-cols-[minmax(0,1fr)_100px_80px_100px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
             <span>{isElastic ? "Elastic" : "Part description"}</span>
             <span className="text-right">Qty</span>
+            <span className="text-right">Boxes</span>
             <span className="text-right">Rate (₹)</span>
             <span />
           </div>
@@ -242,9 +264,9 @@ export function DcEditModal({
             {lines.map((l, i) => (
               <div
                 key={i}
-                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_90px_100px_32px] sm:rounded-none sm:border-0 sm:p-0"
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_100px_80px_100px_32px] sm:rounded-none sm:border-0 sm:p-0"
               >
-                <div className="col-span-3 min-w-0 sm:col-span-1">
+                <div className="col-span-4 min-w-0 sm:col-span-1">
                 {isElastic ? (
                   <AsyncCombobox
                     {...addable("elastic")}
@@ -278,6 +300,19 @@ export function DcEditModal({
                   />
                 </div>
                 <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Boxes</span>
+                  <Input
+                    type="number"
+                    step="1"
+                    min={0}
+                    inputMode="numeric"
+                    aria-label="Boxes"
+                    placeholder="Boxes"
+                    value={l.boxes}
+                    onChange={(e) => setLine(i, { boxes: e.target.value })}
+                  />
+                </div>
+                <div className="min-w-0">
                   <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Rate ₹ (internal)</span>
                   <Input
                     type="number"
@@ -307,6 +342,8 @@ export function DcEditModal({
             </Button>
             <span className="text-sm tabular-nums text-ink-600">
               Total qty <span className="font-semibold text-ink-900">{totalQty.toLocaleString("en-IN")}</span>
+              {" · "}
+              Total boxes <span className="font-semibold text-ink-900" data-testid="dc-total-boxes">{totalBoxes.toLocaleString("en-IN")}</span>
               {" · "}
               <span className="text-ink-400">₹{totalValue.toLocaleString("en-IN")} internal</span>
             </span>

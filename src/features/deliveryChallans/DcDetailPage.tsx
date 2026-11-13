@@ -232,6 +232,7 @@ export function DcDetailPage() {
                     Description of Goods
                   </th>
                   <th className="border border-ink-300 px-2 py-1.5 text-center font-semibold">UOM</th>
+                  <th className="border border-ink-300 px-2 py-1.5 text-right font-semibold">Boxes</th>
                   <th className="border border-ink-300 px-2 py-1.5 text-right font-semibold">Quantity</th>
                 </tr>
               </thead>
@@ -250,6 +251,9 @@ export function DcDetailPage() {
                         {item.unit || "m"}
                       </td>
                       <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums">
+                        {Number(item.boxes) > 0 ? Number(item.boxes).toLocaleString("en-IN") : "—"}
+                      </td>
+                      <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums">
                         {item.quantity.toLocaleString("en-IN")}
                       </td>
                     </tr>
@@ -262,7 +266,12 @@ export function DcDetailPage() {
                     Total line items: {(dc.items ?? []).length}
                   </td>
                   <td className="border border-ink-300 px-2 py-1.5 text-right text-xs uppercase tracking-wide text-ink-600">
-                    Total qty
+                    Totals
+                  </td>
+                  {/* Added up from the lines, so a challan from before boxes
+                      were kept shows its count too. */}
+                  <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums" data-testid="dc-total-boxes">
+                    {(dc.items ?? []).reduce((a, it) => a + (Number(it.boxes) || 0), 0).toLocaleString("en-IN")} boxes
                   </td>
                   <td className="border border-ink-300 px-2 py-1.5 text-right tabular-nums">
                     {(dc.totalQuantity ?? 0).toLocaleString("en-IN")}

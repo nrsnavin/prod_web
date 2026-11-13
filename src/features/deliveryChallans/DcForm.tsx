@@ -37,6 +37,14 @@ const schema = z.object({
         description: z.string().optional(),
         quantity: z.coerce.number().positive("Qty > 0"),
         rate: z.coerce.number().min(0),
+        // The boxes the line goes out in; blank is none. The invoice
+        // raised against the challan takes its boxes from here.
+        // (Optional in its type, to match the form's values; a blank never
+        // reaches it, being turned into 0 first.)
+        boxes: z.preprocess(
+          (v) => (v === "" || v === undefined || v === null ? 0 : v),
+          z.coerce.number().int("Whole boxes").min(0, "0 or more").optional()
+        ),
       })
     )
     .min(1, "Add at least one item"),
@@ -155,6 +163,8 @@ export function DcForm({
     (s, it) => s + (Number(it.quantity) || 0) * (Number(it.rate) || 0),
     0
   );
+  const totalQty = (items ?? []).reduce((s, it) => s + (Number(it.quantity) || 0), 0);
+  const totalBoxes = (items ?? []).reduce((s, it) => s + (Number(it.boxes) || 0), 0);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -211,9 +221,10 @@ export function DcForm({
             to twice a phone's width and the whole form slid sideways.
             minmax(0, 1fr) lets the name column shrink, and the name ends in
             an ellipsis instead. */}
-        <div className="hidden grid-cols-[minmax(0,1fr)_90px_100px_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400 sm:grid">
+        <div className="hidden grid-cols-[minmax(0,1fr)_100px_80px_100px_36px] gap-2 px-1 pb-1 text-xs font-medium text-ink-400 sm:grid">
           <span>{type === "elastic" ? "Elastic" : "Part description"}</span>
           <span>Qty</span>
+          <span>Boxes</span>
           {/* On one line: "Rate (₹)" beside its badge wrapped in the 100px column. */}
           <span className="flex items-center gap-1 whitespace-nowrap">
             Rate ₹
@@ -230,9 +241,9 @@ export function DcForm({
           {fields.map((field, i) => (
             <div
               key={field.id}
-              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_90px_100px_36px] sm:rounded-none sm:border-0 sm:p-0"
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_100px_80px_100px_36px] sm:rounded-none sm:border-0 sm:p-0"
             >
-              <div className="col-span-3 min-w-0 sm:col-span-1">
+              <div className="col-span-4 min-w-0 sm:col-span-1">
               {type === "elastic" ? (
                 <Controller
                   control={control}
@@ -279,6 +290,19 @@ export function DcForm({
                 />
               </div>
               <div className="min-w-0">
+                <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Boxes</span>
+                <Input
+                  type="number"
+                  step="1"
+                  min={0}
+                  inputMode="numeric"
+                  aria-label="Boxes"
+                  placeholder="Boxes"
+                  error={errors.items?.[i]?.boxes?.message}
+                  {...register(`items.${i}.boxes`)}
+                />
+              </div>
+              <div className="min-w-0">
                 <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Rate ₹ (internal)</span>
                 <Input
                   type="number"
@@ -301,15 +325,22 @@ export function DcForm({
             </div>
           ))}
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="mt-2"
-          onClick={() => append({ elastic: "", elasticName: "", quantity: 0, rate: 0 })}
-        >
-          <Plus className="h-4 w-4" /> Add item
-        </Button>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => append({ elastic: "", elasticName: "", quantity: 0, rate: 0 })}
+          >
+            <Plus className="h-4 w-4" /> Add item
+          </Button>
+          {/* The challan's totals: every line's quantity, and every box. */}
+          <p className="text-sm tabular-nums text-ink-600" aria-live="polite">
+            Total qty <span className="font-semibold text-ink-900">{totalQty.toLocaleString("en-IN")}</span>
+            <span className="mx-2 text-ink-300" aria-hidden>·</span>
+            Total boxes <span className="font-semibold text-ink-900" data-testid="dc-total-boxes">{totalBoxes.toLocaleString("en-IN")}</span>
+          </p>
+        </div>
       </div>
 
       <Input label="Remarks" {...register("remarks")} />
