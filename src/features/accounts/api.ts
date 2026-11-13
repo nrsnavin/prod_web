@@ -11,8 +11,7 @@ import type {
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalDraft, JournalLineInput, JournalPurpose,
   TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
-  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult, Gstr2bFollowUp,
-} from "./types";
+  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult, Gstr2bFollowUp, ReadyMailedBill } from "./types";
 import { uploadForm } from "@/core/http/upload";
 import { apiUrl } from "@/app/config";
 
@@ -109,6 +108,8 @@ export const accountsService = {
   mailedBills: async (status: MailedBill["status"] = "new") => (await httpClient.get<{ success: boolean; bills: MailedBill[] }>("/accounts/bill-inbox", { status })).bills,
   mailedBill: (id: string) => httpClient.get<ScanResult & { success: boolean; item: MailedBill }>(`/accounts/bill-inbox/${encodeURIComponent(id)}`),
   mailedBillFileUrl: (id: string) => apiUrl(`/accounts/bill-inbox/${encodeURIComponent(id)}/file`),
+  /** The mailed bills nothing is left to decide on, each with the body POST /accounts/bills takes. */
+  readyMailedBills: async () => (await httpClient.get<{ success: boolean; bills: ReadyMailedBill[]; waiting: number }>("/accounts/bill-inbox/ready")).bills,
   dismissMailedBill: (id: string, reason: string) => httpClient.post<{ success: boolean }>(`/accounts/bill-inbox/${encodeURIComponent(id)}/dismiss`, { reason }),
   billMailboxStatus: () => httpClient.get<{ success: boolean; configured: boolean; mailbox: string; everyMin: number; waiting: number }>("/accounts/bill-inbox/status"),
   readBillMailbox: () => httpClient.post<{ success: boolean; mails: number; bills: number; errors: string[] }>("/accounts/bill-inbox/run", {}),

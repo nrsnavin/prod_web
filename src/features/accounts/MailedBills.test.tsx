@@ -13,6 +13,8 @@ const svc = {
   mailedBills: vi.fn(),
   readBillMailbox: vi.fn(),
   dismissMailedBill: vi.fn(),
+  readyMailedBills: vi.fn(),
+  createBill: vi.fn(),
   mailedBillFileUrl: (id: string) => `/api/v2/accounts/bill-inbox/${id}/file`,
 };
 vi.mock("./api", () => ({ accountsService: new Proxy({}, { get: (_t, k: string) => (svc as Record<string, unknown>)[k] }) }));
@@ -70,5 +72,47 @@ describe("bills by mail", () => {
     await vi.waitFor(() => expect(svc.billMailboxStatus).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
     expect(svc.mailedBills).not.toHaveBeenCalled();
+  });
+});
+
+describe("mailed bills ready to enter in one click", () => {
+  const readyBill = { _id: "ib1", summary: { supplierName: "Sri Yarn Traders", billNo: "SY/118", billDate: "2026-11-03", poNo: 612, receipts: 2, grand: 19530, einvoice: true }, body: { supplier: "s1", supplierBillNo: "SY/118", billDate: "2026-11-03", lines: [], requestId: "inbox-bill:ib1", inboxBill: "ib1" } };
+  const open = async () => {
+    svc.billMailboxStatus.mockResolvedValue({ success: true, configured: true, mailbox: "bills@x.in", everyMin: 10, waiting: 2 });
+    svc.mailedBills.mockResolvedValue([bill({ ready: true, readyWhy: [] }), bill({ _id: "ib2", supplierName: "New Mills", billNo: "NM/9", ready: false, readyWhy: ['"Freight" is not on a goods receipt', "The reader was only 40% sure"] })]);
+    wrap();
+    return screen.findByLabelText("Bills by mail");
+  };
+
+  it("marks the ready one, says why the other needs a look", async () => {
+    const card = await open();
+    expect((await within(card).findByText(/Sri Yarn Traders/)).closest("li")).toHaveTextContent("ready: nothing left to check");
+    expect(within(card).getByText(/New Mills/).closest("li")).toHaveTextContent('Needs a look: "Freight" is not on a goods receipt (and 1 more)');
+  });
+
+  it("shows the ready bills for a last look, then enters each through the bill route", async () => {
+    svc.readyMailedBills.mockResolvedValue([readyBill]);
+    svc.createBill.mockResolvedValue({ _id: "b1", billNo: "PB/2026-27/0040" });
+    const card = await open();
+    await userEvent.click(await within(card).findByRole("button", { name: "Enter 1 ready bill" }));
+    const region = await within(card).findByRole("region", { name: "Ready bills" });
+    expect(region).toHaveTextContent("This bill agrees with its supplier, PO receipts and totals. Enter it?");
+    expect(region).toHaveTextContent("Sri Yarn Traders #SY/118");
+    expect(region).toHaveTextContent("PO #612, 2 receipts · e-invoice");
+    await userEvent.click(within(region).getByRole("button", { name: "Enter it" }));
+    expect(svc.createBill).toHaveBeenCalledWith(readyBill.body);
+    expect(toast).toHaveBeenCalledWith("1 bill entered", "success");
+  });
+
+  it("a bill the route refuses is named, the others still go in", async () => {
+    const { ApiError } = await import("@/core/http/httpClient");
+    const second = { ...readyBill, _id: "ib3", summary: { ...readyBill.summary, billNo: "SY/119" }, body: { ...readyBill.body, supplierBillNo: "SY/119", requestId: "inbox-bill:ib3" } };
+    svc.readyMailedBills.mockResolvedValue([readyBill, second]);
+    svc.createBill.mockResolvedValueOnce({ _id: "b1" }).mockRejectedValueOnce(new ApiError("A receipt on this bill is already on PB/2026-27/0040", 409));
+    const card = await open();
+    await userEvent.click(await within(card).findByRole("button", { name: "Enter 1 ready bill" }));
+    await userEvent.click(within(await within(card).findByRole("region", { name: "Ready bills" })).getByRole("button", { name: "Enter these 2" }));
+    expect(svc.createBill).toHaveBeenCalledTimes(2);
+    expect(toast).toHaveBeenCalledWith("1 entered; 1 not: Sri Yarn Traders #SY/119: A receipt on this bill is already on PB/2026-27/0040", "error");
   });
 });

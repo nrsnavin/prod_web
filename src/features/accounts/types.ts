@@ -1093,6 +1093,17 @@ export interface MailedBill {
   confidence: number | null;
   kind: "bill" | "receipt" | null;
   bill: string | null;
+  /** Waiting bills only: nothing is left for a person to decide (services/billReady.js). */
+  ready?: boolean;
+  /** Why a waiting bill needs a person, in plain sentences. */
+  readyWhy?: string[];
+}
+
+/** A mailed bill that is ready, with the body the bill route takes (GET /accounts/bill-inbox/ready). */
+export interface ReadyMailedBill {
+  _id: string;
+  summary: { supplierName: string; billNo: string; billDate: string; poNo: number; receipts: number; grand: number; einvoice: boolean };
+  body: BillCreateBody;
 }
 
 /** A customer's payment advice, read and placed on the books (POST /accounts/advice/read). */
