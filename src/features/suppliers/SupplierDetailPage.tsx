@@ -15,6 +15,7 @@ import { useTrackRecent } from "@/core/ui/uiStore";
 import { supplierService, poService } from "./api";
 import { poStatusTone } from "./PoListPage";
 import { PurchaseOrder } from "./types";
+import { SupplierRates } from "./SupplierRates";
 import { formatDate } from "@/core/format/date";
 
 function PoRow({ po }: { po: PurchaseOrder }) {
@@ -120,6 +121,9 @@ export function SupplierDetailPage() {
 
       {/* What we owed them on the day the books started here, and the button to enter it. */}
       {canMoney && <PartyOpening partyType="supplier" party={s._id} name={s.name} />}
+
+      {/* What they quoted: a PO line above it is flagged when it is raised. */}
+      <SupplierRates supplier={s} />
 
       <Card className="mt-4 p-5">
         <h3 className="flex items-center gap-2 font-semibold">

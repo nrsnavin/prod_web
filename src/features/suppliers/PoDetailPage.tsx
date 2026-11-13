@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { usePurchaseOrder, usePoMutations } from "./hooks";
+import { useRateFlags } from "./rateFlags";
 import { poService } from "./api";
 import { accountsService } from "@/features/accounts/api";
 import { InwardRecord, PoItem, poItemPending, poItemReceived } from "./types";
@@ -409,7 +410,8 @@ function PoEditModal({
   onClose,
   update,
 }: {
-  po: { _id: string; expectedDate?: string; notes?: string; items: PoItem[]; __v?: number };
+  /** `supplier`: whose PO it is, so a line above what they quoted is flagged. */
+  po: { _id: string; supplier?: string; expectedDate?: string; notes?: string; items: PoItem[]; __v?: number };
   open: boolean;
   onClose: () => void;
   update: ReturnType<typeof usePoMutations>["update"];
@@ -424,6 +426,7 @@ function PoEditModal({
   );
 
   const materialOptions = (materials.data ?? []).map((m) => ({ value: m._id, label: `${m.name} (${m.category})` }));
+  const rateFlags = useRateFlags(po.supplier, lines.map((l) => ({ rawMaterial: l.rawMaterial, rate: Number(l.price) || 0, description: (materials.data ?? []).find((m) => m._id === l.rawMaterial)?.name })));
   const setLine = (i: number, patch: Partial<EditLine>) =>
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   const addLine = () => setLines((ls) => [...ls, { rawMaterial: "", quantity: "", price: "" }]);
@@ -503,6 +506,9 @@ function PoEditModal({
                     {((Number(l.quantity) || 0) * (Number(l.price) || 0)).toLocaleString("en-IN")}
                   </div>
                 </div>
+                {rateFlags.filter((f) => f.line === i).map((f) => (
+                  <p key={f.message} role="status" className="order-last col-span-4 text-xs text-status-warning sm:col-span-5">{f.message}</p>
+                ))}
                 <button
                   type="button"
                   onClick={() => removeLine(i)}
@@ -671,7 +677,7 @@ export function PoDetailPage() {
       />
 
       <PoEditModal
-        po={{ _id: po._id, expectedDate: po.expectedDate, notes: po.notes, items: po.items }}
+        po={{ _id: po._id, supplier: typeof po.supplier === "string" ? po.supplier : po.supplier?._id, expectedDate: po.expectedDate, notes: po.notes, items: po.items }}
         open={editOpen}
         onClose={() => setEditOpen(false)}
         update={update}

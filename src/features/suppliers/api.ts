@@ -1,11 +1,15 @@
 import { httpClient } from "@/core/http/httpClient";
+import { uploadForm } from "@/core/http/upload";
 import {
   InwardRecord,
   PoFormValues,
   PoStatus,
+  PriceListResult,
   PurchaseOrder,
+  RateFlag,
   Supplier,
   SupplierFormValues,
+  SupplierRate,
 } from "./types";
 
 export const supplierService = {
@@ -139,4 +143,31 @@ export const poService = {
 
   remove: (poId: string, auditReason: string) =>
     httpClient.delete("/supplier/delete-po", { poId, auditReason }),
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  WHAT SUPPLIERS QUOTED (api/priceListRoutes.js, under /supplier)
+//
+//  Their price list or quotation read from a photo or PDF, each line put
+//  against one of our materials; the confirmed rates become the live ones;
+//  a purchase order line above the live rate is flagged, never refused.
+// ══════════════════════════════════════════════════════════════════
+export type PriceListSaveRow = { rawMaterial: string; rate: number; unit?: string; description?: string; gstPercent?: number | null; minQty?: number | null };
+
+export const priceListService = {
+  rates: async (supplier: string) =>
+    (await httpClient.get<{ success: boolean; rates: SupplierRate[] }>("/supplier/price-lists", { supplier })).rates,
+
+  async read(files: File[], supplier?: string): Promise<PriceListResult> {
+    const fd = new FormData();
+    if (supplier) fd.append("supplier", supplier);
+    for (const f of files) fd.append("files", f);
+    return uploadForm<PriceListResult>("/supplier/price-lists/read", fd, "Could not read the price list");
+  },
+
+  save: (body: { supplier: string; rows: PriceListSaveRow[]; source: SupplierRate["source"]; ref?: string; quotedOn?: string; validUntil?: string; aiSuggestion?: string | null }) =>
+    httpClient.post<{ success: boolean; saved: number; replaced: number }>("/supplier/price-lists", body),
+
+  check: async (supplier: string, lines: Array<{ rawMaterial: string; rate: number; description?: string }>) =>
+    (await httpClient.post<{ success: boolean; flags: RateFlag[] }>("/supplier/price-lists/check", { supplier, lines })).flags,
 };

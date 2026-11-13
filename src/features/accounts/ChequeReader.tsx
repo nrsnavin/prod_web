@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { AlertTriangle, Camera, Info, OctagonAlert } from "lucide-react";
+import { AlertTriangle, Camera } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { money } from "./shared";
+import { PaperChecks } from "./PaperReader";
 import type { ChequeResult, Flag } from "./types";
 
 // ══════════════════════════════════════════════════════════════════
@@ -21,25 +22,9 @@ import type { ChequeResult, Flag } from "./types";
 //  form by cheque; the person checks it and posts it as any receipt.
 // ══════════════════════════════════════════════════════════════════
 
-const TONE: Record<Flag["severity"], "danger" | "warning" | "info"> = { danger: "danger", warning: "warning", info: "info" };
-const ICON = { danger: OctagonAlert, warning: AlertTriangle, info: Info };
-
 /** The server's checks on a cheque, worst first. */
 export function ChequeChecks({ checks }: { checks: Flag[] }) {
-  if (!checks.length) return null;
-  const order = { danger: 0, warning: 1, info: 2 };
-  return (
-    <ul className="space-y-1" aria-label="Checks on the cheque">
-      {[...checks].sort((a, b) => order[a.severity] - order[b.severity]).map((c) => {
-        const I = ICON[c.severity];
-        return (
-          <li key={c.code + c.message} className={`flex items-start gap-2 ${c.severity === "danger" ? "text-status-danger" : c.severity === "warning" ? "text-status-warning" : "text-ink-600"}`}>
-            <I className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> <span>{c.message}</span>
-          </li>
-        );
-      })}
-    </ul>
-  );
+  return <PaperChecks checks={checks} label="Checks on the cheque" />;
 }
 
 export function ChequeReader({ customer, onUse }: { customer?: string; onUse: (result: ChequeResult) => void }) {

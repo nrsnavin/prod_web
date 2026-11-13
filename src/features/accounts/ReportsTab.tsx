@@ -10,9 +10,10 @@ import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY, useBankAccounts } from "./hooks";
 import { RangePicker, defaultPeriod, money, today } from "./shared";
+import { PowerCost } from "./PowerCost";
 import type { GstRateRow } from "./types";
 
-type Report = "gst" | "tds" | "expenses" | "cashbook" | "daybook";
+type Report = "gst" | "tds" | "expenses" | "cashbook" | "daybook" | "power";
 
 function RateTable({ title, rows, inter }: { title: string; rows: GstRateRow[]; inter?: boolean }) {
   return (
@@ -34,7 +35,8 @@ function RateTable({ title, rows, inter }: { title: string; rows: GstRateRow[]; 
 export function ReportsTab() {
   // Opened from an account's card: its cash / bank book.
   const [params] = useSearchParams();
-  const [report, setReport] = useState<Report>(params.get("report") === "cashbook" ? "cashbook" : "gst");
+  const asked = params.get("report");
+  const [report, setReport] = useState<Report>(asked === "cashbook" || asked === "power" ? asked : "gst");
   const [range, setRange] = useState(defaultPeriod);
   const [account, setAccount] = useState(params.get("account") ?? "");
   const [day, setDay] = useState(today());
@@ -50,8 +52,8 @@ export function ReportsTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <FilterChips options={[{ value: "gst", label: "GST" }, { value: "tds", label: "TDS register" }, { value: "expenses", label: "Expenses by head" }, { value: "cashbook", label: "Cash / bank book" }, { value: "daybook", label: "Day book" }]} value={report} onChange={setReport} />
-        {report === "daybook" ? <Input label="Day" type="date" value={day} onChange={(e) => setDay(e.target.value)} /> : <RangePicker from={range.from} to={range.to} onChange={setRange} />}
+        <FilterChips options={[{ value: "gst", label: "GST" }, { value: "tds", label: "TDS register" }, { value: "expenses", label: "Expenses by head" }, { value: "cashbook", label: "Cash / bank book" }, { value: "daybook", label: "Day book" }, { value: "power", label: "Power cost" }]} value={report} onChange={setReport} />
+        {report === "daybook" ? <Input label="Day" type="date" value={day} onChange={(e) => setDay(e.target.value)} /> : report !== "power" && <RangePicker from={range.from} to={range.to} onChange={setRange} />}
         {report === "cashbook" && <Select label="Account" value={acct} onChange={(e) => setAccount(e.target.value)} options={(accounts ?? []).map((a) => ({ value: a._id, label: a.name }))} />}
       </div>
 
@@ -128,6 +130,8 @@ export function ReportsTab() {
           </table>
         </Card>
       ))}
+
+      {report === "power" && <PowerCost />}
 
       {report === "daybook" && (daybook.isLoading ? <Skeleton className="h-64 w-full" /> : daybook.data && (
         <div className="grid gap-4 lg:grid-cols-2">

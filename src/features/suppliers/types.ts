@@ -147,3 +147,33 @@ export interface PoFormValues {
   expectedDate?: string;
   notes?: string;
 }
+
+// ── What a supplier quoted (their price list or quotation) ──
+/** The live rate for one material from one supplier; a newer list or quotation replaces it. */
+export interface SupplierRate {
+  _id: string; supplier: string; supplierName: string; rawMaterial: string; materialName: string;
+  /** As the supplier wrote it. */
+  description: string;
+  rate: number; unit: string; gstPercent: number | null; minQty: number | null;
+  source: "price_list" | "quotation" | "manual"; ref: string; quotedOn: string | null; validUntil: string | null; createdAt?: string;
+}
+/** One line of a price list read: put against one of our materials (or not), with the rate live for it now. */
+export interface PriceListRow {
+  description: string; rate: number; unit: string; gstPercent: number | null; minQty: number | null;
+  rawMaterial: string | null; materialName: string | null;
+  candidates: Array<{ id: string; name: string; score: number }>;
+  current: { rate: number; unit: string; ref: string; quotedOn: string | null } | null;
+  /** Against the live rate, in per cent. */
+  change: number | null;
+}
+export interface PriceListResult {
+  read: {
+    problem: null | "not_a_price_list" | "unreadable";
+    kind?: "price_list" | "quotation"; supplierName?: string; supplierGstin?: string; ref?: string; date?: string | null; validUntil?: string | null;
+  };
+  supplier: { _id: string; name: string; matchedBy: "picked" | "gstin" | "name" } | null;
+  rows: PriceListRow[];
+  aiSuggestion: string | null;
+}
+/** A purchase order line above what the supplier quoted. `line` is its place in the lines sent. */
+export interface RateFlag { code: "ABOVE_QUOTE"; severity: "warning"; message: string; line: number }

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileJson, Upload, RefreshCw, AlertTriangle, CheckCircle2, Send } from "lucide-react";
@@ -17,7 +17,8 @@ import { ACCOUNTS_KEY } from "./hooks";
 import { money } from "./shared";
 import { round2 } from "@/features/invoices/gst";
 import { NoticesSection } from "./NoticesSection";
-import type { Gstr2bRow, MsmeDue, TdsRegister } from "./types";
+import { ChallanReader, Form16aReader } from "./TdsPaperReaders";
+import type { Gstr2bRow, MsmeDue, TdsChallanResult, TdsRegister } from "./types";
 
 type Section = "notices" | "msme" | "gstr1" | "gstr2b" | "rule37" | "tds" | "payroll";
 const SECTIONS: Section[] = ["notices", "msme", "gstr1", "gstr2b", "rule37", "tds", "payroll"];
@@ -64,20 +65,43 @@ const quarterOfMonth = (m: string) => { const mm = Number(m.split("-")[1]); retu
 function ChallanForm({ month, sections, onDone }: { month: string; sections: string[]; onDone: (r: TdsRegister) => void }) {
   const { toast } = useToast();
   const [section, setSection] = useState(sections[0] ?? "194C");
+  // The month the challan pays: this page's month, unless the challan read says another.
+  const [forMonth, setForMonth] = useState(month);
   const [amount, setAmount] = useState<number | "">("");
   const [interest, setInterest] = useState<number | "">("");
   const [bsrCode, setBsrCode] = useState("");
   const [challanNo, setChallanNo] = useState("");
   const [depositedOn, setDepositedOn] = useState("");
   const [busy, setBusy] = useState(false);
+  const [read, setRead] = useState<TdsChallanResult | null>(null);
+  useEffect(() => { setForMonth(month); }, [month]);
+  const applyRead = (r: TdsChallanResult) => {
+    const d = r.draft;
+    if (!d) return;
+    setRead(r);
+    if (d.section) setSection(d.section);
+    if (d.month) setForMonth(d.month);
+    setAmount(d.amount); setInterest(d.interest || ""); setBsrCode(d.bsrCode); setChallanNo(d.challanNo); setDepositedOn(d.depositedOn);
+  };
   const save = async () => {
     setBusy(true);
-    try { const r = await accountsService.addTdsChallan({ month, section, amount: Number(amount), interest: Number(interest) || 0, bsrCode, challanNo, depositedOn }); toast("Challan recorded", "success"); setAmount(""); setInterest(""); setBsrCode(""); setChallanNo(""); onDone(r.register); }
+    try {
+      const r = await accountsService.addTdsChallan({ month: forMonth, section, amount: Number(amount), interest: Number(interest) || 0, bsrCode, challanNo, depositedOn, tdsSuggestion: read?.aiSuggestion ?? undefined });
+      toast(forMonth === month ? "Challan recorded" : `Challan recorded against ${monthLabel(forMonth)}`, "success");
+      setAmount(""); setInterest(""); setBsrCode(""); setChallanNo(""); setRead(null); setForMonth(month);
+      onDone(r.register);
+    }
     catch (e) { toast(e instanceof ApiError ? e.message : "Could not record it", "error"); }
     finally { setBusy(false); }
   };
   return (
+    <div className="space-y-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <ChallanReader onUse={applyRead} />
+      {read?.draft?.monthWhy ? <span className="text-xs text-ink-500" aria-label="Month the challan pays">{read.draft.monthWhy}</span> : <span className="text-xs text-ink-400">A photo or PDF of the challan fills this in.</span>}
+    </div>
     <div className="flex flex-wrap items-end gap-2">
+      <Input label="For month" type="month" value={forMonth} onChange={(e) => setForMonth(e.target.value || month)} className="w-40" />
       <Input label="Section" value={section} onChange={(e) => setSection(e.target.value.toUpperCase())} className="w-24" list="tds-sections" />
       <datalist id="tds-sections">{[...new Set([...sections, "194C", "194I", "194J", "194Q", "194H"])].map((s) => <option key={s} value={s} />)}</datalist>
       <Input label="Amount" type="number" step="0.01" min={0} value={amount} onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))} className="w-32" />
@@ -85,7 +109,8 @@ function ChallanForm({ month, sections, onDone }: { month: string; sections: str
       <Input label="BSR code" value={bsrCode} onChange={(e) => setBsrCode(e.target.value)} className="w-28" />
       <Input label="Challan serial" value={challanNo} onChange={(e) => setChallanNo(e.target.value)} className="w-28" />
       <Input label="Deposited on" type="date" value={depositedOn} onChange={(e) => setDepositedOn(e.target.value)} />
-      <Button size="sm" disabled={!(Number(amount) > 0) || !depositedOn || !section} loading={busy} onClick={save}>Record challan</Button>
+      <Button size="sm" disabled={!(Number(amount) > 0) || !depositedOn || !section || !forMonth} loading={busy} onClick={save}>Record challan</Button>
+    </div>
     </div>
   );
 }
@@ -144,7 +169,18 @@ function TdsSection({ month }: { month: string }) {
   const upload26as = async (file?: File) => {
     if (!file) return;
     setBusy(true);
-    try { const r = await accountsService.upload26as(file, fy); qc.setQueryData([ACCOUNTS_KEY, "tds-receivable", fy], r.receivable); toast(`${r.lines} lines read, ${r.matched} matched to customers${r.unmatched.length ? `; ${r.unmatched.length} not matched` : ""}`, r.unmatched.length ? "info" : "success"); }
+    try {
+      // The PDF (or a photo) from the portal is read; the CSV or Excel export is parsed as before.
+      if (/pdf|image/.test(file.type) || /\.pdf$/i.test(file.name)) {
+        const r = await accountsService.read26asPdf([file], fy);
+        if (!r.stored) { toast(r.read.problem === "not_26as" ? "That does not look like Form 26AS." : "The Form 26AS could not be read. Try the CSV from the portal.", "error"); return; }
+        if (r.receivable) qc.setQueryData([ACCOUNTS_KEY, "tds-receivable", r.stored.fy], r.receivable);
+        const s = r.stored;
+        toast(`${s.lines} lines read from the PDF${s.fy !== fy ? ` for ${s.fy}` : ""}, ${s.matched} matched to customers${s.unmatched.length ? `; ${s.unmatched.length} not matched` : ""}`, s.unmatched.length || s.fy !== fy ? "info" : "success");
+        return;
+      }
+      const r = await accountsService.upload26as(file, fy); qc.setQueryData([ACCOUNTS_KEY, "tds-receivable", fy], r.receivable); toast(`${r.lines} lines read, ${r.matched} matched to customers${r.unmatched.length ? `; ${r.unmatched.length} not matched` : ""}`, r.unmatched.length ? "info" : "success");
+    }
     catch (e) { toast(e instanceof Error ? e.message : "Could not read the file", "error"); }
     finally { setBusy(false); if (asRef.current) asRef.current.value = ""; }
   };
@@ -164,7 +200,7 @@ function TdsSection({ month }: { month: string }) {
               </tbody>
             </table>
           </div>
-          <div className="mt-4"><ChallanForm month={month} sections={reg.data.rows.map((r) => r.section)} onDone={(r) => qc.setQueryData([ACCOUNTS_KEY, "tds-register", month], r)} /></div>
+          <div className="mt-4"><ChallanForm month={month} sections={reg.data.rows.map((r) => r.section)} onDone={(r) => qc.setQueryData([ACCOUNTS_KEY, "tds-register", r.month], r)} /></div>
         </Card>
       ))}
       {view === "register" && reg.data?.notDeducted && reg.data.notDeducted.rows.length > 0 && <NotDeducted month={month} d={reg.data.notDeducted} />}
@@ -190,7 +226,11 @@ function TdsSection({ month }: { month: string }) {
         <Card className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div><h3 className="font-semibold">TDS customers deducted from us · {rec.data.fy}</h3><p className="text-sm text-ink-500">₹{money(rec.data.totals.deducted)} kept back on receipts · certificates received ₹{money(rec.data.totals.certificates)} · in Form 26AS ₹{money(rec.data.totals.in26as)}{rec.data.unmatched26as > 0 ? ` (₹${money(rec.data.unmatched26as)} in 26AS from deductors not on file)` : ""}</p></div>
-            <div><input ref={asRef} type="file" accept=".csv,.xlsx,.xls,text/csv" className="hidden" aria-label="Form 26AS file" onChange={(e) => upload26as(e.target.files?.[0])} /><Button variant="secondary" loading={busy} onClick={() => asRef.current?.click()}><Upload className="h-4 w-4" /> Upload Form 26AS</Button></div>
+            <div className="flex flex-wrap gap-2">
+              <Form16aReader onSaved={(saved) => qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "tds-receivable", saved] })} />
+              <input ref={asRef} type="file" accept=".csv,.xlsx,.xls,text/csv,application/pdf,.pdf" className="hidden" aria-label="Form 26AS file" onChange={(e) => upload26as(e.target.files?.[0])} />
+              <Button variant="secondary" loading={busy} onClick={() => asRef.current?.click()} title="The CSV or Excel export, or the PDF, from the income-tax portal"><Upload className="h-4 w-4" /> Upload Form 26AS</Button>
+            </div>
           </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full max-w-4xl text-sm" aria-label="TDS receivable">

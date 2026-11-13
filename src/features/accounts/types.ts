@@ -268,6 +268,8 @@ export interface NoteCreateBody {
   requestId?: string;
   /** A debit note charging interest: which invoices and days it covers. */
   interest?: InterestMarker[];
+  /** Filled from the customer's debit note read from a photo: what was issued scores the read. */
+  debitNoteSuggestion?: string;
 }
 export interface InterestMarker { invoice: string; docNo?: string; from: string; to: string; days: number; rate: number; amount: number }
 
@@ -773,6 +775,85 @@ export interface WhatsAppPaper {
   /** A cheque's read (as ChequeResult) or a challan's ({ read, po, rows, aiSuggestion }). */
   result: (ChequeResult & { po?: never }) | { read: Record<string, unknown> & { supplierName?: string; dcNo?: string }; po: { _id: string; poNo: number } | null; rows: unknown[]; aiSuggestion: string | null } | null;
   createdAt: string; decidedAt: string | null;
+}
+// ── Papers read into drafts: a customer's debit note, TDS papers, the electricity bill ──
+/** What POST /accounts/debit-notes/read returns: the customer, the invoice it names, and the credit note it would be. */
+export interface DebitNoteResult {
+  read: {
+    problem: null | "not_a_debit_note" | "unreadable";
+    kind?: "debit_note" | "short_payment"; customerName?: string; customerGstin?: string; noteNo?: string; date?: string | null;
+    invoices?: string[]; reason?: string; taxable?: number | null; gst?: number | null; total?: number | null;
+  };
+  customer: { _id: string; name: string; matchedBy: "picked" | "gstin" | "name" } | null;
+  invoice: { _id: string; invoiceNumber: string; invoiceDate: string; grand: number; gstPercent: number; supplyType: SupplyType; others: string[] } | null;
+  /** The credit notes already issued against that invoice, and what is still open to credit. */
+  notesSoFar: { notes: Array<{ noteNo: string; amount: number }>; credited: number; left: number } | null;
+  draft: null | {
+    kind: "credit"; against: { docType: "Invoice"; doc: string; docNo: string }; reason: string; partyNoteNo: string; financial: boolean;
+    lines: Array<{ description: string; quantity: number; rate: number; gstPercent: number }>;
+    totals: { taxable: number; gst: number; grand: number };
+    /** How the amount before GST was arrived at ("its total less GST at 5%"). */
+    basis: string;
+  };
+  checks: Flag[];
+  aiSuggestion: string | null;
+}
+/** A TDS challan read: the register's challan row, the month it pays and why. */
+export interface TdsChallanResult {
+  kind: "challan";
+  read: {
+    problem: null | "not_a_challan" | "unreadable";
+    tan?: string; bsrCode?: string; challanNo?: string; depositedOn?: string | null; section?: string; natureOfPayment?: string; minorHead?: string;
+    tax?: number | null; surcharge?: number | null; cess?: number | null; interest?: number | null; fee?: number | null; total?: number | null; cin?: string;
+  };
+  draft: null | { month: string; monthWhy: string; section: string; amount: number; interest: number; bsrCode: string; challanNo: string; depositedOn: string; note: string };
+  checks: Flag[];
+  duplicate: { _id: string; month: string; section: string; amount: number } | null;
+  aiSuggestion: string | null;
+}
+/** A customer's Form 16A read: the certificate row for the register of certificates received. */
+export interface Form16aResult {
+  kind: "form16a";
+  read: {
+    problem: null | "not_a_form16a" | "unreadable";
+    deductorName?: string; deductorTan?: string; deducteeName?: string; deducteePan?: string; certificateNo?: string; assessmentYear?: string; quarter?: string;
+    rows?: Array<{ section: string; amountPaid: number | null; tds: number | null }>; totalTds?: number | null;
+  };
+  customer: { _id: string; name: string; matchedBy: "tan" | "name" } | null;
+  draft: null | { kind: "received"; party: string | null; partyName: string; fy: string; quarter: string; certNo: string; section: string; amount: number; on: string; tan: string };
+  checks: Flag[];
+  duplicate: { _id: string; amount: number } | null;
+  aiSuggestion: string | null;
+}
+/** Form 26AS read from its PDF: the year's lines replaced, each placed on a customer. */
+export interface Form26asResult {
+  kind: "26as";
+  read: { problem?: "not_26as" | "unreadable" | null; pan?: string; assessmentYear?: string; lines?: number };
+  stored: { fy: string; lines: number; matched: number; unmatched: Array<{ deductorName: string; tan: string; tds: number }> } | null;
+  receivable: TdsReceivable | null;
+  aiSuggestion: string | null;
+}
+export interface PowerBillDraft {
+  month: string; consumerNo: string; billNo: string; billDate: string | null; periodFrom: string | null; periodTo: string | null;
+  units: number | null; demandKva: number | null; energyCharges: number | null; demandCharges: number | null; otherCharges: number | null; tax: number | null; total: number | null;
+  dueDate: string | null; ratePerUnit: number | null;
+}
+/** The month's electricity bill read: the figures to keep, checked. */
+export interface PowerBillResult {
+  read: { problem: null | "not_a_power_bill" | "unreadable" };
+  draft: PowerBillDraft | null;
+  checks: Flag[];
+  duplicate: { _id: string; total: number; units: number } | null;
+  aiSuggestion: string | null;
+}
+/** One month of power cost per metre: the bills, the metres woven (closed shift entries), and the ratios. */
+export interface PowerCostRow {
+  month: string; units: number; total: number; bills: Array<{ _id: string; consumerNo: string; units: number; total: number }>;
+  metres: number; ratePerUnit: number | null; costPerMetre: number | null; unitsPerMetre: number | null;
+  /** Cost per metre against the month before, in per cent. */
+  change: number | null;
+  /** The month is not over: only some of its metres are woven, so it is not compared. */
+  partial?: boolean;
 }
 /** The remembered payers, how near each is to its lines posting themselves. */
 export interface LearnedPayers {

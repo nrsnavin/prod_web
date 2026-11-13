@@ -17,6 +17,7 @@ import { useMaterials } from "@/features/materials/hooks";
 import { supplierService } from "./api";
 import { PoFormValues, Supplier } from "./types";
 import { usePoMutations } from "./hooks";
+import { useRateFlags } from "./rateFlags";
 import { addable } from "@/features/common/quickCreateStore";
 
 const schema = z.object({
@@ -117,6 +118,9 @@ export function PoCreatePage() {
     for (const it of materials.data ?? []) m.set(it._id, { name: it.name, unit: (it as { unit?: string }).unit });
     return m;
   }, [materials.data]);
+
+  // A line above what this supplier quoted is flagged as it is typed; nothing is refused for it.
+  const rateFlags = useRateFlags(supplierId, items.map((it) => ({ rawMaterial: it.rawMaterial, rate: Number(it.price) || 0, description: materialById.get(it.rawMaterial)?.name })));
 
   const materialOptions = (materials.data ?? []).map((m) => ({
     value: m._id,
@@ -278,6 +282,9 @@ export function PoCreatePage() {
                       {amount > 0 ? `₹${inr(amount)}` : <span className="text-ink-400">—</span>}
                       {unit && amount > 0 && <span className="ml-1 text-xs text-ink-400">/{unit}</span>}
                     </div>
+                    {rateFlags.filter((f) => f.line === i).map((f) => (
+                      <p key={f.message} role="status" className="col-span-2 order-last text-xs text-status-warning sm:col-span-5">{f.message}</p>
+                    ))}
                     <button
                       type="button"
                       onClick={() => fields.length > 1 && remove(i)}
@@ -332,6 +339,11 @@ export function PoCreatePage() {
                 <dt className="text-ink-400">Line items</dt>
                 <dd className="tabular-nums">{lineCount}</dd>
               </div>
+              {rateFlags.length > 0 && (
+                <p className="rounded-md bg-status-warningBg px-2 py-1 text-xs text-status-warning">
+                  {rateFlags.length} line{rateFlags.length === 1 ? " is" : "s are"} above what the supplier quoted.
+                </p>
+              )}
               <div className="my-2 border-t border-ink-100" />
               <div className="flex items-baseline justify-between">
                 <dt className="text-ink-600">Order total</dt>

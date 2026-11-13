@@ -12,7 +12,8 @@ import type {
   TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
   PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult, Gstr2bFollowUp, ReadyMailedBill,
-  ChequeResult, WhatsAppPaper, PaperKind, LearnedPayers } from "./types";
+  ChequeResult, WhatsAppPaper, PaperKind, LearnedPayers, DebitNoteResult, TdsChallanResult, Form16aResult, Form26asResult,
+  PowerBillResult, PowerBillDraft, PowerCostRow } from "./types";
 import { uploadForm } from "@/core/http/upload";
 import { apiUrl } from "@/app/config";
 
@@ -133,6 +134,37 @@ export const accountsService = {
     if (customer) fd.append("customer", customer);
     return uploadForm<ChequeResult>("/accounts/cheques/read", fd, "Could not read the cheque");
   },
+  /** A customer's debit note or short-payment letter: the invoice it names and the credit note it would be. */
+  async readDebitNote(files: File[], customer?: string): Promise<DebitNoteResult> {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    if (customer) fd.append("customer", customer);
+    return uploadForm<DebitNoteResult>("/accounts/debit-notes/read", fd, "Could not read the debit note");
+  },
+  /** A TDS challan or a customer's Form 16A: the register row it would be. Nothing is saved. */
+  async readTdsPaper<K extends "challan" | "form16a">(kind: K, files: File[]): Promise<K extends "challan" ? TdsChallanResult : Form16aResult> {
+    const fd = new FormData();
+    fd.append("kind", kind);
+    for (const f of files) fd.append("files", f);
+    return uploadForm("/accounts/tds/read", fd, kind === "challan" ? "Could not read the challan" : "Could not read the Form 16A");
+  },
+  /** Form 26AS as a PDF (or photos of it): the year's lines replace those kept, as uploading the file does. */
+  async read26asPdf(files: File[], fy: string): Promise<Form26asResult> {
+    const fd = new FormData();
+    fd.append("kind", "26as");
+    fd.append("fy", fy);
+    for (const f of files) fd.append("files", f);
+    return uploadForm<Form26asResult>("/accounts/tds/read", fd, "Could not read the Form 26AS");
+  },
+  /** The month's electricity bill read and checked. Nothing is saved. */
+  async readPowerBill(files: File[]): Promise<PowerBillResult> {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    return uploadForm<PowerBillResult>("/accounts/power-bills/read", fd, "Could not read the electricity bill");
+  },
+  savePowerBill: async (body: Partial<PowerBillDraft> & { month: string; units: number; total: number; note?: string; aiSuggestion?: string | null }) =>
+    (await httpClient.post<{ success: boolean; bill: PowerBillDraft & { _id: string } }>("/accounts/power-bills", body)).bill,
+  powerCost: async (months = 12) => (await httpClient.get<{ success: boolean; rows: PowerCostRow[] }>("/accounts/power-bills/report", { months })).rows,
   /** Photos sent to the WhatsApp number: waiting on a person (default), or all of them. */
   whatsappPapers: async (status: "waiting" | "all" = "waiting") =>
     httpClient.get<{ success: boolean; papers: WhatsAppPaper[]; waiting: number }>(`/accounts/whatsapp-papers?status=${status}`),
@@ -253,12 +285,12 @@ export const accountsService = {
   gstr1: (month?: string) => httpClient.get<Gstr1 & { success: boolean }>("/accounts/gstr1", clean({ month })),
   gstr1JsonUrl: (month: string) => apiUrl(`/accounts/gstr1/json?month=${month}`),
   tdsRegister: (month?: string) => httpClient.get<TdsRegister & { success: boolean }>("/accounts/tds/register", clean({ month })),
-  addTdsChallan: (body: { month: string; section: string; amount: number; interest?: number; bsrCode?: string; challanNo?: string; depositedOn: string; account?: string }) =>
+  addTdsChallan: (body: { month: string; section: string; amount: number; interest?: number; bsrCode?: string; challanNo?: string; depositedOn: string; account?: string; tdsSuggestion?: string }) =>
     once("tds-challan", body, (b) => httpClient.post<{ success: boolean; register: TdsRegister; replay?: boolean }>("/accounts/tds/challans", b)),
   form26q: (fy?: string, q?: string) => httpClient.get<Form26q & { success: boolean }>("/accounts/tds/26q", clean({ fy, q })),
   form26qXlsxUrl: (fy: string, q: string) => apiUrl(`/accounts/tds/26q?fy=${fy}&q=${q}&format=xlsx`),
   tdsCertificates: async (fy?: string) => (await httpClient.get<{ success: boolean; fy: string; rows: TdsCertificateRow[] }>("/accounts/tds/certificates", clean({ fy }))).rows,
-  addTdsCertificate: (body: { kind: "issued" | "received"; party: string; fy: string; quarter: string; certNo?: string; section?: string; amount: number; on?: string; note?: string }) =>
+  addTdsCertificate: (body: { kind: "issued" | "received"; party: string; fy: string; quarter: string; certNo?: string; section?: string; amount: number; on?: string; note?: string; tdsSuggestion?: string }) =>
     once("tds-certificate", body, (b) => httpClient.post<{ success: boolean; certificate: TdsCertificateRow; replay?: boolean }>("/accounts/tds/certificates", b)),
   tdsReceivable: (fy?: string) => httpClient.get<TdsReceivable & { success: boolean }>("/accounts/tds/receivable", clean({ fy })),
   async upload26as(file: File, fy: string): Promise<{ lines: number; matched: number; unmatched: Array<{ deductorName: string; tan: string; tds: number }>; receivable: TdsReceivable }> {

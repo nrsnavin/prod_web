@@ -20,7 +20,9 @@ import type { SupplyType } from "@/features/invoices/types";
 import { accountsService } from "./api";
 import { useAccountsMutations, useNotes } from "./hooks";
 import { LinesEditor, PartyPicker, blankLine, money, today } from "./shared";
-import type { AccountNote, CreditNoteLimit, InterestDraft, LineInput, NoteKind } from "./types";
+import { DebitNoteReader } from "./DebitNoteReader";
+import { PaperChecks } from "./PaperReader";
+import type { AccountNote, CreditNoteLimit, DebitNoteResult, InterestDraft, LineInput, NoteKind } from "./types";
 
 /** Which of the three notes this is. */
 export type NoteFormKind = "credit" | "debit" | "debit-customer";
@@ -105,7 +107,16 @@ export function NoteForm({ form, initial, onDone, onCancel }: { form: NoteFormKi
   const partyType = form === "debit" ? "supplier" : "customer";
   const [partyNoteNo, setPartyNoteNo] = useState("");
   const [party, setParty] = useState(initial?.customer ?? "");
+  const [partyName, setPartyName] = useState("");
   const [docs, setDocs] = useState<Array<{ id: string; label: string; supplyType: SupplyType; gstPercent: number }>>([]);
+  // Filled from the customer's debit note: the invoice it names stays a
+  // choice even when it is older than the fifty listed, and the issued
+  // note scores the read.
+  const [fromPaper, setFromPaper] = useState<DebitNoteResult | null>(null);
+  const pinned = fromPaper?.invoice && fromPaper.customer?._id === party
+    ? { id: fromPaper.invoice._id, label: `${fromPaper.invoice.invoiceNumber} · ${formatDate(fromPaper.invoice.invoiceDate)} · ₹${money(fromPaper.invoice.grand)}`, supplyType: fromPaper.invoice.supplyType, gstPercent: fromPaper.invoice.gstPercent }
+    : null;
+  const options = pinned && !docs.some((d) => d.id === pinned.id) ? [pinned, ...docs] : docs;
   const [doc, setDoc] = useState(initial?.body.against.doc ?? "");
   const [date, setDate] = useState(initial?.body.date ?? today());
   const [reason, setReason] = useState(initial?.body.reason ?? "");
@@ -131,12 +142,23 @@ export function NoteForm({ form, initial, onDone, onCancel }: { form: NoteFormKi
     return () => { live = false; };
   }, [party, partyType]);
 
-  const chosen = docs.find((d) => d.id === doc);
+  const chosen = options.find((d) => d.id === doc);
+
+  const applyDebitNote = (r: DebitNoteResult) => {
+    setFromPaper(r);
+    if (r.customer) { setParty(r.customer._id); setPartyName(r.customer.name); }
+    setDoc(r.invoice && r.customer ? r.invoice._id : "");
+    if (r.read.noteNo) setPartyNoteNo(r.read.noteNo);
+    if (r.draft) {
+      setReason(r.draft.reason);
+      setLines(r.draft.lines.map((l) => ({ description: l.description, hsn: "", unit: "", quantity: l.quantity, rate: l.rate, gstPercent: l.gstPercent })));
+    } else if (r.read.reason) setReason(r.read.reason);
+  };
   const ready = party && doc && reason.trim().length >= 3 && lines.every((l) => l.description.trim() && l.rate !== "");
 
   const submit = () =>
     createNote.mutate(
-      { kind, partyType, against: { doc }, reason: reason.trim(), date, lines, notes: notes.trim() || undefined, partyNoteNo: partyNoteNo.trim() || undefined, financial: kind === "credit" && financial ? true : undefined, interest: initial?.body.interest },
+      { kind, partyType, against: { doc }, reason: reason.trim(), date, lines, notes: notes.trim() || undefined, partyNoteNo: partyNoteNo.trim() || undefined, financial: kind === "credit" && financial ? true : undefined, interest: initial?.body.interest, debitNoteSuggestion: fromPaper?.aiSuggestion ?? undefined },
       {
         onSuccess: (n) => { toast(`${n.noteNo} issued`, "success"); onDone(n._id); },
         onError: (e) => toast(e instanceof ApiError ? e.message : "Could not issue the note", "error"),
@@ -146,12 +168,25 @@ export function NoteForm({ form, initial, onDone, onCancel }: { form: NoteFormKi
   return (
     <div className="space-y-4">
       {initial && <p className="rounded-lg bg-ink-50 px-3 py-2 text-sm">Interest of ₹{money(initial.total)} on {initial.rows.length} overdue invoice{initial.rows.length === 1 ? "" : "s"} of {initial.partyName}, to {formatDate(initial.asOf)}. The note remembers the days it charged, so the next one starts after them.</p>}
+      {form === "credit" && !initial && (
+        <div className="flex flex-wrap items-center gap-2">
+          <DebitNoteReader customer={party || undefined} onUse={applyDebitNote} />
+          {!fromPaper && <span className="text-xs text-ink-400">Their debit note or short-payment letter fills this in.</span>}
+        </div>
+      )}
+      {fromPaper && (
+        <div className="space-y-2 rounded-lg bg-ink-50 px-3 py-2 text-sm" aria-label="Filled from their debit note">
+          <p>Filled from {fromPaper.read.kind === "short_payment" ? "their short-payment letter" : `their debit note${fromPaper.read.noteNo ? ` ${fromPaper.read.noteNo}` : ""}`}{fromPaper.draft ? `: ₹${money(fromPaper.draft.totals.taxable)} before GST (${fromPaper.draft.basis})` : ""}. Check it before issuing.</p>
+          <PaperChecks checks={fromPaper.checks} label="Checks on their debit note" />
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
-        <PartyPicker partyType={partyType} value={party} onChange={(id) => { setParty(id); setDoc(""); }} />
-        <Select label={partyType === "customer" ? "Against invoice *" : "Against bill *"} value={doc} onChange={(e) => setDoc(e.target.value)} disabled={!party} options={docs.map((d) => ({ value: d.id, label: d.label }))} placeholder={party ? "Pick the document" : "Pick the party first"} />
+        <PartyPicker partyType={partyType} value={party} knownName={partyName || undefined} onChange={(id, name) => { setParty(id); setPartyName(name); setDoc(""); }} />
+        <Select label={partyType === "customer" ? "Against invoice *" : "Against bill *"} value={doc} onChange={(e) => setDoc(e.target.value)} disabled={!party} options={options.map((d) => ({ value: d.id, label: d.label }))} placeholder={party ? "Pick the document" : "Pick the party first"} />
         <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <Input label="Reason *" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={form === "credit" ? "e.g. Rate difference agreed, 200 m returned" : form === "debit" ? "e.g. Short supply 4 kg, rejected lot" : "e.g. Freight billed later, rate revision"} />
         {partyType === "supplier" && <Input label="Their credit note no." value={partyNoteNo} onChange={(e) => setPartyNoteNo(e.target.value)} placeholder="When the supplier sent one" />}
+        {form === "credit" && <Input label="Their debit note no." value={partyNoteNo} onChange={(e) => setPartyNoteNo(e.target.value)} placeholder="When the customer sent one" />}
       </div>
       {limit && (limit.past || limit.soon) && (
         <div role="alert" className={`rounded-lg px-3 py-2 text-sm ${limit.past ? "bg-status-dangerBg text-status-danger" : "bg-status-warningBg text-status-warning"}`}>
