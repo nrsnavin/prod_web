@@ -72,5 +72,6 @@ export function useInvoiceMutations() {
   const ewaybill = useMutation({ mutationFn: ({ id, body }: { id: string; body: EwaybillBody }) => invoiceService.ewaybill(id, body), onSuccess: invalidate });
   const pasteEwaybill = useMutation({ mutationFn: ({ id, body }: { id: string; body: EwaybillBody }) => invoiceService.pasteEwaybill(id, body), onSuccess: invalidate });
   const updateExport = useMutation({ mutationFn: ({ id, body }: { id: string; body: { shippingBill: { number: string; date?: string }; portCode?: string } }) => invoiceService.updateExport(id, body), onSuccess: invalidate });
-  return { create, registerIrn, pasteIrn, cancel, ewaybill, pasteEwaybill, updateExport };
+  const adoptCompanyDetails = useMutation({ mutationFn: (id: string) => invoiceService.adoptCompanyDetails(id), onSuccess: invalidate });
+  return { create, registerIrn, pasteIrn, cancel, ewaybill, pasteEwaybill, updateExport, adoptCompanyDetails };
 }

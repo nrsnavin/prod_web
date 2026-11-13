@@ -66,6 +66,15 @@ export const invoiceService = {
     return (await httpClient.post<{ success: boolean; invoice: Invoice }>(`/invoice/${id}/export`, body)).invoice;
   },
 
+  /**
+   * Put the company's details as Settings now hold them on an invoice not
+   * yet registered with the e-invoice portal (its amounts stay as they are).
+   */
+  async adoptCompanyDetails(id: string): Promise<{ invoice: Invoice; unchanged: boolean }> {
+    const res = await httpClient.post<{ success: boolean; invoice: Invoice; unchanged?: boolean }>(`/invoice/${id}/company-details`, {});
+    return { invoice: res.invoice, unchanged: !!res.unchanged };
+  },
+
   async cancel(id: string, reason: string): Promise<{ invoice: Invoice; portalNote: string }> {
     const res = await httpClient.post<{ success: boolean; invoice: Invoice; portalNote: string }>(`/invoice/${id}/cancel`, { reason });
     return { invoice: res.invoice, portalNote: res.portalNote };

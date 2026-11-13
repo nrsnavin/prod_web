@@ -13,6 +13,11 @@ import { useAuth } from "@/core/auth/useAuth";
 import { useDocumentSettings, useUpdateDocumentSettings } from "./hooks";
 import type { InvoiceSettings } from "./types";
 
+// ClearTax's two addresses: its live service and its sandbox.
+const CLEARTAX_LIVE = "https://api.clear.in";
+const CLEARTAX_SANDBOX = "https://api-sandbox.clear.in";
+const CLEARTAX_URLS = [CLEARTAX_LIVE, CLEARTAX_SANDBOX];
+
 const EMPTY: InvoiceSettings = {
   defaultHsn: "5806",
   defaultGstPercent: 5,
@@ -60,6 +65,8 @@ export function InvoiceSettingsForm() {
     if (form.stateCode && !/^\d{2}$/.test(form.stateCode)) return toast("State code is the 2-digit GST code, e.g. 33", "error");
     if (!/^\d{4,8}$/.test(form.defaultHsn)) return toast("HSN is 4 to 8 digits", "error");
     const { configured: _configured, ...gsp } = form.gsp;
+    // What the ClearTax environment shows is what is saved.
+    if (gsp.provider === "cleartax" && !CLEARTAX_URLS.includes(gsp.baseUrl)) gsp.baseUrl = CLEARTAX_LIVE;
     update.mutate(
       { invoice: { ...form, gsp } },
       {
@@ -149,22 +156,58 @@ export function InvoiceSettingsForm() {
             label="Provider"
             value={form.gsp.provider}
             disabled={!canEdit}
-            onChange={(e) => setGsp("provider", e.target.value)}
+            onChange={(e) => {
+              const provider = e.target.value;
+              // ClearTax starts on its live address, not on one left from
+              // another GSP (its token is only ever sent to ClearTax).
+              setForm((f) => {
+                const onClearTax = CLEARTAX_URLS.includes(f.gsp.baseUrl);
+                const baseUrl = provider === "cleartax" ? (onClearTax ? f.gsp.baseUrl : CLEARTAX_LIVE) : onClearTax ? "" : f.gsp.baseUrl;
+                return { ...f, gsp: { ...f.gsp, provider, baseUrl } };
+              });
+            }}
             options={[
               { value: "", label: "None — paste the IRN from the portal" },
+              { value: "cleartax", label: "ClearTax" },
               { value: "http-json", label: "HTTP JSON (generic GSP proxy)" },
             ]}
           />
-          <Input label="API base URL" value={form.gsp.baseUrl} disabled={!canEdit} placeholder="https://…/einvoice"
-            onChange={(e) => setGsp("baseUrl", e.target.value)} />
-          <Input label="Client ID" value={form.gsp.clientId} disabled={!canEdit} onChange={(e) => setGsp("clientId", e.target.value)} />
-          <Input label="Client secret" type="password" value={form.gsp.clientSecret ?? ""} disabled={!canEdit}
-            placeholder={configured ? "stored — leave blank to keep" : ""} autoComplete="new-password"
-            onChange={(e) => setGsp("clientSecret", e.target.value)} />
-          <Input label="Portal username" value={form.gsp.username} disabled={!canEdit} onChange={(e) => setGsp("username", e.target.value)} />
-          <Input label="Portal password" type="password" value={form.gsp.password ?? ""} disabled={!canEdit}
-            placeholder={configured ? "stored — leave blank to keep" : ""} autoComplete="new-password"
-            onChange={(e) => setGsp("password", e.target.value)} />
+          {form.gsp.provider === "cleartax" ? (
+            <>
+              {/* ClearTax keeps the IRP API user itself: here only where to
+                  send, and the workspace's token (stored as the secret). */}
+              <Select
+                label="ClearTax environment"
+                value={form.gsp.baseUrl === CLEARTAX_SANDBOX ? CLEARTAX_SANDBOX : CLEARTAX_LIVE}
+                disabled={!canEdit}
+                onChange={(e) => setGsp("baseUrl", e.target.value)}
+                options={[
+                  { value: CLEARTAX_LIVE, label: "Live (api.clear.in)" },
+                  { value: CLEARTAX_SANDBOX, label: "Sandbox (api-sandbox.clear.in), test GSTINs only" },
+                ]}
+              />
+              <Input label="ClearTax auth token" type="password" value={form.gsp.clientSecret ?? ""} disabled={!canEdit}
+                placeholder={configured ? "stored — leave blank to keep" : "from ClearTax"} autoComplete="new-password"
+                onChange={(e) => setGsp("clientSecret", e.target.value)} wrapperClassName="sm:col-span-2" />
+              <p className="text-xs text-ink-500 sm:col-span-2">
+                In ClearTax, add your GSTIN to e-invoicing with the IRP API user you created for ClearTax, and generate the
+                workspace's auth token. Jarvis sends ClearTax only that token and your GSTIN (from Documents &amp; Branding).
+              </p>
+            </>
+          ) : (
+            <>
+              <Input label="API base URL" value={form.gsp.baseUrl} disabled={!canEdit} placeholder="https://…/einvoice"
+                onChange={(e) => setGsp("baseUrl", e.target.value)} />
+              <Input label="Client ID" value={form.gsp.clientId} disabled={!canEdit} onChange={(e) => setGsp("clientId", e.target.value)} />
+              <Input label="Client secret" type="password" value={form.gsp.clientSecret ?? ""} disabled={!canEdit}
+                placeholder={configured ? "stored — leave blank to keep" : ""} autoComplete="new-password"
+                onChange={(e) => setGsp("clientSecret", e.target.value)} />
+              <Input label="Portal username" value={form.gsp.username} disabled={!canEdit} onChange={(e) => setGsp("username", e.target.value)} />
+              <Input label="Portal password" type="password" value={form.gsp.password ?? ""} disabled={!canEdit}
+                placeholder={configured ? "stored — leave blank to keep" : ""} autoComplete="new-password"
+                onChange={(e) => setGsp("password", e.target.value)} />
+            </>
+          )}
         </div>
       </Card>
 

@@ -4,7 +4,7 @@ import { canAccessPath } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileDown, FileJson, BadgeCheck, ClipboardPaste, XCircle, AlertTriangle, Wallet, Truck, Ship } from "lucide-react";
+import { ArrowLeft, FileDown, FileJson, BadgeCheck, ClipboardPaste, XCircle, AlertTriangle, Wallet, Truck, Ship, Building2 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { EwaybillDialog } from "./EwaybillDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -24,6 +24,7 @@ import { useTrackRecent } from "@/core/ui/uiStore";
 import { useInvoice, useInvoiceMutations } from "./hooks";
 import { invoiceService } from "./api";
 import { IrnDialog } from "./IrnDialog";
+import { CompanyDetailsDialog } from "./CompanyDetailsDialog";
 import { InvoiceRail } from "./InvoiceRail";
 import { money, qty } from "./gst";
 import { einvoiceLabel, einvoiceTone, invoiceStatusTone, owed } from "./invoiceStatus";
@@ -72,6 +73,8 @@ export function InvoiceDetailPage() {
   const [sbDate, setSbDate] = useState("");
   const [ewbOpen, setEwbOpen] = useState<"generate" | "paste" | null>(null);
   const [busy, setBusy] = useState<"pdf" | "json" | null>(null);
+  // The company details and logo at the top of the PDF, edited from here.
+  const [companyOpen, setCompanyOpen] = useState(false);
   const [irnOpen, setIrnOpen] = useState(false);
   const [receiving, setReceiving] = useState(false);
   const navigate = useNavigate();
@@ -175,6 +178,7 @@ export function InvoiceDetailPage() {
               { label: "PDF", icon: <FileDown className="h-4 w-4" />, loading: busy === "pdf", onClick: () => download("pdf") },
             ]}
             more={[
+              { label: "Company details & logo…", icon: <Building2 className="h-4 w-4" />, onSelect: () => setCompanyOpen(true) },
               { label: "e-Invoice JSON", icon: <FileJson className="h-4 w-4" />, disabled: busy === "json", onSelect: () => download("json") },
               // With no GSP connected, the IRN made on the portal is pasted in.
               issued && !registered && { label: "Paste IRN…", icon: <ClipboardPaste className="h-4 w-4" />, onSelect: () => setIrnOpen(true) },
@@ -218,9 +222,23 @@ export function InvoiceDetailPage() {
               <li key={p}>{p}</li>
             ))}
           </ul>
-          <p className="mt-1 text-xs">Fix it on the customer record or in Settings, then cancel this invoice and raise it again — an issued invoice is never edited.</p>
+          {problems.some((p) => p.startsWith("Your ")) ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <Button size="sm" variant="secondary" onClick={() => setCompanyOpen(true)}>
+                <Building2 className="h-4 w-4" /> Fix company details
+              </Button>
+              <span className="text-xs">
+                Your own details: fix them here and this invoice takes them.
+                {problems.some((p) => !p.startsWith("Your ")) && " The customer's: fix the customer record, then cancel this invoice and raise it again."}
+              </span>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs">Fix it on the customer record, then cancel this invoice and raise it again: the customer's details on an issued invoice are not edited.</p>
+          )}
         </div>
       )}
+      {/* Mounted only when open: the settings (and the logo) are fetched for it, not for every visit. */}
+      {companyOpen && <CompanyDetailsDialog invoice={inv} open onClose={() => setCompanyOpen(false)} />}
       {notReady && (
         <div role="alert" className="mb-4 rounded-lg bg-status-dangerBg px-3 py-2 text-sm text-status-danger">
           <p className="font-medium">The portal would refuse this invoice:</p>
