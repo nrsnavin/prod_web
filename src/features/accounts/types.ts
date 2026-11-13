@@ -163,6 +163,8 @@ export interface BillCreateBody {
   inboxBill?: string;
   source?: string;
   aiSuggestion?: string;
+  /** The e-invoice QR's text, read again by the server: the IRN is kept on the bill. */
+  einvoiceQr?: string;
   requestId?: string;
 }
 
@@ -517,7 +519,48 @@ export interface ScanResult {
   purchaseOrders: Array<{ _id: string; poNo: number; date?: string; status: string; receipts: number; unbilledReceipts: number }>;
   /** Saved bills or expenses that already carry this very photo (sent again, forwarded, resized). */
   samePhoto?: Array<{ docType: "SupplierBill" | "Expense"; docId: string; docNo: string; partyName: string; amount: number | null; date: string | null; exact: boolean }>;
+  /** The bill's lines placed on the goods received against a PO; null when nothing fits. */
+  receiptMatch?: ReceiptMatch | null;
+  /** Whether the figures read add up to the totals printed. */
+  checks?: ReadChecks;
+  /** The supplier's e-invoice QR, when the bill carries one: the GST portal's figures, which replaced what was read. */
+  einvoice?: EinvoiceRead | null;
+  /** That code as its text, sent back with the bill so the server reads it again. */
+  einvoiceQr?: string;
   aiSuggestion: string | null;
+}
+
+/** A supplier's e-invoice QR as the server read it (utils/einvoiceQr.js). */
+export interface EinvoiceRead {
+  sellerGstin: string;
+  buyerGstin: string;
+  docNo: string;
+  docType: string;
+  docDate: string | null;
+  value: number | null;
+  irn: string;
+  /** "verified": a portal key installed on the server signed it. "unchecked": no key here to say. */
+  signature: "verified" | "unchecked";
+  signatureNote: string;
+  notes: Array<{ code: string; severity: "danger" | "warning"; message: string }>;
+}
+
+/** A scanned bill's lines placed on a PO's unbilled receipts (services/billMatch.js matchReceipts). */
+export interface ReceiptMatch {
+  purchaseOrder: { _id: string; poNo: number };
+  /** `index` is the read line's position; `inwards` the receipts its quantity covers (none when it fits no receipts). */
+  lines: Array<{ index: number; rawMaterial: string; material: string; inwards: string[]; quantityReceived: number; poRate: number; quantityMatches: boolean; rateMatches: boolean }>;
+  /** Read lines that are no receipt (freight, loading). */
+  unmatched: number[];
+  /** What is still to be billed on that PO after this bill. */
+  receiptsLeft: Array<{ material: string; quantity: number; unit: string }>;
+}
+
+/** Whether a read bill adds up (utils/billArithmetic.js checkRead). */
+export interface ReadChecks {
+  ok: boolean;
+  issues: Array<{ code: string; severity: "danger" | "warning"; line?: number; message: string }>;
+  computed: { taxable: number; tax: number; grand: number };
 }
 
 export interface StatementSuggestion {

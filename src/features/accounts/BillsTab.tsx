@@ -151,7 +151,8 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
   const [billDate, setBillDate] = useState(initialDraft?.billDate ?? today());
   const [dueDate, setDueDate] = useState("");
   const [lines, setLines] = useState<LineInput[]>(initialDraft?.lines.length ? initialDraft.lines : [blankLine(settings?.invoice?.defaultGstPercent ?? 5)]);
-  const [inwards, setInwards] = useState<string[]>([]);
+  // A scanned bill brings the receipts its lines were matched to; the PO picker's receipts otherwise.
+  const [inwards, setInwards] = useState<string[]>(initialDraft?.inwards ?? []);
   const [itcEligible, setItcEligible] = useState(true);
   const [tds, setTds] = useState<{ applicable: boolean; section: string; rate: number | "" }>({ applicable: false, section: "194C", rate: 2 });
   const [notes, setNotes] = useState("");
@@ -174,6 +175,11 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
       .catch(() => {});
     return () => { live = false; };
   }, [supplier]);
+
+  // Another PO picked than the one a scan matched: its receipts are not this PO's.
+  useEffect(() => {
+    if (initialDraft?.purchaseOrder && poId !== initialDraft.purchaseOrder) setInwards([]);
+  }, [poId, initialDraft?.purchaseOrder]);
 
   // A PO picked: its unbilled receipts become the lines.
   useEffect(() => {
@@ -202,6 +208,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
         purchaseOrder: poId || undefined, inwards: poId ? inwards : undefined, kind, category: category || undefined,
         lines, itcEligible, tds: { applicable: tds.applicable, section: tds.section, rate: Number(tds.rate) || 0 }, notes: notes.trim() || undefined,
         source: initialDraft?.aiSuggestion ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
+        einvoiceQr: initialDraft?.einvoiceQr || undefined,
         reverseCharge: reverseCharge || undefined, varianceNote: varianceNote.trim() || undefined,
         serviceBill: serviceBill || undefined,
         inboxBill: inboxBill || undefined,
@@ -247,7 +254,7 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
           <p className="font-medium">Receipts on PO #{poInfo.po.poNo}</p>
           <ul className="mt-1 space-y-0.5 text-xs text-ink-500">
             {poInfo.inwards.map((i) => (
-              <li key={i._id}>{formatDate(i.date)} · {i.material} {i.quantity} {i.unit}{i.lotNo ? ` · lot ${i.lotNo}` : ""}{i.billedOn ? ` · on ${i.billedOn}` : " · not billed"}</li>
+              <li key={i._id}>{formatDate(i.date)} · {i.material} {i.quantity} {i.unit}{i.lotNo ? ` · lot ${i.lotNo}` : ""}{i.billedOn ? ` · on ${i.billedOn}` : inwards.includes(i._id) ? " · on this bill" : " · not billed"}</li>
             ))}
           </ul>
           {poInfo.lines.length === 0 && <p className="mt-1 text-status-warning">Every receipt on this PO is already billed.</p>}

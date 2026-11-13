@@ -129,8 +129,10 @@ export const accountsService = {
     for (const f of files) fd.append("files", f);
     return uploadForm<SupplierReconResult>("/accounts/supplier-recon", fd, "Could not read their statement");
   },
-  async scan(files: File[]): Promise<ScanResult> {
+  /** `qr`: an e-invoice QR code found in the photo on this device, as its text; the server reads it again. */
+  async scan(files: File[], qr?: string | null): Promise<ScanResult> {
     const fd = new FormData();
+    if (qr) fd.append("qr", qr);
     for (const f of files) fd.append("files", f);
     return uploadForm<ScanResult>("/accounts/scan", fd, "Could not read the bill");
   },
