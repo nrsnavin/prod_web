@@ -54,7 +54,7 @@ export function CashLineBox({ onDraft }: { onDraft: (draft: ScanDraft, category:
   };
   return (
     <form className="flex w-full flex-wrap items-end gap-2 sm:w-auto" onSubmit={(e) => { e.preventDefault(); void read(); }} aria-label="Petty cash in one line">
-      <Input label="Spent cash? Type or say it" value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Paid 350 auto for yarn" wrapperClassName="min-w-0 flex-1 sm:w-80 sm:flex-none" />
+      <Input label="Spent cash? Type or say it" value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. Paid 350 auto for yarn" wrapperClassName="w-full sm:w-80" />
       {speech.supported && (
         <Button type="button" variant={speech.listening ? "danger" : "secondary"} aria-label={speech.listening ? "Stop listening" : "Say it"} onClick={() => (speech.listening ? speech.stop() : speech.start("en-IN"))}>
           {speech.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
