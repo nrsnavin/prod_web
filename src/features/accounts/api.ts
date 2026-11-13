@@ -13,7 +13,7 @@ import type {
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
   PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult, Gstr2bFollowUp, ReadyMailedBill,
   ChequeResult, WhatsAppPaper, PaperKind, LearnedPayers, DebitNoteResult, TdsChallanResult, Form16aResult, Form26asResult,
-  PowerBillResult, PowerBillDraft, PowerCostRow } from "./types";
+  PowerBillResult, PowerBillDraft, PowerCostRow, PaymentRunProposal, PaymentRunRecord } from "./types";
 import { uploadForm } from "@/core/http/upload";
 import { apiUrl } from "@/app/config";
 
@@ -165,6 +165,15 @@ export const accountsService = {
   savePowerBill: async (body: Partial<PowerBillDraft> & { month: string; units: number; total: number; note?: string; aiSuggestion?: string | null }) =>
     (await httpClient.post<{ success: boolean; bill: PowerBillDraft & { _id: string } }>("/accounts/power-bills", body)).bill,
   powerCost: async (months = 12) => (await httpClient.get<{ success: boolean; rows: PowerCostRow[] }>("/accounts/power-bills/report", { months })).rows,
+  /** The week's payment run: whom to pay, in what order and why. Nothing is saved. */
+  paymentRun: async (q: { horizon?: number; cushion?: number | ""; useReceipts?: boolean; budget?: number | ""; account?: string } = {}) => {
+    const { success: _ok, ...rest } = await httpClient.get<PaymentRunProposal & { success: boolean }>("/accounts/payment-run", clean({ ...q, useReceipts: q.useReceipts ? "true" : undefined }));
+    return rest as PaymentRunProposal;
+  },
+  /** Pay the suppliers ticked, one bank payment each; the same requestId sent again pays nobody twice. */
+  payRun: (body: { requestId: string; account: string; suppliers: string[]; riskNotes?: Record<string, string>; horizon?: number; cushion?: number | ""; useReceipts?: boolean; budget?: number | "" }) =>
+    httpClient.post<{ success: boolean; run: PaymentRunRecord; replay?: boolean }>("/accounts/payment-run/pay", body, { timeoutMs: MODEL_TIMEOUT_MS }),
+  paymentRuns: async () => (await httpClient.get<{ success: boolean; runs: PaymentRunRecord[] }>("/accounts/payment-runs")).runs,
   /** Photos sent to the WhatsApp number: waiting on a person (default), or all of them. */
   whatsappPapers: async (status: "waiting" | "all" = "waiting") =>
     httpClient.get<{ success: boolean; papers: WhatsAppPaper[]; waiting: number }>(`/accounts/whatsapp-papers?status=${status}`),

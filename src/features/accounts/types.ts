@@ -855,6 +855,42 @@ export interface PowerCostRow {
   /** The month is not over: only some of its metres are woven, so it is not compared. */
   partial?: boolean;
 }
+// ── The week's payment run ──
+export type RunPriority = "msme" | "overdue" | "due";
+/** One bill (or approved expense, or opening balance) in the run: why it is there, its TDS and the cash it takes. */
+export interface RunDoc {
+  docType: "SupplierBill" | "Expense" | "OpeningBalance"; id: string; docNo: string; refNo: string; date: string; dueDate: string;
+  party: string; partyName: string; outstanding: number; tds: number; section: string; cash: number; priority: RunPriority; why: string;
+  /** Left out for want of money, or because a micro or small supplier's bill is still unpaid. */
+  reason?: "cash" | "msme";
+}
+/** Why a supplier is held back. "confirm": payable once someone says how they confirmed it; "danger": not by this run. */
+export interface RunHold { code: "BANK_CHANGED" | "SHARED_ACCOUNT" | "NO_BANK" | "INACTIVE" | "MISSING"; severity: "danger" | "confirm"; message: string }
+export interface RunLine {
+  supplier: string; supplierName: string; msme: "micro" | "small" | null; priority: RunPriority; why: string;
+  docs: RunDoc[]; gross: number; tds: number; cash: number; notes: string[]; holds?: RunHold[];
+}
+/** What GET /accounts/payment-run returns: whom to pay by `until`, in order, and the money it was worked out on. */
+export interface PaymentRunProposal {
+  asOf: string; horizon: number; until: string;
+  cash: {
+    bank: number; accounts: Array<{ _id: string; name: string; balance: number; isDefault: boolean }>; payFrom: { _id: string; name: string; balance: number } | null;
+    commitments: Array<{ party: string; docNo: string; amount: number; date: string; basis: string }>; committed: number; receipts: number; useReceipts: boolean;
+    cushion: number; spendable: number; budget: number | null; limit: number; forecastError: string; proposed: number; left: number;
+  };
+  lines: RunLine[]; held: RunLine[]; short: RunLine[];
+  /** How much more the micro and small suppliers' bills in the run need. */
+  msmeShort: number;
+  later: { count: number; amount: number };
+  totals: { suppliers: number; docs: number; gross: number; tds: number; cash: number };
+}
+/** A run as paid: each supplier, the payment it made or why it failed. */
+export interface PaymentRunRecord {
+  _id: string; requestId: string; date: string; accountName: string; status: "running" | "paid" | "partly_paid" | "failed";
+  lines: Array<{ supplier: string; supplierName: string; priority?: RunPriority; why?: string; cash: number; tds: number; status: "paid" | "failed"; payment: string | null; voucherNo: string; error: string; riskNote?: string }>;
+  totals: { suppliers: number; paid: number; failed: number; cash: number; tds: number };
+  createdByName: string; createdAt: string;
+}
 /** The remembered payers, how near each is to its lines posting themselves. */
 export interface LearnedPayers {
   enabled: boolean; after: number; upTo: number;

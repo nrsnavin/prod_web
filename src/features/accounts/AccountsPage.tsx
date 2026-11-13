@@ -3,6 +3,7 @@ import {
   Inbox, ArrowDownLeft, ArrowUpRight, BookOpen, Settings2,
   FileText, Wallet, ArrowLeftRight, FileMinus, BarChart3, Landmark, BellRing, History, Send, LineChart, ListChecks, Repeat, LayoutDashboard, ShieldCheck, Scale, Library,
   Plus, FilePlus, Undo2, PiggyBank, BookPlus,
+  Banknote,
 } from "lucide-react";
 import { ActionMenu } from "@/components/ui/ActionMenu";
 import { TabStrip } from "@/components/ui/TabStrip";
@@ -28,9 +29,10 @@ import { RecurringTab } from "./RecurringTab";
 import { ChecksTab } from "./ChecksTab";
 import { StatutoryTab } from "./StatutoryTab";
 import { RegistersTab } from "./RegistersTab";
+import { PaymentRunTab } from "./PaymentRunTab";
 
 export type AccountsTab =
-  | "inbox" | "banking" | "overview" | "collections" | "vouchers" | "notes" | "bills" | "expenses" | "recurring"
+  | "inbox" | "banking" | "overview" | "collections" | "vouchers" | "notes" | "bills" | "payrun" | "expenses" | "recurring"
   | "bank" | "statements" | "reports" | "statutory" | "registers" | "forecast" | "close" | "opening" | "tally" | "checks" | "settings";
 
 type Door = "inbox" | "in" | "out" | "books" | "settings";
@@ -47,6 +49,7 @@ const DOORS: Array<{ id: Door; label: string; short?: string; icon: typeof FileT
   ] },
   { id: "out", label: "Money out", short: "Out", icon: ArrowUpRight, tabs: [
     { id: "bills", label: "Supplier bills", icon: FileText },
+    { id: "payrun", label: "Pay this week", icon: Banknote },
     { id: "expenses", label: "Expenses", icon: Wallet },
     { id: "recurring", label: "Recurring", icon: Repeat },
   ] },
@@ -106,6 +109,7 @@ export function AccountsPage() {
       {tab === "vouchers" && <VouchersTab />}
       {tab === "notes" && <NotesTab />}
       {tab === "bills" && <BillsTab />}
+      {tab === "payrun" && <PaymentRunTab />}
       {tab === "expenses" && <ExpensesTab />}
       {tab === "recurring" && <RecurringTab />}
       {tab === "bank" && <BankStatementTab />}
