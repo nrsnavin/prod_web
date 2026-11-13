@@ -28,14 +28,20 @@ import type { LotCertificate, LotCertificateRead, LotSearchRow, YarnLot } from "
 const outOfSpec = (t: { value: number; min: number | null; max: number | null }) => (t.min !== null && t.value < t.min) || (t.max !== null && t.value > t.max);
 const range = (t: { min: number | null; max: number | null }) => (t.min !== null && t.max !== null ? `${t.min}–${t.max}` : t.min !== null ? `≥ ${t.min}` : t.max !== null ? `≤ ${t.max}` : "");
 
-/** The chip and button on a lot's row. */
+/** Beside the lot's other chips: whether it is certified, and whether anything was out of range. */
+export function LotCertificateChip({ lot }: { lot: YarnLot }) {
+  const c = lot.certificate;
+  if (!c) return null;
+  const bad = c.result === "fail" || c.flags.some((f) => f.severity === "danger");
+  return <StatusChip tone={bad ? "danger" : "success"}>{bad ? "certificate: out of range" : "certified"}</StatusChip>;
+}
+
+/** The button on a lot's row, and the dialog it opens. */
 export function LotCertificateButton({ lot }: { lot: YarnLot }) {
   const [open, setOpen] = useState(false);
   const c = lot.certificate;
-  const bad = !!c && (c.result === "fail" || c.flags.some((f) => f.severity === "danger"));
   return (
     <>
-      {c && <StatusChip tone={bad ? "danger" : "success"}>{bad ? "certificate: out of range" : "certified"}</StatusChip>}
       <Button size="sm" variant="ghost" onClick={() => setOpen(true)} aria-label={`Test certificate of lot ${lot.lotNo}`}>
         <FileCheck2 className="h-4 w-4" aria-hidden /> {c ? "Certificate" : "Add certificate"}
       </Button>
@@ -134,11 +140,16 @@ function LotCertificateDialog({ lot, onClose }: { lot: YarnLot; onClose: () => v
                 return (
                   <div key={i} className={`grid grid-cols-2 gap-2 rounded-lg border p-2 sm:grid-cols-[minmax(0,1.4fr)_90px_70px_80px_80px_32px] sm:border-0 sm:p-0 ${bad ? "border-status-danger" : "border-ink-100"}`}>
                     <Input aria-label={`Property ${i + 1}`} placeholder="Tenacity" value={r.label} onChange={(e) => setRow(i, { label: e.target.value, key: undefined })} wrapperClassName="col-span-2 sm:col-span-1" />
-                    <Input aria-label={`Value ${i + 1}`} type="number" step="any" placeholder="Value" value={r.value} onChange={(e) => setRow(i, { value: e.target.value === "" ? "" : Number(e.target.value) })} allowNegative error={bad ? "out of range" : undefined} />
-                    <Input aria-label={`Unit ${i + 1}`} placeholder="Unit" value={r.unit} onChange={(e) => setRow(i, { unit: e.target.value })} />
-                    <Input aria-label={`Min ${i + 1}`} type="number" step="any" placeholder="Min" value={r.min} onChange={(e) => setRow(i, { min: e.target.value === "" ? "" : Number(e.target.value) })} allowNegative />
-                    <Input aria-label={`Max ${i + 1}`} type="number" step="any" placeholder="Max" value={r.max} onChange={(e) => setRow(i, { max: e.target.value === "" ? "" : Number(e.target.value) })} allowNegative />
-                    <button type="button" aria-label={`Remove property ${i + 1}`} className="grid h-10 w-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger" onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))}><Trash2 className="h-4 w-4" /></button>
+                    {/* Labelled on a phone, where the column headings are not shown. */}
+                    <div className="min-w-0"><span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Value</span>
+                      <Input aria-label={`Value ${i + 1}`} type="number" step="any" placeholder="Value" value={r.value} onChange={(e) => setRow(i, { value: e.target.value === "" ? "" : Number(e.target.value) })} allowNegative error={bad ? "out of range" : undefined} /></div>
+                    <div className="min-w-0"><span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Unit</span>
+                      <Input aria-label={`Unit ${i + 1}`} placeholder="Unit" value={r.unit} onChange={(e) => setRow(i, { unit: e.target.value })} /></div>
+                    <div className="min-w-0"><span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Min</span>
+                      <Input aria-label={`Min ${i + 1}`} type="number" step="any" placeholder="Min" value={r.min} onChange={(e) => setRow(i, { min: e.target.value === "" ? "" : Number(e.target.value) })} allowNegative /></div>
+                    <div className="min-w-0"><span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">Max</span>
+                      <Input aria-label={`Max ${i + 1}`} type="number" step="any" placeholder="Max" value={r.max} onChange={(e) => setRow(i, { max: e.target.value === "" ? "" : Number(e.target.value) })} allowNegative /></div>
+                    <button type="button" aria-label={`Remove property ${i + 1}`} className="grid h-10 w-10 place-items-center self-end rounded-lg sm:self-start text-ink-400 hover:bg-status-dangerBg hover:text-status-danger" onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))}><Trash2 className="h-4 w-4" /></button>
                   </div>
                 );
               })}
@@ -209,7 +220,7 @@ export function LotCompare({ materialId }: { materialId: string }) {
               <tr key={r.key}>
                 <td className="py-1.5">{r.label}{r.unit && <span className="text-ink-400"> ({r.unit})</span>}</td>
                 {r.cells.map((cell, i) => <td key={i} className={`py-1.5 text-right tabular-nums ${cell?.outOfSpec ? "font-semibold text-status-danger" : ""}`}>{cell ? cell.value : <span className="text-ink-300">—</span>}</td>)}
-                <td className="py-1.5 pl-3 text-right tabular-nums text-ink-600">{r.avg ?? "—"}</td>
+                <td className="py-1.5 pl-3 text-right tabular-nums text-ink-600">{r.avg != null ? r.avg.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "—"}</td>
               </tr>
             ))}
           </tbody>

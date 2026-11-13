@@ -10,7 +10,7 @@ import { FormScreen } from "@/components/ui/FormScreen";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { LotAge, LotLedger } from "./LotLedger";
 import { LotAdjustDialog } from "./LotAdjustDialog";
-import { LotCertificateButton, LotCompare } from "./LotCertificate";
+import { LotCertificateButton, LotCertificateChip, LotCompare } from "./LotCertificate";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
@@ -237,12 +237,14 @@ export function MaterialLots({
             {lots.map((lot) => (
               <div key={lot._id} className="px-5 py-3 text-sm">
                 <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-0 flex-1">
+                {/* Never narrower than this: on a phone the buttons wrap below, not the lot number. */}
+                <div className="min-w-[11rem] flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{lot.lotNo}</span>
                     <StatusChip tone={lotTone[lot.status]}>{lot.status}</StatusChip>
                     {lot.shade && <span className="text-xs text-ink-400">{lot.shade}</span>}
                     <LotAge lot={lot} />
+                    <LotCertificateChip lot={lot} />
                   </div>
                   <p className="text-xs text-ink-400">
                     received {lot.receivedQty.toLocaleString("en-IN")} · issued{" "}
