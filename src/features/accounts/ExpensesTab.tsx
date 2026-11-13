@@ -4,7 +4,7 @@ import { accountsService } from "./api";
 import { CostCentreField, costCentreBody } from "./CostCentreField";
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { Plus, Check, X, Banknote, Download } from "lucide-react";
+import { Plus, Check, X, Banknote, Download, Receipt } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { InlineConfirm } from "@/components/ui/InlineConfirm";
@@ -25,7 +25,9 @@ import { useAuth } from "@/core/auth/useAuth";
 import { useDocumentSettings } from "@/features/settings/hooks";
 import { stateCodeFromGstin } from "@/features/invoices/gst";
 import type { SupplyType } from "@/features/invoices/types";
-import { useAccountsMutations, useBankAccounts, useCategories, useExpenses } from "./hooks";
+import { ACCOUNTS_KEY, useAccountsMutations, useBankAccounts, useCategories, useExpenses } from "./hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { CashLineBox, ReceiptsBatchDialog } from "./QuickExpenses";
 import { LinesEditor, PartyPicker, blankLine, expenseLabel, expenseTone, money, priceInputs, today } from "./shared";
 import type { Expense, ExpenseStatus, Flag, LineInput, CostCentreInput } from "./types";
 import type { ScanDraft } from "./ScanBill";
@@ -81,8 +83,12 @@ export function ExpensesTab() {
   const location = useLocation();
   const state = location.state as { reenter?: ScanDraft; category?: string; title?: string } | null;
   const [reenter, setReenter] = useState<ScanDraft | undefined>(state?.reenter);
+  // A line of petty cash read into the form, with the head it goes under.
+  const [lineDraft, setLineDraft] = useState<{ draft: ScanDraft; category?: string } | null>(null);
+  const [receipts, setReceipts] = useState(false);
   const reenterCategory = state?.category;
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
   const { data, isLoading } = useExpenses({ page, status, search });
@@ -130,8 +136,16 @@ export function ExpensesTab() {
           onChange={(v) => { setStatus(v); setPage(1); }}
         />
         <a href={accountsService.exportUrl("expenses")} className="ml-auto inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-brand-600 hover:bg-brand-50"><Download className="h-4 w-4" /> Excel</a>
+        <Button variant="secondary" onClick={() => setReceipts(true)}><Receipt className="h-4 w-4" /> Several receipts</Button>
         <Button onClick={() => setParams({ new: "expense" })}><Plus className="h-4 w-4" /> New expense</Button>
       </div>
+      <div className="mb-4">
+        <CashLineBox onDraft={(draft, category) => setLineDraft({ draft, category })} />
+      </div>
+      {receipts && <ReceiptsBatchDialog onClose={() => setReceipts(false)} onSaved={() => void qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] })} />}
+      <FormScreen open={!!lineDraft} onClose={() => setLineDraft(null)} title="Petty cash" width="max-w-4xl">
+        {lineDraft && <ExpenseForm key={`line-${lineDraft.draft.aiSuggestion ?? lineDraft.draft.lines[0]?.description}`} initialDraft={lineDraft.draft} initialCategory={lineDraft.category} onDone={() => setLineDraft(null)} onCancel={() => setLineDraft(null)} />}
+      </FormScreen>
       <Card>
         <DataTable columns={columns} rows={data?.expenses ?? []} rowKey={(e) => e._id} onRowClick={(e) => navigate(`/accounts/expenses/${e._id}`)} loading={isLoading}
           emptyTitle="No expenses yet" emptyDescription="Transport, electricity, rent, repairs — with the receipt attached." />
@@ -176,7 +190,7 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
   const [amount, setAmount] = useState<number | "">(scanned.length === 1 ? Number(scanned[0].rate) * (Number(scanned[0].quantity) || 1) || "" : "");
   const [gstPercent, setGstPercent] = useState<number | "">(scanned.length === 1 ? scanned[0].gstPercent : 0);
   const [lines, setLines] = useState<LineInput[]>(scanned.length > 1 ? scanned : [blankLine(0)]);
-  const [payNow, setPayNow] = useState(false);
+  const [payNow, setPayNow] = useState(!!initialDraft?.paidInCash);
   const [account, setAccount] = useState("");
   const [notes, setNotes] = useState("");
   const [costCentre, setCostCentre] = useState<CostCentreInput | undefined>(undefined);
@@ -188,7 +202,8 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
   const priced = priceInputs(effectiveLines, supplyType);
   const needsApproval = !!cat && (cat.approvalAbove === 0 || priced.totals.grand > (cat.approvalAbove ?? 0));
   const accountList = (accounts ?? []).filter((a) => a.active !== false);
-  const chosenAccount = account || accountList.find((a) => a.isDefault)?._id || accountList[0]?._id || "";
+  // Cash already spent comes out of the cash box unless another account is picked.
+  const chosenAccount = account || (initialDraft?.paidInCash ? accountList.find((a) => a.kind === "cash")?._id : undefined) || accountList.find((a) => a.isDefault)?._id || accountList[0]?._id || "";
   const ready = category && description.trim() && (itemised ? lines.every((l) => l.description.trim() && l.rate !== "") : Number(amount) > 0);
   const flags = useFlags("expense", category || supplier ? { category, supplier: supplier || undefined, date, amount: priced.totals.grand, scannedGstin: initialDraft?.supplierGstin || undefined } : null);
   // The head this payee's expenses usually go under, until one is picked.
@@ -209,7 +224,7 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
         category, description: description.trim(), date, supplier: supplier || undefined, payeeName: payeeName.trim() || undefined, payeeGstin: payeeGstin.trim() || undefined, refNo: refNo.trim() || undefined,
         ...(itemised ? { lines } : { amount: Number(amount), gstPercent: Number(gstPercent) || 0 }),
         payNow: payNow && !needsApproval && chosenAccount ? { account: chosenAccount } : undefined, notes: notes.trim() || undefined,
-        source: initialDraft?.aiSuggestion ? "scan" : undefined, aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
+        source: initialDraft?.source ?? (initialDraft?.aiSuggestion ? "scan" : undefined), aiSuggestion: initialDraft?.aiSuggestion ?? undefined,
         costCentre: costCentreBody(costCentre),
       },
       {

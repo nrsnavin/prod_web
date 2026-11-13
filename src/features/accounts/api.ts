@@ -72,6 +72,8 @@ export const accountsService = {
   expenses: (q: Record<string, unknown>) => httpClient.get<Page<"expenses", Expense> & { pendingCount: number }>("/accounts/expenses", clean(q)),
   expense: (id: string) => httpClient.get<{ success: boolean; expense: Expense; payments: Payment[] }>(`/accounts/expenses/${id}`),
   createExpense: (body: ExpenseCreateBody) => httpClient.post<{ success: boolean; expense: Expense; voucher: { _id: string; voucherNo: string } | null }>("/accounts/expenses", body),
+  /** Petty cash in one line ("Paid 350 auto for yarn") read into a cash expense draft (services/cashLine.js). */
+  expenseFromLine: (text: string) => httpClient.post<{ success: boolean; draft: { amount: number | null; date: string; description: string; payee: string; category: { _id: string; name: string } | null; reason: string } | null; problems: string[]; by: "rules" | "model"; aiSuggestion: string | null }>("/accounts/expenses/from-line", { text }),
   approveExpense: (id: string, body: { note?: string; payNow?: { account: string; mode?: string; reference?: string } } = {}) =>
     httpClient.post<{ success: boolean; expense: Expense; voucher: { _id: string; voucherNo: string } | null }>(`/accounts/expenses/${id}/approve`, body),
   rejectExpense: (id: string, reason: string) => httpClient.post<{ success: boolean; expense: Expense }>(`/accounts/expenses/${id}/reject`, { reason }),

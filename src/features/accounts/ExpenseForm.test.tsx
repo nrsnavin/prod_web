@@ -62,3 +62,17 @@ describe("the expense form", () => {
     expect(screen.getByLabelText("Expense total")).toHaveTextContent("₹3,000.00");
   });
 });
+
+describe("petty cash read from one line", () => {
+  it("opens filled in and already paid from the cash box, and says where it came from", async () => {
+    render(<ExpenseForm onDone={() => {}} onCancel={() => {}} initialCategory="tr" initialDraft={{
+      supplierName: "", supplierGstin: "", billNo: "", billDate: "2026-11-13", kind: "receipt", source: "line", paidInCash: true, aiSuggestion: "ai9",
+      lines: [{ description: "Auto for yarn", quantity: 1, rate: 350, gstPercent: 0 }],
+    }} />);
+    expect(screen.getByLabelText("What for *")).toHaveValue("Auto for yarn");
+    expect(screen.getByLabelText(/Already paid/)).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: /record and pay/i }));
+    expect(createMutate.mock.calls[0][0]).toMatchObject({ category: "tr", description: "Auto for yarn", date: "2026-11-13", amount: 350, gstPercent: 0, payNow: { account: "cash" }, source: "line", aiSuggestion: "ai9" });
+  });
+});
+

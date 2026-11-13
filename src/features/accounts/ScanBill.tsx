@@ -37,6 +37,10 @@ export interface ScanDraft {
   inwards?: string[];
   /** The supplier's e-invoice QR, as its text: the bill keeps its IRN. */
   einvoiceQr?: string;
+  /** "line": read from a typed or spoken line of petty cash; "scan" (the default with a suggestion): a photo. */
+  source?: "scan" | "line";
+  /** Cash already spent: the form opens paid, from the cash box. */
+  paidInCash?: boolean;
   aiSuggestion: string | null;
   kind: "bill" | "receipt";
   /** Set when the draft comes from elsewhere (a lorry receipt): the bill's kind, reverse charge and head. */
