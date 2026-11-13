@@ -39,7 +39,7 @@ describe("bills by mail", () => {
     svc.mailedBills.mockResolvedValue([bill(), bill({ _id: "ib2", supplier: null, supplierName: "New Mills", matchedBy: null, senderKnown: false, alreadyEntered: "PB/2026-27/0003", confidence: 0.4, billNo: "NM/9" })]);
     wrap();
     const card = await screen.findByLabelText("Bills by mail");
-    expect(card).toHaveTextContent("Bills mailed to bills@baluelastics.com are read every 10 min.");
+    expect(card).toHaveTextContent("Bills mailed to bills@baluelastics.com are read every 10 min, with those sent on WhatsApp.");
     const first = (await within(card).findByText(/Sri Yarn Traders/)).closest("li")!;
     expect(first).toHaveTextContent("supplier by GSTIN");
     expect(first).toHaveTextContent("from the supplier's address");
@@ -55,6 +55,15 @@ describe("bills by mail", () => {
     await userEvent.click(within(second).getByRole("button", { name: "Dismiss" }));
     await userEvent.click(within(second).getByRole("button", { name: /not ours — dismiss/i }));
     expect(svc.dismissMailedBill).toHaveBeenCalledWith("ib2", "Not a bill for the books");
+  });
+
+  it("a bill sent on WhatsApp says who sent it", async () => {
+    svc.billMailboxStatus.mockResolvedValue({ success: true, configured: false, mailbox: "", everyMin: 10, waiting: 1 });
+    svc.mailedBills.mockResolvedValue([bill({ source: "whatsapp", sentByName: "Clerk", from: "+919100000003", senderKnown: false, filename: "whatsapp-4821.jpg" })]);
+    wrap();
+    const card = await screen.findByLabelText("Bills by mail");
+    expect(card).toHaveTextContent("Bills sent on WhatsApp wait here.");
+    expect((await within(card).findByText(/Sri Yarn Traders/)).closest("li")).toHaveTextContent("On WhatsApp from Clerk");
   });
 
   it("reads the mailbox on request, and says what came", async () => {

@@ -341,6 +341,10 @@ export interface PaymentCreateBody {
   allocations: Array<{ docType: Allocation["docType"]; doc: string; amount: number }>;
   /** Entered from a payment advice: the reading it scores. */
   adviceSuggestion?: string;
+  /** Entered from a cheque photo: the reading it scores. */
+  chequeSuggestion?: string;
+  /** Entered from a photo sent on WhatsApp: that photo is done once this is posted. */
+  paper?: string;
   narration?: string;
   source?: string;
   statementLine?: string;
@@ -735,6 +739,45 @@ export interface AccountsSettings {
   receivables?: { interestRate: number; graceDays: number; interestBasis?: "balance" | "payments" };
   /** The Letter of Undertaking exports go under, and the year it covers. */
   lut?: { number: string; validFrom: string | null; validTo: string | null };
+  /** A remembered payer's statement lines post themselves once posted unchanged `learnedAfter` times running, up to `learnedUpTo`. */
+  bankLines?: { postLearned: boolean; learnedAfter: number; learnedUpTo: number };
+}
+
+// ── A cheque photo, and photos sent on WhatsApp ──
+export interface ChequeRead {
+  problem: null | "not_a_cheque" | "unreadable";
+  chequeNo?: string; date?: string; amount?: number | null; amountWords?: string; payee?: string; drawer?: string;
+  bankName?: string; branch?: string; ifsc?: string; micr?: string; accountNo?: string; crossed?: boolean; signed?: boolean;
+}
+/** What POST /accounts/cheques/read returns: the read, the server's checks, who paid, and the receipt it would be. */
+export interface ChequeResult {
+  read: ChequeRead;
+  checks: Flag[];
+  customer: { _id: string; name: string; matchedBy: "payer" | "name" | "picked" } | null;
+  duplicate: { _id: string; voucherNo: string; date: string; amount: number; partyName: string } | null;
+  draft: null | {
+    kind: "receipt"; partyType: "customer"; customer: string | null; partyName: string; amount: number | null; mode: "cheque"; reference: string;
+    cheque: { number: string; bank: string; date: string | null }; postDated: boolean;
+  };
+  aiSuggestion: string | null;
+}
+export type PaperKind = "production_slip" | "supplier_bill" | "expense_receipt" | "cheque" | "delivery_challan" | "purchase_order" | "payment_advice" | "other";
+export type PaperStatus = "received" | "sorting" | "waiting" | "done" | "dismissed" | "failed";
+/** A photo sent to the WhatsApp number: what it was sorted as, where it went, and what was read. */
+export interface WhatsAppPaper {
+  _id: string; code: string; from: string; who: "staff" | "customer" | "supplier"; sentByName: string; partyName: string;
+  customer: string | null; supplier: string | null; caption: string; pages: number;
+  status: PaperStatus; kind: PaperKind | null; kindBy: "" | "caption" | "qr" | "model" | "person" | "fallback"; summary: string; note: string;
+  sentTo: { doc: string; docId: string | null; label: string } | null;
+  entered: { doc: string; docId: string | null; label: string } | null;
+  /** A cheque's read (as ChequeResult) or a challan's ({ read, po, rows, aiSuggestion }). */
+  result: (ChequeResult & { po?: never }) | { read: Record<string, unknown> & { supplierName?: string; dcNo?: string }; po: { _id: string; poNo: number } | null; rows: unknown[]; aiSuggestion: string | null } | null;
+  createdAt: string; decidedAt: string | null;
+}
+/** The remembered payers, how near each is to its lines posting themselves. */
+export interface LearnedPayers {
+  enabled: boolean; after: number; upTo: number;
+  payers: Array<{ _id: string; text: string; direction: "in" | "out"; partyType: "customer" | "supplier" | "other"; partyName: string; headName?: string; acceptedUnchanged: number; autoPosted: number; lastAutoPostedAt: string | null; earned: boolean }>;
 }
 
 // ── TDS after the deduction ──
@@ -963,7 +1006,9 @@ export interface Inbox {
   /** Bills to micro and small suppliers past, or within a week of, their 45-day limit. */
   msmeDue?: { count: number; overdue: number; amount: number; top: MsmeDue[] };
   /** Bills that came to the bills mailbox, read and waiting to be checked and entered. */
-  mailedBills?: { count: number; amount: number; top: Array<{ _id: string; supplierName: string; from: string; receivedAt: string | null; grand: number | null; billNo: string; alreadyEntered: string | null; senderKnown: boolean }> };
+  mailedBills?: { count: number; amount: number; top: Array<{ _id: string; supplierName: string; from: string; receivedAt: string | null; grand: number | null; billNo: string; alreadyEntered: string | null; senderKnown: boolean; source?: "mail" | "whatsapp"; sentByName?: string }> };
+  /** Photos sent on WhatsApp that a person still has to do something with. */
+  whatsappPapers?: { count: number; top: Array<{ _id: string; code: string; kind: PaperKind | null; note: string; sentByName: string; createdAt: string; amount: number | null; label: string }> };
   /** Bills on machines' service logs not yet entered as supplier bills. */
   serviceBills?: { count: number; amount: number; top: Array<{ _id: string; machine: string; serviceLog: string; kind: "service_bill" | "spare_bill"; vendor?: string; billNo?: string; billDate?: string | null; amount: number; filename?: string; createdAt: string }> };
   /** Cheques in the drawer whose date has come, or comes this week. */
@@ -1086,6 +1131,9 @@ export interface MailedBill {
   matchedBy: "gstin" | "name" | null;
   /** The sender's address is the supplier's on file. */
   senderKnown: boolean;
+  /** Mailed to the bills address, or sent to the WhatsApp number. */
+  source?: "mail" | "whatsapp";
+  sentByName?: string;
   alreadyEntered: string | null;
   grand: number | null;
   billNo: string;

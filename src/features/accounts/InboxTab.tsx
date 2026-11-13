@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { CustomerMail } from "./CustomerMail";
+import { WhatsAppPhotos } from "./WhatsAppPhotos";
 import { Banknote, CalendarClock, CheckCircle2, ClipboardCheck, HandCoins, Landmark, Mail, PhoneCall, Scale, Timer, Wrench } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -113,6 +114,7 @@ export function InboxTab() {
           </Box>
         </div>
       )}
+      <WhatsAppPhotos />
       <CustomerMail />
       <OverviewTab inInbox />
     </div>

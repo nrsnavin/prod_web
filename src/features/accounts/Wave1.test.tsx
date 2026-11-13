@@ -36,7 +36,8 @@ const forecast: Forecast = {
   opening: 100000, firstShortWeek: null, later: { inflow: 0, outflow: 0 }, habits: 0,
   weeks: [{ from: "2026-11-02", to: "2026-11-08", inflow: 0, outflow: 40000, closing: 60000, top: [1, 2, 3, 4, 5].map(item), items: [1, 2, 3, 4, 5, 6].map(item) }],
 };
-vi.mock("./api", () => ({ accountsService: { inbox: async () => inbox, forecast: async () => forecast } }));
+vi.mock("./api", () => ({ accountsService: { inbox: async () => inbox, forecast: async () => forecast, whatsappPapers: async () => ({ success: true, papers: [], waiting: 0 }) } }));
+vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: () => {} }) }));
 vi.mock("./hooks", async (orig) => ({ ...(await orig<typeof import("./hooks")>()), useOverview: () => ({ data: overview, isLoading: false, isError: false, error: null }) }));
 
 const wrap = (ui: React.ReactNode) => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>);

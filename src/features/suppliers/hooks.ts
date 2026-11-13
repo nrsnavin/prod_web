@@ -77,6 +77,7 @@ export function usePoMutations() {
     mutationFn: ({
       poId,
       items,
+      paper,
     }: {
       poId: string;
       items: Array<{
@@ -87,7 +88,8 @@ export function usePoMutations() {
         shade?: string;
         excessReason?: string;
       }>;
-    }) => poService.inwardStock(poId, items, inwardIds.for({ poId, items })),
+      paper?: string;
+    }) => poService.inwardStock(poId, items, inwardIds.for({ poId, items }), paper),
     onSuccess: () => {
       inwardIds.done();
       invalidate();

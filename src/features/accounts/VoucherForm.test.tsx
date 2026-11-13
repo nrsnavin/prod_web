@@ -18,7 +18,7 @@ const createMutate = vi.fn();
 let docs: OpenDoc[] = [];
 vi.mock("./hooks", () => ({
   useAccountsMutations: () => ({ createPayment: { mutate: createMutate, isPending: false } }),
-  useBankAccounts: () => ({ data: [{ _id: "acc1", name: "Kotak CA", kind: "bank", balance: 50000, isDefault: true, active: true }] }),
+  useBankAccounts: () => ({ data: [{ _id: "acc1", name: "Kotak CA", kind: "bank", balance: 50000, isDefault: true, active: true }, { _id: "cash1", name: "Cash box", kind: "cash", balance: 5000, active: true }] }),
   useOpenDocs: (partyType?: string, party?: string) => ({ data: partyType && party ? { docs, balance: 0 } : undefined, isLoading: false }),
 }));
 vi.mock("./shared", async (importOriginal) => {
@@ -28,7 +28,13 @@ vi.mock("./shared", async (importOriginal) => {
 vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
 const readAdvice = vi.fn();
 const checkPayment = vi.fn(async (..._a: unknown[]) => [] as unknown[]);
-vi.mock("./api", () => ({ accountsService: { readAdvice: (...a: unknown[]) => readAdvice(...a), checkPayment: (...a: unknown[]) => checkPayment(...a) } }));
+const readCheque = vi.fn();
+const whatsappPaper = vi.fn();
+vi.mock("./api", () => ({ accountsService: {
+  readAdvice: (...a: unknown[]) => readAdvice(...a), checkPayment: (...a: unknown[]) => checkPayment(...a),
+  readCheque: (...a: unknown[]) => readCheque(...a), whatsappPaper: (...a: unknown[]) => whatsappPaper(...a),
+  whatsappPaperFileUrl: (id: string) => `/api/v2/accounts/whatsapp-papers/${id}/file/0`,
+} }));
 
 const doc = (over: Partial<OpenDoc>): OpenDoc => ({ docType: "SupplierBill", id: "b1", docNo: "PB/2026-27/0001", date: "2026-07-04", dueDate: "2026-08-03", party: "s1", partyName: "Sri Yarn", amount: 52500, outstanding: 52500, overdueDays: 0, bucket: "current", tds: { section: "194C", rate: 2 }, ...over });
 
@@ -201,6 +207,74 @@ describe("a receipt from the customer's payment advice", () => {
       allocations: [{ docType: "Invoice", doc: "i701", amount: 52500 }, { docType: "Invoice", doc: "i702", amount: 21000 }],
       adjustments: [{ kind: "tds_by_customer", amount: 605 }, { kind: "discount", amount: 550 }],
     });
+  });
+});
+
+describe("a receipt from a cheque photo", () => {
+  const chequeRead = (over: Record<string, unknown> = {}) => ({
+    read: { problem: null, chequeNo: "004512", date: "2026-11-20", amount: 19530, amountWords: "Rupees Nineteen Thousand Five Hundred Thirty Only", payee: "Balu Elastics", drawer: "SUNRISE GARMENTS PVT LTD", bankName: "HDFC Bank", branch: "Tiruppur" },
+    checks: [{ code: "POST_DATED", severity: "info", message: "Dated 20/11/2026: a post-dated cheque, held in hand until then" }],
+    customer: { _id: "c1", name: "Sunrise Garments", matchedBy: "name" },
+    duplicate: null,
+    draft: { kind: "receipt", partyType: "customer", customer: "c1", partyName: "Sunrise Garments", amount: 19530, mode: "cheque", reference: "004512", cheque: { number: "004512", bank: "HDFC Bank, Tiruppur", date: "2026-11-20" }, postDated: true },
+    aiSuggestion: "ai7",
+    ...over,
+  });
+  beforeEach(() => { docs = []; readCheque.mockReset(); whatsappPaper.mockReset(); });
+
+  it("reads the cheque, shows what the server checked, and fills the receipt by cheque", async () => {
+    readCheque.mockResolvedValue(chequeRead({ checks: [{ code: "WORDS", severity: "danger", message: "The words say ₹19,000; the figure says ₹19,530. A bank pays neither until they agree" }] }));
+    render(<VoucherForm kind="receipt" onDone={() => {}} onCancel={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /read a cheque photo/i }));
+    await userEvent.upload(screen.getByLabelText("Cheque photo"), new File(["x"], "cheque.jpg", { type: "image/jpeg" }));
+    const said = await screen.findByLabelText("What the cheque says");
+    expect(said).toHaveTextContent("Sunrise Garments");
+    expect(said).toHaveTextContent("by name: confirm");
+    expect(said).toHaveTextContent("₹19,530");
+    expect(within(said).getByLabelText("Checks on the cheque")).toHaveTextContent("The words say ₹19,000; the figure says ₹19,530");
+    await userEvent.click(within(said).getByRole("button", { name: "Fill the receipt" }));
+
+    expect(await screen.findByLabelText("Amount received *")).toHaveValue(19530);
+    expect(screen.getByLabelText("Mode")).toHaveValue("cheque");
+    expect(screen.getByLabelText("Reference (UTR / cheque no.)")).toHaveValue("004512");
+    expect(screen.getByLabelText("Drawn on (bank)")).toHaveValue("HDFC Bank, Tiruppur");
+    expect(screen.getByLabelText("Cheque date")).toHaveValue("2026-11-20");
+    expect(screen.getByText(/Filled from the cheque photo/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /post receipt/i }));
+    expect(createMutate.mock.calls[0][0]).toMatchObject({
+      kind: "receipt", partyType: "customer", customer: "c1", amount: 19530, mode: "cheque", reference: "004512",
+      cheque: { number: "004512", bank: "HDFC Bank, Tiruppur", date: "2026-11-20" }, chequeSuggestion: "ai7",
+    });
+  });
+
+  it("a form on the cash box moves to the bank, since a cheque cannot go into the cash box", async () => {
+    readCheque.mockResolvedValue(chequeRead());
+    render(<VoucherForm kind="receipt" initialAccount="cash1" onDone={() => {}} onCancel={() => {}} />);
+    expect(screen.getByLabelText("Mode")).toHaveValue("cash");
+    await userEvent.click(screen.getByRole("button", { name: /read a cheque photo/i }));
+    await userEvent.upload(screen.getByLabelText("Cheque photo"), new File(["x"], "cheque.jpg", { type: "image/jpeg" }));
+    await userEvent.click(within(await screen.findByLabelText("What the cheque says")).getByRole("button", { name: "Fill the receipt" }));
+    await waitFor(() => expect(screen.getByLabelText("Mode")).toHaveValue("cheque"));
+    await userEvent.click(screen.getByRole("button", { name: /post receipt/i }));
+    expect(createMutate.mock.calls[0][0]).toMatchObject({ account: "acc1", mode: "cheque" });
+  });
+
+  it("a cheque entered already is named before anything is filled", async () => {
+    readCheque.mockResolvedValue(chequeRead({ duplicate: { _id: "v1", voucherNo: "RCT/2026-27/0040", date: "2026-11-01", amount: 19530, partyName: "Sunrise Garments" } }));
+    render(<VoucherForm kind="receipt" onDone={() => {}} onCancel={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: /read a cheque photo/i }));
+    await userEvent.upload(screen.getByLabelText("Cheque photo"), new File(["x"], "cheque.jpg", { type: "image/jpeg" }));
+    expect(await screen.findByText(/Already entered as RCT\/2026-27\/0040/)).toBeInTheDocument();
+  });
+
+  it("opened from a cheque photo sent on WhatsApp: filled from it, and the receipt closes the photo", async () => {
+    whatsappPaper.mockResolvedValue({ _id: "p1", kind: "cheque", sentByName: "Ravi", from: "+919800000000", result: chequeRead() });
+    render(<VoucherForm kind="receipt" initialPaper="p1" onDone={() => {}} onCancel={() => {}} />);
+    expect(await screen.findByText(/Filled from a cheque photo Ravi sent on WhatsApp/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "see the photo" })).toHaveAttribute("href", "/api/v2/accounts/whatsapp-papers/p1/file/0");
+    await waitFor(() => expect(screen.getByLabelText("Amount received *")).toHaveValue(19530));
+    await userEvent.click(screen.getByRole("button", { name: /post receipt/i }));
+    expect(createMutate.mock.calls[0][0]).toMatchObject({ customer: "c1", amount: 19530, mode: "cheque", paper: "p1", chequeSuggestion: "ai7" });
   });
 });
 

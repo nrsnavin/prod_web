@@ -11,7 +11,8 @@ import type {
   MsmeDues, MsmeYearEnd, Gstr2bSummary, ItcReversalMonth, Gstr1, Journal, JournalDraft, JournalLineInput, JournalPurpose,
   TdsRegister, Form26q, TdsCertificateRow, TdsReceivable, Purchases194q, PayrollBooks, StatutoryDepositRow, ServiceBillDraft, CreditNoteLimit,
   FixedAssetRegister, FixedAsset, FixedAssetBody, AssetYear, ClosingStock, BudgetCompare, CostCentreReport, ConfirmationList, Confirmation, ConfirmationLetter,
-  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult, Gstr2bFollowUp, ReadyMailedBill } from "./types";
+  PdcRegister, Payment as PaymentDoc, InterestDue, InterestDraft, Register, MailedBill, AdviceResult, SupplierReconResult, Gstr2bFollowUp, ReadyMailedBill,
+  ChequeResult, WhatsAppPaper, PaperKind, LearnedPayers } from "./types";
 import { uploadForm } from "@/core/http/upload";
 import { apiUrl } from "@/app/config";
 
@@ -125,6 +126,23 @@ export const accountsService = {
     if (input.customer) fd.append("customer", input.customer);
     return uploadForm<AdviceResult>("/accounts/advice/read", fd, "Could not read the advice");
   },
+  /** A customer's cheque photographed: read, checked, who paid, and the receipt it would be. */
+  async readCheque(files: File[], customer?: string): Promise<ChequeResult> {
+    const fd = new FormData();
+    for (const f of files) fd.append("files", f);
+    if (customer) fd.append("customer", customer);
+    return uploadForm<ChequeResult>("/accounts/cheques/read", fd, "Could not read the cheque");
+  },
+  /** Photos sent to the WhatsApp number: waiting on a person (default), or all of them. */
+  whatsappPapers: async (status: "waiting" | "all" = "waiting") =>
+    httpClient.get<{ success: boolean; papers: WhatsAppPaper[]; waiting: number }>(`/accounts/whatsapp-papers?status=${status}`),
+  whatsappPaper: async (id: string) => (await httpClient.get<{ success: boolean; paper: WhatsAppPaper }>(`/accounts/whatsapp-papers/${encodeURIComponent(id)}`)).paper,
+  whatsappPaperFileUrl: (id: string, n = 0) => apiUrl(`/accounts/whatsapp-papers/${encodeURIComponent(id)}/file/${n}`),
+  /** It is a …: sent on to that paper's reader (what the first sort made is set aside). */
+  routeWhatsappPaper: async (id: string, kind: PaperKind) => (await httpClient.post<{ success: boolean; paper: WhatsAppPaper }>(`/accounts/whatsapp-papers/${encodeURIComponent(id)}/route`, { kind })).paper,
+  dismissWhatsappPaper: async (id: string, reason: string) => (await httpClient.post<{ success: boolean; paper: WhatsAppPaper }>(`/accounts/whatsapp-papers/${encodeURIComponent(id)}/dismiss`, { reason })).paper,
+  /** The remembered payers, and which of them post their lines themselves. */
+  learnedPayers: async () => { const { success: _ok, ...rest } = await httpClient.get<LearnedPayers & { success: boolean }>("/accounts/bank/learned"); return rest as LearnedPayers; },
   /** A supplier's statement of our account set beside our books. */
   async reconcileSupplier(supplier: string, files: File[]): Promise<SupplierReconResult> {
     const fd = new FormData();
@@ -318,7 +336,7 @@ export const accountsService = {
 
   // ── Settings and the lock ──
   accountsSettings: async () => (await httpClient.get<{ success: boolean; settings: AccountsSettings }>("/accounts/settings")).settings,
-  saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills" | "gst" | "journals" | "tds" | "costCentres" | "receivables" | "lut">>) =>
+  saveAccountsSettings: async (body: Partial<Pick<AccountsSettings, "tally" | "bills" | "gst" | "journals" | "tds" | "costCentres" | "receivables" | "lut" | "bankLines">>) =>
     (await httpClient.put<{ success: boolean; settings: AccountsSettings }>("/accounts/settings", body)).settings,
   /** The collections settings: reply acknowledgements and scheduled reminders. */
   saveCollectionSettings: async (collections: Record<string, unknown>) =>

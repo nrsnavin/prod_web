@@ -20,7 +20,10 @@ let settings: Partial<AccountsSettings>;
 let history: LockEvent[];
 const historyAsked = vi.fn();
 const save = vi.fn();
+const learned = vi.fn();
+vi.mock("./api", () => ({ accountsService: { learnedPayers: (...a: unknown[]) => learned(...a) } }));
 vi.mock("./hooks", () => ({
+  ACCOUNTS_KEY: "accounts",
   useAccountsSettings: () => ({ data: settings }),
   useAccountsMutations: () => new Proxy({}, { get: (_t, k) => (k === "saveAccountsSettings" ? { mutate: save, isPending: false } : { mutate: vi.fn(), isPending: false }) }),
   // Fetched only once the history is opened.
@@ -32,6 +35,11 @@ const wrap = (isAdmin = true) => render(<QueryClientProvider client={new QueryCl
 
 beforeEach(() => {
   historyAsked.mockReset(); save.mockReset();
+  learned.mockReset();
+  learned.mockResolvedValue({ enabled: false, after: 5, upTo: 50000, payers: [
+    { _id: "a1", text: "TNEB", direction: "out", partyType: "other", partyName: "TNEB", acceptedUnchanged: 6, autoPosted: 0, lastAutoPostedAt: null, earned: true },
+    { _id: "a2", text: "MURUGAN K", direction: "in", partyType: "customer", partyName: "Sunrise Garments", acceptedUnchanged: 2, autoPosted: 0, lastAutoPostedAt: null, earned: false },
+  ] });
   settings = { lockDate: "2026-09-30T00:00:00.000Z", lockedBy: "Owner", receivables: { interestRate: 18, graceDays: 7 } } as Partial<AccountsSettings>;
   history = [
     { _id: "h4", kind: "override", lockDate: "2026-09-30T00:00:00.000Z", reason: "Bank charge found after the month closed", byName: "Owner", at: "2026-10-12T06:00:00Z", entry: { date: "2026-09-28T00:00:00.000Z", cancelling: false } },
@@ -91,5 +99,31 @@ describe("how overdue interest is worked", () => {
     wrap(false);
     expect(screen.getByLabelText("Interest is worked on")).toHaveValue("payments");
     expect(screen.getByLabelText("Interest is worked on")).toBeDisabled();
+  });
+});
+
+describe("bank lines that post themselves", () => {
+  it("off until an admin turns it on; says which remembered payers have earned it; saved with its count and limit", async () => {
+    wrap();
+    const card = await screen.findByLabelText("Bank lines that post themselves");
+    const box = within(card).getByRole("checkbox", { name: /Let lines that have earned it post themselves/ });
+    expect(box).not.toBeChecked();
+    expect(await within(card).findByText("1 of 2 remembered payers has earned it")).toBeInTheDocument();
+    await userEvent.click(within(card).getByText("1 of 2 remembered payers has earned it"));
+    expect(within(card).getByText("“TNEB”").closest("li")).toHaveTextContent("posts itself");
+    expect(within(card).getByText("“MURUGAN K”").closest("li")).toHaveTextContent("2 of 5");
+    await userEvent.click(box);
+    const limit = within(card).getByLabelText("Never above (₹)");
+    await userEvent.clear(limit);
+    await userEvent.type(limit, "25000");
+    await userEvent.click(within(card).getByRole("button", { name: "Save" }));
+    expect(save.mock.calls[0][0]).toEqual({ bankLines: { postLearned: true, learnedAfter: 5, learnedUpTo: 25000 } });
+  });
+
+  it("only an admin may change it", async () => {
+    wrap(false);
+    const card = await screen.findByLabelText("Bank lines that post themselves");
+    expect(within(card).getByRole("checkbox")).toBeDisabled();
+    expect(within(card).queryByRole("button", { name: "Save" })).toBeNull();
   });
 });

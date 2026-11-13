@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Lock, Unlock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -9,7 +10,9 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
-import { useAccountsMutations, useAccountsSettings, useLockHistory } from "./hooks";
+import { ACCOUNTS_KEY, useAccountsMutations, useAccountsSettings, useLockHistory } from "./hooks";
+import { accountsService } from "./api";
+import { money } from "./shared";
 import type { LockEvent, TallyLedgerKey } from "./types";
 
 const LEDGERS: Array<{ key: TallyLedgerKey; label: string; placeholder?: string; hint?: string }> = [
@@ -93,6 +96,8 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
         </div>
         <p className="mt-2 text-xs text-ink-400">Beyond it, the bill needs a note from whoever enters it.</p>
       </Card>
+
+      <LearnedLines isAdmin={isAdmin} />
 
       <Card className="p-5">
         <h3 className="font-semibold">GSTR-1 and journals</h3>
@@ -201,3 +206,60 @@ function LockHistory() {
   );
 }
 
+
+/**
+ * A remembered payer's statement lines post themselves once a person
+ * has posted them exactly as suggested enough times running
+ * (services/learnedPosting.js). Off until an admin turns it on; never
+ * above the limit; each such voucher says so, and is cancelled like any.
+ */
+function LearnedLines({ isAdmin }: { isAdmin: boolean }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { saveAccountsSettings } = useAccountsMutations();
+  const { data } = useQuery({ queryKey: [ACCOUNTS_KEY, "bank-learned"], queryFn: accountsService.learnedPayers });
+  const [on, setOn] = useState(false);
+  const [after, setAfter] = useState<number | "">(5);
+  const [upTo, setUpTo] = useState<number | "">(50000);
+  useEffect(() => {
+    if (!data) return;
+    setOn(data.enabled); setAfter(data.after); setUpTo(data.upTo);
+  }, [data]);
+  const save = () => saveAccountsSettings.mutate(
+    { bankLines: { postLearned: on, learnedAfter: Number(after) || 5, learnedUpTo: Number(upTo) || 0 } },
+    { onSuccess: () => { toast(on ? "Lines that have earned it will post themselves" : "Every line waits for a person", "success"); qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY, "bank-learned"] }); }, onError: (e) => toast(e instanceof ApiError ? e.message : "Could not save", "error") }
+  );
+  const payers = data?.payers ?? [];
+  const earned = payers.filter((p) => p.earned);
+  return (
+    <Card className="p-5" aria-label="Bank lines that post themselves">
+      <h3 className="font-semibold">Bank lines that post themselves</h3>
+      <p className="mt-1 text-sm text-ink-500">
+        A remembered payer (“TNEB”, a customer paying from the owner's account) whose lines you have posted exactly as suggested {data?.after ?? 5} times running has its next lines posted when a statement comes in: below the limit, and only to a head or against invoices the amount settles exactly.
+      </p>
+      <label className="mt-3 flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-0.5" checked={on} disabled={!isAdmin} onChange={(e) => setOn(e.target.checked)} />
+        <span>Let lines that have earned it post themselves<span className="block text-xs text-ink-400">Off: every line waits for a person, as now.</span></span>
+      </label>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
+        <Input label="Posted unchanged, times running" type="number" min={2} max={50} value={after} disabled={!isAdmin} onChange={(e) => setAfter(e.target.value === "" ? "" : Number(e.target.value))} className="w-28" />
+        <Input label="Never above (₹)" type="number" min={0} step={1000} value={upTo} disabled={!isAdmin} onChange={(e) => setUpTo(e.target.value === "" ? "" : Number(e.target.value))} className="w-36" />
+        {isAdmin && <Button variant="secondary" loading={saveAccountsSettings.isPending} onClick={save}>Save</Button>}
+      </div>
+      {payers.length > 0 && (
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer text-brand-600">{earned.length} of {payers.length} remembered payer{payers.length === 1 ? "" : "s"} {earned.length === 1 ? "has" : "have"} earned it</summary>
+          <ul className="mt-2 divide-y divide-ink-100">
+            {payers.slice(0, 40).map((p) => (
+              <li key={p._id} className="flex items-center justify-between gap-2 py-1.5">
+                <span className="min-w-0 truncate"><span className="font-medium">“{p.text}”</span> <span className="text-ink-500">→ {p.partyName}{p.headName ? ` (${p.headName})` : ""} · money {p.direction}</span></span>
+                <span className="shrink-0 text-xs tabular-nums text-ink-500">{p.earned ? <span className="text-status-success">posts itself</span> : `${p.acceptedUnchanged} of ${data?.after ?? 5}`}{p.autoPosted ? ` · ${p.autoPosted} posted so far` : ""}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {data && data.upTo > 0 && <p className="mt-2 text-xs text-ink-400">Above ₹{money(data.upTo)} a line always waits for a person. Cancel a voucher that posted itself and its line comes back to be placed.</p>}
+    </Card>
+  );
+}

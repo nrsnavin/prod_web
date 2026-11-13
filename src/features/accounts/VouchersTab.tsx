@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { quickCreate } from "@/features/common/quickCreateStore";
 import { AdviceReader } from "./AdviceReader";
+import { ChequeReader } from "./ChequeReader";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Download, Plus, Trash2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -25,7 +26,7 @@ import { PartyPicker, money, today } from "./shared";
 import { CreditsCard } from "./Credits";
 import { accountsService } from "./api";
 import { ADJUSTMENT_KINDS, ADJUSTMENT_LABELS } from "./types";
-import type { AdjustmentKind, AdvicePlaced, Contra, Flag, Journal, OpenDoc, Payment, PaymentMode, VoucherKind } from "./types";
+import type { AdjustmentKind, AdvicePlaced, ChequeResult, Contra, Flag, Journal, OpenDoc, Payment, PaymentMode, VoucherKind } from "./types";
 import { FlagList, useFlags } from "./Flags";
 
 const columns: Column<Payment>[] = [
@@ -74,6 +75,8 @@ export function VouchersTab() {
       )}
       <FormScreen open={!!creating} onClose={() => setParams({})} title={creating === "receipt" ? "Record a receipt" : "Record a payment"} width="max-w-4xl">
         {creating && <VoucherForm kind={creating} initialAccount={params.get("account") ?? undefined}
+          // From a cheque photo sent on WhatsApp (Accounts → Inbox): the receipt comes filled in.
+          initialPaper={creating === "receipt" ? params.get("paper") ?? undefined : undefined}
           // From ⌘K's "receipt from Sunrise": the party comes chosen.
           initialParty={params.get("party") ? { id: params.get("party")!, name: params.get("partyName") ?? "" } : undefined} onDone={(id) => { setParams({}); navigate(`/accounts/payments/${id}`); }} onCancel={() => setParams({})} />}
       </FormScreen>
@@ -213,10 +216,12 @@ const tdsShare = (d: OpenDoc) => (d.docType === "OpeningBalance" ? 1 : d.taxable
  * payment can be settled in full with an adjustment (bank charges,
  * discount, TDS the customer kept, round-off, write-off).
  */
-export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs, initialAccount }: {
+export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs, initialAccount, initialPaper }: {
   kind: VoucherKind; onDone: (id: string) => void; onCancel: () => void;
   /** The account to record it against (opened from that account's card). */
   initialAccount?: string;
+  /** A cheque photo sent on WhatsApp, already read: the receipt opens filled from it. */
+  initialPaper?: string;
   initialParty?: { id: string; name: string };
   /** Documents to tick when they load (record a payment from the document itself), or "all" of them. */
   initialDocs?: string[] | "all";
@@ -248,6 +253,14 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs,
   // A payment advice read: applied once the customer's open documents are in.
   const [advice, setAdvice] = useState<{ placed: AdvicePlaced; aiSuggestion: string | null } | null>(null);
   const [adviceSuggestion, setAdviceSuggestion] = useState<string | null>(null);
+  // A cheque read (a photo here, or one sent on WhatsApp): its amount is
+  // applied once the customer is set, after the change of party clears the form.
+  const [cheque, setCheque] = useState<ChequeResult | null>(null);
+  const [chequeSuggestion, setChequeSuggestion] = useState<string | null>(null);
+  const [paper, setPaper] = useState<{ id: string; from: string } | null>(null);
+  // A cheque goes into a bank account, never the cash box: once the
+  // accounts are in, a form on the cash box (or a card) moves to the bank.
+  const [wantBank, setWantBank] = useState(false);
 
   const firstRun = useRef(true);
   useEffect(() => {
@@ -274,6 +287,36 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs,
     setAdviceSuggestion(advice.aiSuggestion);
     setAdvice(null);
   }, [advice, party, other, docs, loadingDocs, open]);
+  useEffect(() => {
+    if (!cheque) return;
+    if (cheque.customer && party !== cheque.customer._id) return;
+    if (cheque.draft?.amount != null) { setAmount(cheque.draft.amount); setAmountTouched(true); }
+    setCheque(null);
+  }, [cheque, party]);
+  const applyCheque = (r: ChequeResult) => {
+    const d = r.draft;
+    if (!d) return;
+    if (r.customer) { setOther(false); setParty(r.customer._id); setPartyName(r.customer.name); }
+    setMode("cheque");
+    setReference(d.cheque.number || d.reference || "");
+    setChequeBank(d.cheque.bank || "");
+    setChequeDate(d.cheque.date || "");
+    setChequeSuggestion(r.aiSuggestion);
+    setCheque(r);
+    setWantBank(true);
+  };
+  // Opened from a cheque photo sent on WhatsApp: filled from what was read there.
+  const paperLoaded = useRef(false);
+  useEffect(() => {
+    if (!initialPaper || paperLoaded.current) return;
+    paperLoaded.current = true;
+    accountsService.whatsappPaper(initialPaper).then((p) => {
+      if (p.kind !== "cheque" || !p.result || !("draft" in p.result) || !p.result.draft) return;
+      setPaper({ id: p._id, from: p.sentByName || p.from });
+      applyCheque(p.result as ChequeResult);
+    }).catch(() => toast("That WhatsApp photo could not be opened", "error"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPaper]);
   const applyAdvice = (placed: AdvicePlaced, aiSuggestion: string | null) => {
     if (!placed.customer) return;
     setOther(false);
@@ -307,6 +350,14 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs,
   // A credit card account: paid by card, nothing else.
   const isCard = chosenKind === "card";
   const mode: PaymentMode = isCashBox ? "cash" : isCard ? "card" : pickedMode === "cash" ? "bank" : pickedMode;
+  useEffect(() => {
+    if (!wantBank || !accountList.length) return;
+    if (chosenKind !== "bank") {
+      const bank = accountList.find((a) => a.kind === "bank" && a.isDefault) ?? accountList.find((a) => a.kind === "bank");
+      if (bank) setAccount(bank._id);
+    }
+    setWantBank(false);
+  }, [wantBank, accountList, chosenKind]);
   const problems = [
     ...allocs.filter((a) => a.over).map((a) => `${a.doc.docNo} has only ₹${money(a.doc.outstanding)} outstanding`),
     ...(cash + 0.005 < cashNeeded ? [`The ticked documents need ₹${money(cashNeeded)}; the voucher is for ₹${money(cash)}`] : []),
@@ -339,6 +390,8 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs,
         allocations: allocs.map((a) => ({ docType: a.doc.docType, doc: a.doc.id, amount: a.gross })),
         narration: narration.trim() || undefined,
         adviceSuggestion: adviceSuggestion ?? undefined,
+        chequeSuggestion: mode === "cheque" ? chequeSuggestion ?? undefined : undefined,
+        paper: paper?.id,
         ...(confirmed ? { confirmRisk: true, riskNote: riskNote.trim() } : {}),
       },
       {
@@ -368,7 +421,14 @@ export function VoucherForm({ kind, onDone, onCancel, initialParty, initialDocs,
       {kind === "receipt" && (
         <div className="flex flex-wrap items-center gap-2">
           <AdviceReader customer={party || undefined} onUse={applyAdvice} />
+          <ChequeReader customer={party || undefined} onUse={applyCheque} />
           {adviceSuggestion && <span className="text-xs text-ink-500">Filled from the customer's payment advice — check it before posting.</span>}
+          {chequeSuggestion && !paper && <span className="text-xs text-ink-500">Filled from the cheque photo — check it against the cheque before posting.</span>}
+          {paper && (
+            <span className="text-xs text-ink-500">
+              Filled from a cheque photo {paper.from} sent on WhatsApp — <a className="text-brand-600 hover:underline" href={accountsService.whatsappPaperFileUrl(paper.id)} target="_blank" rel="noreferrer">see the photo</a> and check it before posting.
+            </span>
+          )}
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2">

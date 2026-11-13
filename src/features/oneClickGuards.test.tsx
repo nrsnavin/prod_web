@@ -50,10 +50,16 @@ const books = vi.hoisted(() => ({
   mutations: {} as Record<string, unknown>,
 }));
 vi.mock("@/features/accounts/hooks", () => ({
+  ACCOUNTS_KEY: "accounts",
   useAccountsSettings: () => books.settings,
   useAccountsMutations: () => books.mutations,
   useLockHistory: () => ({ data: [], isLoading: false }),
 }));
+
+vi.mock("@/features/accounts/api", async (orig) => {
+  const real = await orig<typeof import("@/features/accounts/api")>();
+  return { ...real, accountsService: { ...real.accountsService, learnedPayers: async () => ({ enabled: false, after: 5, upTo: 50000, payers: [] }) } };
+});
 
 // ── Quotes ─────────────────────────────────────────────────────────
 const quoteStatus = vi.hoisted(() => vi.fn());

@@ -114,13 +114,15 @@ export const poService = {
       excessReason?: string;
     }>,
     /** See core/hooks/useRequestId: the server receives each id once. */
-    requestId?: string
+    requestId?: string,
+    /** Received from a challan photo sent on WhatsApp: that photo is done. */
+    paper?: string
   ): Promise<{ message: string; poStatus: PoStatus }> {
     const res = await httpClient.post<{
       success: boolean;
       message: string;
       poStatus: PoStatus;
-    }>("/supplier/inward-stock", { poId, items, ...(requestId ? { requestId } : {}) });
+    }>("/supplier/inward-stock", { poId, items, ...(requestId ? { requestId } : {}), ...(paper ? { paper } : {}) });
     return res;
   },
 

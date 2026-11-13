@@ -98,7 +98,7 @@ export function MailedBills() {
         </div>
       )}
       <p className="text-xs text-ink-400">
-        {status.data.configured ? `Bills mailed to ${status.data.mailbox} are read every ${status.data.everyMin} min.` : "The mailbox is not read on this server any more."} Open one to enter it — the form comes filled in, with the bill beside it.
+        {status.data.configured ? `Bills mailed to ${status.data.mailbox} are read every ${status.data.everyMin} min, with those sent on WhatsApp.` : "Bills sent on WhatsApp wait here."} Open one to enter it — the form comes filled in, with the bill beside it.
       </p>
       {list.length > 0 && (
         <ul className="mt-3 divide-y divide-ink-100">
@@ -107,13 +107,13 @@ export function MailedBills() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{b.supplierName || b.from}{b.billNo && <span className="font-normal text-ink-500"> · #{b.billNo}</span>}</p>
                 <p className="truncate text-xs text-ink-400">
-                  {b.from}{b.receivedAt ? ` · ${formatDate(b.receivedAt)}` : ""} · {b.filename}
+                  {b.source === "whatsapp" ? `On WhatsApp from ${b.sentByName || b.from}` : b.from}{b.receivedAt ? ` · ${formatDate(b.receivedAt)}` : ""} · {b.filename}
                 </p>
                 <span className="mt-0.5 flex flex-wrap gap-1">
                   {b.supplier
                     ? <StatusChip tone="success">{b.matchedBy === "gstin" ? "supplier by GSTIN" : "supplier by name — confirm"}</StatusChip>
                     : <StatusChip tone="warning">supplier not on file</StatusChip>}
-                  {b.senderKnown && <StatusChip tone="info">from the supplier's address</StatusChip>}
+                  {b.senderKnown && <StatusChip tone="info">{b.source === "whatsapp" ? "from the supplier's phone" : "from the supplier's address"}</StatusChip>}
                   {b.alreadyEntered && <StatusChip tone="danger">already entered as {b.alreadyEntered}</StatusChip>}
                   {b.confidence != null && b.confidence < 0.6 && <StatusChip tone="warning">hard to read</StatusChip>}
                   {b.ready && <StatusChip tone="success">ready: nothing left to check</StatusChip>}

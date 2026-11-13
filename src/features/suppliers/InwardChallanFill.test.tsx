@@ -46,4 +46,17 @@ describe("goods received from the supplier's challan", () => {
       expect.objectContaining({ rawMaterial: "m2", quantity: 20, lotNo: "SP77" }),
     ]);
   });
+
+  it("a challan read from a WhatsApp photo opens the form already filled, with nothing uploaded again", async () => {
+    const onSubmit = vi.fn();
+    render(<InwardForm poId="po1" items={items} initialRead={body} submitting={false} onSubmit={onSubmit} onCancel={() => {}} />);
+    expect(await screen.findByLabelText(/Quantity received for 40s PC Black/i)).toHaveValue(150.5);
+    expect(screen.getByLabelText(/Quantity received for Spandex 840D/i)).toHaveValue(20);
+    expect(upload).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: /record inward/i }));
+    expect(onSubmit.mock.calls[0][0]).toEqual([
+      expect.objectContaining({ rawMaterial: "m1", quantity: 150.5, lotNo: "L2611", remarks: "Their DC SY/DC/412" }),
+      expect.objectContaining({ rawMaterial: "m2", quantity: 20 }),
+    ]);
+  });
 });

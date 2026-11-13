@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PhotoFillButton } from "@/features/common/PhotoFill";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, Link } from "react-router-dom";
 import { ArrowLeft, Copy, PackagePlus, FileText, FileDown, Pencil, Trash2, Plus } from "lucide-react";
 import { PrintModal } from "@/components/print/PrintModal";
 import { PoDocument } from "./PoDocument";
@@ -21,6 +21,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { usePurchaseOrder, usePoMutations } from "./hooks";
 import { poService } from "./api";
+import { accountsService } from "@/features/accounts/api";
 import { InwardRecord, PoItem, poItemPending, poItemReceived } from "./types";
 import { poStatusTone } from "./PoListPage";
 import { formatDate } from "@/core/format/date";
@@ -153,10 +154,13 @@ export function InwardForm({
   onSubmit,
   onCancel,
   poId,
+  initialRead,
 }: {
   items: PoItem[];
   /** The PO, so a photo of the supplier's challan is matched to its lines. */
   poId?: string;
+  /** A challan already read (a photo sent on WhatsApp): the form opens filled from it. */
+  initialRead?: InwardRead | null;
   submitting: boolean;
   // lotNo/shade were already being sent but were missing from this type.
   // They matter now: a row carrying a lot number opens a YarnLot bucket
@@ -206,6 +210,13 @@ export function InwardForm({
     if (b.read?.dcNo || b.read?.invoiceNo) setRemarks((rm) => rm || [b.read?.dcNo && `Their DC ${b.read.dcNo}`, b.read?.invoiceNo && `invoice ${b.read.invoiceNo}`].filter(Boolean).join(" · "));
     setReadNotes(notes);
   };
+  const seededRead = useRef(false);
+  useEffect(() => {
+    if (!initialRead || seededRead.current) return;
+    seededRead.current = true;
+    fillFromChallan(initialRead);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRead]);
 
   /**
    * How far this line goes over what was ordered, and whether that needs
@@ -552,6 +563,21 @@ export function PoDetailPage() {
   const { data, isLoading, isError, error } = usePurchaseOrder(id);
   const { clone, inward, update, remove } = usePoMutations();
   const [inwardOpen, setInwardOpen] = useState(false);
+  // Opened from a challan photo sent on WhatsApp (?paper=…): the goods
+  // received open filled from what was read there.
+  const [params, setParams] = useSearchParams();
+  const paperId = params.get("paper");
+  const [paperRead, setPaperRead] = useState<{ id: string; read: InwardRead; from: string } | null>(null);
+  useEffect(() => {
+    if (!paperId) return;
+    accountsService.whatsappPaper(paperId).then((p) => {
+      if (p.kind !== "delivery_challan" || !p.result || !("rows" in p.result)) return;
+      setPaperRead({ id: p._id, read: p.result as unknown as InwardRead, from: p.sentByName || p.from });
+      setInwardOpen(true);
+    }).catch(() => toast("That WhatsApp photo could not be opened", "error"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paperId]);
+  const closeInward = () => { setInwardOpen(false); if (paperId) { setParams({}); setPaperRead(null); } };
   const [printOpen, setPrintOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
@@ -724,18 +750,24 @@ export function PoDetailPage() {
         <PoDocument po={po} />
       </PrintModal>
 
-      <FormScreen open={inwardOpen} onClose={() => setInwardOpen(false)} title="Record goods received">
+      <FormScreen open={inwardOpen} onClose={closeInward} title="Record goods received">
+        {paperRead && (
+          <p className="mb-3 text-sm text-ink-500">
+            Filled from a challan photo {paperRead.from} sent on WhatsApp — <a className="text-brand-600 hover:underline" href={accountsService.whatsappPaperFileUrl(paperRead.id)} target="_blank" rel="noreferrer">see the photo</a> and check each line before saving.
+          </p>
+        )}
         <InwardForm
           poId={po._id}
           items={po.items}
+          initialRead={paperRead?.read ?? null}
           submitting={inward.isPending}
-          onCancel={() => setInwardOpen(false)}
+          onCancel={closeInward}
           onSubmit={(rows) =>
             inward.mutate(
-              { poId: po._id, items: rows },
+              { poId: po._id, items: rows, paper: paperRead?.id },
               {
                 onSuccess: (res) => {
-                  setInwardOpen(false);
+                  closeInward();
                   toast(res.message ?? "Inward recorded", "success");
                 },
                 onError: (e) =>
