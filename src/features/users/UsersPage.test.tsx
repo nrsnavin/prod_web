@@ -123,3 +123,58 @@ describe("UserFormScreen — no-access confirmation", () => {
     expect(updateFn).not.toHaveBeenCalled();
   });
 });
+
+// ══════════════════════════════════════════════════════════════════
+//  THE DEPARTMENT A LOGIN OPENS UNDER
+//
+//  The form used to open any login without a department as "Production".
+//  The owner's login predates departments — it has only the role admin —
+//  so correcting the owner's name sent department "production" and took
+//  admin away from them. A pre-merge department (weaving) was sent back
+//  as it stood, which the server refuses.
+// ══════════════════════════════════════════════════════════════════
+describe("UserFormScreen — the department it opens under", () => {
+  const sent = () => updateFn.mock.calls[0][1] as { department: string; features: string[] };
+
+  it("the owner from before departments opens as Admin and stays one", async () => {
+    renderForm(managed({ name: "Owner", role: "admin", department: null, features: ["/", "/orders", "/users", "/dispatch"] }));
+    expect(screen.getByLabelText(/preset \(department\)/i)).toHaveValue("admin");
+    // Everything they had is still ticked — nothing is scoped away.
+    expect(screen.getByRole("checkbox", { name: /^users$/i })).toBeChecked();
+
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(updateFn).toHaveBeenCalledTimes(1);
+    expect(sent().department).toBe("admin");
+    expect(sent().features).toEqual(expect.arrayContaining(["/orders", "/users", "/dispatch"]));
+  });
+
+  it("a role-only accounts login opens as Finance, a marketing one as Marketing", async () => {
+    renderForm(managed({ role: "accounts", department: undefined, features: ["/", "/orders"] }));
+    expect(screen.getByLabelText(/preset \(department\)/i)).toHaveValue("finance");
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(sent().department).toBe("finance");
+    expect(sent().features).toContain("/orders");
+  });
+
+  it("a marketing login keeps Dispatch", async () => {
+    renderForm(managed({ role: "marketing", department: "marketing", features: ["/", "/settings", "/dispatch"] }));
+    expect(screen.getByLabelText(/preset \(department\)/i)).toHaveValue("marketing");
+    expect(screen.getByRole("checkbox", { name: /^dispatch$/i })).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(sent().department).toBe("marketing");
+    expect(sent().features).toContain("/dispatch");
+  });
+
+  it("a pre-merge weaving login is saved as Production, which the server accepts", async () => {
+    renderForm(managed({ role: "production", department: "weaving", features: ["/", "/jobs", "/warping"] }));
+    expect(screen.getByLabelText(/preset \(department\)/i)).toHaveValue("production");
+    await userEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(sent().department).toBe("production");
+    expect(sent().features).toEqual(expect.arrayContaining(["/jobs", "/warping"]));
+  });
+
+  it("CONTROL: a new login still starts as Production", () => {
+    renderForm(null);
+    expect(screen.getByLabelText(/preset \(department\)/i)).toHaveValue("production");
+  });
+});

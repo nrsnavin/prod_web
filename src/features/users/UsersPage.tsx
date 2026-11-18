@@ -19,6 +19,7 @@ import {
   DEPARTMENTS,
   DEPARTMENT_LABELS,
   FEATURE_GROUPS,
+  effectiveDepartment,
   featuresForDepartment,
 } from "@/app/navigation";
 import { useAuth } from "@/core/auth/useAuth";
@@ -42,7 +43,14 @@ export function UserFormScreen({
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
-  const [department, setDepartment] = useState(user?.department ?? "production");
+  // The department the form opens under. The login's own; a pre-merge
+  // one (preparatory, weaving) as Production, which is what the server
+  // accepts back; and for a login from before departments existed, the
+  // one its role names. That last case is the owner: opened as
+  // "Production" — the old default — saving so much as their name sent
+  // department "production" and they stopped being an admin.
+  const openedAs = effectiveDepartment(user) ?? "production";
+  const [department, setDepartment] = useState(openedAs);
   // A worker's login: linked to their employee record, and shown only
   // their own shift, loom, performance and pay. The server then grants it
   // nothing beyond the screens every login has.
@@ -53,9 +61,8 @@ export function UserFormScreen({
   // can reach. Seeded from the saved set (intersected with the role, so
   // stale/out-of-role keys drop off), or the department default on create.
   const [features, setFeatures] = useState<string[]>(() => {
-    const dept = user?.department ?? "production";
-    const scope = new Set(featuresForDepartment(dept));
-    const seed = user?.features ?? featuresForDepartment(dept);
+    const scope = new Set(featuresForDepartment(openedAs));
+    const seed = user?.features ?? featuresForDepartment(openedAs);
     return seed.filter((k) => scope.has(k));
   });
 
