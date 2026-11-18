@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { formResolver } from "@/core/forms/formResolver";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Customer, CustomerFormValues } from "./types";
 import { CardFillButton, GstinHint, SimilarParties, type SimilarParty } from "@/features/parties/PartyCardFill";
+import { GstinVerifyButton, GstinVerifyResult, useGstinVerify, type FillTarget } from "@/features/parties/GstinVerify";
 import { gstinInfo } from "@/features/parties/gstin";
 import { httpClient } from "@/core/http/httpClient";
 
@@ -46,6 +47,16 @@ const schema = z.object({
   sez: z.boolean().optional(),
   currency: z.string().regex(/^([A-Z]{3})?$/i, "Three letters: USD, EUR, GBP").optional().or(z.literal("")),
 });
+
+/** What "Verify" beside the GSTIN fills, from the GST registration. */
+const GSTIN_FILLS: FillTarget<"name" | "address" | "city" | "pincode" | "stateCode" | "pan">[] = [
+  { field: "name", label: "Company name", from: "name" },
+  { field: "address", label: "Billing address", from: "address" },
+  { field: "city", label: "City", from: "city" },
+  { field: "pincode", label: "PIN code", from: "pincode" },
+  { field: "stateCode", label: "GST state code", from: "stateCode" },
+  { field: "pan", label: "PAN", from: "pan" },
+];
 
 export function CustomerForm({
   initial,
@@ -98,12 +109,40 @@ export function CustomerForm({
   });
 
   const [name, gstin, phone] = watch(["name", "gstin", "phoneNumber"]);
-  // A GSTIN typed or read fills the state code when it is empty.
+  // A GSTIN typed or read fills the state code when it is empty — and
+  // when it still holds the state of the GSTIN that stood here before.
+  // That one was read off a number, not typed: left behind under a GSTIN
+  // of another state it would put the wrong tax (IGST or CGST+SGST) on
+  // every invoice.
   const gstinField = register("gstin");
+  const stateOfGstin = useRef(gstinInfo(initial?.gstin ?? "").stateCode);
   const onGstin = (v: string) => {
     const i = gstinInfo(v);
-    if (i.valid && !getValues("stateCode")) setValue("stateCode", i.stateCode);
+    if (!i.valid) return;
+    const now = getValues("stateCode");
+    if (!now || now === stateOfGstin.current) setValue("stateCode", i.stateCode);
+    stateOfGstin.current = i.stateCode;
   };
+  // A GSTIN that arrived without being typed (read off a visiting card)
+  // is the number that "stood here before" all the same.
+  useEffect(() => {
+    const i = gstinInfo(gstin ?? "");
+    if (i.valid) stateOfGstin.current = i.stateCode;
+  }, [gstin]);
+  const gstinCheck = useGstinVerify({
+    kind: "customer",
+    gstin: gstin ?? "",
+    targets: GSTIN_FILLS,
+    showEarlier: !!initial,
+    read: (f) => String(getValues(f) ?? ""),
+    write: (f, v) => setValue(f, v, { shouldDirty: true, shouldValidate: true }),
+    // An SEZ unit is zero-rated: the tick the invoice goes by.
+    facts: (fill) => {
+      if (!fill.sez || getValues("sez")) return [];
+      setValue("sez", true, { shouldDirty: true });
+      return ["SEZ unit (ticked)"];
+    },
+  });
   return (
     <form onSubmit={handleSubmit((v) => onSubmit({ ...v, ...(aiSuggestion && !initial ? { aiSuggestion } : {}) }))} className="space-y-4" noValidate>
       {!initial && (
@@ -132,13 +171,17 @@ export function CustomerForm({
           {...register("phoneNumber")}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
-        <div>
-          <Input label="GSTIN" {...gstinField} onChange={(e) => { gstinField.onChange(e); onGstin(e.target.value); }} />
-          <GstinHint gstin={gstin ?? ""} />
+      <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
+      {/* A row of its own: fifteen characters and the button beside them
+          do not fit in half the form's width. */}
+      <div className="space-y-1">
+        <div className="flex items-end gap-2">
+          <Input label="GSTIN" wrapperClassName="min-w-0 flex-1" {...gstinField} onChange={(e) => { gstinField.onChange(e); onGstin(e.target.value); }} />
+          <GstinVerifyButton state={gstinCheck} />
         </div>
+        <GstinHint gstin={gstin ?? ""} />
       </div>
+      <GstinVerifyResult state={gstinCheck} />
       <SimilarParties kind="customer" name={name ?? ""} gstin={gstin ?? ""} phone={phone ?? ""} excludeId={initial?._id} seed={seedSimilar} />
       <Input label="Billing address" placeholder="Street, area" {...register("address")} />
       <div className="grid grid-cols-3 gap-3">

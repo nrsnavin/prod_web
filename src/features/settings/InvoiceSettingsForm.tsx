@@ -27,6 +27,7 @@ const EMPTY: InvoiceSettings = {
   bank: { name: "", account: "", ifsc: "", branch: "", upiId: "" },
   declaration: "",
   gsp: { provider: "", baseUrl: "", username: "", clientId: "", clientSecret: "", password: "" },
+  gstinLookup: { url: "", headerName: "", key: "" },
 };
 
 /**
@@ -52,6 +53,7 @@ export function InvoiceSettingsForm() {
         ...inv,
         bank: { ...EMPTY.bank, ...(inv.bank ?? {}) },
         gsp: { ...EMPTY.gsp, ...(inv.gsp ?? {}), clientSecret: "", password: "" },
+        gstinLookup: { url: inv.gstinLookup?.url ?? "", headerName: inv.gstinLookup?.headerName ?? "", key: "" },
       });
     }
   }, [data]);
@@ -59,6 +61,8 @@ export function InvoiceSettingsForm() {
   const set = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => setForm((f) => ({ ...f, [k]: v }));
   const setBank = (k: keyof InvoiceSettings["bank"], v: string) => setForm((f) => ({ ...f, bank: { ...f.bank, [k]: v } }));
   const setGsp = (k: keyof InvoiceSettings["gsp"], v: string) => setForm((f) => ({ ...f, gsp: { ...f.gsp, [k]: v } }));
+  const lookup = form.gstinLookup ?? { url: "", headerName: "", key: "" };
+  const setLookup = (k: "url" | "headerName" | "key", v: string) => setForm((f) => ({ ...f, gstinLookup: { ...lookup, ...f.gstinLookup, [k]: v } }));
 
   const save = () => {
     if (form.pincode && !/^\d{6}$/.test(form.pincode)) return toast("PIN code must be 6 digits", "error");
@@ -67,8 +71,12 @@ export function InvoiceSettingsForm() {
     const { configured: _configured, ...gsp } = form.gsp;
     // What the ClearTax environment shows is what is saved.
     if (gsp.provider === "cleartax" && !CLEARTAX_URLS.includes(gsp.baseUrl)) gsp.baseUrl = CLEARTAX_LIVE;
+    const lookupUrl = lookup.url.trim();
+    if (lookupUrl && !lookupUrl.includes("{gstin}")) return toast("GSTIN lookup address: put {gstin} where the number goes", "error");
+    // Only what is typed here goes back: "is it connected" is the server's to say.
+    const { gstinCheck: _gstinCheck, ...typed } = form;
     update.mutate(
-      { invoice: { ...form, gsp } },
+      { invoice: { ...typed, gsp, gstinLookup: { url: lookupUrl, headerName: lookup.headerName.trim(), key: lookup.key ?? "" } } },
       {
         onSuccess: () => toast("Invoice settings saved", "success"),
         onError: (e) => toast(e instanceof ApiError ? e.message : "Save failed", "error"),
@@ -80,6 +88,8 @@ export function InvoiceSettingsForm() {
   if (isError) return <ErrorBanner message={(error as Error).message} />;
 
   const configured = !!data?.invoice?.gsp?.configured;
+  const gstinCheck = data?.invoice?.gstinCheck;
+  const lookupKeySet = !!data?.invoice?.gstinLookup?.keySet;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -208,6 +218,32 @@ export function InvoiceSettingsForm() {
                 onChange={(e) => setGsp("password", e.target.value)} />
             </>
           )}
+        </div>
+      </Card>
+
+      <Card className="p-5 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-sm font-semibold text-ink-900">GSTIN check on customer and supplier forms</h3>
+          <StatusChip tone={gstinCheck?.available ? "success" : "neutral"}>
+            {gstinCheck?.available ? `through ${gstinCheck.via}` : "not connected"}
+          </StatusChip>
+        </div>
+        <p className="text-xs text-ink-400">
+          "Verify" beside the GSTIN on a customer or supplier form asks the GST system who the number is registered to,
+          where, and whether it is still active, and fills the form from the answer. The GST portal's own search sits
+          behind a captcha, so the question goes through a provider: ClearTax, when it is connected above, or a GSTIN
+          lookup service named here. Without either, Verify still catches a mistyped number.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input label="GSTIN lookup address" value={lookup.url} disabled={!canEdit} placeholder="https://…/gstin/{gstin}"
+            hint="Optional. {gstin} is where the number goes; {key} too, if the service takes its key in the address."
+            onChange={(e) => setLookup("url", e.target.value)} wrapperClassName="sm:col-span-2" />
+          <Input label="Header that carries the key" value={lookup.headerName} disabled={!canEdit} placeholder="x-api-key"
+            hint="Blank when the key goes in the address."
+            onChange={(e) => setLookup("headerName", e.target.value)} />
+          <Input label="GSTIN lookup key" type="password" value={lookup.key ?? ""} disabled={!canEdit}
+            placeholder={lookupKeySet ? "stored — leave blank to keep" : "from the lookup service"} autoComplete="new-password"
+            onChange={(e) => setLookup("key", e.target.value)} />
         </div>
       </Card>
 

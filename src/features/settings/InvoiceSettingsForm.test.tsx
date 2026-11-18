@@ -13,10 +13,11 @@ import { InvoiceSettingsForm } from "./InvoiceSettingsForm";
 // ══════════════════════════════════════════════════════════════════
 
 const mutate = vi.fn();
+const toast = vi.fn();
 let stored: Record<string, unknown>;
 
 vi.mock("@/core/auth/useAuth", () => ({ useAuth: () => ({ user: { role: "admin" } }) }));
-vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ toast }) }));
 vi.mock("./hooks", () => ({
   // The same object every render, as react-query hands it back.
   useDocumentSettings: () => ({ data: stored, isLoading: false, isError: false, error: null }),
@@ -36,6 +37,7 @@ const sentGsp = () => mutate.mock.calls[mutate.mock.calls.length - 1][0].invoice
 
 beforeEach(() => {
   mutate.mockReset();
+  toast.mockReset();
   stored = settingsWith({});
 });
 
@@ -85,5 +87,77 @@ describe("ClearTax in the invoice settings", () => {
     expect(screen.getByLabelText("Client ID")).toBeInTheDocument();
     expect(screen.getByLabelText("Portal password")).toBeInTheDocument();
     expect(screen.queryByLabelText("ClearTax environment")).not.toBeInTheDocument();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  THE GSTIN CHECK, FROM SETTINGS → INVOICE
+//
+//  "Verify" on the customer and supplier forms asks the GST system
+//  through ClearTax when it is connected, or through a GSTIN lookup
+//  service named here: its address with {gstin} in it, and its key.
+// ══════════════════════════════════════════════════════════════════
+
+const withLookup = (invoice: Record<string, unknown>) => {
+  const base = settingsWith({});
+  return { ...base, invoice: { ...base.invoice, ...invoice } };
+};
+const sentInvoice = () => mutate.mock.calls[mutate.mock.calls.length - 1][0].invoice;
+
+describe("the GSTIN check in the invoice settings", () => {
+  it("says who Verify will ask as things stand", () => {
+    stored = withLookup({ gstinCheck: { available: true, via: "ClearTax" } });
+    const { unmount } = render(<InvoiceSettingsForm />);
+    expect(screen.getByText("through ClearTax")).toBeInTheDocument();
+    unmount();
+
+    stored = withLookup({ gstinCheck: { available: false, via: "" } });
+    render(<InvoiceSettingsForm />);
+    expect(screen.getByRole("heading", { name: "GSTIN check on customer and supplier forms" })).toBeInTheDocument();
+    // Two cards can say it: the e-invoice provider and this one.
+    expect(screen.getAllByText("not connected")).toHaveLength(2);
+  });
+
+  it("saves a lookup service's address, header and key, and not what the server says about it", async () => {
+    stored = withLookup({ gstinLookup: { url: "", headerName: "", keySet: false }, gstinCheck: { available: false, via: "" } });
+    const user = userEvent.setup();
+    render(<InvoiceSettingsForm />);
+    // Braces are keyboard keys to user-event: doubled to type one.
+    await user.type(screen.getByLabelText("GSTIN lookup address"), " https://lookup.example.com/gst/{{gstin} ");
+    await user.type(screen.getByLabelText("Header that carries the key"), "x-api-key");
+    await user.type(screen.getByLabelText("GSTIN lookup key"), "lk-secret-9");
+    await user.click(screen.getByRole("button", { name: /Save invoice settings/ }));
+
+    expect(sentInvoice().gstinLookup).toEqual({ url: "https://lookup.example.com/gst/{gstin}", headerName: "x-api-key", key: "lk-secret-9" });
+    expect(sentInvoice()).not.toHaveProperty("gstinCheck");
+  });
+
+  it("keeps a stored key when the field is left blank", async () => {
+    stored = withLookup({ gstinLookup: { url: "https://lookup.example.com/gst/{gstin}", headerName: "x-api-key", keySet: true }, gstinCheck: { available: true, via: "your GSTIN lookup service" } });
+    const user = userEvent.setup();
+    render(<InvoiceSettingsForm />);
+    expect(screen.getByText("through your GSTIN lookup service")).toBeInTheDocument();
+    expect(screen.getByLabelText("GSTIN lookup address")).toHaveValue("https://lookup.example.com/gst/{gstin}");
+    expect(screen.getByLabelText("GSTIN lookup key")).toHaveValue("");
+    expect(screen.getByLabelText("GSTIN lookup key")).toHaveAttribute("placeholder", "stored — leave blank to keep");
+    await user.click(screen.getByRole("button", { name: /Save invoice settings/ }));
+    // Blank means keep: the server leaves the stored key as it is.
+    expect(sentInvoice().gstinLookup).toEqual({ url: "https://lookup.example.com/gst/{gstin}", headerName: "x-api-key", key: "" });
+  });
+
+  it("does not save an address with nowhere for the number to go", async () => {
+    const user = userEvent.setup();
+    render(<InvoiceSettingsForm />);
+    await user.type(screen.getByLabelText("GSTIN lookup address"), "https://lookup.example.com/gst");
+    await user.click(screen.getByRole("button", { name: /Save invoice settings/ }));
+    expect(mutate).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith("GSTIN lookup address: put {gstin} where the number goes", "error");
+  });
+
+  it("leaves the lookup blank when none is named", async () => {
+    const user = userEvent.setup();
+    render(<InvoiceSettingsForm />);
+    await user.click(screen.getByRole("button", { name: /Save invoice settings/ }));
+    expect(sentInvoice().gstinLookup).toEqual({ url: "", headerName: "", key: "" });
   });
 });

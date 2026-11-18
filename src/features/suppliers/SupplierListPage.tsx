@@ -21,6 +21,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useSuppliers, useSupplierMutations } from "./hooks";
 import { Supplier, SupplierFormValues } from "./types";
 import { CardFillButton, GstinHint, SimilarParties, type SimilarParty } from "@/features/parties/PartyCardFill";
+import { GstinVerifyButton, GstinVerifyResult, useGstinVerify, type FillTarget } from "@/features/parties/GstinVerify";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -54,6 +55,14 @@ const schema = z.object({
   }).optional(),
 });
 
+/** What "Verify" beside the GSTIN fills, from the GST registration. */
+const GSTIN_FILLS: FillTarget<"name" | "address" | "pan">[] = [
+  { field: "name", label: "Supplier name", from: "name" },
+  // One address field here: street, town, state and PIN on one line.
+  { field: "address", label: "Address", from: "fullAddress" },
+  { field: "pan", label: "PAN", from: "pan" },
+];
+
 export function SupplierForm({
   initial,
   submitting,
@@ -76,6 +85,7 @@ export function SupplierForm({
     handleSubmit,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<SupplierFormValues>({
     resolver: formResolver(schema),
@@ -98,6 +108,21 @@ export function SupplierForm({
     },
   });
   const [name, gstin, phone] = watch(["name", "gstin", "phoneNumber"]);
+  const gstinCheck = useGstinVerify({
+    kind: "supplier",
+    gstin: gstin ?? "",
+    targets: GSTIN_FILLS,
+    showEarlier: !!initial,
+    read: (f) => String(getValues(f) ?? ""),
+    write: (f, v) => setValue(f, v, { shouldDirty: true, shouldValidate: true }),
+    // Regular or composition is the registration's to say: a composition
+    // dealer charges no GST, so their bills carry no input credit.
+    facts: (fill) => {
+      if (getValues("gstRegistration") === fill.gstRegistration) return [];
+      setValue("gstRegistration", fill.gstRegistration, { shouldDirty: true });
+      return [fill.gstRegistration === "composition" ? "GST registration (composition dealer)" : "GST registration (regular)"];
+    },
+  });
   return (
     <form onSubmit={handleSubmit((v) => onSubmit({ ...v, ...(aiSuggestion && !initial ? { aiSuggestion } : {}) }))} className="space-y-4" noValidate>
       {!initial && (
@@ -119,13 +144,17 @@ export function SupplierForm({
         <Input label="Contact person" {...register("contactPerson")} />
         <Input label="Phone" {...register("phoneNumber")} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
-        <div>
-          <Input label="GSTIN" {...register("gstin")} />
-          <GstinHint gstin={gstin ?? ""} />
+      <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
+      {/* A row of its own: fifteen characters and the button beside them
+          do not fit in half the form's width. */}
+      <div className="space-y-1">
+        <div className="flex items-end gap-2">
+          <Input label="GSTIN" wrapperClassName="min-w-0 flex-1" {...register("gstin")} />
+          <GstinVerifyButton state={gstinCheck} />
         </div>
+        <GstinHint gstin={gstin ?? ""} />
       </div>
+      <GstinVerifyResult state={gstinCheck} />
       <SimilarParties kind="supplier" name={name ?? ""} gstin={gstin ?? ""} phone={phone ?? ""} excludeId={initial?._id} seed={seedSimilar} />
       <Input label="Address" {...register("address")} />
       <div className="grid grid-cols-2 gap-3">
