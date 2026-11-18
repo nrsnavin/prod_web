@@ -7,6 +7,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { OrderDetail, StockShortfall } from "@/features/orders/types";
 import { ForceApprovalDialog } from "@/features/orders/ForceApprovalDialog";
 import { useJobMutations } from "./hooks";
+import { todayYmd } from "@/core/format/date";
 
 // Creates a job from an order: pick quantities per elastic.
 //
@@ -54,7 +55,7 @@ export function JobCreateForm({
 }) {
   const { toast } = useToast();
   const { create } = useJobMutations();
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayYmd());
   const [qty, setQty] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
   const [short, setShort] = useState<{ message: string; shortfalls: StockShortfall[] } | null>(null);

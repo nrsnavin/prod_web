@@ -22,6 +22,7 @@ import { materialService } from "./api";
 import { RawMaterial } from "./types";
 import { BulkPriceUpdateModal } from "./StockOps";
 import { addable } from "@/features/common/quickCreateStore";
+import { todayYmd } from "@/core/format/date";
 
 // ══════════════════════════════════════════════════════════════════
 //  ACTING ON THE MATERIALS TICKED IN THE LIST
@@ -218,7 +219,7 @@ export function MaterialBulkActions({ selected, onClear }: { selected: RawMateri
         )}
         <ActionMenu label="Change" icon={<Pencil className="h-4 w-4" />} items={change} />
         <Button size="sm" variant="ghost"
-          onClick={() => downloadCsv(`materials-${new Date().toISOString().slice(0, 10)}.csv`, materialsCsv(selected))}>
+          onClick={() => downloadCsv(`materials-${todayYmd()}.csv`, materialsCsv(selected))}>
           <Download className="h-4 w-4" /> Export CSV
         </Button>
       </SelectionBar>

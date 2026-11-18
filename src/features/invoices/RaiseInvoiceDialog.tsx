@@ -11,7 +11,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { CreditBand, useCreditHold } from "@/features/customers/credit";
 import { ApiError } from "@/core/http/httpClient";
-import { formatDate } from "@/core/format/date";
+import { formatDate, todayYmd } from "@/core/format/date";
 import { useInvoiceMutations, useInvoiceOrderInfo } from "./hooks";
 import { draftLines, money, priceLines, qty } from "./gst";
 import type { ExportKind, InvoiceLineOverride, SupplyType } from "./types";
@@ -74,7 +74,7 @@ export function RaiseInvoiceDialog({ orderId, onClose }: { orderId: string; onCl
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [overrides, setOverrides] = useState<Record<string, InvoiceLineOverride>>({});
-  const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [invoiceDate, setInvoiceDate] = useState(() => todayYmd());
   const [notes, setNotes] = useState("");
   const [shipTo, setShipTo] = useState("");
   // Export / SEZ: the kind, and what the portal and customs want with it.

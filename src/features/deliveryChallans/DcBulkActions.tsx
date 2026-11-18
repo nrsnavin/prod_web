@@ -11,6 +11,7 @@ import { ResultDialog, saveBlob } from "@/features/elastics/ElasticBulkActions";
 import { dcService } from "./api";
 import { useDcMutations } from "./hooks";
 import { DeliveryChallan } from "./types";
+import { todayYmd } from "@/core/format/date";
 
 // ══════════════════════════════════════════════════════════════════
 //  ACTING ON THE CHALLANS TICKED IN THE LIST
@@ -68,7 +69,7 @@ export function DcBulkActions({ selected, onClear }: { selected: DeliveryChallan
   const print = async () => {
     setPrinting(true);
     try {
-      saveBlob(await dcService.bulkPdf(selected.map((d) => d._id)), `challans-${new Date().toISOString().slice(0, 10)}.pdf`);
+      saveBlob(await dcService.bulkPdf(selected.map((d) => d._id)), `challans-${todayYmd()}.pdf`);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not make the PDF", "error");
     } finally {
@@ -93,7 +94,7 @@ export function DcBulkActions({ selected, onClear }: { selected: DeliveryChallan
           </Button>
         )}
         <Button size="sm" variant="ghost"
-          onClick={() => downloadCsv(`challans-${new Date().toISOString().slice(0, 10)}.csv`, dcsCsv(selected))}>
+          onClick={() => downloadCsv(`challans-${todayYmd()}.csv`, dcsCsv(selected))}>
           <Download className="h-4 w-4" /> Export CSV
         </Button>
       </SelectionBar>

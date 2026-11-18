@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/core/auth/useAuth";
 import { ApiError } from "@/core/http/httpClient";
 import { newRequestId } from "@/core/hooks/useRequestId";
-import { formatDate } from "@/core/format/date";
+import { formatDate, todayYmd } from "@/core/format/date";
 import { useAccountsMutations, useOpeningOnboarding } from "./hooks";
 import { money } from "./shared";
 import type { OpeningOnboardingParty } from "./types";
@@ -85,7 +85,7 @@ export function OpeningOnboardingCard() {
           <p className="mt-0.5 max-w-prose text-sm text-ink-500">What each customer and supplier owed, either way, on the day the books start here. Each one leaves this list once it is set; the card goes when all are.</p>
         </div>
         <div className="w-40">
-          <Input label="Balances as on" type="date" value={asOn} max={new Date().toISOString().slice(0, 10)} onChange={(e) => saveAsOn(e.target.value)} />
+          <Input label="Balances as on" type="date" value={asOn} max={todayYmd()} onChange={(e) => saveAsOn(e.target.value)} />
         </div>
       </div>
 

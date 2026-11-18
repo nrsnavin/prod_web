@@ -10,6 +10,7 @@ import { supplierService } from "@/features/suppliers/api";
 import { priceLines } from "@/features/invoices/gst";
 import type { SupplyType } from "@/features/invoices/types";
 import type { BillStatus, ExpenseStatus, LineInput } from "./types";
+import { ymd } from "@/core/format/date";
 
 export { money, qty } from "@/features/invoices/gst";
 
@@ -18,8 +19,8 @@ export const billLabel: Record<BillStatus, string> = { open: "Open", part_paid: 
 export const expenseTone: Record<ExpenseStatus, ChipTone> = { pending: "warning", approved: "info", rejected: "danger", paid: "success", cancelled: "neutral" };
 export const expenseLabel: Record<ExpenseStatus, string> = { pending: "To approve", approved: "Approved", rejected: "Rejected", paid: "Paid", cancelled: "Cancelled" };
 
-/** YYYY-MM-DD of the local date — toISOString() would give the UTC one, a day early before 05:30 in India. */
-export const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** YYYY-MM-DD of the local date (core/format/date.ts says why not toISOString). */
+export { ymd };
 export const today = () => ymd(new Date());
 export const monthStart = () => { const d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth(), 1)); };
 

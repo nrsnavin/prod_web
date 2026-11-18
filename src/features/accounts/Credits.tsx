@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { formatDate } from "@/core/format/date";
+import { formatDate, todayYmd } from "@/core/format/date";
 import { round2 } from "@/features/invoices/gst";
 import { useAccountsMutations, useBankAccounts, useCredits, useOpenDocs } from "./hooks";
 import { Select } from "@/components/ui/Select";
@@ -96,7 +96,7 @@ export function RefundDialog({ credit, partyType, party, onClose }: { credit: Cr
   const [amount, setAmount] = useState<number | "">(credit.available);
   const [mode, setMode] = useState<PaymentMode>("bank");
   const [account, setAccount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayYmd());
   const [reference, setReference] = useState("");
   // Cash from the cash box; anything else through a bank account.
   const usable = (accounts ?? []).filter((a) => (mode === "cash") === (a.kind === "cash"));

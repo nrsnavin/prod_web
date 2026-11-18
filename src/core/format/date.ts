@@ -22,3 +22,22 @@ export function formatDate(value: string | number | Date | null | undefined): st
   if (Number.isNaN(d.getTime())) return "—";
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
+
+/**
+ * "2026-11-18" of a date as the calendar here reads it: what a date
+ * input holds, and what the server takes as a day.
+ *
+ * `toISOString().slice(0, 10)` looks the same and is the UTC date.
+ * Before 05:30 in India that is yesterday, so a form opened early in
+ * the morning defaulted to the day before (and a `max=today` would not
+ * let today be picked). For a local midnight — the first of a month,
+ * built with `new Date(y, m, 1)` — it is always the day before.
+ */
+export function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Today, as a date input holds it. */
+export function todayYmd(): string {
+  return ymd(new Date());
+}

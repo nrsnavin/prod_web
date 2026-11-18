@@ -23,6 +23,7 @@ import { useElasticMutations } from "./hooks";
 import { BulkResult, elasticService } from "./api";
 import { prefillState } from "./prefill";
 import { Elastic } from "./types";
+import { todayYmd } from "@/core/format/date";
 
 // ══════════════════════════════════════════════════════════════════
 //  ACTING ON THE ELASTICS TICKED IN THE LIST
@@ -313,7 +314,7 @@ function PriceListDialog({ selected, onClose }: { selected: Elastic[]; onClose: 
         gstPercent: gst === "" ? null : Number(gst),
         validDays: Number(validDays) || 30,
       });
-      saveBlob(blob, `price-list-${new Date().toISOString().slice(0, 10)}.pdf`);
+      saveBlob(blob, `price-list-${todayYmd()}.pdf`);
       onClose();
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not make the price list", "error");
@@ -436,7 +437,7 @@ export function ElasticBulkActions({ selected, onClear }: { selected: Elastic[];
   const specSheets = async () => {
     setPrinting(true);
     try {
-      saveBlob(await elasticService.specSheetPdf(ids), `specifications-${new Date().toISOString().slice(0, 10)}.pdf`);
+      saveBlob(await elasticService.specSheetPdf(ids), `specifications-${todayYmd()}.pdf`);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not make the spec sheets", "error");
     } finally {
@@ -476,7 +477,7 @@ export function ElasticBulkActions({ selected, onClear }: { selected: Elastic[];
     ...(canChange ? [{ label: "Price list (PDF)…", icon: <IndianRupee className="h-4 w-4" />, onSelect: () => setDialog("priceList") }] : []),
     {
       label: "Export CSV", icon: <FileSpreadsheet className="h-4 w-4" />,
-      onSelect: () => downloadCsv(`elastics-${new Date().toISOString().slice(0, 10)}.csv`, elasticsCsv(selected)),
+      onSelect: () => downloadCsv(`elastics-${todayYmd()}.csv`, elasticsCsv(selected)),
     },
   ];
 
@@ -498,7 +499,7 @@ export function ElasticBulkActions({ selected, onClear }: { selected: Elastic[];
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => downloadCsv(`elastics-${new Date().toISOString().slice(0, 10)}.csv`, elasticsCsv(selected))}
+          onClick={() => downloadCsv(`elastics-${todayYmd()}.csv`, elasticsCsv(selected))}
           aria-label="Export CSV"
           className="hidden sm:inline-flex"
         >

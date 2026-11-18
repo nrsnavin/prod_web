@@ -12,6 +12,7 @@ import { useCategories } from "./hooks";
 import { money } from "./shared";
 import type { ScanDraft } from "./ScanBill";
 import type { ScanResult } from "./types";
+import { todayYmd } from "@/core/format/date";
 
 // ══════════════════════════════════════════════════════════════════
 //  QUICKER EXPENSES
@@ -23,7 +24,7 @@ import type { ScanResult } from "./types";
 //  go. Nothing is saved until the person says so.
 // ══════════════════════════════════════════════════════════════════
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = todayYmd;
 
 /** One line of cash spent, into the expense form. */
 export function CashLineBox({ onDraft }: { onDraft: (draft: ScanDraft, category: string | undefined) => void }) {

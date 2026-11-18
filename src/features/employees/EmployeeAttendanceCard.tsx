@@ -8,8 +8,9 @@ import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useEmployeeAttendance } from "./hooks";
 import { AttendanceRecord } from "./api";
+import { ymd } from "@/core/format/date";
 
-const iso = (d: Date) => d.toISOString().slice(0, 10);
+const iso = ymd;
 
 const statusTone: Record<string, ChipTone> = {
   present: "success",

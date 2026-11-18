@@ -6,7 +6,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { cn } from "@/components/ui/cn";
-import { sheetService, IngestResult, IngestMatchedRow } from "./sheet";
+import { sheetService, IngestResult, IngestMatchedRow, bulkResultMessage } from "./sheet";
 
 type EditRow = IngestMatchedRow & { include: boolean };
 
@@ -86,7 +86,11 @@ export function SheetUploadModal({
       // the server sees a batch of figures with no idea what the OCR had
       // proposed, and the accuracy of this feature stays unmeasurable.
       const res = await sheetService.applyBulk(entries, result?.aiSuggestionId);
-      toast(`${res.saved} shift${res.saved === 1 ? "" : "s"} sent for verification`, "success");
+      // Rows the server would not take (closed meanwhile, finalised, the
+      // loom loading) are said, with why: this used to report only the
+      // ones that went through, and close.
+      const { message, partial } = bulkResultMessage(res);
+      toast(message, partial ? "error" : "success");
       onApplied();
       close();
     } catch (e) {

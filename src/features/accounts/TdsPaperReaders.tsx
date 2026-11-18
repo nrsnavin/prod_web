@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/Select";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { formatDate } from "@/core/format/date";
+import { formatDate, todayYmd } from "@/core/format/date";
 import { accountsService } from "./api";
 import { PartyPicker, money } from "./shared";
 import { PaperChecks, PaperPicker, ReadProblem } from "./PaperReader";
@@ -115,7 +115,7 @@ function Form16aDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (fy
   const [on, setOn] = useState("");
   // Typed in, not read: when there is no reader on the server, or the read failed.
   const [typing, setTyping] = useState(false);
-  const typeIt = () => { setResult(null); setTyping(true); if (!on) setOn(new Date().toISOString().slice(0, 10)); };
+  const typeIt = () => { setResult(null); setTyping(true); if (!on) setOn(todayYmd()); };
 
   const read = async (files: File[]) => {
     setBusy(true);

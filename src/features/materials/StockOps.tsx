@@ -10,6 +10,7 @@ import { ApiError, httpClient } from "@/core/http/httpClient";
 import { poService } from "@/features/suppliers/api";
 import { materialService } from "./api";
 import { BulkPriceResult, RawMaterial, StockTakePreview } from "./types";
+import { todayYmd } from "@/core/format/date";
 
 /** Hand the browser a file to save. */
 function saveBlob(blob: Blob, filename: string) {
@@ -139,7 +140,7 @@ export function StockTakeModal({
     setDownloading(true);
     try {
       const blob = await materialService.stockTakeSheet(materials.map((m) => m._id));
-      saveBlob(blob, `stock-take-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      saveBlob(blob, `stock-take-${todayYmd()}.xlsx`);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not download the sheet", "error");
     } finally {

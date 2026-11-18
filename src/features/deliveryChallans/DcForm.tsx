@@ -14,6 +14,7 @@ import { useOrders } from "@/features/orders/hooks";
 import { DcFormValues } from "./types";
 import { useDcOrderInfo } from "./hooks";
 import { addable } from "@/features/common/quickCreateStore";
+import { todayYmd } from "@/core/format/date";
 
 const schema = z.object({
   type: z.enum(["elastic", "machine_part"]),
@@ -100,7 +101,7 @@ export function DcForm({
     defaultValues: {
       type: "elastic",
       customerName: "",
-      dispatchDate: new Date().toISOString().slice(0, 10),
+      dispatchDate: todayYmd(),
       items: prefillElastics?.length
         ? prefillElastics.map((e) => ({ elastic: e._id, elasticName: e.name, quantity: 0, rate: 0 }))
         : [{ elastic: "", elasticName: "", quantity: 0, rate: 0 }],

@@ -16,7 +16,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useEmployees } from "@/features/employees/hooks";
 import { leaveService, LeaveCreateInput, LeaveRow, LeaveWithdrawn } from "./api";
-import { formatDate } from "@/core/format/date";
+import { formatDate, todayYmd } from "@/core/format/date";
 
 /** "12 Nov 2026" for a calendar date ("YYYY-MM-DD"), whatever zone the browser keeps. */
 export function dayLabel(ymd?: string): string {
@@ -268,7 +268,7 @@ export function NewLeaveModal({
   const { toast } = useToast();
   const employees = useEmployees("all");
   const [employeeId, setEmployeeId] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayYmd());
   const [shift, setShift] = useState<LeaveCreateInput["shift"]>("BOTH");
   const [leaveType, setLeaveType] = useState<LeaveCreateInput["leaveType"]>("casual");
   const [reason, setReason] = useState("");
@@ -280,7 +280,7 @@ export function NewLeaveModal({
 
   const reset = () => {
     setEmployeeId("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(todayYmd());
     setShift("BOTH");
     setLeaveType("casual");
     setReason("");

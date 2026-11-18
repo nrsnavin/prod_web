@@ -26,13 +26,14 @@ import {
   startingRows,
 } from "./costing";
 import { addable } from "@/features/common/quickCreateStore";
+import { ymd } from "@/core/format/date";
 
 const addDays = (from: Date, days: number) => {
   const d = new Date(from);
   d.setDate(d.getDate() + days);
   return d;
 };
-const iso = (d: Date) => d.toISOString().slice(0, 10);
+const iso = ymd;
 
 export function QuoteCreatePage() {
   const navigate = useNavigate();

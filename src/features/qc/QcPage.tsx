@@ -20,6 +20,7 @@ import { useQcJobs, useQcRecent, useQcMutations, useTrainingReadiness } from "./
 import { qcService } from "./api";
 import { RootCausePanel } from "./RootCausePanel";
 import { QcElasticRef, QcJob, QcResultRow } from "./types";
+import { todayYmd } from "@/core/format/date";
 
 function elasticOf(l: QcJob["elastics"][number]): QcElasticRef | null {
   return typeof l.elastic === "object" && l.elastic ? (l.elastic as QcElasticRef) : null;
@@ -278,7 +279,7 @@ function DefectModelCard() {
       const blob = new Blob([JSON.stringify(res, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `qc-defect-dataset-${new Date().toISOString().slice(0, 10)}.json`;
+      a.href = url; a.download = `qc-defect-dataset-${todayYmd()}.json`;
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
       toast(`Exported ${res.count} labelled samples`, "success");
     } catch {

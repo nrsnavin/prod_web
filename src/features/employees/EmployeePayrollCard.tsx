@@ -15,6 +15,7 @@ import { cn } from "@/components/ui/cn";
 import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 import { rupeesAuto } from "@/core/format/money";
 import { Input } from "@/components/ui/Input";
+import { ymd } from "@/core/format/date";
 
 const statusTone: Record<string, ChipTone> = { paid: "success", finalized: "info", draft: "warning" };
 
@@ -186,7 +187,7 @@ const KIND_LABEL: Record<string, string> = {
 function LedgerView({ empId }: { empId: string }) {
   const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const iso = ymd;
   const [from, setFrom] = useState(iso(start));
   const [to, setTo] = useState(iso(today));
 

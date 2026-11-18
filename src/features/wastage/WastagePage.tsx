@@ -28,7 +28,7 @@ import {
   useWastageRootCause,
 } from "./hooks";
 import { WastageFormValues, WastageRecord } from "./types";
-import { formatDate } from "@/core/format/date";
+import { formatDate, todayYmd } from "@/core/format/date";
 
 const schema = z.object({
   job: z.string().min(1, "Select job"),
@@ -54,7 +54,7 @@ function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
     formState: { errors },
   } = useForm<WastageFormValues>({
     resolver: formResolver(schema),
-    defaultValues: { job: "", elastic: "", employee: "", quantity: 0, penalty: 0, reason: "", incidentDate: new Date().toISOString().slice(0, 10) },
+    defaultValues: { job: "", elastic: "", employee: "", quantity: 0, penalty: 0, reason: "", incidentDate: todayYmd() },
   });
 
   const jobId = watch("job");
@@ -137,7 +137,7 @@ function AddWastageForm({ onDone, onCancel }: { onDone: () => void; onCancel: ()
       <div className="grid grid-cols-2 gap-3">
         <Input label="Quantity (m) *" type="number" step="0.01" error={errors.quantity?.message} {...register("quantity")} />
         <Input label="Penalty (₹)" type="number" step="0.01" {...register("penalty")} />
-        <Input label="Incident date" type="date" max={new Date().toISOString().slice(0, 10)}
+        <Input label="Incident date" type="date" max={todayYmd()}
           hint="Which day the wastage happened (sets its payroll month)" {...register("incidentDate")} />
       </div>
       <Input label="Reason *" placeholder="e.g. Beam change waste" error={errors.reason?.message} {...register("reason")} />

@@ -17,6 +17,7 @@ import { useElasticGroup, useElasticGroupMutations } from "./hooks";
 import { ElasticGroupItem, itemElasticName } from "./types";
 import { ElasticGroupForm } from "./ElasticGroupForm";
 import { StatTile as UiStatTile } from "@/components/ui/StatTile";
+import { ymd } from "@/core/format/date";
 
 const itemColumns: Column<ElasticGroupItem & { _i: number }>[] = [
   { key: "elastic", header: "Elastic", render: (it) => <span className="font-medium">{itemElasticName(it)}</span> },
@@ -34,7 +35,7 @@ const itemColumns: Column<ElasticGroupItem & { _i: number }>[] = [
 ];
 
 function iso(d: Date) {
-  return d.toISOString().slice(0, 10);
+  return ymd(d);
 }
 
 export function ElasticGroupDetailPage() {

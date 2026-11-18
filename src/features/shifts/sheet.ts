@@ -97,7 +97,30 @@ export const sheetService = {
   async applyBulk(
     entries: BulkEntry[],
     aiSuggestionId?: string | null,
-  ): Promise<{ success: boolean; saved: number; skipped: number }> {
+  ): Promise<BulkResult> {
     return httpClient.post("/shift/bulk-enter-production", { entries, aiSuggestionId });
   },
 };
+
+/**
+ * What the server did with a batch of figures. `saved` is how many it
+ * took; `skipped` the rows it did not, each with why (the shift was
+ * already closed, the plan is finalised, the loom was loading). This
+ * was typed as a number: the server has always sent the rows.
+ */
+export interface BulkResult {
+  success: boolean;
+  saved: number;
+  skipped?: Array<{ id: string; reason: string }>;
+}
+
+/** "3 sent for verification. 2 not taken: Already closed (2)." — and whether anything was left out. */
+export function bulkResultMessage(res: BulkResult): { message: string; partial: boolean } {
+  const skipped = Array.isArray(res.skipped) ? res.skipped : [];
+  const sent = `${res.saved} shift${res.saved === 1 ? "" : "s"} sent for verification`;
+  if (skipped.length === 0) return { message: sent, partial: false };
+  const byReason = new Map<string, number>();
+  for (const s of skipped) byReason.set(s.reason || "Not taken", (byReason.get(s.reason || "Not taken") ?? 0) + 1);
+  const why = [...byReason].map(([reason, n]) => (n > 1 ? `${reason} (${n})` : reason)).join("; ");
+  return { message: `${sent}. ${skipped.length} not taken: ${why}.`, partial: true };
+}

@@ -9,6 +9,7 @@ import { saveBlob } from "@/features/elastics/ElasticBulkActions";
 import { orderService } from "./api";
 import { OrderListItem } from "./types";
 import { orderStatusLabel } from "./orderStatus";
+import { todayYmd } from "@/core/format/date";
 
 // ══════════════════════════════════════════════════════════════════
 //  ACTING ON THE ORDERS TICKED IN THE LIST
@@ -41,7 +42,7 @@ export function OrderBulkActions({ selected, onClear }: { selected: OrderListIte
     try {
       saveBlob(
         await orderService.statusReportsPdf(selected.map((o) => o._id)),
-        `order-status-${new Date().toISOString().slice(0, 10)}.pdf`
+        `order-status-${todayYmd()}.pdf`
       );
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not make the PDF", "error");
@@ -57,7 +58,7 @@ export function OrderBulkActions({ selected, onClear }: { selected: OrderListIte
         <Printer className="h-4 w-4" /> Print status reports
       </Button>
       <Button size="sm" variant="ghost"
-        onClick={() => downloadCsv(`orders-${new Date().toISOString().slice(0, 10)}.csv`, ordersCsv(selected))}>
+        onClick={() => downloadCsv(`orders-${todayYmd()}.csv`, ordersCsv(selected))}>
         <Download className="h-4 w-4" /> Export CSV
       </Button>
     </SelectionBar>

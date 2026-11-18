@@ -25,6 +25,7 @@ import { itemElasticId, itemElasticName } from "@/features/elasticGroups/types";
 import { OrderFormValues } from "./types";
 import { OrderEtaPanel } from "./OrderEtaPanel";
 import { addable } from "@/features/common/quickCreateStore";
+import { todayYmd } from "@/core/format/date";
 
 const schema = z.object({
   date: z.string().min(1, "Order date required"),
@@ -84,7 +85,7 @@ export function OrderForm({
   } = useForm<OrderFormValues>({
     resolver: formResolver(schema),
     defaultValues: {
-      date: new Date().toISOString().slice(0, 10),
+      date: todayYmd(),
       po: draft?.po ?? "",
       customer: draft?.customer?.id ?? "",
       supplyDate: draft?.supplyDate ?? "",
@@ -130,7 +131,9 @@ export function OrderForm({
         g.items.map((it) => ({ value: itemElasticId(it), label: itemElasticName(it) }))
       ),
     ],
-    [groups.data, prefillElastics]
+    // draft?.lines too: without it a draft that arrives after the first
+    // render kept the labels made before it, and its lines showed ids.
+    [groups.data, prefillElastics, draft?.lines]
   );
 
   return (

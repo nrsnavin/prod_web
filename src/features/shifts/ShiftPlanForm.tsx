@@ -9,6 +9,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { useRunningMachines, useWeavingEmployees } from "./hooks";
 import { ShiftPlanFormValues } from "./types";
 import { addable } from "@/features/common/quickCreateStore";
+import { todayYmd } from "@/core/format/date";
 
 const schema = z.object({
   date: z.string().min(1, "Date required"),
@@ -46,7 +47,7 @@ export function ShiftPlanForm({
   } = useForm<ShiftPlanFormValues>({
     resolver: formResolver(schema),
     defaultValues: {
-      date: new Date().toISOString().slice(0, 10),
+      date: todayYmd(),
       shiftType: "DAY",
       description: "",
       machines: [{ machine: "", operator: "", jobOrderNo: 0 }],

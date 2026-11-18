@@ -11,7 +11,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
-import { formatDate } from "@/core/format/date";
+import { formatDate, todayYmd } from "@/core/format/date";
 import { useMaterials } from "@/features/materials/hooks";
 import { PaperPicker, ReadProblem } from "@/features/accounts/PaperReader";
 import { priceListService } from "./api";
@@ -30,7 +30,7 @@ import type { PriceListResult, Supplier, SupplierRate } from "./types";
 
 const rupees = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const SOURCE: Record<SupplierRate["source"], string> = { price_list: "price list", quotation: "quotation", manual: "typed in" };
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = todayYmd;
 
 export function SupplierRates({ supplier }: { supplier: Supplier }) {
   const rates = useQuery({ queryKey: ["supplier", "rates", supplier._id], queryFn: () => priceListService.rates(supplier._id) });
