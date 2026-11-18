@@ -234,6 +234,21 @@ export function InvoiceSettingsForm() {
           behind a captcha, so the question goes through a provider: ClearTax, when it is connected above, or a GSTIN
           lookup service named here. Without either, Verify still catches a mistyped number.
         </p>
+        {/* What the three boxes below take, by example: the wording of a
+            service's own page is "call this address with this header". */}
+        <div className="rounded-lg bg-ink-100 p-3 text-xs text-ink-600">
+          <p className="font-medium text-ink-800">How to fill these in</p>
+          <p className="mt-1">
+            A lookup service gives you an address to call and a key. Where its instructions show a GSTIN in the address,
+            type <code className="font-mono">{"{gstin}"}</code> instead. If they say, for example,
+          </p>
+          <p className="mt-1 break-all font-mono">GET https://api.example.com/v1/gstin/33AAAAA0000A1Z5 · header x-api-key: your-key</p>
+          <p className="mt-1">
+            then the address is <span className="break-all font-mono">https://api.example.com/v1/gstin/{"{gstin}"}</span>, the header
+            is <span className="font-mono">x-api-key</span>, and the key is the key they gave you. It works with services that
+            answer a plain GET request with one key; one that needs a sign-in step first needs its own connector.
+          </p>
+        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input label="GSTIN lookup address" value={lookup.url} disabled={!canEdit} placeholder="https://…/gstin/{gstin}"
             hint="Optional. {gstin} is where the number goes; {key} too, if the service takes its key in the address."
@@ -243,6 +258,7 @@ export function InvoiceSettingsForm() {
             onChange={(e) => setLookup("headerName", e.target.value)} />
           <Input label="GSTIN lookup key" type="password" value={lookup.key ?? ""} disabled={!canEdit}
             placeholder={lookupKeySet ? "stored — leave blank to keep" : "from the lookup service"} autoComplete="new-password"
+            hint='With the header "Authorization", usually "Bearer " and then the key.'
             onChange={(e) => setLookup("key", e.target.value)} />
         </div>
       </Card>

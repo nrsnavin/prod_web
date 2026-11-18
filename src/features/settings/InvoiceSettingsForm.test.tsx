@@ -154,6 +154,14 @@ describe("the GSTIN check in the invoice settings", () => {
     expect(toast).toHaveBeenCalledWith("GSTIN lookup address: put {gstin} where the number goes", "error");
   });
 
+  it("shows by example what goes in the three boxes", () => {
+    render(<InvoiceSettingsForm />);
+    expect(screen.getByText("How to fill these in")).toBeInTheDocument();
+    expect(screen.getByText("https://api.example.com/v1/gstin/{gstin}")).toBeInTheDocument();
+    expect(screen.getByText(/one that needs a sign-in step first needs its own connector/)).toBeInTheDocument();
+    expect(screen.getByText('With the header "Authorization", usually "Bearer " and then the key.')).toBeInTheDocument();
+  });
+
   it("leaves the lookup blank when none is named", async () => {
     const user = userEvent.setup();
     render(<InvoiceSettingsForm />);
