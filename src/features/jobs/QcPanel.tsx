@@ -41,7 +41,20 @@ interface CoaData {
     checkedBy: string;
     checkedAt?: string;
     results: QcResult[];
+    /** The newest check of this elastic, when it failed AFTER the pass shown. */
+    laterFail?: { at?: string; defectCode?: string; rejectedMeters?: number } | null;
   }>;
+}
+
+/**
+ * What to tell whoever is about to print: this elastic's last check was
+ * a failure, and the certificate shows the pass before it.
+ */
+function laterFailLine(item: CoaData["items"][number]): string {
+  const f = item.laterFail!;
+  const detail = [f.defectCode, (f.rejectedMeters ?? 0) > 0 ? `${f.rejectedMeters} m rejected` : ""].filter(Boolean).join(", ");
+  return `${item.elasticName} failed its latest check on ${formatDate(f.at)}${detail ? ` (${detail})` : ""}. ` +
+    `This certificate shows its earlier pass of ${formatDate(item.checkedAt)}.`;
 }
 
 const qcService = {
@@ -165,6 +178,17 @@ function CoaSheet({ jobId, onClose }: { jobId: string; onClose: () => void }) {
   const { data } = useQuery({ queryKey: ["qc", jobId, "coa"], queryFn: () => qcService.coa(jobId) });
   return (
     <PrintModal open onClose={onClose} title="Certificate of analysis">
+      {/* On screen only: the sheet that prints is the certificate. A pass
+          that a later check overturned still reads PASS on it, and the
+          person about to print and sign should know before they do. */}
+      {data && data.items.some((i) => i.laterFail) && (
+        <div role="alert" className="mb-4 rounded-lg border border-status-danger/40 bg-status-dangerBg px-3 py-2 text-sm text-status-danger print:hidden">
+          <p className="font-semibold">Check before printing</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {data.items.filter((i) => i.laterFail).map((i, x) => <li key={x}>{laterFailLine(i)}</li>)}
+          </ul>
+        </div>
+      )}
       {data && (
         <div className="text-ink-900">
           <div className="text-center border-b-2 border-ink-900 pb-3">

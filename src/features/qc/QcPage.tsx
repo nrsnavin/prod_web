@@ -17,7 +17,7 @@ import { cn } from "@/components/ui/cn";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useQcJobs, useQcRecent, useQcMutations, useTrainingReadiness } from "./hooks";
-import { qcService } from "./api";
+import { qcService, exportedMessage } from "./api";
 import { RootCausePanel } from "./RootCausePanel";
 import { QcElasticRef, QcJob, QcResultRow } from "./types";
 import { todayYmd } from "@/core/format/date";
@@ -275,13 +275,16 @@ function DefectModelCard() {
   const exportSet = async () => {
     setExporting(true);
     try {
-      const res = await qcService.exportDataset();
-      const blob = new Blob([JSON.stringify(res, null, 2)], { type: "application/json" });
+      // Saved as it arrives (see qcService.exportDataset).
+      const blob = await qcService.exportDataset();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; a.download = `qc-defect-dataset-${todayYmd()}.json`;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-      toast(`Exported ${res.count} labelled samples`, "success");
+      document.body.appendChild(a); a.click(); a.remove();
+      // After the click has been taken up: revoked at once, some browsers
+      // save nothing.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      toast(exportedMessage(t.labelledImages), "success");
     } catch {
       toast("Export failed", "error");
     } finally {

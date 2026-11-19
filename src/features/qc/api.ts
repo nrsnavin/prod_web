@@ -34,10 +34,30 @@ export const qcService = {
     return httpClient.get<TrainingReadiness>("/qc/training-readiness");
   },
 
-  exportDataset(): Promise<{ success: boolean; count: number; exportedAt: string; samples: unknown[] }> {
-    return httpClient.get("/qc/export-dataset");
+  /**
+   * The labelled photos, as the file the server writes.
+   *
+   * Taken as a blob and saved as it is. Every sample carries its photo;
+   * read as JSON, parsed, and written out again indented, the browser
+   * held three copies of every photo at once. And it asks for all the
+   * server will give — with no number it gave the newest 500 and left
+   * the rest out without a word.
+   */
+  exportDataset(): Promise<Blob> {
+    return httpClient.getBlob("/qc/export-dataset", { limit: EXPORT_LIMIT });
   },
 };
+
+/** The most samples one export carries (the server's own ceiling). */
+export const EXPORT_LIMIT = 2000;
+
+/** What the export toast says, given how many labelled photos there are. */
+export function exportedMessage(labelled: number): string {
+  if (labelled > EXPORT_LIMIT) {
+    return `Exported the newest ${EXPORT_LIMIT.toLocaleString("en-IN")} of ${labelled.toLocaleString("en-IN")} labelled samples`;
+  }
+  return `Exported ${labelled.toLocaleString("en-IN")} labelled sample${labelled === 1 ? "" : "s"}`;
+}
 
 export interface TrainingReadiness {
   success: boolean;
