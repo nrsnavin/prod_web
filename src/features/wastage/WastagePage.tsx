@@ -174,8 +174,18 @@ function WastageEditModal({
       toast("Quantity must be greater than 0", "error");
       return;
     }
+    // The server refuses a blank cause; said here, in this form's words,
+    // so it is not taken for the "reason for edit" box below it.
+    if (!reason.trim()) {
+      toast("Say what caused the wastage", "error");
+      return;
+    }
+    if (Number(penalty) < 0) {
+      toast("A penalty cannot be less than ₹0", "error");
+      return;
+    }
     update.mutate(
-      { id: record._id, body: { quantity: Number(quantity), penalty: Number(penalty) || 0, reason, auditReason: auditReason.trim() } },
+      { id: record._id, body: { quantity: Number(quantity), penalty: Number(penalty) || 0, reason: reason.trim(), auditReason: auditReason.trim() } },
       {
         onSuccess: () => { toast("Wastage updated", "success"); onClose(); },
         onError: (e) => toast(e instanceof ApiError ? e.message : "Failed to update", "error"),
@@ -227,6 +237,8 @@ function WastageRow({ w }: { w: WastageRecord }) {
         <p className="text-xs text-ink-400">
           {typeof w.employee === "object" && w.employee ? w.employee.name : "—"} · {w.reason}
           {w.createdAt && ` · ${formatDate(w.createdAt)}`}
+          {/* The penalty comes out of the employee's pay: who put it there is part of the record. */}
+          {w.recordedByName && ` · entered by ${w.recordedByName}`}
         </p>
       </div>
       {(w.penalty ?? 0) > 0 && (

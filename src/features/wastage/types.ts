@@ -16,6 +16,8 @@ export interface WastageRecord {
   penalty?: number;
   reason: string;
   createdAt?: string;
+  /** Who entered it — kept by the server from now on; older records have none. */
+  recordedByName?: string;
 }
 
 // A weaving operator who worked a shift on a given job — the candidates
