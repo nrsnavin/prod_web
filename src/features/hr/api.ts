@@ -591,6 +591,20 @@ export interface LeaveWithdrawn {
   data: LeaveRow;
 }
 
+/** What approving a request did (PUT /leave/:id/approve, or a request created approved). */
+export interface LeaveApproved {
+  success: boolean;
+  message?: string;
+  /**
+   * `marked`: shifts written as this leave. `worked`: shifts the request
+   * covers that were already marked as worked (or clocked in) and were
+   * left so. Absent from a server older than this.
+   */
+  attendance?: { marked: number; worked: ("DAY" | "NIGHT")[] } | null;
+  /** The month's payslip is already finalised: the sheet changes, the pay on it does not. */
+  payslipFinal?: boolean;
+}
+
 export interface LeaveCreateInput {
   employeeId: string;
   date: string;
@@ -627,12 +641,12 @@ export const leaveService = {
     const res = await httpClient.get<{ success: boolean; data: LeaveRow[] }>("/leave/all", query);
     return res.data;
   },
-  approve: (id: string, note?: string) => httpClient.put(`/leave/${id}/approve`, { note }),
+  approve: (id: string, note?: string) => httpClient.put<LeaveApproved>(`/leave/${id}/approve`, { note }),
   reject: (id: string, note?: string) => httpClient.put(`/leave/${id}/reject`, { note }),
   /** Take an approval back; the leave comes off the attendance sheet with it. */
   withdraw: (id: string, note?: string) =>
     httpClient.put<LeaveWithdrawn>(`/leave/${id}/withdraw`, { note }),
   // Admin raises leave on an employee's behalf; autoApprove creates it
   // already approved (and syncs attendance).
-  create: (body: LeaveCreateInput) => httpClient.post("/leave/admin-request", body),
+  create: (body: LeaveCreateInput) => httpClient.post<LeaveApproved>("/leave/admin-request", body),
 };

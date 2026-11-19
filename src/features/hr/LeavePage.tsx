@@ -15,7 +15,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
 import { useEmployees } from "@/features/employees/hooks";
-import { leaveService, LeaveCreateInput, LeaveRow, LeaveWithdrawn } from "./api";
+import { leaveService, LeaveApproved, LeaveCreateInput, LeaveRow, LeaveWithdrawn } from "./api";
 import { formatDate, todayYmd } from "@/core/format/date";
 
 /** "12 Nov 2026" for a calendar date ("YYYY-MM-DD"), whatever zone the browser keeps. */
@@ -36,6 +36,30 @@ export function leaveKind(l: LeaveRow): string {
 function monthStart(now = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 }
+
+/**
+ * What approving did, for the toast.
+ *
+ * A request can be approved after its day has been marked. A shift
+ * already marked as worked (or clocked in) is left as worked — approved
+ * leave is unpaid, and an approval must not take a worked day's pay —
+ * and the answer says which. It used to read "Leave approved" whatever
+ * had happened on the sheet.
+ */
+export function approvedMessage(res: LeaveApproved | undefined, done = "Leave approved"): string {
+  const worked = res?.attendance?.worked ?? [];
+  const what = worked.length === 0
+    ? `${done}.`
+    : worked.length > 1
+      ? `${done} — both shifts were already marked as worked, and stay worked shifts.`
+      : `${done} — the ${worked[0] === "NIGHT" ? "night" : "day"} shift was already marked as worked, and stays a worked shift.`;
+  return res?.payslipFinal
+    ? `${what} That month's payslip is already finalised, so the pay on it stays as it was.`
+    : what;
+}
+/** Worth a second look, not just a tick: something was left as it was. */
+const approvalNeedsReading = (res: LeaveApproved | undefined) =>
+  (res?.attendance?.worked?.length ?? 0) > 0 || !!res?.payslipFinal;
 
 /** What taking the approval back did, for the toast. */
 export function withdrawnMessage(res: LeaveWithdrawn): string {
@@ -193,7 +217,7 @@ export function LeavePage() {
         message={
           decision?.action === "reject"
             ? `Reject the leave request from ${decision?.name}?`
-            : `Approve the leave request from ${decision?.name}? This marks the day as leave in their attendance.`
+            : `Approve the leave request from ${decision?.name}? This marks the day as leave in their attendance, unless the shift is already marked as worked.`
         }
         confirmLabel={decision?.action === "reject" ? "Reject" : "Approve"}
         danger={decision?.action === "reject"}
@@ -201,14 +225,21 @@ export function LeavePage() {
         onCancel={() => setDecision(null)}
         onConfirm={() => {
           if (!decision) return;
-          const mut = decision.action === "approve" ? approve : reject;
-          mut.mutate(decision.id, {
-            onSuccess: () => {
-              toast(decision.action === "approve" ? "Leave approved" : "Leave rejected", "success");
-              setDecision(null);
-            },
-            onError: (e) => toast(e instanceof ApiError ? e.message : "Failed", "error"),
-          });
+          const onError = (e: unknown) => toast(e instanceof ApiError ? e.message : "Failed", "error");
+          if (decision.action === "approve") {
+            approve.mutate(decision.id, {
+              onSuccess: (res) => {
+                toast(approvedMessage(res), approvalNeedsReading(res) ? "info" : "success");
+                setDecision(null);
+              },
+              onError,
+            });
+          } else {
+            reject.mutate(decision.id, {
+              onSuccess: () => { toast("Leave rejected", "success"); setDecision(null); },
+              onError,
+            });
+          }
         }}
       />
 
@@ -294,8 +325,9 @@ export function NewLeaveModal({
     create.mutate(
       { employeeId, date, shift, leaveType, reason: reason.trim(), autoApprove },
       {
-        onSuccess: () => {
-          toast(autoApprove ? "Leave created & approved" : "Leave request created", "success");
+        onSuccess: (res) => {
+          if (autoApprove) toast(approvedMessage(res, "Leave created & approved"), approvalNeedsReading(res) ? "info" : "success");
+          else toast("Leave request created", "success");
           onCreated();
           reset();
           onClose();

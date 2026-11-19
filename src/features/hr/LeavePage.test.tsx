@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { LeavePage, NewLeaveModal, dayLabel, leaveKind, withdrawnMessage } from "./LeavePage";
+import { LeavePage, NewLeaveModal, approvedMessage, dayLabel, leaveKind, withdrawnMessage } from "./LeavePage";
 
 const createFn = vi.fn().mockResolvedValue({ success: true });
 const pendingFn = vi.fn();
@@ -79,6 +79,20 @@ describe("NewLeaveModal (admin create leave)", () => {
       })
     );
     expect(onCreated).toHaveBeenCalled();
+  });
+
+  it("says so when the leave it approved fell on a shift already marked as worked", async () => {
+    createFn.mockResolvedValueOnce({ success: true, attendance: { marked: 0, worked: ["DAY"] }, payslipFinal: false });
+    const user = userEvent.setup();
+    renderModal();
+    await user.click(screen.getByRole("button", { name: /select employee/i }));
+    await user.click(await screen.findByRole("option", { name: "Ravi Kumar" }));
+    await user.type(screen.getByLabelText(/Reason/i), "Family function");
+    await user.click(screen.getByRole("button", { name: /create & approve/i }));
+    await vi.waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        "Leave created & approved — the day shift was already marked as worked, and stays a worked shift.", "info")
+    );
   });
 
   it("relabels the action when approve-immediately is unchecked", async () => {
@@ -182,6 +196,52 @@ describe("LeavePage", () => {
       .toBe("Approval withdrawn.");
     expect(withdrawnMessage({ ...base, attendance: { removed: 1, unapproved: 0, kept: 0 }, payslipFinal: true }))
       .toMatch(/unmarked again\. That month's payslip is already finalised/);
+  });
+
+  // ── What approving did ────────────────────────────────────────────
+  //  A request can be approved after its day was marked. A shift marked
+  //  as worked stays worked (the server leaves it, and says so); the
+  //  page used to answer "Leave approved" whatever had happened, beside a
+  //  dialog that promised "this marks the day as leave".
+  it("says when the shift had already been marked as worked", async () => {
+    approveFn.mockResolvedValue({ success: true, attendance: { marked: 0, worked: ["NIGHT"] }, payslipFinal: false });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /^approve$/i }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /^approve$/i }));
+    await vi.waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        "Leave approved — the night shift was already marked as worked, and stays a worked shift.", "info")
+    );
+  });
+
+  it("says plainly that it is approved when the sheet took it", async () => {
+    approveFn.mockResolvedValue({ success: true, attendance: { marked: 1, worked: [] }, payslipFinal: false });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /^approve$/i }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: /^approve$/i }));
+    await vi.waitFor(() => expect(toast).toHaveBeenCalledWith("Leave approved.", "success"));
+  });
+
+  it("puts what approving did into words", () => {
+    expect(approvedMessage(undefined)).toBe("Leave approved.");                       // an older server
+    expect(approvedMessage({ success: true })).toBe("Leave approved.");
+    expect(approvedMessage({ success: true, attendance: { marked: 0, worked: ["DAY", "NIGHT"] } }))
+      .toBe("Leave approved — both shifts were already marked as worked, and stay worked shifts.");
+    expect(approvedMessage({ success: true, attendance: { marked: 1, worked: ["DAY"] } }))
+      .toBe("Leave approved — the day shift was already marked as worked, and stays a worked shift.");
+    expect(approvedMessage({ success: true, attendance: { marked: 1, worked: [] }, payslipFinal: true }))
+      .toBe("Leave approved. That month's payslip is already finalised, so the pay on it stays as it was.");
+    expect(approvedMessage({ success: true, attendance: { marked: 1, worked: [] } }, "Leave created & approved"))
+      .toBe("Leave created & approved.");
+  });
+
+  it("tells the approver the day is marked as leave unless it was worked", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /^approve$/i }));
+    expect(screen.getByText(/marks the day as leave in their attendance, unless the shift is already marked as worked/)).toBeInTheDocument();
   });
 
   it("reads a calendar date as that day, and names a shift in words", () => {
