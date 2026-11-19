@@ -31,7 +31,13 @@ vi.mock("@/features/claims/api", () => ({
 
 // ── Bonus ──────────────────────────────────────────────────────────
 const bonus = vi.hoisted(() => ({ payRecord: vi.fn() }));
-vi.mock("@/features/hr/api", () => ({
+// The service is stubbed; everything else the page takes from the module
+// (nothingDue, the row types' helpers) stays real. A mock that names only
+// the service breaks the day the page imports one more thing from it —
+// which is what happened: the table began asking `nothingDue`, and this
+// test rendered an empty page until the full suite was next run.
+vi.mock("@/features/hr/api", async () => ({
+  ...(await vi.importActual<typeof import("@/features/hr/api")>("@/features/hr/api")),
   bonusService: {
     config: async () => ({ config: { year: 2026, status: "triggered", bonusDate: "2026-11-01" }, stats: { totalRecords: 1, paidRecords: 0, pendingRecords: 1, totalPayout: 12400 } }),
     records: async () => [{ _id: "b1", employee: { _id: "e1", name: "Ravi" }, year: 2026, bonusAmount: 12400, status: "pending" }],
