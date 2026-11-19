@@ -90,7 +90,7 @@ export function PoListPage() {
             setSearch(v);
             setPage(1);
           }}
-          placeholder="Search by PO number…"
+          placeholder="Search by PO number or supplier…"
           className="w-full max-w-xs"
         />
         <FilterChips
