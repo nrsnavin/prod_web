@@ -139,6 +139,37 @@ describe("WinLossPanel", () => {
     expect(screen.queryByText("0%")).not.toBeInTheDocument();
   });
 
+  // ── Sent, ran out, never answered ─────────────────────────────────
+  //  The rate above is of the quotes a customer answered. A quote sent
+  //  and left to run out is in neither count — which is right, and is
+  //  also how a desk that records its wins and not its silences reads
+  //  "90% won". The panel says how many there are.
+  it("says how many sent quotes ran out with no answer recorded", async () => {
+    winLoss.mockResolvedValue(data({ unanswered: 7 }));
+    renderPanel();
+    expect(await screen.findByText(/7 sent quotes ran out with no answer recorded/)).toBeInTheDocument();
+    expect(screen.getByText(/not counted above/)).toBeInTheDocument();
+  });
+
+  it("says it of one", async () => {
+    winLoss.mockResolvedValue(data({ unanswered: 1 }));
+    renderPanel();
+    expect(await screen.findByText(/1 sent quote ran out with no answer recorded/)).toBeInTheDocument();
+  });
+
+  it("says it even when no quote has an answer yet", async () => {
+    winLoss.mockResolvedValue(data({ quotes: 0, wins: 0, losses: 0, baselineWinRatePct: null, bands: [], estimator: "none", unanswered: 3 }));
+    renderPanel();
+    expect(await screen.findByText(/3 sent quotes ran out with no answer recorded/)).toBeInTheDocument();
+  });
+
+  it("says nothing when there are none, or the server is an older one", async () => {
+    winLoss.mockResolvedValue(data({ unanswered: 0 }));
+    renderPanel();
+    await screen.findByText("60%");
+    expect(screen.queryByText(/ran out with no answer/)).not.toBeInTheDocument();
+  });
+
   it("asks the server for a narrower window when one is chosen", async () => {
     winLoss.mockResolvedValue(data());
     renderPanel();

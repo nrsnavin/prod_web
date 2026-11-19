@@ -185,7 +185,12 @@ export function QuoteCreatePage() {
     create.mutate(
       {
         ...(fromMaster && customerId ? { customer: customerId } : {}),
-        customerName: customerName.trim(),
+        // A picked customer goes out under the name on the books. The
+        // box for a typed name is not on screen then, but it keeps what
+        // was typed before switching — and the server puts a typed name
+        // ahead of the master's, so the quote was raised for the picked
+        // customer under the abandoned name.
+        customerName: fromMaster ? "" : customerName.trim(),
         customerAddress: customerAddress.trim(),
         customerGstin: customerGstin.trim(),
         customerPhone: customerPhone.trim(),
@@ -271,8 +276,8 @@ export function QuoteCreatePage() {
                   onChange={setCustomerId}
                 />
                 <p className="mt-1.5 text-xs text-ink-400">
-                  Name, GSTIN and phone come from the master. Anything you type
-                  below is used instead, for this quote only.
+                  Name, address, GSTIN and phone come from the master. Anything
+                  you type below is used instead, for this quote only.
                 </p>
               </>
             ) : (

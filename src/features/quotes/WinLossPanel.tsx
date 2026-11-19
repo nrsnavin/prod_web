@@ -125,13 +125,39 @@ function Curve({ curve, best }: { curve: WinLossPoint[]; best?: number }) {
   );
 }
 
+/**
+ * Sent, ran out, and nobody recorded what the customer said.
+ *
+ * The win rate is of the quotes a customer answered, and these are in
+ * neither count — rightly, since silence is not a "no" to a price. But a
+ * desk that records its wins and not its silences reads "90% won" off
+ * ten answers and forty quotes, so the panel says how many there are and
+ * where to find them.
+ */
+function Unanswered({ n }: { n: number }) {
+  if (!(n > 0)) return null;
+  return (
+    <p className="mt-2 flex items-start gap-1.5 text-xs text-ink-500">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span>
+        {n} sent quote{n === 1 ? "" : "s"} ran out with no answer recorded — not counted above.
+        The Lapsed filter on the quotations list shows {n === 1 ? "it" : "them"}; mark{" "}
+        {n === 1 ? "it" : "each"} accepted or declined as you hear back.
+      </span>
+    </p>
+  );
+}
+
 function Body({ data }: { data: QuoteWinLoss }) {
   if (data.quotes === 0) {
     return (
-      <p className="mt-3 text-sm text-ink-400">
-        No quotes have been accepted or declined in this window yet. Mark quotes as
-        accepted or declined as you hear back, and this fills in on its own.
-      </p>
+      <>
+        <p className="mt-3 text-sm text-ink-400">
+          No quotes have been accepted or declined in this window yet. Mark quotes as
+          accepted or declined as you hear back, and this fills in on its own.
+        </p>
+        <Unanswered n={data.unanswered ?? 0} />
+      </>
     );
   }
 
@@ -164,6 +190,7 @@ function Body({ data }: { data: QuoteWinLoss }) {
           {data.note}
         </p>
       )}
+      <Unanswered n={data.unanswered ?? 0} />
 
       {data.estimator === "logistic" && (
         <div className="mt-4">

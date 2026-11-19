@@ -128,6 +128,9 @@ export interface QuoteWinLoss {
   losses: number;
   /** Declined and expired apart: a decline is a no, an expiry may be a quote nobody chased. */
   lossBreakdown: { declined: number; expired: number };
+  /** Sent quotes whose valid-until day has passed with no answer recorded.
+   *  In neither count above. Absent from a server older than this field. */
+  unanswered?: number;
   baselineWinRatePct: number | null;
   windowFrom: string | null;
   filters: { customerId: string | null; productName: string | null };

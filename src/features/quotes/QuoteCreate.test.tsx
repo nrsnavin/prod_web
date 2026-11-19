@@ -437,6 +437,35 @@ describe("choosing the customer", () => {
     expect(body.customerName).toBe("Ravi Textiles");
   });
 
+  it("a name typed before picking from the list is not sent with the picked customer", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    // Began typing a new customer, then found them on the list after all.
+    await user.click(screen.getByRole("button", { name: /enter a new customer/i }));
+    await user.type(screen.getByLabelText(/^customer \*/i), "Kumar Garments");
+    await user.click(screen.getByRole("button", { name: /pick from customers/i }));
+    await user.click(screen.getByLabelText(/^customer$/i));
+    await user.click(await screen.findByText("Ravi Textiles"));
+
+    await user.type(screen.getAllByLabelText(/^product \*/i)[0], "20mm Woven");
+    await user.type(weight("Warp yarn"), "4.2");
+    await user.type(rate("Warp yarn"), "240");
+    await user.click(screen.getByRole("button", { name: /raise quotation/i }));
+
+    await waitFor(() => expect(createMutate).toHaveBeenCalled());
+    const body = createMutate.mock.calls[0][0];
+    expect(body.customer).toBe("c1");
+    // Before: "Kumar Garments" — the box is off screen but kept its text,
+    // and the server puts a typed name ahead of the master's. The quote
+    // went out to Ravi Textiles' record under Kumar Garments' name.
+    expect(body.customerName).toBe("");
+  });
+
+  it("says the address comes from the master too", () => {
+    renderPage();
+    expect(screen.getByText(/Name, address, GSTIN and phone come from the master/)).toBeInTheDocument();
+  });
+
   it("will not save with the picker showing and nothing picked", async () => {
     const user = userEvent.setup();
     renderPage();

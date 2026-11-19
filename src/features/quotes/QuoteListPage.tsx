@@ -13,6 +13,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useQuotes } from "./hooks";
 import { Quote, QuoteStatus } from "./types";
 import { rupees } from "./costing";
+import { isLapsed } from "./validity";
 
 export const quoteStatusTone: Record<QuoteStatus, "neutral" | "info" | "success" | "danger" | "warning"> = {
   draft: "neutral",
@@ -66,13 +67,15 @@ const columns: Column<Quote>[] = [
   },
   {
     // A quote that has run out is not a quote any more, and the list is
-    // where somebody notices before promising the price again.
+    // where somebody notices before promising the price again. By the
+    // day (a quote is good through its last one), and only for a price
+    // still on offer — see validity.ts.
     key: "validTill",
     header: "Valid till",
     render: (q) => {
-      const expired = new Date(q.validTill) < new Date();
+      const lapsed = isLapsed(q);
       return (
-        <span className={expired ? "text-status-danger" : undefined}>
+        <span className={lapsed ? "text-status-danger" : undefined} title={lapsed ? "This price has lapsed" : undefined}>
           {fmtDate(q.validTill)}
         </span>
       );
@@ -128,6 +131,10 @@ export function QuoteListPage() {
             { value: "sent", label: "Sent" },
             { value: "accepted", label: "Accepted" },
             { value: "declined", label: "Declined" },
+            // Not a status anybody sets: the quotes still open whose
+            // valid-until day has passed. The server reads "expired"
+            // that way (GET /quote/list).
+            { value: "expired", label: "Lapsed" },
           ]}
         />
       </Card>

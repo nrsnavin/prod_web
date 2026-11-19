@@ -14,6 +14,7 @@ import { quoteService } from "./api";
 import { quoteStatusTone } from "./QuoteListPage";
 import { rupees } from "./costing";
 import { QuoteStatus } from "./types";
+import { isLapsed } from "./validity";
 
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -76,7 +77,8 @@ export function QuoteDetailPage() {
     });
   };
 
-  const expired = new Date(quote.validTill) < new Date();
+  // By the day, and only for a price still on offer (validity.ts).
+  const lapsed = isLapsed(quote);
   const settled = quote.status === "accepted" || quote.status === "cancelled";
 
   return (
@@ -113,7 +115,7 @@ export function QuoteDetailPage() {
 
       <div className="mb-4 flex items-center gap-3">
         <StatusChip tone={quoteStatusTone[quote.status]}>{quote.status}</StatusChip>
-        {expired && quote.status !== "accepted" && (
+        {lapsed && (
           <span className="text-sm text-status-danger">
             Valid until {fmtDate(quote.validTill)} — this price has lapsed
           </span>
