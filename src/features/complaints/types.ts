@@ -18,7 +18,9 @@ export interface ComplaintRow {
   resolution?: string;
   customer?: { _id: string; name: string } | null;
   elastic?: { _id: string; name: string } | null;
-  job?: { _id: string; jobNo?: number; order?: { orderNo?: number } | null } | null;
+  // `jobOrderNo`, as the server sends a job. This read `jobNo`, which it
+  // never has, so the list never named the job a complaint was about.
+  job?: { _id: string; jobOrderNo?: number; order?: { orderNo?: number } | null } | null;
 }
 
 /** One yarn lot the complained-of job is committed to. */

@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/components/ui/cn";
+import { formatDate } from "@/core/format/date";
 import { complaintService } from "./api";
 import { BlastRadiusPanel } from "./BlastRadiusPanel";
 import { ThemesPanel } from "./ThemesPanel";
@@ -59,12 +60,48 @@ function ComplaintListRow({
         </div>
         <p className="mt-0.5 truncate text-sm text-ink-500">{row.reason}</p>
         <p className="mt-0.5 text-xs text-ink-400 tabular-nums">
-          {new Date(row.date).toLocaleDateString("en-IN")}
-          {row.job?.jobNo != null && ` · Job ${row.job.jobNo}`}
-          {" · "}{row.category}
+          {[formatDate(row.date), row.job?.jobOrderNo != null ? `Job ${row.job.jobOrderNo}` : "", row.category]
+            .filter(Boolean).join(" · ")}
         </p>
       </button>
     </li>
+  );
+}
+
+/**
+ * The complaint itself, in full, and its notes.
+ *
+ * The list gives one truncated line of what the customer said, and the
+ * rest of this column is about what to DO — the trace, the resolution,
+ * the reply. Nothing showed the complaint: anything past its first line
+ * was not on the page. Nor its notes, where the customer's own words,
+ * each reply marked as sent and who settled it are all kept.
+ */
+function TheComplaint({ complaint }: { complaint: ComplaintRow }) {
+  const about = [
+    formatDate(complaint.date),
+    complaint.job?.jobOrderNo != null ? `Job ${complaint.job.jobOrderNo}` : "",
+    complaint.job?.order?.orderNo != null ? `Order ${complaint.job.order.orderNo}` : "",
+    complaint.elastic?.name ?? "",
+    complaint.category,
+  ].filter(Boolean).join(" · ");
+  const notes = (complaint.feedback ?? "").trim();
+
+  return (
+    <Card className="mb-4 p-5" role="region" aria-label="The complaint">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">{complaint.customer?.name ?? "Unknown customer"}</h2>
+        <StatusChip tone={STATUS_TONE[complaint.status]}>{complaint.status}</StatusChip>
+      </div>
+      <p className="mt-0.5 text-xs text-ink-400 tabular-nums">{about}</p>
+      <p className="mt-3 whitespace-pre-wrap text-sm text-ink-900">{complaint.reason}</p>
+      {notes && (
+        <div className="mt-4 border-t border-ink-100 pt-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-400">Notes</h3>
+          <p aria-label="Notes" className="mt-1 whitespace-pre-wrap text-sm text-ink-600">{notes}</p>
+        </div>
+      )}
+    </Card>
   );
 }
 
@@ -189,6 +226,7 @@ export function ComplaintsPage() {
         <div>
           {current ? (
             <>
+              <TheComplaint complaint={current} />
               {/* The blast radius sits above the resolution box on
                   purpose — it is the half with a clock on it. */}
               <BlastRadiusPanel key={current._id} complaintId={current._id} />
