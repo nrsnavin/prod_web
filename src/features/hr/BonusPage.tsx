@@ -14,7 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { Input } from "@/components/ui/Input";
 import { CalendarDays, Settings2, RotateCcw } from "lucide-react";
-import { bonusService, BonusRecordRow, BonusPreviewRow } from "./api";
+import { bonusService, BonusRecordRow, BonusPreviewRow, nothingDue } from "./api";
 
 // The Diwali date, label and thresholds that drive the whole module. Without
 // a date set nothing can be generated, so this has to be visible and
@@ -246,8 +246,19 @@ export function BonusPage() {
         </div>
       ),
     },
-    { key: "days", header: "Days worked", align: "right", render: (r) => r.daysWorked ?? "—" },
-    { key: "pct", header: "Percent", align: "right", render: (r) => (r.percent != null ? `${r.percent}%` : "—") },
+    {
+      key: "days",
+      header: "Days worked",
+      align: "right",
+      render: (r) =>
+        r.attendanceDays != null ? (
+          <span className="tabular-nums">
+            {r.attendanceDays}
+            {r.totalWorkingDays ? <span className="text-ink-400"> / {r.totalWorkingDays}</span> : null}
+          </span>
+        ) : "—",
+    },
+    { key: "pct", header: "Percent", align: "right", render: (r) => (r.bonusPercent != null ? `${r.bonusPercent}%` : "—") },
     {
       key: "amount",
       header: "Bonus (₹)",
@@ -257,16 +268,20 @@ export function BonusPage() {
     {
       key: "status",
       header: "Status",
-      render: (r) => (
-        <StatusChip tone={r.status === "paid" ? "success" : "warning"}>{r.status}</StatusChip>
-      ),
+      render: (r) =>
+        // ₹0, for somebody under the minimum days: not a payment waiting.
+        nothingDue(r) ? (
+          <StatusChip tone="neutral">nothing due</StatusChip>
+        ) : (
+          <StatusChip tone={r.status === "paid" ? "success" : "warning"}>{r.status}</StatusChip>
+        ),
     },
     {
       key: "act",
       header: "",
       align: "right",
       render: (r) =>
-        r.status !== "paid" ? (
+        r.status !== "paid" && !nothingDue(r) ? (
           // Paying posts to the employee's ledger and can't be taken back,
           // so the row asks once, with the amount, before it does.
           <InlineConfirm
@@ -293,7 +308,10 @@ export function BonusPage() {
         title="Diwali bonus"
         subtitle="Percent of salary received over the Diwali year, scaled by attendance."
         actions={
-          cfg?.status !== "triggered" && (
+          // Not once it is generated, and not once it is paid out: a
+          // completed year used to keep the button, reading "Available in
+          // October" for a bonus that was finished.
+          cfg?.status !== "triggered" && cfg?.status !== "completed" && (
             <Button disabled={!pv?.canGenerate} onClick={() => setTriggerOpen(true)}>
               <Play className="h-4 w-4" />{" "}
               {pv?.canGenerate
@@ -324,11 +342,16 @@ export function BonusPage() {
             { label: "Total payout", val: `₹${(stats?.totalPayout ?? 0).toLocaleString("en-IN")}` },
             { label: "Records", val: stats?.totalRecords ?? 0 },
             { label: "Paid", val: stats?.paidRecords ?? 0 },
-            { label: "Pending", val: stats?.pendingRecords ?? 0 },
-          ].map((t) => (
+            {
+              label: "Pending",
+              val: stats?.pendingRecords ?? 0,
+              note: stats?.nothingDueRecords ? `${stats.nothingDueRecords} more with nothing due` : undefined,
+            },
+          ].map((t: { label: string; val: string | number; note?: string }) => (
             <Card key={t.label} className="p-4">
               <p className="text-xs text-ink-400">{t.label}</p>
               <p className="mt-0.5 text-xl font-bold tabular-nums">{t.val}</p>
+              {t.note && <p className="mt-0.5 text-xs text-ink-400">{t.note}</p>}
             </Card>
           ))}
         </div>

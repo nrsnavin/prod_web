@@ -453,20 +453,32 @@ export interface BonusConfig {
   minBonusPercent?: number;
 }
 
+// A generated bonus record, as the server keeps it (models/BonusRecord.js).
+// This used to name `daysWorked` and `percent`, which the server has never
+// sent: both columns of the records table read "—" for everybody.
 export interface BonusRecordRow {
   _id: string;
   employee?: { _id: string; name: string; department?: string } | null;
   year: number;
-  daysWorked?: number;
-  percent?: number;
+  attendanceDays?: number;
+  totalWorkingDays?: number;
+  attendanceTier?: string;
+  bonusPercent?: number;
   bonusAmount: number;
   status: string;
 }
 
+/**
+ * A record with nothing to pay on it: generated at ₹0 (somebody under the
+ * minimum days) and not paid. The server will not mark one paid.
+ */
+export const nothingDue = (r: Pick<BonusRecordRow, "status" | "bonusAmount">) =>
+  r.status !== "paid" && !(r.bonusAmount > 0);
+
 export const bonusService = {
   async config(year: number): Promise<{
     config: BonusConfig;
-    stats: { totalRecords: number; paidRecords: number; pendingRecords: number; totalPayout: number };
+    stats: { totalRecords: number; paidRecords: number; pendingRecords: number; nothingDueRecords?: number; totalPayout: number };
   }> {
     return httpClient.get("/bonus/config", { year });
   },
