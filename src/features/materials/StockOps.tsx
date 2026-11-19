@@ -35,7 +35,10 @@ interface ReorderGroup {
     stock: number;
     minStock: number;
     price: number;
+    /** What to order now: the top-up less what is already on order. */
     suggestedQty: number;
+    /** Still to come on open purchase orders (already taken off suggestedQty). */
+    onOrder?: number;
   }>;
 }
 
@@ -79,7 +82,9 @@ export function ReorderSuggestions() {
               <span className="font-medium">{g.supplierName}</span>
               <span className="text-ink-400">
                 {" "}
-                — {g.items.map((i) => `${i.name} (+${i.suggestedQty})`).join(", ")}
+                — {g.items
+                  .map((i) => `${i.name} (+${i.suggestedQty}${(i.onOrder ?? 0) > 0 ? `, ${i.onOrder} already on order` : ""})`)
+                  .join(", ")}
               </span>
             </div>
             <span className="tabular-nums text-ink-600">
