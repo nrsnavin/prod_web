@@ -150,7 +150,12 @@ export function useJobMutations() {
   const cancel = useMutation({
     mutationFn: ({ jobId, reason }: { jobId: string; reason?: string }) =>
       jobService.cancel(jobId, reason),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      // Its warping and covering are cancelled with it.
+      qc.invalidateQueries({ queryKey: ["warpings"] });
+      qc.invalidateQueries({ queryKey: ["coverings"] });
+    },
   });
   const setProductionMode = useMutation({
     mutationFn: ({

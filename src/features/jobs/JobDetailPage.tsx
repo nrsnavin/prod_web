@@ -520,7 +520,8 @@ export function JobDetailPage() {
       <Modal open={cancelOpen} onClose={() => setCancelOpen(false)} title={`Cancel ${job.jobNo}?`} width="max-w-sm">
         <p className="text-sm text-ink-600 mb-3">
           The machine is released, quantities return to the order's pending pool, and the order
-          reverts to Approved if no other active jobs remain.
+          reverts to Approved if no other active jobs remain. Its warping and covering are
+          cancelled with it, where they are not already completed. This cannot be undone.
         </p>
         <Input
           label="Reason"
@@ -537,9 +538,12 @@ export function JobDetailPage() {
               cancel.mutate(
                 { jobId: job.id, reason: cancelReason || undefined },
                 {
-                  onSuccess: () => {
+                  onSuccess: (res) => {
                     setCancelOpen(false);
-                    toast("Job cancelled", "success");
+                    // A warping with yarn out is left for its batches to be
+                    // cancelled first; the server says which.
+                    if (res?.warpingBatches?.length && res.message) toast(res.message, "info");
+                    else toast("Job cancelled", "success");
                   },
                   onError: (e) =>
                     toast(e instanceof ApiError ? e.message : "Cancel failed", "error"),

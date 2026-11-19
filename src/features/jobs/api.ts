@@ -51,6 +51,14 @@ export interface ChangeElasticResult {
   headsChanged: number;
 }
 
+export interface JobCancelResult {
+  success: boolean;
+  message?: string;
+  programmes?: { warping: string | null; covering: string | null };
+  /** Batches with yarn out that are holding the job's warping open. */
+  warpingBatches?: string[];
+}
+
 export const jobService = {
   async list(params: {
     page: number; limit?: number; status: JobStatus | "all";
@@ -172,7 +180,15 @@ export const jobService = {
   updateStatus: (jobId: string, nextStatus: JobStatus) =>
     httpClient.post("/job/update-status", { jobId, nextStatus }),
 
-  cancel: (jobId: string, reason?: string) => httpClient.post("/job/cancel", { jobId, reason }),
+  /**
+   * Cancelling a job cancels the warping and covering that were
+   * preparing it. A warping with yarn already issued cannot be
+   * cancelled that way (cancelling the batch is what puts the yarn
+   * back), so the answer names those batches and `message` says what to
+   * do about them.
+   */
+  cancel: (jobId: string, reason?: string) =>
+    httpClient.post<JobCancelResult>("/job/cancel", { jobId, reason }),
 
   // Read-only: what is still open before the job may go to weaving.
   async weavingReadiness(jobId: string): Promise<WeavingReadiness> {
