@@ -12,32 +12,64 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { ApiError } from "@/core/http/httpClient";
-import { feedbackService, FeedbackItem } from "./api";
+import { feedbackService, FeedbackItem, FEEDBACK_STATUSES } from "./api";
 import { formatDate } from "@/core/format/date";
 import { useAuth } from "@/core/auth/useAuth";
 import { FeedbackThemes } from "./FeedbackThemes";
+import { Select } from "@/components/ui/Select";
 
+// The statuses a note really has. This page used to know "responded",
+// which is not one: its reply was refused every time, and its
+// "Responded" filter listed nothing.
+const STATUS_LABEL: Record<string, string> = {
+  open: "Open",
+  in_review: "In review",
+  resolved: "Resolved",
+  rejected: "Rejected",
+  closed: "Closed",
+};
 const statusTone: Record<string, ChipTone> = {
   open: "warning",
   in_review: "info",
-  responded: "success",
+  resolved: "success",
+  rejected: "danger",
   closed: "neutral",
 };
+
+/** Who wrote it: "Anonymous" only for a note sent that way. */
+const authorOf = (f: FeedbackItem) => (f.isAnonymous ? "Anonymous" : f.employee?.name ?? "Unknown employee");
+
+/** What the worker wrote: the subject, then what they said. */
+function TheNote({ item }: { item: FeedbackItem }) {
+  return (
+    <>
+      {item.subject && <p className="mt-1 text-sm font-medium text-ink-900">{item.subject}</p>}
+      {item.body && <p className="mt-1 whitespace-pre-wrap text-sm text-ink-600">{item.body}</p>}
+    </>
+  );
+}
 
 function RespondModal({ item, onClose }: { item: FeedbackItem; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [response, setResponse] = useState(item.response ?? "");
+  // A reply to a note still open settles it unless the admin says it is
+  // only being looked into; a note already moved on keeps its status.
+  const [status, setStatus] = useState(item.status === "open" ? "resolved" : item.status);
+  // The reply is sent when it was changed. Left as it was, the request
+  // says nothing of it and the server keeps it, and who gave it.
+  const changed = response.trim() !== (item.response ?? "").trim();
   const respond = useMutation({
-    mutationFn: () => feedbackService.respond(item._id, { response, status: "responded" }),
+    mutationFn: () => feedbackService.respond(item._id, { response: changed ? response.trim() : undefined, status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["feedback"] }),
   });
 
   return (
     <FormScreen open onClose={onClose} title="Respond to feedback" width="max-w-md">
-      <p className="text-sm text-ink-600 rounded-xl bg-ink-100/60 p-3">
-        {item.message ?? item.text ?? ""}
-      </p>
+      <div className="rounded-xl bg-ink-100/60 p-3">
+        <p className="text-xs text-ink-500">{authorOf(item)}</p>
+        <TheNote item={item} />
+      </div>
       <textarea
         aria-label="Response to feedback"
         rows={4}
@@ -46,6 +78,14 @@ function RespondModal({ item, onClose }: { item: FeedbackItem; onClose: () => vo
         placeholder="Your response…"
         className="mt-3 w-full rounded-lg border border-ink-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
       />
+      <div className="mt-3">
+        <Select
+          label="Status"
+          options={FEEDBACK_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))}
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        />
+      </div>
       <div className="mt-4 flex justify-end gap-2">
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
         <Button
@@ -97,12 +137,7 @@ export function FeedbackPage() {
 
       <div className="mb-4">
         <FilterChips
-          options={[
-            { value: "all", label: "All" },
-            { value: "open", label: "Open" },
-            { value: "responded", label: "Responded" },
-            { value: "closed", label: "Closed" },
-          ]}
+          options={[{ value: "all", label: "All" }, ...FEEDBACK_STATUSES.map((s) => ({ value: s, label: STATUS_LABEL[s] }))]}
           value={status}
           onChange={setStatus}
         />
@@ -127,27 +162,31 @@ export function FeedbackPage() {
               <div className="flex items-start gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">
-                    {f.employee?.name ?? "Anonymous"}
+                    <span>{authorOf(f)}</span>
                     <span className="ml-2 text-xs font-normal text-ink-400 capitalize">
-                      {f.employee?.department ?? ""}
-                      {f.category && ` · ${f.category}`}
-                      {f.type && ` · ${f.type}`}
+                      {[f.isAnonymous ? "" : f.employee?.department, f.category, f.type].filter(Boolean).join(" · ")}
                     </span>
                   </p>
-                  <p className="mt-1 text-sm text-ink-600">{f.message ?? f.text ?? ""}</p>
+                  {/* What they wrote. (The card used to read fields the server never sends, and showed nothing.) */}
+                  <TheNote item={f} />
                   {f.response && (
-                    <p className="mt-2 rounded-lg bg-status-successBg px-3 py-2 text-sm">
-                      <span className="font-medium">Response:</span> {f.response}
-                    </p>
+                    <div className="mt-2 rounded-lg bg-status-successBg px-3 py-2 text-sm">
+                      <p className="whitespace-pre-wrap">{f.response}</p>
+                      {(f.respondedBy?.name || f.respondedAt) && (
+                        <p className="mt-1 text-xs text-ink-500">
+                          {[f.respondedBy?.name, f.respondedAt ? formatDate(f.respondedAt) : ""].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                    </div>
                   )}
                   <p className="mt-1 text-xs text-ink-400">
                     {f.createdAt && formatDate(f.createdAt)}
                   </p>
                 </div>
-                <StatusChip tone={statusTone[f.status] ?? "neutral"}>{f.status}</StatusChip>
-                {f.status !== "responded" && f.status !== "closed" && (
+                <StatusChip tone={statusTone[f.status] ?? "neutral"}>{(STATUS_LABEL[f.status] ?? f.status).toLowerCase()}</StatusChip>
+                {f.status !== "closed" && (
                   <Button size="sm" variant="secondary" onClick={() => setResponding(f)}>
-                    <MessageSquareReply className="h-4 w-4" /> Respond
+                    <MessageSquareReply className="h-4 w-4" /> {f.response ? "Update reply" : "Respond"}
                   </Button>
                 )}
               </div>

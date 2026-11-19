@@ -25,16 +25,24 @@ export const announcementService = {
   remove: (id: string) => httpClient.delete(`/announcement/${id}`),
 };
 
+/** The statuses a note can have (api/feedback.js). */
+export const FEEDBACK_STATUSES = ["open", "in_review", "resolved", "rejected", "closed"] as const;
+export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
+
+/** A worker's complaint or suggestion, as the office is sent it (models/EmployeeFeedback.js). */
 export interface FeedbackItem {
   _id: string;
+  /** The author. Never sent for a note sent anonymously. */
   employee?: { _id: string; name: string; department?: string } | null;
+  isAnonymous?: boolean;
   type?: string;
   category?: string;
-  message?: string;
-  text?: string;
-  status: string;
+  subject?: string;
+  body?: string;
+  status: FeedbackStatus | string;
   response?: string;
   respondedBy?: { name?: string } | null;
+  respondedAt?: string;
   createdAt?: string;
 }
 
@@ -46,6 +54,10 @@ export const feedbackService = {
     );
     return res.data;
   },
+  /**
+   * Reply and/or move the note on. `response` left out says nothing of
+   * the reply — the server keeps it, and who gave it.
+   */
   respond: (id: string, body: { response?: string; status?: string }) =>
     httpClient.put(`/feedback/${id}/respond`, body),
 };
