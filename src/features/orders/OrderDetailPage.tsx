@@ -703,7 +703,7 @@ export function OrderDetailPage() {
         open={confirm === "cancel" && order.status !== "Open"}
         onClose={() => setConfirm(null)}
         title={`Cancel order ${no}?`}
-        description="The raw material drawn at approval goes back to stock and reserved stock is released. It can't be reopened. The owner is told on WhatsApp, with your reason."
+        description="The raw material drawn at approval goes back to stock and reserved stock is released. It can't be reopened. Jobs still running have to be cancelled or completed first. The owner is told on WhatsApp, with your reason."
         confirmLabel={`Cancel order ${no}`}
         minLength={5}
         loading={cancel.isPending}
