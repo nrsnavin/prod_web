@@ -35,6 +35,43 @@ const statusTone: Record<string, ChipTone> = {
   resolved: "success",
   rejected: "neutral",
 };
+/** The two ways an issue ends. */
+const CLOSED = ["resolved", "rejected"];
+
+/**
+ * Red for the two that stop a loom. The colours were written for three
+ * severities and there are four: "critical" fell through to the chip of
+ * a low one.
+ */
+export function severityTone(severity?: string): ChipTone {
+  if (severity === "critical" || severity === "high") return "danger";
+  if (severity === "medium") return "warning";
+  return "info";
+}
+
+const nameOf = (who: MachineIssue["reportedBy"]) => (who && typeof who === "object" ? who.name ?? "" : "");
+
+/**
+ * Who raised it: the operator, the supervisor at the floor entry, or the
+ * office. "" when nobody is known. Only the first used to be shown, so
+ * the other two came with no name at all.
+ */
+export function reportedLine(i: MachineIssue): string {
+  if (i.source === "floor") return `Raised at the floor entry${i.reportedByName ? ` by ${i.reportedByName}` : ""}`;
+  if (i.employee?.name) return `Reported by ${i.employee.name}`;
+  const office = nameOf(i.reportedBy);
+  return office ? `Reported by ${office} (office)` : "";
+}
+
+/** "Resolved 10 Nov 2026 by Owner" — for an issue that is closed; "" otherwise. */
+export function closingLine(i: MachineIssue): string {
+  if (!CLOSED.includes(i.status)) return "";
+  const who = nameOf(i.resolvedBy);
+  if (!i.resolvedAt && !who) return "";
+  return [i.status === "resolved" ? "Resolved" : "Dismissed", i.resolvedAt ? formatDate(i.resolvedAt) : "", who ? `by ${who}` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
 
 function UpdateModal({ issue, onClose }: { issue: MachineIssue; onClose: () => void }) {
   const { toast } = useToast();
@@ -50,10 +87,22 @@ function UpdateModal({ issue, onClose }: { issue: MachineIssue; onClose: () => v
   const [nextService, setNextService] = useState("");
 
   const resolving = status === "resolved";
+  const closing = CLOSED.includes(status);
+  // What goes on the issue: the notes typed — or, resolving with only the
+  // service log filled in, the work done (it need not be typed twice).
+  const finalNotes = notes.trim() || (resolving ? logDesc.trim() : "");
+  // The operator who reported it reads this note: an issue is not
+  // resolved or dismissed without a word of why. (The phone never
+  // allowed it; this form did.)
+  const needsNote = closing && !finalNotes;
+  // Notes are sent when they were changed. Untouched, the request says
+  // nothing of them and the server keeps what it has — a colleague's
+  // later note included. Cleared, they are sent as cleared.
+  const notesChanged = finalNotes !== (issue.resolutionNotes ?? "").trim();
 
   const update = useMutation({
     mutationFn: async () => {
-      await issueService.setStatus(issue._id, status, notes || undefined);
+      await issueService.setStatus(issue._id, status, notesChanged ? finalNotes : undefined);
       // On resolution, also append a service log to the machine if the
       // engineer filled in the service details.
       if (resolving && logDesc.trim() && issue.machine?._id) {
@@ -85,10 +134,15 @@ function UpdateModal({ issue, onClose }: { issue: MachineIssue; onClose: () => v
           onChange={(e) => setStatus(e.target.value)}
         />
         <Input
-          label="Resolution notes"
+          label={closing ? "Resolution notes *" : "Resolution notes"}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="What was done"
+          placeholder={status === "rejected" ? "Why it is dismissed" : "What was done"}
+          hint={
+            needsNote
+              ? `${resolving ? "Say what was done" : "Say why"} — the operator who reported it sees this.`
+              : undefined
+          }
         />
 
         {resolving && (
@@ -117,6 +171,7 @@ function UpdateModal({ issue, onClose }: { issue: MachineIssue; onClose: () => v
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
         <Button
           loading={update.isPending}
+          disabled={needsNote}
           onClick={() =>
             update.mutate(undefined, {
               onSuccess: () => {
@@ -259,12 +314,24 @@ function ReportIssueModal({ onClose }: { onClose: () => void }) {
 function AnomalyBanner() {
   const [days, setDays] = useState(30);
   const [threshold, setThreshold] = useState(3);
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: ["machine-anomalies", days, threshold],
     queryFn: () => issueService.anomalies(days, threshold),
   });
   const anomalies = data?.anomalies ?? [];
   const hit = anomalies.length > 0;
+
+  // A check that failed is not an all-clear: this used to fall through
+  // to "No repeat-offender machines", in green.
+  if (isError) {
+    return (
+      <Card className="mb-4 p-4">
+        <p className="flex items-center gap-2 text-sm text-ink-500">
+          <AlertTriangle className="h-4 w-4" /> Could not check for machines that keep breaking down.
+        </p>
+      </Card>
+    );
+  }
 
   const controls = (
     <div className="flex items-center gap-2 text-xs text-ink-500">
@@ -319,7 +386,9 @@ function AnomalyBanner() {
 export function MachineIssuesPage() {
   const me = useAuth().user;
   const role = me?.role;
-  const canSeeAnomalies = role === "admin" || role === "production";
+  // …and not for an employee's own login, which carries the role
+  // "production" too: the server refuses it the roll-up.
+  const canSeeAnomalies = (role === "admin" || role === "production") && me?.selfService !== true;
   // Closing an issue is the office's: a worker's own login reports one
   // and follows it, and the server refuses its status change.
   const canUpdate = me?.selfService !== true;
@@ -383,24 +452,25 @@ export function MachineIssuesPage() {
                   <p className="font-semibold">
                     {i.machine?.ID ?? "Machine"}
                     {i.severity && (
-                      <StatusChip
-                        tone={i.severity === "high" ? "danger" : i.severity === "medium" ? "warning" : "info"}
-                        className="ml-2"
-                      >
+                      <StatusChip tone={severityTone(i.severity)} className="ml-2">
                         {i.severity}
                       </StatusChip>
                     )}
                   </p>
-                  <p className="mt-1 text-sm text-ink-600">{i.description ?? i.title ?? ""}</p>
+                  {/* The title the reporter gave, then what they said of it. */}
+                  {i.title && i.title !== i.description && (
+                    <p className="mt-1 text-sm font-medium text-ink-900">{i.title}</p>
+                  )}
+                  {i.description && <p className="mt-1 text-sm text-ink-600">{i.description}</p>}
                   <p className="mt-1 text-xs text-ink-400">
-                    {i.employee?.name && `Reported by ${i.employee.name}`}
-                    {i.createdAt && ` · ${formatDate(i.createdAt)}`}
+                    {[reportedLine(i), i.createdAt ? formatDate(i.createdAt) : ""].filter(Boolean).join(" · ")}
                   </p>
                   {i.resolutionNotes && (
                     <p className="mt-2 rounded-lg bg-status-successBg px-3 py-2 text-sm">
                       {i.resolutionNotes}
                     </p>
                   )}
+                  {closingLine(i) && <p className="mt-1 text-xs text-ink-400">{closingLine(i)}</p>}
                 </div>
                 <StatusChip tone={statusTone[i.status] ?? "neutral"}>
                   {STATUS_LABEL[i.status] ?? i.status}

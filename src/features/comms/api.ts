@@ -50,15 +50,28 @@ export const feedbackService = {
     httpClient.put(`/feedback/${id}/respond`, body),
 };
 
+/** A login named on an issue: the name when the server sent it, else just its id. */
+export type IssueLogin = { _id: string; name?: string } | string | null;
+
 export interface MachineIssue {
   _id: string;
   machine?: { _id: string; ID: string; status?: string } | null;
+  /** The operator: who reported it — or, raised at the floor entry, whose loom it is. */
   employee?: { _id: string; name: string; department?: string } | null;
+  /** worker: the operator's own report; admin: raised by the office; floor: by the supervisor at the floor entry. */
+  source?: "worker" | "admin" | "floor";
+  /** The office login that filed it. */
+  reportedBy?: IssueLogin;
+  /** The supervisor's name, for an issue raised at the floor entry. */
+  reportedByName?: string;
   title?: string;
   description?: string;
   severity?: string;
   status: string;
   resolutionNotes?: string;
+  /** When it was resolved or dismissed, and by whom. */
+  resolvedAt?: string;
+  resolvedBy?: IssueLogin;
   createdAt?: string;
 }
 
@@ -109,6 +122,10 @@ export const issueService = {
     if (photo) fd.append("photo", photo);
     return (await uploadForm<{ data: IssueIntake }>("/machine-issue/intake", fd, "Could not write it up")).data;
   },
+  /**
+   * Move an issue on. `resolutionNotes` left out says nothing of the
+   * notes — the server keeps what it has; a text, "" included, replaces them.
+   */
   setStatus: (id: string, status: string, resolutionNotes?: string) =>
     httpClient.put(`/machine-issue/${id}/status`, { status, resolutionNotes }),
   async anomalies(days = 30, threshold = 3): Promise<{ windowDays: number; threshold: number; anomalies: MachineAnomaly[] }> {
