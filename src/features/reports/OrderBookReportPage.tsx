@@ -99,7 +99,21 @@ export function OrderBookReportPage() {
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <Tile label="Orders" value={nf(s?.orders)} sub={cmp && <Delta value={cmp.delta.orders} />} />
         <Tile label="Ordered (m)" value={nf(s?.orderedQty)} sub={cmp && <Delta value={cmp.delta.orderedQty} pct={cmp.delta.orderedQtyPct} />} />
-        <Tile label="Pending (m)" value={nf(s?.pendingQty)} />
+        {/* "Pending" was the metres no job had been raised for — read as
+            the backlog, which it is not: a book planned in full and not
+            yet made said 0. What the customers are still owed (ordered
+            less packed, open orders) leads, with the unplanned part
+            under it. A server that does not send the owed figure yet
+            gets the old number under its true name. */}
+        {s?.toDeliverQty == null ? (
+          <Tile label="Not yet planned (m)" value={nf(s?.pendingQty)} />
+        ) : (
+          <Tile
+            label="Still to deliver (m)"
+            value={nf(s.toDeliverQty)}
+            sub={<span className="text-ink-400">{nf(s.pendingQty)} not yet planned</span>}
+          />
+        )}
         <Tile label="Open orders" value={nf(s?.openOrders)} />
         <Tile label="Overdue" value={nf(s?.overdueOrders)} tone="danger" />
         <Tile

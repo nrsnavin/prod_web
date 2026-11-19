@@ -105,7 +105,10 @@ export type OrderBookGroupBy = "customer" | "status" | "supplyMonth";
 export interface OrderBookSummary {
   orders: number;
   orderedQty: number;
+  /** Ordered less planned on open orders: what no job has been raised for. */
   pendingQty: number;
+  /** Ordered less packed on open orders: what the customers are still owed. */
+  toDeliverQty?: number;
   openOrders: number;
   completedOrders: number;
   overdueOrders: number;
