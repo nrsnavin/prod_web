@@ -21,7 +21,7 @@ import { customerService } from "@/features/customers/api";
 import { CreditBand } from "@/features/customers/credit";
 import { elasticService } from "@/features/elastics/api";
 import { useElasticGroups } from "@/features/elasticGroups/hooks";
-import { itemElasticId, itemElasticName } from "@/features/elasticGroups/types";
+import { itemElasticArchived, itemElasticId, itemElasticName } from "@/features/elasticGroups/types";
 import { OrderFormValues } from "./types";
 import { OrderEtaPanel } from "./OrderEtaPanel";
 import { addable } from "@/features/common/quickCreateStore";
@@ -106,15 +106,30 @@ export function OrderForm({
   // Groups for the selected customer (plus global bundles).
   const groups = useElasticGroups(watchedCustomer || undefined, !!watchedCustomer);
   const [groupPick, setGroupPick] = useState("");
+  const [groupNote, setGroupNote] = useState("");
 
   const addGroup = (groupId: string) => {
     const g = groups.data?.find((x) => x._id === groupId);
     if (!g) return;
     const current = getValues("elasticOrdered") ?? [];
-    const existing = new Set(current.map((l) => l.elastic).filter(Boolean));
-    const toAdd = g.items
-      .map((it) => ({ elastic: itemElasticId(it), quantity: it.defaultQuantity || 0 }))
-      .filter((l) => l.elastic && !existing.has(l.elastic));
+    // Each elastic once: already on the order, or named twice by an
+    // older group — an order will not save one elastic on two lines.
+    // And not one retired since the group was saved: it is out of the
+    // picker on every line below, and a bundle is not a way round that.
+    const taken = new Set(current.map((l) => l.elastic).filter(Boolean));
+    const toAdd: { elastic: string; quantity: number }[] = [];
+    const retired: string[] = [];
+    for (const it of g.items) {
+      const id = itemElasticId(it);
+      if (!id || taken.has(id)) continue;
+      if (itemElasticArchived(it)) {
+        retired.push(itemElasticName(it));
+        continue;
+      }
+      taken.add(id);
+      toAdd.push({ elastic: id, quantity: it.defaultQuantity || 0 });
+    }
+    setGroupNote(retired.length ? `Left off — archived: ${retired.join(", ")}` : "");
     if (toAdd.length === 0) return;
     const onlyEmptyRow = current.length === 1 && !current[0].elastic && !Number(current[0].quantity);
     if (onlyEmptyRow) replace(toAdd);
@@ -204,6 +219,7 @@ export function OrderForm({
                 />
               </div>
               <span className="text-xs text-ink-400">adds all its elastics to the order</span>
+              {groupNote && <p className="w-full text-xs text-status-warning">{groupNote}</p>}
             </div>
           )}
         </div>
