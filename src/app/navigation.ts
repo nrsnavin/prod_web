@@ -338,8 +338,13 @@ export function applyNavPrefs(sections: NavSection[], prefs: NavPrefs): NavSecti
 /** Path → allowed check, for route guarding. Matches the most specific
  *  nav item that is a prefix of the path, so detail pages (e.g.
  *  /orders/123) inherit their section's ("/orders") access. Paths with no
- *  matching nav item are allowed (e.g. "/" dashboard). */
-export function canAccessPath(path: string, ctx: AccessCtx): boolean {
+ *  matching nav item are allowed (e.g. "/" dashboard).
+ *
+ *  It goes by the screen: what a link asks of the screen ("?low=1",
+ *  "#items") is set aside first. A filtered link used to match no screen
+ *  at all — and so was allowed, for anyone. */
+export function canAccessPath(to: string, ctx: AccessCtx): boolean {
+  const path = to.split(/[?#]/)[0];
   const match = allNavItems
     .filter((i) => i.path !== "/" && (path === i.path || path.startsWith(i.path + "/")))
     .sort((a, b) => b.path.length - a.path.length)[0];

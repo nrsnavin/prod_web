@@ -41,6 +41,17 @@ describe("navigation access — custom per-user features", () => {
     }
   });
 
+  it("canAccessPath goes by the screen, whatever the link asks of it", () => {
+    // A link that opens a list already filtered ("/materials?low=1")
+    // matched no screen at all, and what matches no screen is allowed:
+    // the home screen offered it to a login that cannot open Materials.
+    const user = { department: "production", features: ["/orders"] };
+    expect(canAccessPath("/machines?status=free", user)).toBe(false);
+    expect(canAccessPath("/machines/9?tab=issues#log", user)).toBe(false);
+    expect(canAccessPath("/orders?status=Open", user)).toBe(true);
+    expect(canAccessPath("/orders/123#items", user)).toBe(true);
+  });
+
   it("canAccessPath honors the feature list for detail routes", () => {
     const user = { department: "finance", features: ["/orders"] };
     expect(canAccessPath("/orders/123", user)).toBe(true); // inherits /orders

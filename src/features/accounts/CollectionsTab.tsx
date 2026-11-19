@@ -105,6 +105,19 @@ export function LogDialog({ entry, kind, onClose }: { entry: CollectionEntry; ki
   );
 }
 
+// What a send came back with (kept on its note): "sent"; a dry run, when
+// WhatsApp is not connected and the office sends the message itself; or
+// the provider's refusal — shown as one, with what it said. The chip
+// used to print whatever was stored, in the same grey for all three.
+function sendOutcome(result: string): "sent" | "dry" | "failed" {
+  if (result === "sent") return "sent";
+  if (result === "dry run" || result === "dry_run") return "dry";
+  return "failed";
+}
+const sendTone = (result: string) => ({ sent: "success", dry: "neutral", failed: "danger" } as const)[sendOutcome(result)];
+const sendLabel = (result: string) => ({ sent: "sent", dry: "not connected", failed: "not sent" })[sendOutcome(result)];
+const sendReason = (result: string) => result.replace(/^error:\s*/i, "");
+
 function HistoryDialog({ entry, onClose }: { entry: CollectionEntry; onClose: () => void }) {
   const { data, isLoading } = useQuery({ queryKey: [ACCOUNTS_KEY, "collection-history", entry.party], queryFn: () => accountsService.collectionHistory(entry.party) });
   return (
@@ -113,7 +126,8 @@ function HistoryDialog({ entry, onClose }: { entry: CollectionEntry; onClose: ()
         <ul className="divide-y divide-ink-100 text-sm">
           {data.map((h) => (
             <li key={h._id} className="py-2">
-              <p><span className="font-medium capitalize">{h.kind === "reply" ? "Their reply" : h.kind}</span>{h.channel ? <span className="text-ink-400"> · {h.channel}</span> : null}<span className="text-ink-400"> · {formatDate(h.createdAt)}{h.byName ? ` · ${h.byName}` : ""}</span>{h.result ? <StatusChip tone={h.result === "sent" ? "success" : "neutral"} className="ml-2">{h.result}</StatusChip> : null}</p>
+              <p><span className="font-medium capitalize">{h.kind === "reply" ? "Their reply" : h.kind}</span>{h.channel ? <span className="text-ink-400"> · {h.channel}</span> : null}<span className="text-ink-400"> · {formatDate(h.createdAt)}{h.byName ? ` · ${h.byName}` : ""}</span>{h.result ? <StatusChip tone={sendTone(h.result)} className="ml-2">{sendLabel(h.result)}</StatusChip> : null}</p>
+              {h.result && sendOutcome(h.result) === "failed" && <p className="text-status-danger">{sendReason(h.result)}</p>}
               {h.kind === "promise" && h.promiseDate && <p className="text-ink-600">₹{money(h.promiseAmount)} by {formatDate(h.promiseDate)}</p>}
               {h.kind === "reply" && h.message && <p className="whitespace-pre-wrap rounded bg-ink-50 px-2 py-1 text-ink-700">“{h.message}”</p>}
               {h.note && <p className="text-ink-600">{h.note}</p>}
@@ -160,6 +174,7 @@ export function CollectionsTab() {
                   <p className="text-xs text-ink-400">{[r.contact.name, r.contact.phone && <span key="p" className="inline-flex items-center gap-1"><Phone className="h-3 w-3" />{r.contact.phone}</span>, r.contact.accountant].filter(Boolean).map((x, i) => <span key={i} className="mr-2">{x}</span>)}</p>
                   <p className="text-xs">
                     {r.lastContact ? <span className="text-ink-500">Last: {r.lastContact.kind}{r.lastContact.channel ? ` (${r.lastContact.channel})` : ""} {formatDate(r.lastContact.at)}{r.lastContact.byName ? ` by ${r.lastContact.byName}` : ""}</span> : <span className="text-ink-400">Not contacted yet</span>}
+                    {r.failedSend && <span className="ml-2 text-status-danger">Reminder on {formatDate(r.failedSend.at)} did not go{r.failedSend.result ? `: ${r.failedSend.result}` : ""}</span>}
                     {r.next && !r.held && <span className={`ml-2 font-medium ${r.recentlyContacted ? "text-ink-400" : r.next.action === "apply" ? "text-status-success" : r.next.action !== "remind" ? "text-status-danger" : "text-status-warning"}`}>Next: {r.recentlyContacted && r.next.action !== "apply" ? "give them the week" : r.next.action === "apply" ? <Link to={`/accounts/statements?partyType=customer&party=${r.party}`} className="underline">{r.next.label}</Link> : r.next.label}</span>}
                   </p>
                 </div>

@@ -647,7 +647,10 @@ export interface CollectionEntry {
   party: string; partyName: string; total: number; overdue: number; oldestDays: number; count: number; priority: number;
   docs: OpenDoc[];
   contact: { name: string; phone: string; email: string; accountant: string; accountantPhone: string; paymentTerms: string };
+  /** The last contact that was one: a reminder the provider refused is not. */
   lastContact?: { kind: string; at: string; byName?: string; note?: string; channel?: string } | null;
+  /** The latest thing tried was a reminder that did not go, and why. */
+  failedSend?: { at: string; to: string; result: string } | null;
   promise?: { date: string; amount: number; note?: string; live: boolean; broken: boolean } | null;
   recentlyContacted?: boolean;
   held?: boolean;

@@ -62,7 +62,10 @@ export interface MyShiftHistoryRow {
 export interface MyPerformance {
   days: number;
   summary: {
+    /** Every verified shift in the period: what the figures count. */
     shifts: number;
+    /** How many of them are listed below (the newest); absent on an older server. */
+    listed?: number;
     totalMetres: number;
     avgPerShift: number | null;
     metresPerHour: number | null;

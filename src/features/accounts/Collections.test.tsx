@@ -106,3 +106,49 @@ describe("a customer's reply", () => {
     expect(dialog).toHaveTextContent("₹50,000.00 by");
   });
 });
+
+// A reminder the provider refused is not a contact made. The list said
+// "Last: reminder (whatsapp)… give them the week" for one that never left.
+describe("a reminder that did not go", () => {
+  it("is said on the customer's row, and the row still asks for a reminder", async () => {
+    svc.autoRemind.mockResolvedValue(remind(false));
+    svc.collections.mockResolvedValue({ success: true, total: 52500, whatsapp: true, rows: [
+      { ...entry, lastContact: null, recentlyContacted: false, failedSend: { at: "2026-11-18T05:35:00Z", to: "+919840011111", result: "The number is not a valid WhatsApp number" } },
+    ] });
+    wrap();
+    const li = (await screen.findByText("Sunrise Garments")).closest("li")!;
+    expect(li).toHaveTextContent("Reminder on 18 Nov 2026 did not go: The number is not a valid WhatsApp number");
+    expect(li).toHaveTextContent("Next: Gentle reminder");
+    expect(li).not.toHaveTextContent("give them the week");
+    expect(li).toHaveTextContent("Not contacted yet");
+  });
+
+  it("says nothing of the kind when the last reminder went (unchanged)", async () => {
+    svc.autoRemind.mockResolvedValue(remind(false));
+    svc.collections.mockResolvedValue({ success: true, total: 52500, whatsapp: true, rows: [{ ...entry, failedSend: null }] });
+    wrap();
+    const li = (await screen.findByText("Sunrise Garments")).closest("li")!;
+    expect(li).not.toHaveTextContent("did not go");
+    expect(li).toHaveTextContent("give them the week");
+  });
+
+  it("is marked in the history, with what the provider said", async () => {
+    svc.autoRemind.mockResolvedValue(remind(false));
+    svc.collectionHistory.mockResolvedValue([
+      { _id: "n1", kind: "reminder", channel: "whatsapp", result: "error: The number is not a valid WhatsApp number", byName: "Scheduled reminder", createdAt: "2026-11-18T05:35:00Z" },
+      { _id: "n2", kind: "reminder", channel: "whatsapp", result: "sent", byName: "Scheduled reminder", createdAt: "2026-11-10T05:35:00Z" },
+      { _id: "n3", kind: "reminder", channel: "whatsapp", result: "dry_run", byName: "Owner", createdAt: "2026-11-02T05:35:00Z" },
+    ]);
+    wrap();
+    await screen.findByText("Sunrise Garments");
+    await userEvent.click(screen.getByRole("button", { name: /history/i }));
+    const dialog = await screen.findByRole("dialog");
+    const rows = await within(dialog).findAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("not sent");
+    expect(rows[0]).toHaveTextContent("The number is not a valid WhatsApp number");
+    expect(rows[1]).toHaveTextContent("sent");
+    expect(rows[1]).not.toHaveTextContent("not sent");
+    // Not connected: logged for the office to send itself.
+    expect(rows[2]).toHaveTextContent("not connected");
+  });
+});

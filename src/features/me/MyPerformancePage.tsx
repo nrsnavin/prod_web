@@ -166,6 +166,14 @@ export function MyPerformancePage() {
             </Button>
           </div>
         )}
+        {/* The list is the newest rows; the figures are the whole period's.
+            Said where the list ends, or it reads as a list that stops short
+            of the count above it. */}
+        {perf.data && perf.data.shifts.length <= shown && (s?.shifts ?? 0) > perf.data.shifts.length && (
+          <p className="border-t border-ink-100 px-5 py-3 text-xs text-ink-500">
+            These are the newest {fmt(perf.data.shifts.length)} of {fmt(s!.shifts)} shifts in this period. The figures above count all {fmt(s!.shifts)}.
+          </p>
+        )}
       </Card>
 
       <Card className="mt-4" id="wastage">
