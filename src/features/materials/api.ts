@@ -122,9 +122,15 @@ export const materialService = {
   },
 
   async update(id: string, body: MaterialFormValues, expectedVersion?: number): Promise<RawMaterial> {
+    // Never a stock figure. An edit that carried one wrote it straight
+    // onto the material — past the ledger, and over anything drawn since
+    // the form was opened. Stock moves by a receipt, an issue or
+    // `adjustStock` below; the server now refuses a different figure here.
+    const fields: Partial<ReturnType<typeof packClassification>> = packClassification(body);
+    delete fields.stock;
     const res = await httpClient.put<{ success: boolean; material: RawMaterial }>(
       "/materials/edit-raw-material",
-      { _id: id, ...packClassification(body), ...(expectedVersion === undefined ? {} : { expectedVersion }) }
+      { _id: id, ...fields, ...(expectedVersion === undefined ? {} : { expectedVersion }) }
     );
     return res.material;
   },

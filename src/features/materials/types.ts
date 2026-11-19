@@ -104,6 +104,8 @@ export interface LedgerRow {
   lotNo: string;
   unitPrice: number;
   remarks: string;
+  /** Who keyed it. Absent from an older server, blank when nobody is on record. */
+  by?: string;
 }
 
 export interface MaterialLedger {

@@ -83,7 +83,8 @@ export const ledgerColumns = (unit: string): Column<LedgerRow>[] => [
     header: "Details",
     cellClassName: "whitespace-normal",
     render: (r) => {
-      const bits = [r.lotNo && `Lot ${r.lotNo}`, r.remarks].filter(Boolean);
+      // …and who keyed it, last: on an adjustment that is half the story.
+      const bits = [r.lotNo && `Lot ${r.lotNo}`, r.remarks, r.by && `by ${r.by}`].filter(Boolean);
       return bits.length ? (
         <span className="text-ink-600">{bits.join(" · ")}</span>
       ) : (

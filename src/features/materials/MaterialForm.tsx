@@ -113,7 +113,20 @@ export function MaterialForm({
   });
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+    <form
+      // An edit sends no stock figure. The form used to send the one it
+      // loaded with every save — which put back whatever had been drawn
+      // since it was opened, and let a typed figure change the stock with
+      // no ledger row, reason or name. Stock is changed with Adjust stock.
+      onSubmit={handleSubmit((values) => {
+        if (!initial) return onSubmit(values);
+        const fields = { ...values };
+        delete fields.stock;
+        onSubmit(fields);
+      })}
+      className="space-y-4"
+      noValidate
+    >
       <Input
         label="Material name *"
         error={errors.name?.message}
@@ -167,12 +180,18 @@ export function MaterialForm({
           otherwise.
         */}
         <Input label="Unit" placeholder="kg" {...register("unit")} />
-        <Input
-          label={initial ? "Stock" : "Opening stock"}
-          type="number"
-          step="0.01"
-          {...register("stock")}
-        />
+        {initial ? (
+          // Shown, not taken: see the note on the form's submit.
+          <Input
+            label="Stock"
+            value={`${(initial.stock ?? 0).toLocaleString("en-IN")} ${initial.unit || "kg"}`}
+            disabled
+            readOnly
+            hint="Changed with Adjust stock, which records who and why."
+          />
+        ) : (
+          <Input label="Opening stock" type="number" step="0.01" {...register("stock")} />
+        )}
         <Input label="Min stock" type="number" step="0.01" {...register("minStock")} />
       </div>
       <div className="flex justify-end gap-2 pt-1">

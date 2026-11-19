@@ -201,6 +201,17 @@ describe("the ledger's cells", () => {
     return render(<MemoryRouter>{col!.render(r)}</MemoryRouter>);
   };
 
+  it("says who keyed a movement, after why", () => {
+    cell("details", row({ type: "STOCK_ADJUST", label: "Stock adjustment", remarks: "Stock adjustment: Damaged in the rain", by: "Ravi" }));
+    // Before: the reason, and nobody.
+    expect(screen.getByText("Stock adjustment: Damaged in the rain · by Ravi")).toBeInTheDocument();
+  });
+
+  it("a row from before names were sent reads as it did", () => {
+    cell("details", row({ remarks: "Issued to J-12", lotNo: "D-4471" }));
+    expect(screen.getByText("Lot D-4471 · Issued to J-12")).toBeInTheDocument();
+  });
+
   it("puts a receipt in the In column and leaves Out empty", () => {
     const r = row({ direction: 1, label: "Goods receipt", quantity: 100, signedQuantity: 100 });
     cell("in", r);
