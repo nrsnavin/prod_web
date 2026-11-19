@@ -36,9 +36,17 @@ export interface Announcement {
   _id: string;
   title: string;
   body?: string;
+  /** info, warning, safety, policy or celebration. */
+  type?: string;
   isPinned?: boolean;
   audience?: string;
   department?: string;
+  /** false once removed. Only an admin is sent removed notices. */
+  isActive?: boolean;
+  /** When it goes up. */
+  validFrom?: string;
+  /** The last day it is up: the notice shows through that day. */
+  validUntil?: string;
   createdAt?: string;
   /** Tamil and Hindi, for the employee app (admin view). */
   translations?: Partial<Record<"ta" | "hi", { title: string; body: string; by?: "ai" | "person" }>>;
