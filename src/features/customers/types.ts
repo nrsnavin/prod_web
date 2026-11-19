@@ -1,3 +1,25 @@
+/**
+ * One of a customer's named contacts (purchase, accounts, merchandiser),
+ * as the server keeps it: { name, mobile, email }. `phoneNumber` is not a
+ * field of it — the customer page read that, and so never showed a number.
+ */
+export interface ContactPerson {
+  name?: string;
+  mobile?: string;
+  email?: string;
+  /** Older spelling; read if a record carries it, never written. */
+  phoneNumber?: string;
+}
+
+/** "Meena · 98400 12345 · accounts@slg.in" — whatever of it was entered. */
+export function contactLine(person?: ContactPerson | null): string | undefined {
+  if (!person) return undefined;
+  const parts = [person.name, person.mobile || person.phoneNumber, person.email]
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean);
+  return parts.length ? parts.join(" · ") : undefined;
+}
+
 export interface Customer {
   /** The ledger's name in Tally when it differs from `name`. */
   tallyName?: string;
@@ -38,9 +60,9 @@ export interface Customer {
   country?: string;
   sez?: boolean;
   currency?: string;
-  purchase?: unknown[];
-  accountant?: { name?: string; phoneNumber?: string };
-  merchandiser?: { name?: string; phoneNumber?: string };
+  purchase?: ContactPerson;
+  accountant?: ContactPerson;
+  merchandiser?: ContactPerson;
   paymentTerms?: string;
   createdAt?: string;
 }

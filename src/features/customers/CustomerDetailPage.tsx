@@ -18,6 +18,8 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useCustomer, useCustomerMutations } from "./hooks";
 import { CustomerForm } from "./CustomerForm";
+import { contactLine } from "./types";
+import { CreditTermsHistory } from "./CreditTermsHistory";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { CustomerElasticGroups } from "@/features/elasticGroups/CustomerElasticGroups";
 import { CustomerOrdersCard } from "./CustomerOrdersCard";
@@ -120,18 +122,10 @@ export function CustomerDetailPage() {
             { label: "Payment terms", value: customer.paymentTerms },
             { label: "Export", value: customer.sez ? "SEZ unit (zero-rated)" : customer.country && customer.country.toLowerCase() !== "india" ? `${customer.country}${customer.currency ? ` · invoiced in ${customer.currency}` : ""}` : undefined },
             { label: "Interest on overdue", value: customer.interestRate !== null && customer.interestRate !== undefined ? `${customer.interestRate}% a year${customer.interestGraceDays ? ` after ${customer.interestGraceDays} days` : ""}` : undefined },
-            {
-              label: "Accountant",
-              value: customer.accountant?.name
-                ? `${customer.accountant.name}${customer.accountant.phoneNumber ? ` · ${customer.accountant.phoneNumber}` : ""}`
-                : undefined,
-            },
-            {
-              label: "Merchandiser",
-              value: customer.merchandiser?.name
-                ? `${customer.merchandiser.name}${customer.merchandiser.phoneNumber ? ` · ${customer.merchandiser.phoneNumber}` : ""}`
-                : undefined,
-            },
+            // Name, number and email, as entered (see contactLine).
+            { label: "Purchase contact", value: contactLine(customer.purchase) },
+            { label: "Accountant", value: contactLine(customer.accountant) },
+            { label: "Merchandiser", value: contactLine(customer.merchandiser) },
             {
               label: "Customer since",
               value: customer.createdAt
@@ -141,6 +135,9 @@ export function CustomerDetailPage() {
           ]}
         />
       </Card>
+
+      {/* Who changed the credit limit or the terms, and from what. */}
+      <CreditTermsHistory customerId={customer._id} />
 
       {/* What they owed on the day the books started here, and the button to enter it. */}
       {canAccessPath("/accounts", user) && <PartyOpening partyType="customer" party={customer._id} name={customer.name} />}

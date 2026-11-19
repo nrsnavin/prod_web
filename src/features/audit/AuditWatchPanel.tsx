@@ -24,11 +24,14 @@ interface WatchData { from: string; to: string; counts: Record<string, number>; 
 
 const KIND: Record<string, string> = {
   cancelled: "Cancelled", deleted: "Deleted", edited: "Edited after verifying", backdated: "Back-dated",
-  "late-night": "Late at night", stock: "Stock", access: "Logins",
+  "late-night": "Late at night", stock: "Stock", access: "Logins", pay: "Pay", credit: "Credit terms",
 };
+// The record each item is about. A customer's credit terms, a material
+// written off by hand and an employee's pay had no page to open.
 const PATH: Record<string, (id: string) => string> = {
   Order: (id) => `/orders/${id}`, JobOrder: (id) => `/jobs/${id}`, PurchaseOrder: (id) => `/purchase-orders/${id}`,
   DeliveryChallan: (id) => `/delivery-challans/${id}`, Invoice: (id) => `/invoices/${id}`, Quote: (id) => `/quotes/${id}`, StockCount: (id) => `/stock-counts/${id}`,
+  Customer: (id) => `/customers/${id}`, RawMaterial: (id) => `/materials/${id}`, Employee: (id) => `/employees/${id}`,
 };
 
 export function AuditWatchPanel() {
