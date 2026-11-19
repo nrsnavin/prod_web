@@ -160,16 +160,25 @@ export interface JobDetail {
     reason: string;
     date?: string;
   }>;
+  /**
+   * The boxes packed on the job, one row a box, as a packing record
+   * holds it. (This was typed as rolls, batches and a status — fields a
+   * packing record has never had; the server sent 0 for all of them.)
+   */
   packingDetails: Array<{
     id: string;
     elasticName: string;
-    quantity: number;
-    rolls: number;
-    metersPerRoll: number;
-    total: number;
-    batch: string;
-    status: string;
     date?: string;
+    /** Metres in the box. */
+    meter: number;
+    joints: number;
+    netWeight: number;
+    tareWeight: number;
+    grossWeight: number;
+    size: string;
+    stretch: string;
+    packedBy: string;
+    checkedBy: string;
   }>;
 }
 
