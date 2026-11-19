@@ -51,12 +51,30 @@ export interface ChangeElasticResult {
   headsChanged: number;
 }
 
+export interface JobCancelYarn {
+  rawMaterial: string;
+  name: string;
+  /** kg */
+  quantity: number;
+}
+
 export interface JobCancelResult {
   success: boolean;
+  /** "Job cancelled…" followed by every note below, as one sentence run. */
   message?: string;
+  /**
+   * What the person cancelling needs to know besides "cancelled": a
+   * warping left open, yarn that went back to stock or stayed issued,
+   * dye lots trimmed. Empty for a plain cancellation.
+   */
+  notes?: string[];
   programmes?: { warping: string | null; covering: string | null };
   /** Batches with yarn out that are holding the job's warping open. */
   warpingBatches?: string[];
+  /** Yarn drawn for the job's over-planned metres, put back in stock. */
+  yarnReturned?: JobCancelYarn[];
+  /** The same yarn, left issued because the job had woven. */
+  yarnKept?: JobCancelYarn[];
 }
 
 export const jobService = {
@@ -182,10 +200,10 @@ export const jobService = {
 
   /**
    * Cancelling a job cancels the warping and covering that were
-   * preparing it. A warping with yarn already issued cannot be
-   * cancelled that way (cancelling the batch is what puts the yarn
-   * back), so the answer names those batches and `message` says what to
-   * do about them.
+   * preparing it, and puts back the yarn drawn for the metres it planned
+   * over the order when it has woven nothing. Whatever could not be
+   * done — a warping with yarn already issued, yarn left issued because
+   * the job had woven — is in `notes`, and in `message`.
    */
   cancel: (jobId: string, reason?: string) =>
     httpClient.post<JobCancelResult>("/job/cancel", { jobId, reason }),

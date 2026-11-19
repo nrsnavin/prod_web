@@ -521,7 +521,9 @@ export function JobDetailPage() {
         <p className="text-sm text-ink-600 mb-3">
           The machine is released, quantities return to the order's pending pool, and the order
           reverts to Approved if no other active jobs remain. Its warping and covering are
-          cancelled with it, where they are not already completed. This cannot be undone.
+          cancelled with it, where they are not already completed, and yarn drawn for metres
+          planned over the order goes back to stock if nothing has been woven. This cannot be
+          undone.
         </p>
         <Input
           label="Reason"
@@ -540,9 +542,10 @@ export function JobDetailPage() {
                 {
                   onSuccess: (res) => {
                     setCancelOpen(false);
-                    // A warping with yarn out is left for its batches to be
-                    // cancelled first; the server says which.
-                    if (res?.warpingBatches?.length && res.message) toast(res.message, "info");
+                    // Anything beyond "cancelled" — a warping left open for
+                    // its batches, yarn that went back to stock or stayed
+                    // issued — is in the server's notes: pass it on.
+                    if (res?.notes?.length && res.message) toast(res.message, "info");
                     else toast("Job cancelled", "success");
                   },
                   onError: (e) =>

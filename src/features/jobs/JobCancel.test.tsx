@@ -7,10 +7,11 @@ import type { JobCancelResult } from "./api";
 import { JobDetail } from "./types";
 
 // Cancelling a job cancels the warping and covering that were preparing
-// it. The dialog has to say so before the button is pressed, and when a
-// warping could not be cancelled (yarn has been issued on a batch) the
-// page has to pass on what the server says to do about it — "Job
-// cancelled" alone would leave that warping open with nobody told.
+// it, and puts back yarn drawn for metres it planned over the order. The
+// dialog has to say so before the button is pressed, and whatever the
+// server notes — a warping left open because yarn has been issued on a
+// batch, yarn that went back to stock or stayed issued — has to reach
+// the person: "Job cancelled" alone would leave it with nobody told.
 
 const toast = vi.fn();
 let cancelResult: JobCancelResult;
@@ -78,8 +79,11 @@ beforeEach(() => {
   cancelResult = {
     success: true,
     message: "Job cancelled and quantities restored to order",
+    notes: [],
     programmes: { warping: "cancelled", covering: "cancelled" },
     warpingBatches: [],
+    yarnReturned: [],
+    yarnKept: [],
   };
 });
 
@@ -87,7 +91,8 @@ describe("cancelling a job", () => {
   it("says beforehand that the warping and covering go with it", async () => {
     const { dialog } = await openCancelDialog();
     expect(within(dialog).getByText(/warping and covering are\s+cancelled with it/i)).toBeInTheDocument();
-    expect(within(dialog).getByText(/cannot be undone/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/goes back to stock if nothing has been woven/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/cannot be\s+undone/i)).toBeInTheDocument();
   });
 
   it("reports a plain cancellation as before", async () => {
@@ -98,10 +103,11 @@ describe("cancelling a job", () => {
   });
 
   it("passes on what to do when a warping was left open with yarn issued", async () => {
+    const note = "Its warping is still open: yarn has been issued on WB-0042 — cancel that batch to put the yarn back, then cancel the warping.";
     cancelResult = {
       success: true,
-      message:
-        "Job cancelled and quantities restored to order. Its warping is still open: yarn has been issued on WB-0042 — cancel that batch to put the yarn back, then cancel the warping.",
+      message: `Job cancelled and quantities restored to order. ${note}`,
+      notes: [note],
       programmes: { warping: "left_open", covering: "cancelled" },
       warpingBatches: ["WB-0042"],
     };
@@ -109,5 +115,19 @@ describe("cancelling a job", () => {
     await user.click(within(dialog).getByRole("button", { name: /^cancel job$/i }));
     expect(toast).toHaveBeenCalledWith(expect.stringMatching(/WB-0042.*cancel that batch/), "info");
     expect(toast).not.toHaveBeenCalledWith("Job cancelled", "success");
+  });
+
+  it("says when yarn drawn for the job went back to stock", async () => {
+    const note = "0.4 kg of Nylon 70D went back to stock: the yarn drawn for the metres this job planned over the order.";
+    cancelResult = {
+      success: true,
+      message: `Job cancelled and quantities restored to order. ${note}`,
+      notes: [note],
+      programmes: { warping: "cancelled", covering: "cancelled" },
+      yarnReturned: [{ rawMaterial: "m1", name: "Nylon 70D", quantity: 0.4 }],
+    };
+    const { user, dialog } = await openCancelDialog();
+    await user.click(within(dialog).getByRole("button", { name: /^cancel job$/i }));
+    expect(toast).toHaveBeenCalledWith(expect.stringMatching(/0\.4 kg of Nylon 70D went back to stock/), "info");
   });
 });

@@ -152,9 +152,11 @@ export function useJobMutations() {
       jobService.cancel(jobId, reason),
     onSuccess: () => {
       invalidate();
-      // Its warping and covering are cancelled with it.
+      // Its warping and covering are cancelled with it, and yarn drawn
+      // for its over-planned metres goes back to stock.
       qc.invalidateQueries({ queryKey: ["warpings"] });
       qc.invalidateQueries({ queryKey: ["coverings"] });
+      qc.invalidateQueries({ queryKey: ["materials"] });
     },
   });
   const setProductionMode = useMutation({
