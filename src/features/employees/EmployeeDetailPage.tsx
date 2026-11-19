@@ -330,6 +330,7 @@ export function EmployeeDetailPage() {
           onAadhaarChecked={refresh}
           aadhaarOnFile={emp.aadhar}
           canEditAadhaar={user?.role === "admin"}
+          canEditPay={user?.role === "admin" || user?.role === "accounts"}
           submitting={update.isPending}
           onCancel={() => setEditOpen(false)}
           onSubmit={(values) =>

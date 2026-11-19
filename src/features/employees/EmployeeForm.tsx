@@ -46,6 +46,7 @@ export function EmployeeForm({
   onCancel,
   aadhaarOnFile,
   canEditAadhaar = true,
+  canEditPay = true,
   employeeId,
   onAadhaarChecked,
 }: {
@@ -61,6 +62,12 @@ export function EmployeeForm({
   aadhaarOnFile?: string | null;
   /** Only an admin may set an Aadhaar number; the server enforces it too. */
   canEditAadhaar?: boolean;
+  /**
+   * Pay is the admin's and accounts' to set; the server refuses anyone
+   * else. Without it the salary is not shown and no rate is sent, so a
+   * supervisor correcting a phone number is not sending anybody's pay.
+   */
+  canEditPay?: boolean;
   /** Editing an employee: a QR check is kept on their record as it is made. */
   employeeId?: string;
   /** Told when a QR check was kept, to refresh the page behind the form. */
@@ -96,10 +103,19 @@ export function EmployeeForm({
 
   // Salary is asked per DAY shift (12h) — what the floor talks in — and
   // stored as ₹/hour, which is what payroll computes from.
-  const [shiftSalary, setShiftSalary] = useState(
-    initial?.hourlyRate ? String(initial.hourlyRate * DAY_SHIFT_HOURS) : ""
-  );
-  const hourlyRate = shiftSalary === "" ? 0 : Number(shiftSalary) / DAY_SHIFT_HOURS;
+  //
+  // The salary as loaded is shown to the paisa, and while it is left as
+  // it was the rate that was loaded is what goes back. (rate × 12) ÷ 12
+  // is not always the rate: ₹85.35 an hour went back as 85.34999999999998
+  // from an edit that never touched it.
+  const loadedSalary = initial?.hourlyRate
+    ? String(Math.round(initial.hourlyRate * DAY_SHIFT_HOURS * 100) / 100)
+    : "";
+  const [shiftSalary, setShiftSalary] = useState(loadedSalary);
+  const hourlyRate =
+    shiftSalary === loadedSalary
+      ? initial?.hourlyRate ?? 0
+      : shiftSalary === "" ? 0 : Number(shiftSalary) / DAY_SHIFT_HOURS;
 
   const [skillProfile, setSkillProfile] = useState<SkillProfile>(initial?.skillProfile ?? {});
 
@@ -114,7 +130,7 @@ export function EmployeeForm({
       ...(aadhar?.trim() ? { aadhar: aadhar.trim() } : {}),
       ...(editing ? personal : Object.fromEntries(Object.entries(personal).filter(([, v]) => v !== ""))),
       ...(!editing && qr ? { aadhaarQr: qr, aadhaarQrConsent: true } : {}),
-      hourlyRate,
+      ...(canEditPay ? { hourlyRate } : {}),
       skillProfile,
     });
   };
@@ -214,20 +230,22 @@ export function EmployeeForm({
         <Input label="Pin code" inputMode="numeric" error={errors.pincode?.message} {...register("pincode")} />
       </div>
 
-      <div className="grid grid-cols-2 items-end gap-3">
-        <Input
-          label="Shift salary — DAY 12h (₹)"
-          type="number"
-          min="0"
-          value={shiftSalary}
-          onChange={(e) => setShiftSalary(e.target.value)}
-        />
-        <p className="pb-2.5 text-xs text-ink-400">
-          {hourlyRate > 0
-            ? `= ₹${(Math.round(hourlyRate * 100) / 100).toLocaleString("en-IN")}/hour · NIGHT (12h) ₹${Math.round(hourlyRate * 12).toLocaleString("en-IN")}`
-            : "Payroll pays per hour: DAY = 12h, NIGHT = 12h"}
-        </p>
-      </div>
+      {canEditPay && (
+        <div className="grid grid-cols-2 items-end gap-3">
+          <Input
+            label="Shift salary — DAY 12h (₹)"
+            type="number"
+            min="0"
+            value={shiftSalary}
+            onChange={(e) => setShiftSalary(e.target.value)}
+          />
+          <p className="pb-2.5 text-xs text-ink-400">
+            {hourlyRate > 0
+              ? `= ₹${(Math.round(hourlyRate * 100) / 100).toLocaleString("en-IN")}/hour · NIGHT (12h) ₹${Math.round(hourlyRate * 12).toLocaleString("en-IN")}`
+              : "Payroll pays per hour: DAY = 12h, NIGHT = 12h"}
+          </p>
+        </div>
+      )}
 
       <div className="rounded-lg border border-ink-100 bg-canvas/50 p-4">
         <p className="mb-2 text-sm font-semibold">Skill &amp; performance questionnaire</p>
