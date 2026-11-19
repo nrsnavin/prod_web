@@ -37,10 +37,10 @@ const material = (over: Partial<MrpMaterial> = {}): MrpMaterial => ({
   ...over,
 });
 
-const renderPanel = (materials: MrpMaterial[]) =>
+const renderPanel = (materials: MrpMaterial[], jobStatus?: string) =>
   render(
     <MemoryRouter>
-      <MrpShortfallPo jobId="j1" materials={materials} />
+      <MrpShortfallPo jobId="j1" materials={materials} jobStatus={jobStatus} />
     </MemoryRouter>
   );
 
@@ -191,6 +191,31 @@ describe("what is already on order", () => {
   beforeEach(() => {
     raiseMutate.mockClear();
     raised = [];
+  });
+
+  // Yarn is for the loom: the server refuses to buy for a job that has
+  // left it or was cancelled, so the sheet must not call such a job short
+  // and offer the purchase.
+  it.each(["finishing", "checking", "packing", "completed", "cancelled"])(
+    "does not offer to buy for a job that is %s",
+    (jobStatus) => {
+      const { container } = renderPanel([material()], jobStatus);
+      expect(screen.queryByRole("button", { name: /raise po for shortfall/i })).not.toBeInTheDocument();
+      expect(screen.queryByText(/short for this job/i)).not.toBeInTheDocument();
+      expect(container).toBeEmptyDOMElement();
+    }
+  );
+
+  it.each(["preparatory", "weaving"])("still offers it while the job is %s", (jobStatus) => {
+    renderPanel([material()], jobStatus);
+    expect(screen.getByRole("button", { name: /raise po for shortfall/i })).toBeEnabled();
+  });
+
+  it("still lists what was bought for a job that has since finished", () => {
+    raised = [{ _id: "p1", poNo: 1042, status: "Completed", supplier: { name: "Kumar Yarns" }, items: [{}] } as unknown as JobPurchaseOrder];
+    renderPanel([material()], "completed");
+    expect(screen.getByText(/on order for this job/i)).toBeInTheDocument();
+    expect(screen.getByText("PO #1042")).toBeInTheDocument();
   });
 
   it("lists the POs raised against this job", () => {

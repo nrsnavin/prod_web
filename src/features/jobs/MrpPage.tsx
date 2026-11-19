@@ -105,6 +105,8 @@ export const materialColumns: Column<MrpMaterial>[] = [
     // out of stock. Without saying so, the sheet showed a requirement
     // it had already met and a stock figure it had already reduced —
     // and every job read as short of yarn standing on the floor for it.
+    // The figure also carries what the job drew itself for metres
+    // planned past the order, and what the stores have issued to it.
     key: "allocated",
     header: "Allocated",
     align: "right",
@@ -114,7 +116,7 @@ export const materialColumns: Column<MrpMaterial>[] = [
       return (
         <span
           className="text-status-success"
-          title="Held for this job since its order was approved — out of the stock figure beside it, not available to anything else"
+          title="Already out of stock for this job — its share of the order's approval, what it drew for metres planned past the order, and what the stores have issued to it. Not in the stock figure beside it."
         >
           {drawn.toLocaleString("en-IN")}
         </span>
@@ -246,7 +248,7 @@ export function MrpPage() {
 
         {/* Above the material table on purpose: a shortfall is the thing
             that needs doing, not a footnote to the numbers. */}
-        <MrpShortfallPo jobId={id!} materials={data.materials} />
+        <MrpShortfallPo jobId={id!} materials={data.materials} jobStatus={data.status} />
 
         <Card className="p-5">
           <div className="flex flex-wrap items-center gap-2">

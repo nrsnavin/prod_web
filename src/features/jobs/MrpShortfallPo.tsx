@@ -9,6 +9,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { useJobPurchaseOrders, useRaisePo } from "./hooks";
+import { isProductionLocked } from "./productionLock";
 import { MrpData } from "./types";
 
 /**
@@ -49,7 +50,16 @@ const nameOf = (m: MrpMaterial) => m.name ?? m.materialName ?? "—";
 // tolerated so an older payload still works.
 const idOf = (m: MrpMaterial) => String(m.rawMaterial ?? m.id ?? "");
 
-export function MrpShortfallPo({ jobId, materials }: { jobId: string; materials: MrpMaterial[] }) {
+export function MrpShortfallPo({
+  jobId,
+  materials,
+  jobStatus,
+}: {
+  jobId: string;
+  materials: MrpMaterial[];
+  /** A job off the loom, or cancelled, has nothing left to buy yarn for. */
+  jobStatus?: string;
+}) {
   const { toast } = useToast();
   const raisePo = useRaisePo(jobId);
   const { data: raised } = useJobPurchaseOrders(jobId);
@@ -59,11 +69,17 @@ export function MrpShortfallPo({ jobId, materials }: { jobId: string; materials:
   const [expectedDate, setExpectedDate] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Yarn is for the loom. Once the job has left it — or was cancelled —
+  // whatever the sheet still calls short is not something to buy, and the
+  // server refuses the purchase (409). So it is not offered, and the job
+  // is not called short of yarn it will never weave.
+  const offTheLoom = isProductionLocked(jobStatus);
+
   // A material whose reference could not be resolved has a placeholder
   // stock figure, so its shortfall is not a reading — never order on it.
   const short = useMemo(
-    () => materials.filter((m) => m.stockKnown !== false && shortfallOf(m) > 0),
-    [materials]
+    () => (offTheLoom ? [] : materials.filter((m) => m.stockKnown !== false && shortfallOf(m) > 0)),
+    [materials, offTheLoom]
   );
   // Short AND not already bought. Pressing the button while the first
   // PO was still in transit used to raise a second one for the same
