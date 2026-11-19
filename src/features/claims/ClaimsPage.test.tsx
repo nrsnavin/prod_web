@@ -8,10 +8,12 @@ import { ClaimsPage } from "./ClaimsPage";
 // Anyone files a claim from the phone and sees where it stands.
 
 const create = vi.fn(async (b: Record<string, unknown>) => ({ _id: "e1", expenseNo: "EXP/2026-27/0009", ...b }));
+const rejected = { _id: "e0", expenseNo: "EXP/2026-27/0001", date: "2026-07-01", categoryName: "Fuel", description: "Toll", totals: { grand: 120 }, status: "rejected", approval: { note: "No receipt" } };
+let mine: { claims: unknown[]; owed: number; waiting: number } = { claims: [rejected], owed: 0, waiting: 0 };
 vi.mock("./api", () => ({
   claimsService: {
     categories: async () => [{ _id: "c1", name: "Fuel" }],
-    mine: async () => ({ claims: [{ _id: "e0", expenseNo: "EXP/2026-27/0001", date: "2026-07-01", categoryName: "Fuel", description: "Toll", totals: { grand: 120 }, status: "rejected", approval: { note: "No receipt" } }], owed: 0, waiting: 0 }),
+    mine: async () => mine,
     create: (b: Record<string, unknown>) => create(b),
     withdraw: vi.fn(),
     photo: vi.fn(async () => undefined),
@@ -48,5 +50,25 @@ describe("expense claims", () => {
     await userEvent.type(screen.getByLabelText("Amount (₹) *"), "950");
     await userEvent.click(screen.getByRole("button", { name: /send for approval/i }));
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ amount: 950, date: "2026-11-01", refNo: "IO/551", aiSuggestion: "ai1" }));
+  });
+
+  it("does not offer a day that has not come", async () => {
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><ClaimsPage /></MemoryRouter></QueryClientProvider>);
+    await userEvent.click(await screen.findByRole("button", { name: /new claim/i }));
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // Before: no limit — tomorrow could be picked, and the server took it.
+    expect(screen.getByLabelText("Date *")).toHaveAttribute("max", today);
+  });
+
+  it("says how much of an approved claim has been paid back so far", async () => {
+    mine = {
+      claims: [{ _id: "e5", expenseNo: "EXP/2026-27/0005", date: "2026-11-02", categoryName: "Fuel", description: "Diesel 40 L", totals: { grand: 2500 }, status: "approved", paidAmount: 500 }],
+      owed: 2000, waiting: 0,
+    };
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><ClaimsPage /></MemoryRouter></QueryClientProvider>);
+    // Before: "Approved, to be paid" beside ₹2,500 — and ₹2,000 in the total above it, with nothing to say why.
+    expect(await screen.findByText("₹500.00 paid so far · ₹2,000.00 to come")).toBeInTheDocument();
+    mine = { claims: [rejected], owed: 0, waiting: 0 };
   });
 });

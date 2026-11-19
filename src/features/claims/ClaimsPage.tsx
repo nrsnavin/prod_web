@@ -114,7 +114,8 @@ export function ClaimsPage() {
           <Input label="Details *" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Diesel for the genset, 10 L" />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Amount (₹) *" type="number" inputMode="decimal" min={0} value={amount} onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))} />
-            <Input label="Date *" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            {/* Up to today: the server refuses a day that has not come. */}
+            <Input label="Date *" type="date" max={todayIso()} value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
@@ -134,6 +135,10 @@ export function ClaimsPage() {
                   <p className="text-xs text-ink-400">{c.categoryName} · {formatDate(c.date)} · {c.expenseNo}{c.attachments?.length ? " · receipt attached" : ""}</p>
                   {c.status === "rejected" && c.approval?.note && <p className="text-xs text-status-danger">{c.approval.note}</p>}
                   {c.status === "paid" && c.paidAt && <p className="text-xs text-status-success">Paid on {formatDate(c.paidAt)}</p>}
+                  {/* Paid back in part: the total above counts only what is left. */}
+                  {c.status === "approved" && (c.paidAmount ?? 0) > 0 && (
+                    <p className="text-xs text-ink-500">₹{money(c.paidAmount ?? 0)} paid so far · ₹{money(c.totals.grand - (c.paidAmount ?? 0))} to come</p>
+                  )}
                 </div>
                 <span className="tabular-nums font-semibold">₹{money(c.totals.grand)}</span>
                 <StatusChip tone={TONE[c.status]}>{LABEL[c.status]}</StatusChip>
