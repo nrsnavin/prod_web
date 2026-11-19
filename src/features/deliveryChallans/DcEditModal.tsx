@@ -97,6 +97,11 @@ export function DcEditModal({
   const { toast } = useToast();
   const { update } = useDcMutations();
   const isElastic = dc.type === "elastic";
+  // An issued invoice bills what this challan carried, so the goods on it
+  // are fixed while that invoice stands (the server refuses the change).
+  // Only the fields that bill nothing stay open: boxes and the despatch
+  // detail.
+  const onInvoice = dc.invoice ?? null;
   // The version this form's values were taken from (both are captured
   // when it mounts). A save after someone else changed the challan is a
   // 409 that asks for a reload, instead of quietly replacing their edit.
@@ -241,11 +246,19 @@ export function DcEditModal({
       <div className="space-y-4">
         {/* Said plainly, because it is the whole difference between this
             form and an ordinary one: changing a line here moves goods. */}
-        <p className="rounded-lg bg-status-warningBg px-3 py-2 text-xs text-status-warning">
-          Changing a line puts the old quantity back on the shelf and takes the new
-          one out again, and the order&apos;s reservation follows. Vehicle, driver
-          and remarks can be corrected without touching stock.
-        </p>
+        {onInvoice ? (
+          <p className="rounded-lg bg-status-infoBg px-3 py-2 text-xs text-status-info" data-testid="dc-on-invoice-note">
+            This challan is on invoice {onInvoice.invoiceNumber}, which bills the customer for what it carried,
+            so its goods, quantities and rates are fixed. Boxes, vehicle, driver, LR and remarks can still be
+            corrected. To change the goods, cancel the invoice first.
+          </p>
+        ) : (
+          <p className="rounded-lg bg-status-warningBg px-3 py-2 text-xs text-status-warning">
+            Changing a line puts the old quantity back on the shelf and takes the new
+            one out again, and the order&apos;s reservation follows. Vehicle, driver
+            and remarks can be corrected without touching stock.
+          </p>
+        )}
 
         <div>
           <p className="mb-1.5 text-sm font-medium text-ink-600">
@@ -275,6 +288,7 @@ export function DcEditModal({
                     loadOptions={loadElastics}
                     seedOptions={seed}
                     value={l.elastic}
+                    disabled={!!onInvoice}
                     onChange={(v) =>
                       setLine(i, { elastic: v, elasticName: labelById[v] ?? "" })
                     }
@@ -284,6 +298,7 @@ export function DcEditModal({
                     aria-label="Part description"
                     placeholder="Part description"
                     value={l.description}
+                    disabled={!!onInvoice}
                     onChange={(e) => setLine(i, { description: e.target.value })}
                   />
                 )}
@@ -296,6 +311,7 @@ export function DcEditModal({
                     aria-label="Quantity"
                     placeholder="Qty"
                     value={l.quantity}
+                    disabled={!!onInvoice}
                     onChange={(e) => setLine(i, { quantity: e.target.value })}
                   />
                 </div>
@@ -321,6 +337,7 @@ export function DcEditModal({
                     placeholder="Rate"
                     title="Internal only — used by the Dispatch Report. Never printed on the challan."
                     value={l.rate}
+                    disabled={!!onInvoice}
                     onChange={(e) => setLine(i, { rate: e.target.value })}
                   />
                 </div>
@@ -328,7 +345,7 @@ export function DcEditModal({
                   type="button"
                   onClick={() => removeLine(i)}
                   className="mt-5 grid h-10 w-10 place-items-center rounded-lg text-ink-400 hover:bg-status-dangerBg hover:text-status-danger disabled:opacity-40 sm:mt-0 sm:w-auto"
-                  disabled={lines.length <= 1}
+                  disabled={lines.length <= 1 || !!onInvoice}
                   aria-label="Remove line"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -337,7 +354,7 @@ export function DcEditModal({
             ))}
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <Button type="button" variant="ghost" size="sm" onClick={addLine}>
+            <Button type="button" variant="ghost" size="sm" onClick={addLine} disabled={!!onInvoice}>
               <Plus className="h-4 w-4" /> Add item
             </Button>
             <span className="text-sm tabular-nums text-ink-600">

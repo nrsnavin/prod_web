@@ -50,6 +50,9 @@ export function useInvoiceMutations() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: [INVOICES_KEY] });
     qc.invalidateQueries({ queryKey: ["customer-recent"] });
+    // A challan's page says which invoice it is on, and what that leaves
+    // open to it: raising or cancelling an invoice changes both.
+    qc.invalidateQueries({ queryKey: ["delivery-challans"] });
   };
   // A resend of the same invoice is the same invoice: one number drawn.
   const ids = useRequestId();

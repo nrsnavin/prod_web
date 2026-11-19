@@ -34,7 +34,10 @@ export function DcDetailPage() {
   const [podOpen, setPodOpen] = useState(false);
   const [ewbOpen, setEwbOpen] = useState(false);
   const qc = useQueryClient();
-  const pasteEwb = useMutation({ mutationFn: (body: Parameters<typeof dcService.pasteEwaybill>[1]) => dcService.pasteEwaybill(id!, body), onSuccess: () => qc.invalidateQueries({ queryKey: ["dcs"] }) });
+  // "delivery-challans" is the key every challan query is filed under
+  // (./hooks). This refreshed "dcs", which nothing reads, so the page went
+  // on saying "E-way bill needed" until it was reloaded.
+  const pasteEwb = useMutation({ mutationFn: (body: Parameters<typeof dcService.pasteEwaybill>[1]) => dcService.pasteEwaybill(id!, body), onSuccess: () => qc.invalidateQueries({ queryKey: ["delivery-challans"] }) });
   // Status transition awaiting confirmation.
   const [pending, setPending] = useState<
     { status: DcStatus; msg: string; title: string; body: string; label: string; danger?: boolean } | null
@@ -149,7 +152,9 @@ export function DcDetailPage() {
                   <PackageCheck className="h-4 w-4" /> Mark delivered
                 </Button>
               )}
-              {(dc.status === "draft" || dc.status === "dispatched") && (
+              {/* Not while an invoice bills what it carried: the server
+                  refuses, and the line under the chips says what to do. */}
+              {(dc.status === "draft" || dc.status === "dispatched") && !dc.invoice && (
                 <Button
                   variant="secondary"
                   loading={updateStatus.isPending}
@@ -174,11 +179,24 @@ export function DcDetailPage() {
               </StatusChip>
             </button>
           )}
+          {dc.invoice && (
+            <Link to={`/invoices/${dc.invoice._id}`} className="rounded-full focus-visible:outline focus-visible:outline-2">
+              <StatusChip tone="info">On invoice {dc.invoice.invoiceNumber}</StatusChip>
+            </Link>
+          )}
           {dc.pod?.complaint && <StatusChip tone="warning">Complaint opened</StatusChip>}
           {dc.ewaybill?.status === "generated" && <StatusChip tone="success">E-way bill {dc.ewaybill.number}</StatusChip>}
           {dc.status !== "cancelled" && dc.ewaybill?.status !== "generated" && (dc.totalAmount ?? 0) > 50000 && <StatusChip tone="warning">E-way bill needed (over ₹50,000)</StatusChip>}
         </div>
       </div>
+
+      {dc.invoice && dc.status === "dispatched" && (
+        <p className="mb-4 max-w-3xl text-sm text-ink-600 print:hidden">
+          Invoice {dc.invoice.invoiceNumber} bills the customer for what this challan carried, so it cannot be
+          cancelled and its quantities cannot be changed while that invoice stands. Cancel the invoice first, or
+          raise a credit note for the difference. Boxes, vehicle, driver and LR can still be corrected.
+        </p>
+      )}
 
       {/* Printable challan document */}
       <div className="print-area">

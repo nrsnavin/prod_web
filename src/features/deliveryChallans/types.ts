@@ -49,6 +49,13 @@ export interface DeliveryChallan {
     lines: DcShortLine[];
     at?: string;
   } | null;
+  /**
+   * The issued invoice that bills what this challan carried, if any
+   * (GET /dc/detail). While it stands the goods on the challan are fixed:
+   * the server refuses to cancel it or change its lines. Boxes, vehicle,
+   * driver, LR and remarks can still be corrected.
+   */
+  invoice?: { _id: string; invoiceNumber: string } | null;
 }
 
 export interface DcPod {
