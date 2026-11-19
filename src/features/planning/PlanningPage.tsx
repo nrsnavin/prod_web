@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Wand2, Sparkles, AlertTriangle, CheckCircle2, ArrowRight, RefreshCw,
   Clock, Repeat, Info,
@@ -17,7 +17,8 @@ import { ApiError } from "@/core/http/httpClient";
 import { useSuggestedPlan, useLatestPlan, useAcceptPlan } from "./hooks";
 import { AcceptedPlanPanel } from "./AcceptedPlanPanel";
 import { LearnedWeightsPanel } from "./LearnedWeightsPanel";
-import { MachinePlan, PlanRow, RateSource, SuggestedPlan } from "./types";
+import { MachinePlan, PlanObjective, PlanRow, RateSource, SuggestedPlan } from "./types";
+import { plannerService } from "./api";
 import { useAuth } from "@/core/auth/useAuth";
 import { StatTile as UiStatTile } from "@/components/ui/StatTile";
 
@@ -183,15 +184,56 @@ export function PlanningPage() {
   // planner's weights, so it asks first.
   const [acceptAsk, setAcceptAsk] = useState(false);
 
+  // What the edited arrangement comes to — its late lines, late-days and
+  // changeovers — as the server scores it, which is how accepting it
+  // will. Null while nothing is edited, while the answer is on its way,
+  // and when the server cannot give one. Until it arrives the proposal's
+  // figures stay on screen; they are never passed off as the edit's.
+  const [scored, setScored] = useState<PlanObjective | null>(null);
+  const scoreAsk = useRef(0);
+
+  const dropEdit = () => {
+    scoreAsk.current += 1;          // whatever is on its way is for a plan no longer shown
+    setEdited(null);
+    setScored(null);
+  };
+
   // A fresh proposal invalidates any edit made against the previous one —
   // the line ids may not even exist any more.
-  useEffect(() => { setEdited(null); }, [data?.generatedAt, horizon]);
+  useEffect(() => { dropEdit(); }, [data?.generatedAt, horizon]);
+
+  /**
+   * Keep an edit, and ask what it comes to.
+   *
+   * A moved row used to keep the dates of the place it had left, and the
+   * totals stayed the proposal's. The rows are shown as moved at once;
+   * the dates, late days and totals follow when the server answers. An
+   * answer to an earlier move is dropped if a later one has gone out.
+   */
+  const applyEdit = (next: MachinePlan[]) => {
+    setEdited(next);
+    setScored(null);
+    const asked = ++scoreAsk.current;
+    plannerService.score(horizon, next).then((res) => {
+      if (asked !== scoreAsk.current) return;
+      const byId = new Map(res.machines.map((m) => [m.machineId, m]));
+      // A loom emptied by a move stays on screen, so a line can go back to it.
+      setEdited(next.map((m) => byId.get(m.machineId) ?? { ...m, rows: [], changeovers: 0 }));
+      setScored(res.objective);
+      if (res.gone?.length) {
+        toast(`${res.gone.length} line${res.gone.length === 1 ? " is" : "s are"} no longer waiting to be planned, and ${res.gone.length === 1 ? "was" : "were"} left out`, "info");
+      }
+    }).catch(() => {
+      // An older server, or the network: the edit is kept as it was laid
+      // out, and the accept dialog says the dates are still to come.
+    });
+  };
 
   const moveLine = (lineId: string, toMachineId: string) => {
     const base = edited ?? data?.machines ?? [];
     const row = base.flatMap((m) => m.rows).find((r) => r.lineId === lineId);
     if (!row) return;
-    setEdited(
+    applyEdit(
       base.map((m) => ({
         ...m,
         rows:
@@ -204,12 +246,13 @@ export function PlanningPage() {
 
   const reorder = (machineId: string, index: number, dir: -1 | 1) => {
     const base = edited ?? data?.machines ?? [];
-    setEdited(
+    const j = index + dir;
+    const target = base.find((m) => m.machineId === machineId);
+    if (!target || j < 0 || j >= target.rows.length) return;
+    applyEdit(
       base.map((m) => {
         if (m.machineId !== machineId) return m;
         const rows = [...m.rows];
-        const j = index + dir;
-        if (j < 0 || j >= rows.length) return m;
         [rows[index], rows[j]] = [rows[j], rows[index]];
         return { ...m, rows };
       })
@@ -225,7 +268,7 @@ export function PlanningPage() {
             : "Plan accepted as the plan of record",
           "success"
         );
-        setEdited(null);
+        dropEdit();
         latest.refetch();
       },
       onError: (e) =>
@@ -233,14 +276,21 @@ export function PlanningPage() {
     });
   };
 
-  const obj = data?.objective;
+  // The edited plan's own figures once the server has scored it; the
+  // proposal's otherwise.
+  const obj = (edited && scored) || data?.objective;
+  // Edited, and not (yet) scored: the figures on screen are the
+  // proposal's, and must not be quoted as the edit's.
+  const unscoredEdit = !!edited && !scored;
   const previous = latest.data?.plan;
   const acceptConsequences: Consequence[] = obj
     ? [
         { text: `${obj.placed} of ${obj.lines} order lines on ${obj.machinesUsed} machines over ${horizon} days.` },
-        obj.late > 0
-          ? { text: `${obj.late} line${obj.late === 1 ? " finishes" : "s finish"} late: ${obj.totalLateDays} late-days in all.`, tone: "warning" }
-          : { text: "Every placed line meets its supply date." },
+        unscoredEdit
+          ? { text: "The finish dates and late lines of your version are worked out again when it is accepted.", tone: "warning" }
+          : obj.late > 0
+            ? { text: `${obj.late} line${obj.late === 1 ? " finishes" : "s finish"} late: ${obj.totalLateDays} late-days in all.`, tone: "warning" }
+            : { text: "Every placed line meets its supply date." },
         ...(previous ? [{ text: `It replaces the plan accepted on ${formatDate(previous.acceptedAt)}.` }] : []),
         ...(edited ? [{ text: "The planner learns from your changes and weighs its next proposals differently." }] : []),
       ]
@@ -356,7 +406,10 @@ export function PlanningPage() {
               <Wand2 className="h-4 w-4 text-brand-500" />
               <span>
                 <span className="font-semibold">{obj.machinesUsed} machines</span> scheduled ·{" "}
-                {obj.late > 0 ? (
+                {unscoredEdit ? (
+                  // The figures to hand are the proposal's; not this plan's.
+                  <span className="text-status-warning">your version's dates are being worked out</span>
+                ) : obj.late > 0 ? (
                   <span className="text-status-danger">{obj.totalLateDays} late-days total</span>
                 ) : (
                   <span className="text-status-success">all orders hit their supply date</span>
@@ -369,7 +422,7 @@ export function PlanningPage() {
                   <span className="text-xs text-status-warning">
                     You have changed this plan
                   </span>
-                  <Button variant="secondary" onClick={() => setEdited(null)}>
+                  <Button variant="secondary" onClick={dropEdit}>
                     Undo my changes
                   </Button>
                 </>

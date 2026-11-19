@@ -1,7 +1,15 @@
 import { httpClient } from "@/core/http/httpClient";
 import {
-  AcceptedPlan, SuggestedPlan, MachinePlan, LearningResult, WeightsReport,
+  AcceptedPlan, SuggestedPlan, MachinePlan, LearningResult, WeightsReport, PlanObjective,
 } from "./types";
+
+/** What an arrangement comes to, scored the way accepting it will be. */
+export interface ScoredPlan {
+  machines: MachinePlan[];
+  objective: PlanObjective;
+  /** Rows whose line is no longer waiting to be planned; left out of `machines`. */
+  gone: { lineId: string | null; orderNo: number | null; elasticName: string }[];
+}
 
 export const plannerService = {
   suggest(horizonDays = 7): Promise<SuggestedPlan> {
@@ -33,6 +41,16 @@ export const plannerService = {
       assumptions: plan.assumptions,
       aiSuggestionId: plan.aiSuggestionId ?? null,
     });
+  },
+
+  /**
+   * Score an arrangement without accepting it: every row's dates and
+   * late days for where it now sits, and the totals. Called after each
+   * move, so the screen shows the plan that is about to be accepted and
+   * not the one that was proposed.
+   */
+  score(horizonDays: number, machines: MachinePlan[]): Promise<ScoredPlan> {
+    return httpClient.post<ScoredPlan>("/planner/score", { horizonDays, machines });
   },
 
   latest(): Promise<{ success: boolean; plan: AcceptedPlan | null }> {
