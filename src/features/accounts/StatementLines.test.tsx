@@ -15,13 +15,14 @@ import type { StatementResult, StoredStatementFull } from "./types";
 
 let result: StatementResult;
 let stored: StoredStatementFull;
+let pastList: unknown[];
 const uploadStatement = vi.fn();
 const postStatement = vi.fn();
 const unlinkLine = vi.fn();
 vi.mock("./api", () => ({
   accountsService: {
     bankFeed: () => Promise.resolve({ configured: false }),
-    statements: () => Promise.resolve([{ _id: "st1", file: "kotak.csv", from: "2026-07-01", to: "2026-07-31", lines: 3, counts: { unmatched: 1 }, createdAt: "2026-08-01", source: "upload" }]),
+    statements: () => Promise.resolve(pastList),
     storedStatement: () => Promise.resolve(stored),
     bankAliases: () => Promise.resolve([]),
     uploadStatement: (...a: unknown[]) => uploadStatement(...a),
@@ -49,6 +50,7 @@ const sure = (index: number, narration: string, amount: number, invoice: string)
 
 beforeEach(() => {
   uploadStatement.mockReset(); postStatement.mockReset(); unlinkLine.mockReset(); toast.mockReset();
+  pastList = [{ _id: "st1", file: "kotak.csv", from: "2026-07-01", to: "2026-07-31", lines: 3, counts: { unmatched: 1 }, createdAt: "2026-08-01", source: "upload" }];
   result = {
     statement: "st1", account: { _id: "a1", name: "Kotak CA" }, file: "kotak.csv", counts: { matched: 2 },
     rows: [sure(0, "NEFT-SUNRISE-INV/2026-27/0701", 10500, "INV/2026-27/0701"), sure(1, "NEFT-SUNRISE-INV/2026-27/0702", 8000, "INV/2026-27/0702")],
@@ -135,5 +137,29 @@ describe("a line matched to the wrong entry", () => {
     const open = screen.getByText("IB TRF RENT JULY").closest("tr")!;
     expect(within(open).queryByRole("button", { name: /undo match/i })).not.toBeInTheDocument();
     expect(within(open).getByRole("button", { name: /set aside/i })).toBeInTheDocument();
+  });
+});
+
+// A line the matcher has a suggestion for is still not in the books. The
+// list of past statements counted only the lines with no suggestion: a
+// statement with five suggested, unposted lines read "0 unplaced", while
+// opening it said "5 lines not in the books".
+describe("the list of past statements", () => {
+  it("counts every line still to place, the suggested ones too", async () => {
+    pastList = [
+      { _id: "st1", file: "kotak.csv", from: "2026-07-01", to: "2026-07-31", lines: 9, counts: { unmatched: 1, matched: 5, recorded: 3 }, toPlace: 6, createdAt: "2026-08-01", source: "upload" },
+      { _id: "st2", file: "kotak-june.csv", from: "2026-06-01", to: "2026-06-30", lines: 4, counts: { recorded: 4 }, toPlace: 0, createdAt: "2026-07-01", source: "email" },
+    ];
+    wrap("/?view=past&account=a1");
+    const first = (await screen.findByText("kotak.csv")).closest("li")!;
+    // Before: "1 unplaced".
+    expect(first).toHaveTextContent("9 lines · 6 to place");
+    expect(screen.getByText("kotak-june.csv").closest("li")!).toHaveTextContent("4 lines · all placed");
+  });
+
+  it("works it out from the counts when an older server does not send the total", async () => {
+    pastList = [{ _id: "st1", file: "kotak.csv", from: "2026-07-01", to: "2026-07-31", lines: 9, counts: { unmatched: 1, matched: 5, recorded: 3 }, createdAt: "2026-08-01", source: "upload" }];
+    wrap("/?view=past&account=a1");
+    expect((await screen.findByText("kotak.csv")).closest("li")!).toHaveTextContent("9 lines · 6 to place");
   });
 });

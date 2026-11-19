@@ -17,7 +17,7 @@ import { useAuth } from "@/core/auth/useAuth";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY, useBankAccounts, useCategories } from "./hooks";
 import { PartyPicker, money, today } from "./shared";
-import type { BankAlias, BankFeedMail, BankFeedRun, StatementContinuity, StatementPostResult, StatementPostRow, StatementResult, StatementRow, StoredStatementFull, StoredStatementLine } from "./types";
+import type { BankAlias, BankFeedMail, BankFeedRun, StatementContinuity, StatementPostResult, StatementPostRow, StatementResult, StatementRow, StoredStatement, StoredStatementFull, StoredStatementLine } from "./types";
 
 type Decision = {
   use: boolean; partyType: "customer" | "supplier" | "other"; party?: string; partyName?: string; allocations: NonNullable<StatementRow["suggestion"]>["allocations"];
@@ -617,6 +617,14 @@ const wasThere = (x: StatementPostResult) => !!(x.already || x.replay);
 
 const LINE_TONE: Record<StoredStatementLine["status"], "success" | "info" | "warning" | "neutral"> = { recorded: "success", posted: "info", matched: "warning", unmatched: "warning", ignored: "neutral" };
 
+/**
+ * Lines of a stored statement not yet in the books. A line the matcher
+ * has a suggestion for ("matched") is still one of them: the list counted
+ * only those with no suggestion, and a statement with five suggested,
+ * unposted lines read "0 unplaced".
+ */
+const leftToPlace = (s: StoredStatement) => s.toPlace ?? (s.counts.unmatched ?? 0) + (s.counts.matched ?? 0);
+
 function PastView({ account, initial = null, onMatch }: { account: string; initial?: string | null; onMatch?: (statement: string) => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -661,7 +669,7 @@ function PastView({ account, initial = null, onMatch }: { account: string; initi
               <li key={s._id}>
                 <button className={`w-full py-2 text-left ${open === s._id ? "text-brand-600" : ""}`} onClick={() => setOpen(s._id)}>
                   <span className="font-medium">{s.file || "Statement"}</span>{s.source === "email" && <StatusChip tone="neutral" className="ml-2">by email</StatusChip>}
-                  <span className="block text-xs text-ink-400">{formatDate(s.from)} – {formatDate(s.to)} · {s.lines} lines · {s.counts.unmatched ?? 0} unplaced · {formatDate(s.createdAt)}</span>
+                  <span className="block text-xs text-ink-400">{formatDate(s.from)} – {formatDate(s.to)} · {s.lines} lines · {leftToPlace(s) > 0 ? <span className="text-status-warning">{leftToPlace(s)} to place</span> : "all placed"} · {formatDate(s.createdAt)}</span>
                 </button>
               </li>
             ))}

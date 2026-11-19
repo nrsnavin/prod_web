@@ -1037,6 +1037,8 @@ export interface JournalLineInput {
 export interface StoredStatement {
   _id: string; account: string; accountName: string; file: string; source?: "upload" | "email" | "sftp"; from: string; to: string; openingBalance?: number | null; closingBalance: number | null;
   uploadedByName?: string; createdAt: string; lines: number; counts: Partial<Record<StatementRow["status"] | "posted", number>>;
+  /** Lines not yet in the books: nothing suggested, or suggested and not posted. Absent on an older server. */
+  toPlace?: number;
 }
 /** One stored statement with its lines, as the server sends it. */
 export type StoredStatementFull = Omit<StoredStatement, "lines" | "counts"> & { lines: StoredStatementLine[] };
