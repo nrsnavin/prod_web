@@ -48,12 +48,17 @@ export const orderService = {
   statusReportsPdf(ids: string[]): Promise<Blob> {
     return httpClient.postBlob("/order/bulk/status-report.pdf", { ids });
   },
-  async create(body: OrderFormValues & { creditOverride?: string }): Promise<string> {
-    const res = await httpClient.post<{ success: boolean; orderId: string }>(
+  /**
+   * `duplicate`: the same order had just been saved (a second press, or
+   * a retry on a bad line) — the server answers with that order instead
+   * of making another, and `message` says so.
+   */
+  async create(body: OrderFormValues & { creditOverride?: string }): Promise<{ orderId: string; duplicate?: boolean; message?: string }> {
+    const res = await httpClient.post<{ success: boolean; orderId: string; duplicate?: boolean; message?: string }>(
       "/order/create-order",
       body
     );
-    return res.orderId;
+    return { orderId: res.orderId, duplicate: res.duplicate, message: res.message };
   },
 
   update: (orderId: string, body: Partial<OrderFormValues> & { auditReason: string; expectedVersion?: number }) =>

@@ -252,10 +252,12 @@ export function OrderListPage() {
           onCancel={() => closeCreate()}
           onSubmit={(values) =>
             hold.run((creditOverride) => create.mutate({ ...values, creditOverride }, {
-              onSuccess: (orderId) => {
+              onSuccess: ({ orderId, duplicate, message }) => {
                 if (fromRequest) decideRequest.mutate({ id: fromRequest._id, action: "converted", order: orderId });
                 closeCreate();
-                toast("Order created", "success");
+                // Sent twice: the server made one order and says so.
+                if (duplicate) toast(message ?? "This order was already saved.", "info");
+                else toast("Order created", "success");
                 navigate(`/orders/${orderId}`);
               },
               onError: (e) => {
