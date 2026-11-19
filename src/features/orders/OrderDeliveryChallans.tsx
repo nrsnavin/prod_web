@@ -20,6 +20,10 @@ import type { DcStatus, OrderDcRow } from "./types";
  * Cancelled notes are shown but struck from the totals. Somebody raised
  * them, and "why is there a gap in the DC numbers" has to have an
  * answer — but nothing left the building on them.
+ *
+ * Nor on a draft: a note made out and not yet sent. It was counted as
+ * despatched from the moment it was keyed; it is shown as what it is,
+ * in its own column, when there is one.
  */
 
 const statusTone: Record<DcStatus, ChipTone> = {
@@ -60,6 +64,8 @@ export function OrderDeliveryChallans({ orderId }: { orderId: string }) {
   if (!data) return null;
 
   const { dcs, lines, totals } = data;
+  const drafted = totals.drafted ?? 0;
+  const toGo = totals.ordered - totals.dispatched - drafted;
 
   return (
     <Card className="mt-4">
@@ -78,9 +84,8 @@ export function OrderDeliveryChallans({ orderId }: { orderId: string }) {
         {totals.count > 0 && (
           <p className="mt-1 text-sm text-ink-400">
             {nf(totals.dispatched)} of {nf(totals.ordered)} despatched
-            {totals.ordered > totals.dispatched && (
-              <> · {nf(totals.ordered - totals.dispatched)} still to go</>
-            )}
+            {drafted > 0 && <> · {nf(drafted)} on a draft challan, not yet sent</>}
+            {toGo > 0 && <> · {nf(toGo)} still to go</>}
           </p>
         )}
       </div>
@@ -108,6 +113,7 @@ export function OrderDeliveryChallans({ orderId }: { orderId: string }) {
                     <th className="py-2 text-left font-medium">Product</th>
                     <th className="py-2 text-right font-medium">Ordered</th>
                     <th className="py-2 text-right font-medium">Despatched</th>
+                    {drafted > 0 && <th className="py-2 text-right font-medium">On draft</th>}
                     <th className="py-2 text-right font-medium">Pending</th>
                   </tr>
                 </thead>
@@ -121,6 +127,11 @@ export function OrderDeliveryChallans({ orderId }: { orderId: string }) {
                       <td className="py-2 text-right tabular-nums font-semibold">
                         {nf(l.dispatched)}
                       </td>
+                      {drafted > 0 && (
+                        <td className="py-2 text-right tabular-nums text-ink-600">
+                          {(l.drafted ?? 0) > 0 ? nf(l.drafted ?? 0) : "—"}
+                        </td>
+                      )}
                       <td
                         className={cn(
                           "py-2 text-right tabular-nums",

@@ -119,6 +119,12 @@ const elasticColumns: Column<OrderElasticProgress>[] = [
             />
           </span>
           <span className="tabular-nums">{e.delivered.toLocaleString("en-IN")}</span>
+          {/* Made out, not yet sent: not delivered, and worth seeing. */}
+          {(e.onDraftChallan ?? 0) > 0 && (
+            <span className="text-xs text-ink-400" title="On a delivery challan that has been made out and not yet marked dispatched">
+              +{(e.onDraftChallan ?? 0).toLocaleString("en-IN")} on draft
+            </span>
+          )}
         </span>
       );
     },
@@ -418,6 +424,7 @@ export function OrderDetailPage() {
   const ordered = sum("ordered");
   const produced = sum("produced");
   const delivered = sum("delivered");
+  const onDraft = (order.elastics ?? []).reduce((t, e) => t + (e.onDraftChallan ?? 0), 0);
   const m = (n: number) => `${Math.round(n).toLocaleString("en-IN")} m`;
 
   const confirmMeta: Record<
@@ -462,6 +469,10 @@ export function OrderDetailPage() {
           : delivered < ordered
             ? { text: `${m(delivered)} of ${m(ordered)} delivered.`, tone: "warning" as const }
             : { text: `All ${m(ordered)} delivered.` },
+        // A challan made out is not goods gone: it used to count as delivered here.
+        ...(onDraft > 0
+          ? [{ text: `${m(onDraft)} is on a delivery challan that has not been marked dispatched.`, tone: "warning" as const }]
+          : []),
         { text: "Stock still reserved for it is released." },
       ],
       confirmLabel: `Complete order ${no}`,

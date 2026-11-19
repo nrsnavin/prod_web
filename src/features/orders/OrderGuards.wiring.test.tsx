@@ -123,6 +123,32 @@ describe("completing", () => {
   });
 });
 
+describe("completing an order with goods on a draft challan", () => {
+  // A challan made out is not goods gone. It used to count as delivered
+  // here, so the dialog said "All 14,000 m delivered" with the goods on
+  // the floor.
+  it("does not call them delivered, and says where they are", async () => {
+    show({
+      status: "InProgress",
+      elastics: [{
+        id: "e1", name: "20mm Woven", ordered: 14000, produced: 14000, packed: 14000,
+        delivered: 9000, undelivered: 5000, onDraftChallan: 5000, notAssigned: 0, pendingDelivery: 0, pending: 0,
+      }],
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Complete…" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("9,000 m of 14,000 m delivered.");
+    expect(dialog).toHaveTextContent("5,000 m is on a delivery challan that has not been marked dispatched.");
+    expect(dialog).not.toHaveTextContent(/All 14,000 m delivered/);
+  });
+
+  it("says nothing of drafts when there are none", async () => {
+    show({ status: "InProgress" });
+    await userEvent.click(await screen.findByRole("button", { name: "Complete…" }));
+    expect(screen.getByRole("dialog")).not.toHaveTextContent(/not been marked dispatched/);
+  });
+});
+
 describe("cancelling", () => {
   it("an Open order: asks, then cancels with no reason needed", async () => {
     show();

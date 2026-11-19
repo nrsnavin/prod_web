@@ -119,6 +119,50 @@ describe("the delivery challan panel", () => {
   });
 });
 
+// A draft is a note made out and not yet sent. It was counted as
+// despatched from the moment it was keyed.
+describe("a draft note", () => {
+  const withDraft = () =>
+    make({
+      dcs: [dc({ totalQuantity: 250 }), dc({ id: "dc2", dcNumber: "DC/25-26/002", status: "draft", totalQuantity: 400 })],
+      lines: [
+        { elasticId: "e1", elasticName: "20mm Woven", ordered: 1000, dispatched: 250, drafted: 400, pending: 350 },
+      ],
+      totals: { count: 2, cancelled: 0, quantity: 650, ordered: 1000, dispatched: 250, drafted: 400 },
+    });
+
+  it("is said to be on a draft, not despatched", () => {
+    data = withDraft();
+    renderPanel();
+    expect(screen.getByText(/250 of 1,000 despatched/)).toBeInTheDocument();
+    expect(screen.getByText(/400 on a draft challan, not yet sent/)).toBeInTheDocument();
+    expect(screen.getByText(/350 still to go/)).toBeInTheDocument();
+  });
+
+  it("has its own column beside what has gone", () => {
+    data = withDraft();
+    renderPanel();
+    expect(screen.getByRole("columnheader", { name: "On draft" })).toBeInTheDocument();
+    const row = screen.getByText("20mm Woven").closest("tr")!;
+    expect(within(row).getByText("250")).toBeInTheDocument();
+    expect(within(row).getByText("400")).toBeInTheDocument();
+    expect(within(row).getByText("350")).toBeInTheDocument();
+  });
+
+  it("the column is not there when no note is a draft", () => {
+    renderPanel();
+    expect(screen.queryByRole("columnheader", { name: "On draft" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/on a draft challan/)).not.toBeInTheDocument();
+  });
+
+  it("an older server's answer, with no draft figure, reads as before", () => {
+    data = make();   // no `drafted` anywhere
+    renderPanel();
+    expect(screen.getByText(/400 of 1,000 despatched/)).toBeInTheDocument();
+    expect(screen.getByText(/600 still to go/)).toBeInTheDocument();
+  });
+});
+
 describe("a cancelled note", () => {
   it("is still listed — somebody raised it", async () => {
     data = make({

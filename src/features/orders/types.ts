@@ -54,11 +54,14 @@ export interface OrderElasticProgress {
    * A step past `packed`, and constantly read as the same thing: an
    * order can be fully packed with nothing despatched. Summed from the
    * notes rather than stored, so it cannot drift from them; cancelled
-   * notes count for nothing.
+   * notes count for nothing — and neither does a draft, which has been
+   * made out and not yet sent (see `onDraftChallan`).
    */
   delivered: number;
   /** ordered − delivered. Negative on an over-despatch, deliberately. */
   undelivered: number;
+  /** On a challan that has been made out and not yet sent. */
+  onDraftChallan?: number;
   /**
    * Ordered less what jobs have been raised for — a PLANNING figure,
    * and the cap when allocating to a job.
@@ -508,8 +511,11 @@ export interface OrderDcLine {
   elasticId: string;
   elasticName: string;
   ordered: number;
+  /** Left the building: on a note that is dispatched or delivered. */
   dispatched: number;
-  /** ordered − dispatched. Negative when more went out than was ordered. */
+  /** On a note that has been made out and not yet sent. */
+  drafted?: number;
+  /** What has no note at all. Negative when more went out than was ordered. */
   pending: number;
 }
 
@@ -525,6 +531,7 @@ export interface OrderDeliveryChallans {
     quantity: number;
     ordered: number;
     dispatched: number;
+    drafted?: number;
   };
 }
 
