@@ -11,6 +11,7 @@ import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
 import { money } from "./shared";
 import { OverviewTab } from "./OverviewTab";
+import type { ChequeDue } from "./types";
 
 function Box({ icon: I, title, count, amount, to, children, empty, badge }: {
   icon: typeof Landmark; title: string; count: number; amount?: number; to: string; children?: React.ReactNode; empty: string; badge?: React.ReactNode;
@@ -19,7 +20,7 @@ function Box({ icon: I, title, count, amount, to, children, empty, badge }: {
     // min-w-0: a long line inside must not widen the grid column past the screen.
     // Nothing waiting reads quieter (no figure in colour), not faded:
     // a faded card took its text below what can be read.
-    <Card className="min-w-0 p-4">
+    <Card className="min-w-0 p-4" aria-label={title}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <Link to={to} className="flex items-center gap-2 font-semibold hover:underline"><I className="h-4 w-4 shrink-0 text-brand-600" /> {title}</Link>
@@ -47,6 +48,9 @@ function Row({ name, meta, right, to }: { name: string; meta?: React.ReactNode; 
     </li>
   );
 }
+
+/** A cheque's line: its number, the bank it is drawn on, its date. */
+const chequeLine = (c: ChequeDue) => `Cheque ${c.cheque.number || ""}${c.cheque.bank ? ` · ${c.cheque.bank}` : ""} · dated ${formatDate(c.cheque.date)}`;
 
 /** What needs someone today, before the figures. */
 export function InboxTab() {
@@ -96,7 +100,17 @@ export function InboxTab() {
           {data.chequesDue && (
             <Box icon={Banknote} title="Cheques to deposit" count={data.chequesDue.count} amount={data.chequesDue.amount} to="/accounts/registers?section=cheques" empty="No cheque in the drawer falls due this week"
               badge={data.chequesDue.overdue ? <StatusChip tone="warning" className="mt-1">{data.chequesDue.overdue} past their date</StatusChip> : null}>
-              <ul className="space-y-2">{data.chequesDue.top.map((c) => <Row key={c._id} to={`/accounts/payments/${c._id}`} name={c.partyName} meta={`Cheque ${c.cheque.number || ""}${c.cheque.bank ? ` · ${c.cheque.bank}` : ""} · dated ${formatDate(c.cheque.date)} · ${c.kind === "receipt" ? "received" : "issued"}`} right={`₹${money(c.amount)}`} />)}</ul>
+              {/* These are the ones received. An answer from before the two were
+                  told apart can still list one of ours: it says so. */}
+              <ul className="space-y-2">{data.chequesDue.top.map((c) => <Row key={c._id} to={`/accounts/payments/${c._id}`} name={c.partyName} meta={`${chequeLine(c)}${c.kind === "receipt" ? "" : " · issued by us"}`} right={`₹${money(c.amount)}`} />)}</ul>
+            </Box>
+          )}
+          {/* Ours, given post-dated: not money to bank — money the bank will
+              be asked for. They were added into the box above. */}
+          {data.chequesDue?.issued && data.chequesDue.issued.count > 0 && (
+            <Box icon={Banknote} title="Our cheques falling due" count={data.chequesDue.issued.count} amount={data.chequesDue.issued.amount} to="/accounts/registers?section=cheques" empty="None of our cheques falls due this week">
+              <p className="text-ink-500">Given post-dated, their date here or within the week: the bank will be asked for this money.</p>
+              <ul className="mt-2 space-y-2">{data.chequesDue.issued.top.map((c) => <Row key={c._id} to={`/accounts/payments/${c._id}`} name={c.partyName} meta={chequeLine(c)} right={`₹${money(c.amount)}`} />)}</ul>
             </Box>
           )}
           {data.mailedBills && (

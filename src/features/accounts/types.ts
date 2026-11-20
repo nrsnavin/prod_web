@@ -1133,9 +1133,11 @@ export interface Inbox {
   whatsappPapers?: { count: number; top: Array<{ _id: string; code: string; kind: PaperKind | null; note: string; sentByName: string; createdAt: string; amount: number | null; label: string }> };
   /** Bills on machines' service logs not yet entered as supplier bills. */
   serviceBills?: { count: number; amount: number; top: Array<{ _id: string; machine: string; serviceLog: string; kind: "service_bill" | "spare_bill"; vendor?: string; billNo?: string; billDate?: string | null; amount: number; filename?: string; createdAt: string }> };
-  /** Cheques in the drawer whose date has come, or comes this week. */
-  chequesDue?: { count: number; amount: number; overdue: number; top: Array<{ _id: string; kind: VoucherKind; voucherNo: string; partyName: string; amount: number; cheque: { number?: string; bank?: string; date: string } }> };
+  /** Cheques received, in the drawer, whose date has come or comes this week
+   *  — and, apart from them, the post-dated ones we gave that fall due. */
+  chequesDue?: { count: number; amount: number; overdue: number; top: ChequeDue[]; issued?: { count: number; amount: number; top: ChequeDue[] } };
 }
+export interface ChequeDue { _id: string; kind: VoucherKind; voucherNo: string; partyName: string; amount: number; cheque: { number?: string; bank?: string; date: string } }
 export interface ForecastItem { direction: "in" | "out"; party: string; docNo: string; amount: number; basis: string; date?: string }
 export interface ForecastWeek { from: string; to: string; inflow: number; outflow: number; closing: number; top: ForecastItem[]; items?: ForecastItem[] }
 export interface Forecast { opening: number; weeks: ForecastWeek[]; firstShortWeek: string | null; later: { inflow: number; outflow: number }; habits: number }
