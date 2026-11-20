@@ -127,6 +127,52 @@ describe("an order", () => {
     expect(screen.getByRole("link", { name: /Challan/ }).getAttribute("href")).toMatch(/\/dispatches\/d1\/pdf$/);
   });
 
+  // A cancelled order read "This order was cancelled" under "Still to come
+  // 1,500 m". Nothing is to come on it; what had not left is not supplied.
+  it("a cancelled order says what was not supplied, never that it is still to come", async () => {
+    api.me.mockResolvedValue(buyer);
+    api.order.mockResolvedValue({
+      ...order, stage: "cancelled", notSupplied: 1200,
+      lines: [
+        { elastic: "e1", name: "20mm", ordered: 1000, produced: 800, dispatched: 300, toCome: 0, notSupplied: 700 },
+        { elastic: "e2", name: "25mm", ordered: 500, produced: 0, dispatched: 0, toCome: 0, notSupplied: 500 },
+      ],
+      totals: { ordered: 1500, produced: 800, dispatched: 300, toCome: 0 },
+    });
+    open("/orders/o1");
+    expect(await screen.findByText("This order was cancelled.")).toBeInTheDocument();
+    expect(screen.queryByText("Still to come")).not.toBeInTheDocument();
+    expect(screen.queryByText(/to come/i)).not.toBeInTheDocument();
+    const fact = screen.getAllByText("Not supplied")[0].closest("div")!;
+    expect(fact).toHaveTextContent("1,200 m");
+    expect(screen.getByRole("columnheader", { name: "Not supplied" })).toBeInTheDocument();
+    expect(within(screen.getByRole("row", { name: /20mm/ })).getAllByRole("cell").map((c) => c.textContent)).toEqual(
+      expect.arrayContaining(["1,000 m", "300 m", "700 m"]),
+    );
+    expect(within(screen.getByRole("row", { name: /^Total/ })).getAllByRole("cell").slice(-1)[0]).toHaveTextContent("1,200 m");
+  });
+
+  it("a cancelled order from a server that does not yet send the new figure still reads as not supplied", async () => {
+    api.me.mockResolvedValue(buyer);
+    // The older answer: the remainder under toCome, whatever the order's state.
+    api.order.mockResolvedValue({ ...order, stage: "cancelled" });
+    open("/orders/o1");
+    expect(await screen.findByText("This order was cancelled.")).toBeInTheDocument();
+    expect(screen.queryByText(/to come/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText("Not supplied")[0].closest("div")!).toHaveTextContent("1,200 m");
+    expect(within(screen.getByRole("row", { name: /25mm/ })).getAllByRole("cell").slice(-1)[0]).toHaveTextContent("500 m");
+  });
+
+  it("an open or completed order still says what is to come", async () => {
+    api.me.mockResolvedValue(buyer);
+    api.order.mockResolvedValue({ ...order, stage: "completed", notSupplied: 0 });
+    open("/orders/o1");
+    expect(await screen.findByRole("heading", { name: "Order #118" })).toBeInTheDocument();
+    expect(screen.getByText("Still to come").closest("div")!).toHaveTextContent("1,200 m");
+    expect(screen.getByRole("columnheader", { name: "To come" })).toBeInTheDocument();
+    expect(screen.queryByText("Not supplied")).not.toBeInTheDocument();
+  });
+
   it("one that is not the customer's reads as not here", async () => {
     api.me.mockResolvedValue(buyer);
     api.order.mockRejectedValue(new PortalError("Order not found", 404));

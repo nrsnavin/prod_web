@@ -109,12 +109,17 @@ export interface OrderLine {
   ordered: number;
   produced: number;
   dispatched: number;
+  /** Ordered less dispatched; nothing on a cancelled order. */
   toCome: number;
+  /** On a cancelled order, what had not left. Absent on an older server. */
+  notSupplied?: number;
 }
 
 export interface OrderDetail extends Omit<OrderRow, "lines" | "ordered" | "produced" | "dispatched"> {
   lines: OrderLine[];
   totals: { ordered: number; produced: number; dispatched: number; toCome: number };
+  /** The lines' `notSupplied` added up. Absent on an older server. */
+  notSupplied?: number;
   dispatches: DispatchRow[];
   hasCertificates: boolean;
 }

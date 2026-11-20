@@ -34,6 +34,22 @@ function railOf(o: OrderDetail) {
   ]);
 }
 
+/**
+ * What is left of an order, and what to call it. Nothing is "still to
+ * come" on a cancelled order: what had not left is "not supplied". An
+ * older server sends that remainder under `toCome` whatever the order's
+ * state, so it is read from there when the new figure is not sent.
+ */
+function leftOf(o: OrderDetail) {
+  const cancelled = o.stage === "cancelled";
+  return {
+    label: cancelled ? "Not supplied" : "To come",
+    heading: cancelled ? "Not supplied" : "Still to come",
+    total: cancelled ? (o.notSupplied ?? o.totals.toCome) : o.totals.toCome,
+    line: (l: OrderDetail["lines"][number]) => (cancelled ? (l.notSupplied ?? l.toCome) : l.toCome),
+  };
+}
+
 function LineFigure({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <div>
@@ -50,6 +66,7 @@ export function OrderPage() {
   if (q.isLoading) return <Skeleton className="h-72 w-full" />;
   if (q.isError) return <NotFoundPage what="order" />;
   const o = q.data!;
+  const left = leftOf(o);
 
   return (
     <>
@@ -74,7 +91,7 @@ export function OrderPage() {
           <Fact label="Status"><StageChip stage={o.stage} /></Fact>
           <Fact label="Ordered on">{formatDate(o.date)}</Fact>
           <Fact label="Due">{formatDate(o.supplyDate)}</Fact>
-          <Fact label="Still to come">{m(o.totals.toCome)}</Fact>
+          <Fact label={left.heading}>{m(left.total)}</Fact>
         </dl>
       </Card>
 
@@ -96,13 +113,13 @@ export function OrderPage() {
                 <LineFigure label="Ordered" value={m(l.ordered)} />
                 <LineFigure label="Woven" value={m(l.produced)} />
                 <LineFigure label="Dispatched" value={m(l.dispatched)} />
-                <LineFigure label="To come" value={m(l.toCome)} strong />
+                <LineFigure label={left.label} value={m(left.line(l))} strong />
               </dl>
             </li>
           ))}
           <li className="flex justify-between px-5 py-3 text-sm font-semibold">
-            <span>Total to come</span>
-            <span className="tabular-nums">{m(o.totals.toCome)} of {m(o.totals.ordered)}</span>
+            <span>Total {left.label.toLowerCase()}</span>
+            <span className="tabular-nums">{m(left.total)} of {m(o.totals.ordered)}</span>
           </li>
         </ul>
         <ScrollRegion label="What you ordered" className="hidden sm:block">
@@ -113,7 +130,7 @@ export function OrderPage() {
                 <th className="px-3 py-2.5 text-right">Ordered</th>
                 <th className="px-3 py-2.5 text-right">Woven</th>
                 <th className="px-3 py-2.5 text-right">Dispatched</th>
-                <th className="px-5 py-2.5 text-right">To come</th>
+                <th className="px-5 py-2.5 text-right">{left.label}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100">
@@ -126,7 +143,7 @@ export function OrderPage() {
                   <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{m(l.ordered)}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-ink-600">{m(l.produced)}</td>
                   <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{m(l.dispatched)}</td>
-                  <td className="whitespace-nowrap px-5 py-3 text-right font-medium tabular-nums">{m(l.toCome)}</td>
+                  <td className="whitespace-nowrap px-5 py-3 text-right font-medium tabular-nums">{m(left.line(l))}</td>
                 </tr>
               ))}
             </tbody>
@@ -136,7 +153,7 @@ export function OrderPage() {
                 <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{m(o.totals.ordered)}</td>
                 <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{m(o.totals.produced)}</td>
                 <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums">{m(o.totals.dispatched)}</td>
-                <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums">{m(o.totals.toCome)}</td>
+                <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums">{m(left.total)}</td>
               </tr>
             </tfoot>
           </table>
