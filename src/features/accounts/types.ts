@@ -1068,6 +1068,8 @@ export interface BankFeedRun {
 }
 export interface BankFeedStatus {
   configured: boolean; mailbox: string; everyMin: number; senders: string[]; autoPost: boolean;
+  /** The mail host whose "signature checked" line is believed, when the server names one (BANK_FEED_AUTHSERV). */
+  authServer?: string;
   /** The bank's SFTP folder, when one is set up; hostKeySet false means nothing is read yet. */
   sftp?: { host: string; dir: string; hostKeySet: boolean } | null;
   lastRunAt: string | null; lastResult: BankFeedRun | null; recent: BankFeedMail[];

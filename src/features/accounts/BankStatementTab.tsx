@@ -236,6 +236,11 @@ export function BankFeedCard({ onOpen }: { onOpen: (account: string, statement: 
         <input type="checkbox" className="mt-0.5" checked={data.autoPost} disabled={!isAdmin} onChange={(e) => setAuto(e.target.checked)} />
         <span>Post lines it is sure of without a person<span className="block text-xs text-ink-400">Only a line naming the invoice or bill with the amount exact, and only from the bank's own signed mail{data.senders.length ? ` (${data.senders.join(", ")})` : ""} or its SFTP server.{!isAdmin ? " An admin can change this." : ""}</span></span>
       </label>
+      {data.autoPost && data.mailbox && !data.authServer && (
+        <p className="mt-1 pl-6 text-xs text-status-warning" role="note" aria-label="Mail host not named">
+          Whether a mail is signed is taken from the first check line on it. To believe only your own mail host's line, ask whoever runs the server to set BANK_FEED_AUTHSERV to that host's name.
+        </p>
+      )}
       {data.recent.length > 0 && (
         <ul className="mt-3 divide-y divide-ink-100 text-sm" aria-label="Statements received">
           {mails.map((m) => (
