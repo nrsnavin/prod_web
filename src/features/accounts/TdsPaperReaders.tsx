@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { formatDate, todayYmd } from "@/core/format/date";
 import { accountsService } from "./api";
-import { PartyPicker, money } from "./shared";
+import { PartyPicker, isFy, money } from "./shared";
 import { PaperChecks, PaperPicker, ReadProblem } from "./PaperReader";
 import type { Form16aResult, TdsChallanResult } from "./types";
 
@@ -98,8 +98,6 @@ export function Form16aReader({ onSaved }: { onSaved: (fy: string) => void }) {
   );
 }
 
-const FY = /^\d{4}-\d{2}$/;
-
 function Form16aDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (fy: string) => void }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
@@ -131,7 +129,7 @@ function Form16aDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (fy
     finally { setBusy(false); }
   };
 
-  const ready = !!party && FY.test(fy) && ["Q1", "Q2", "Q3", "Q4"].includes(quarter) && Number(amount) >= 0 && amount !== "";
+  const ready = !!party && isFy(fy) && ["Q1", "Q2", "Q3", "Q4"].includes(quarter) && Number(amount) >= 0 && amount !== "";
   const save = async () => {
     setSaving(true);
     try {
@@ -177,7 +175,7 @@ function Form16aDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (fy
             )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2"><PartyPicker partyType="customer" value={party} knownName={partyName || undefined} onChange={(id, name) => { setParty(id); setPartyName(name); }} /></div>
-              <Input label="Financial year" value={fy} onChange={(e) => setFy(e.target.value.trim())} placeholder="2026-27" error={fy && !FY.test(fy) ? "As 2026-27" : undefined} />
+              <Input label="Financial year" value={fy} onChange={(e) => setFy(e.target.value.trim())} placeholder="2026-27" error={fy && !isFy(fy) ? "A financial year, as 2026-27" : undefined} />
               <Select label="Quarter" value={quarter} onChange={(e) => setQuarter(e.target.value)} options={["Q1", "Q2", "Q3", "Q4"].map((q) => ({ value: q, label: q }))} placeholder="Pick" />
               <Input label="Certificate no." value={certNo} onChange={(e) => setCertNo(e.target.value.toUpperCase())} />
               <Input label="Section" value={section} onChange={(e) => setSection(e.target.value.toUpperCase())} />

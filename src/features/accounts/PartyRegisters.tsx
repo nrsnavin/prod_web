@@ -17,7 +17,7 @@ import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
 import { money, today } from "./shared";
-import type { ConfirmationRow, ConfirmationStatus } from "./types";
+import type { ConfirmationRow, ConfirmationStatus, PdcRegister } from "./types";
 
 const th = "py-2 text-xs font-medium uppercase tracking-wide text-ink-400";
 const num = "py-2 text-right tabular-nums";
@@ -36,7 +36,7 @@ export function ChequesSection() {
           <div>
             <h3 className="font-semibold">Cheques</h3>
             <p className="text-xs text-ink-400">Received, in hand → deposited at the bank → cleared when the bank credits it. A returned cheque cancels its voucher.</p>
-            {q.data && <p className="mt-1 text-sm text-ink-500">In hand: {q.data.totals.held.count} cheque{q.data.totals.held.count === 1 ? "" : "s"} · received ₹{money(q.data.totals.held.received)} · issued ₹{money(q.data.totals.held.issued)}{q.data.totals.dueToday.count ? <span className="text-status-warning"> · {q.data.totals.dueToday.count} to deposit (₹{money(q.data.totals.dueToday.amount)})</span> : null}</p>}
+            {q.data && <HeldLine t={q.data.totals} />}
           </div>
           <FilterChips options={[{ value: "held", label: "Received" }, { value: "deposited", label: "Deposited" }, { value: "cleared", label: "Cleared" }, { value: "bounced", label: "Returned" }, { value: "all", label: "All" }]} value={status} onChange={setStatus} />
         </div>
@@ -69,9 +69,32 @@ export function ChequesSection() {
               </tbody>
             </table>
           )}
+          {/* The list holds five hundred: in hand and at the bank the soonest, the rest the newest. */}
+          {q.data && q.data.total !== undefined && q.data.total > q.data.rows.length && (
+            <p className="mt-2 text-xs text-ink-500">Showing the {q.data.status === "held" || q.data.status === "deposited" ? "soonest" : "newest"} {q.data.rows.length} of {q.data.total}.</p>
+          )}
         </div>
       </Card>
     </div>
+  );
+}
+
+/**
+ * What is held, in a line. A held cheque received is in the drawer, to be
+ * deposited; one we gave, post-dated, is with the supplier until its date.
+ * Both were counted "in hand", and the ones of ours falling due were added
+ * into "to deposit".
+ */
+function HeldLine({ t }: { t: PdcRegister["totals"] }) {
+  const h = t.held;
+  const inHand = h.receivedCount ?? h.count;
+  return (
+    <p className="mt-1 text-sm text-ink-500" aria-label="Cheques held">
+      In hand: {inHand} cheque{inHand === 1 ? "" : "s"} · received ₹{money(h.received)}
+      {h.issuedCount === undefined ? <> · issued ₹{money(h.issued)}</> : h.issuedCount > 0 ? <> · ours, held to their date: {h.issuedCount} · ₹{money(h.issued)}</> : null}
+      {t.dueToday.count ? <span className="text-status-warning"> · {t.dueToday.count} to deposit (₹{money(t.dueToday.amount)})</span> : null}
+      {t.dueToday.issued?.count ? <span> · {t.dueToday.issued.count} of ours due (₹{money(t.dueToday.issued.amount)})</span> : null}
+    </p>
   );
 }
 

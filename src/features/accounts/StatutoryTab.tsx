@@ -14,7 +14,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
-import { money } from "./shared";
+import { isMonthKey, money } from "./shared";
 import { round2 } from "@/features/invoices/gst";
 import { NoticesSection } from "./NoticesSection";
 import { ChallanReader, Form16aReader } from "./TdsPaperReaders";
@@ -41,7 +41,7 @@ export function StatutoryTab() {
   const [params] = useSearchParams();
   const asked = params.get("section") as Section | null;
   const [section, setSection] = useState<Section>(asked && SECTIONS.includes(asked) ? asked : "msme");
-  const [month, setMonth] = useState(/^\d{4}-\d{2}$/.test(params.get("month") ?? "") ? params.get("month")! : lastMonth());
+  const [month, setMonth] = useState(isMonthKey(params.get("month")) ? params.get("month")! : lastMonth());
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-3">
@@ -534,7 +534,10 @@ function Gstr2bSection({ month }: { month: string }) {
       const r = await accountsService.uploadGstr2b(file, month);
       qc.setQueryData([ACCOUNTS_KEY, "gstr2b", r.period], { ...r, periods: q.data?.periods });
       qc.invalidateQueries({ queryKey: [ACCOUNTS_KEY] });
-      toast(`${r.counts.entries} lines read: ${r.counts.matched} matched, ${r.counts.mismatch} with a different tax, ${r.counts.notInBooks} not in the books, ${r.counts.missing} of ours not in 2B`, r.counts.missing || r.counts.mismatch ? "info" : "success");
+      // The file says which month it is for, and is filed there — whatever
+      // month is on screen. Say so when they differ: this month is as it was.
+      const elsewhere = r.period !== month ? `This file is the GSTR-2B for ${monthLabel(r.period)}, and was filed there — ${monthLabel(month)} is unchanged. ` : "";
+      toast(`${elsewhere}${r.counts.entries} lines read: ${r.counts.matched} matched, ${r.counts.mismatch} with a different tax, ${r.counts.notInBooks} not in the books, ${r.counts.missing} of ours not in 2B`, elsewhere || r.counts.missing || r.counts.mismatch ? "info" : "success");
     } catch (e) {
       toast(e instanceof Error ? e.message : "Could not read the file", "error");
     } finally {

@@ -15,7 +15,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY, useCategories } from "./hooks";
-import { money, today, RangePicker, defaultPeriod } from "./shared";
+import { isFy, money, today, RangePicker, defaultPeriod } from "./shared";
 import { ChequesSection, ConfirmationsSection, InterestSection } from "./PartyRegisters";
 import { JournalForm } from "./JournalForm";
 import type { AssetBlock, FixedAssetBody, FixedAssetRow, BudgetRow, JournalDraft } from "./types";
@@ -37,7 +37,7 @@ export function RegistersTab() {
   const [params] = useSearchParams();
   const asked = params.get("section") as Section | null;
   const [section, setSection] = useState<Section>(asked && SECTIONS.includes(asked) ? asked : "assets");
-  const [fy, setFy] = useState(/^\d{4}-\d{2}$/.test(params.get("fy") ?? "") ? params.get("fy")! : thisFy());
+  const [fy, setFy] = useState(isFy(params.get("fy")) ? params.get("fy")! : thisFy());
   const yearly = section === "assets" || section === "budgets";
   return (
     <div className="space-y-4">
@@ -65,10 +65,20 @@ function AssetForm({ blocks, onDone, onCancel }: { blocks: Array<{ key: AssetBlo
   const [busy, setBusy] = useState(false);
   const block = blocks.find((b) => b.key === f.block);
   const set = (patch: Partial<FixedAssetBody>) => setF((x) => ({ ...x, ...patch }));
+  // The opening values go only with a year AND a figure. With one of the
+  // two — or a year typed "2026" — the asset used to be saved without
+  // them, at its full cost, and nothing said.
+  const openingYear = opening.fy.trim();
+  const openingGiven = openingYear !== "" || opening.companiesAct !== "" || opening.incomeTax !== "";
+  const openingProblem = !openingGiven ? null
+    : openingYear === "" ? "Say which year the opening values are as at the start of, like 2026-27."
+    : !isFy(openingYear) ? `${openingYear} is not a financial year. Write it like 2026-27.`
+    : opening.companiesAct === "" ? `Enter the written-down value as at the start of ${openingYear}.`
+    : null;
   const save = async () => {
     setBusy(true);
     try {
-      await accountsService.addFixedAsset({ ...f, lifeYears: f.lifeYears === "" ? undefined : Number(f.lifeYears), ...(opening.fy && opening.companiesAct !== "" ? { openingWdv: { fy: opening.fy, companiesAct: Number(opening.companiesAct), incomeTax: opening.incomeTax === "" ? undefined : Number(opening.incomeTax) } } : {}) });
+      await accountsService.addFixedAsset({ ...f, lifeYears: f.lifeYears === "" ? undefined : Number(f.lifeYears), ...(openingGiven ? { openingWdv: { fy: openingYear, companiesAct: Number(opening.companiesAct), incomeTax: opening.incomeTax === "" ? undefined : Number(opening.incomeTax) } } : {}) });
       toast(`${f.name} added to the register`, "success"); onDone();
     } catch (e) { toast(e instanceof ApiError ? e.message : "Could not add the asset", "error"); }
     finally { setBusy(false); }
@@ -100,10 +110,11 @@ function AssetForm({ blocks, onDone, onCancel }: { blocks: Array<{ key: AssetBlo
           <Input label="WDV, Companies Act (₹)" type="number" min={0} value={opening.companiesAct} onChange={(e) => setOpening({ ...opening, companiesAct: e.target.value === "" ? "" : Number(e.target.value) })} />
           <Input label="WDV, Income-tax (₹)" type="number" min={0} value={opening.incomeTax} onChange={(e) => setOpening({ ...opening, incomeTax: e.target.value === "" ? "" : Number(e.target.value) })} hint="Blank: same as Companies Act" />
         </div>
+        {openingProblem && <p role="alert" className="mt-2 text-status-danger">{openingProblem}</p>}
       </details>
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
-        <Button disabled={f.name.trim().length < 2 || !(f.cost > 0) || !f.purchaseDate} loading={busy} onClick={save}>Add asset</Button>
+        <Button disabled={f.name.trim().length < 2 || !(f.cost > 0) || !f.purchaseDate || !!openingProblem} loading={busy} onClick={save}>Add asset</Button>
       </div>
     </div>
   );

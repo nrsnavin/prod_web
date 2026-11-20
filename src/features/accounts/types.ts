@@ -1222,7 +1222,9 @@ export interface ConfirmationLetter { confirmation: Confirmation; company: strin
 
 // ── Cheques ──
 export interface PdcRow { _id: string; kind: VoucherKind; voucherNo: string; date: string; partyType: string; partyName: string; amount: number; account?: string; accountName?: string; reference?: string; cheque: ChequeDetails; allocations?: Array<{ docNo: string }>; status: "posted" | "cancelled"; cancel?: { reason?: string } }
-export interface PdcRegister { status: string; rows: PdcRow[]; totals: { held: { count: number; received: number; issued: number }; dueToday: { count: number; amount: number }; dueThisWeek: { count: number; amount: number } } }
+/** `dueToday` and `dueThisWeek` are the cheques RECEIVED, to deposit; the post-dated ones we gave come beside them as `issued`. `total` is how many the stage holds when the list is cut. */
+export interface PdcDue { count: number; amount: number; issued?: { count: number; amount: number } }
+export interface PdcRegister { status: string; rows: PdcRow[]; total?: number; totals: { held: { count: number; received: number; issued: number; receivedCount?: number; issuedCount?: number }; dueToday: PdcDue; dueThisWeek: PdcDue } }
 
 // ── Interest on overdue receivables ──
 export interface InterestRow { invoice: string; docNo: string; date: string; dueDate: string; outstanding: number; overdueDays: number; from: string; to: string; days: number; rate: number; interest: number; gstPercent: number; chargedTo: string | null }

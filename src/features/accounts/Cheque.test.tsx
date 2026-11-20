@@ -23,6 +23,29 @@ const wrap = (ui: React.ReactNode) => render(<QueryClientProvider client={new Qu
 
 beforeEach(() => chequeAction.mockClear());
 
+describe("a cheque we gave", () => {
+  const ours = () => row({ kind: "payment", voucherNo: "PAY/2026-27/0031", partyName: "Sri Yarns" }, { number: "500777", bank: "", date: "2026-11-20" });
+
+  it("is handed over, not deposited: the form says what is happening", async () => {
+    wrap(<ChequeCard row={ours()} />);
+    const card = screen.getByLabelText("Cheque");
+    expect(card).toHaveTextContent("held, not yet presented");
+    await userEvent.click(within(card).getByRole("button", { name: "Handed over" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Cheque handed over");
+    // Before: "…from Sri Yarns: handed to the bank. It shows as cleared once the bank credits it",
+    // under "Deposited on" and a button that said "Mark deposited".
+    expect(dialog).toHaveTextContent("Cheque 500777 for ₹50,000.00 to Sri Yarns: handed over to them.");
+    expect(dialog).toHaveTextContent("once the bank debits it");
+    expect(dialog).not.toHaveTextContent("handed to the bank");
+    expect(within(dialog).getByLabelText("Handed over on")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("From account")).toHaveValue("b1");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Mark handed over" }));
+    // It is the same step on the server.
+    expect(chequeAction).toHaveBeenCalledWith("p1", expect.objectContaining({ action: "deposited" }));
+  });
+});
+
 describe("a cheque's stages", () => {
   it("shows a received cheque at its first step and says to deposit it; deposit then clear", async () => {
     wrap(<ChequeCard row={row()} />);

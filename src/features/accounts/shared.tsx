@@ -23,6 +23,13 @@ export const expenseLabel: Record<ExpenseStatus, string> = { pending: "To approv
 export { ymd };
 export const today = () => ymd(new Date());
 export const monthStart = () => { const d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth(), 1)); };
+// A month and a financial year are written alike ("2026-10", "2026-27") and
+// were each checked for that shape alone: "2026-13" passed for a month,
+// "2026-28" for a year. The server refuses both; these say so sooner.
+/** "2026-10": a year and one of its twelve months. */
+export const isMonthKey = (s: string | null | undefined): s is string => /^\d{4}-(0[1-9]|1[0-2])$/.test(s ?? "");
+/** "2026-27": April to March, the second half the year after the first. */
+export const isFy = (s: string | null | undefined): s is string => /^\d{4}-\d{2}$/.test(s ?? "") && Number(s!.slice(5)) === (Number(s!.slice(0, 4)) + 1) % 100;
 
 /** Common periods, by the calendar here: the quarter and year are the financial ones (April to March). */
 export function periods(now = new Date()): Array<{ key: string; label: string; from: string; to: string }> {

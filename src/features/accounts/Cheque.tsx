@@ -76,11 +76,16 @@ function StageForm({ row, action, onDone, onCancel }: { row: ChequeRow; action: 
   const banks = (accounts ?? []).filter((a) => a.active !== false && a.kind !== "cash");
   const chosen = account || banks.find((a) => a.isDefault)?._id || banks[0]?._id || "";
   const deposit = action === "deposited";
+  // The same step on the server, and another thing in the world: a cheque
+  // received goes to the bank; one we gave goes to the party. The form
+  // read "from Sri Yarns: handed to the bank … once the bank credits it"
+  // over a cheque we had written to them.
+  const ours = row.kind === "payment";
   const save = async () => {
     setBusy(true);
     try {
       await accountsService.chequeAction(row._id, { action, on, ...(chosen && chosen !== row.account ? { account: chosen } : {}) });
-      toast(deposit ? `Cheque ${row.cheque.number || ""} deposited` : `Cheque ${row.cheque.number || ""} cleared`, "success");
+      toast(`Cheque ${row.cheque.number || ""} ${deposit ? (ours ? "handed over" : "deposited") : "cleared"}`, "success");
       onDone();
     } catch (e) { toast(e instanceof ApiError ? e.message : "Could not update it", "error"); }
     finally { setBusy(false); }
@@ -89,18 +94,20 @@ function StageForm({ row, action, onDone, onCancel }: { row: ChequeRow; action: 
     <div className="space-y-3">
       <p className="text-sm text-ink-500">
         {deposit
-          ? `Cheque ${row.cheque.number || ""} for ₹${money(row.amount)} from ${row.partyName}: handed to the bank. It shows as cleared once the bank credits it — tick it then, or let the bank statement do it.`
+          ? ours
+            ? `Cheque ${row.cheque.number || ""} for ₹${money(row.amount)} to ${row.partyName}: handed over to them. It shows as cleared once the bank debits it — tick it then, or let the bank statement do it.`
+            : `Cheque ${row.cheque.number || ""} for ₹${money(row.amount)} from ${row.partyName}: handed to the bank. It shows as cleared once the bank credits it — tick it then, or let the bank statement do it.`
           : `Cheque ${row.cheque.number || ""} for ₹${money(row.amount)}: the bank has ${row.kind === "receipt" ? "credited" : "debited"} it. The day goes on the voucher for the reconciliation.`}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Input label={deposit ? "Deposited on" : "Cleared on"} type="date" value={on} onChange={(e) => setOn(e.target.value)} />
+        <Input label={deposit ? (ours ? "Handed over on" : "Deposited on") : "Cleared on"} type="date" value={on} onChange={(e) => setOn(e.target.value)} />
         {(deposit || row.cheque.status === "held") && (
           <Select label={row.kind === "receipt" ? "Into account" : "From account"} value={chosen} onChange={(e) => setAccount(e.target.value)} options={banks.map((a) => ({ value: a._id, label: a.name }))} placeholder="Pick the bank" />
         )}
       </div>
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Back</Button>
-        <Button loading={busy} disabled={!on || (deposit && !chosen)} onClick={save}>{deposit ? "Mark deposited" : "Mark cleared"}</Button>
+        <Button loading={busy} disabled={!on || (deposit && !chosen)} onClick={save}>{deposit ? (ours ? "Mark handed over" : "Mark deposited") : "Mark cleared"}</Button>
       </div>
     </div>
   );

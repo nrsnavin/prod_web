@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { accountsService } from "./api";
 import { ACCOUNTS_KEY } from "./hooks";
-import { money } from "./shared";
+import { isMonthKey, money } from "./shared";
 import { PaperChecks, PaperPicker, ReadProblem } from "./PaperReader";
 import type { PowerBillDraft, PowerBillResult } from "./types";
 
@@ -96,7 +96,7 @@ function PowerBillDialog({ read: reading, onClose, onSaved }: { read: boolean; o
     finally { setBusy(false); }
   };
   const setNum = (k: NumKey) => (e: React.ChangeEvent<HTMLInputElement>) => setF((x) => ({ ...x, [k]: e.target.value === "" ? null : Number(e.target.value) }));
-  const ready = /^\d{4}-\d{2}$/.test(f.month) && Number(f.units) > 0 && Number(f.total) > 0;
+  const ready = isMonthKey(f.month) && Number(f.units) > 0 && Number(f.total) > 0;
   const rate = Number(f.units) > 0 && Number(f.total) > 0 ? Math.round((Number(f.total) / Number(f.units)) * 100) / 100 : null;
 
   const save = async () => {
