@@ -121,6 +121,29 @@ export function toApiError(error: unknown): ApiError {
   return new ApiError("Unexpected error", undefined, error);
 }
 
+// A download — a PDF, a spreadsheet, a report — is asked for as a file,
+// so whatever comes back arrives as a file: the refusal too. The server's
+// reason was in there ("You don't have access to this feature", "Try a
+// shorter date range", the reference to give the administrator) and
+// nobody opened it, so every refused download read "Request failed with
+// status code 403". This opens it, before the failure is put into words.
+// Anything that is not the server's own JSON (a proxy's error page) is
+// left as it came.
+export async function withReadableBody(error: unknown): Promise<unknown> {
+  if (!axios.isAxiosError(error) || !error.response) return error;
+  const data: unknown = error.response.data;
+  if (typeof Blob === "undefined" || !(data instanceof Blob)) return error;
+  try {
+    const text = (await data.text()).trim();
+    if (!text.startsWith("{")) return error;
+    const body: unknown = JSON.parse(text);
+    if (body && typeof body === "object") error.response.data = body;
+  } catch {
+    /* not readable: the status says what there is to say */
+  }
+  return error;
+}
+
 // The waits themselves live in ./timeouts; re-exported for the code that
 // already takes them from here.
 export { DEFAULT_TIMEOUT_MS, MODEL_TIMEOUT_MS, UPLOAD_TIMEOUT_MS };
@@ -142,11 +165,11 @@ class AxiosHttpClient implements HttpClient {
 
     this.instance.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
         if (axios.isAxiosError(error) && error.response?.status === 401) {
           onUnauthorized?.();
         }
-        return Promise.reject(toApiError(error));
+        return Promise.reject(toApiError(await withReadableBody(error)));
       }
     );
   }

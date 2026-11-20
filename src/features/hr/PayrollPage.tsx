@@ -17,6 +17,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ReviewDialog } from "@/components/ui/ReviewDialog";
 import { InlineConfirm } from "@/components/ui/InlineConfirm";
 import { ApiError } from "@/core/http/httpClient";
+import { showFile } from "@/core/http/showFile";
 import { payrollService, PayrollEmployeeRow, PayrollSettings, MonthRange, PayrollRangeRow, type AdvanceRequestRow } from "./api";
 import { FormScreen } from "@/components/ui/FormScreen";
 import { Input } from "@/components/ui/Input";
@@ -75,9 +76,7 @@ function PayslipModal({
     setDownloading(true);
     try {
       const blob = await payrollService.slipPdf(empId, year, month);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      showFile(blob, `payslip-${year}-${String(month).padStart(2, "0")}.pdf`);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not generate the PDF", "error");
     } finally {

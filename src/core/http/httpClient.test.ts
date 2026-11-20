@@ -109,3 +109,49 @@ describe("a write that meets the books lock", () => {
   });
 });
 
+
+// ════════════════════════════════════════════════════════════
+//  A DOWNLOAD THE SERVER REFUSED
+//
+//  A PDF, a spreadsheet or a report is asked for as a file, so whatever
+//  comes back arrives as a file — the refusal too. The reason was in
+//  there ("You don't have access to this feature", "Try a shorter date
+//  range", the reference to give the administrator) and nobody opened
+//  it: every refused download read "Request failed with status code 403".
+// ════════════════════════════════════════════════════════════
+describe("a refused download", () => {
+  const blobOf = (body: unknown, type = "application/json") => new Blob([typeof body === "string" ? body : JSON.stringify(body)], { type });
+
+  it("says what the server said", async () => {
+    const { withReadableBody } = await import("./httpClient");
+    const refused = axiosErrorWith(403, blobOf({ success: false, message: "You don't have access to this feature" }));
+    const err = toApiError(await withReadableBody(refused));
+    expect(err.status).toBe(403);
+    expect(err.message).toBe("You don't have access to this feature");
+  });
+
+  it("keeps the code and the reference", async () => {
+    const { withReadableBody } = await import("./httpClient");
+    const refused = axiosErrorWith(500, blobOf({ success: false, code: "SERVER_ERROR", ref: "4F2A91C0", message: "Something went wrong on the server, and it has been logged. Try again — if it keeps happening, give the administrator this reference: 4F2A91C0." }));
+    const err = toApiError(await withReadableBody(refused));
+    expect(err.code).toBe("SERVER_ERROR");
+    expect(err.message).toContain("4F2A91C0");
+    expect(err.data?.ref).toBe("4F2A91C0");
+  });
+
+  it("leaves a body that is not the server's JSON alone", async () => {
+    const { withReadableBody } = await import("./httpClient");
+    const page = axiosErrorWith(502, blobOf("<html><body>Bad Gateway</body></html>", "text/html"));
+    const err = toApiError(await withReadableBody(page));
+    expect(err.status).toBe(502);
+    expect(err.message).toBe("Request failed with status code 502");
+  });
+
+  it("leaves an ordinary refusal as it was", async () => {
+    const { withReadableBody } = await import("./httpClient");
+    const plain = axiosErrorWith(400, { message: "Pick a report" });
+    expect(toApiError(await withReadableBody(plain)).message).toBe("Pick a report");
+    const notAxios = new Error("boom");
+    expect(await withReadableBody(notAxios)).toBe(notAxios);
+  });
+});

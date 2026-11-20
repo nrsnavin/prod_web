@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
+import { showFile } from "@/core/http/showFile";
 import { usePurchaseOrder, usePoMutations } from "./hooks";
 import { useRateFlags } from "./rateFlags";
 import { poService } from "./api";
@@ -594,9 +595,7 @@ export function PoDetailPage() {
     setDownloading(true);
     try {
       const blob = await poService.pdfBlob(id);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      showFile(blob, `PO-${po?.poNo ?? id}.pdf`);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not generate the PDF", "error");
     } finally {

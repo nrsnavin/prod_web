@@ -9,6 +9,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
+import { showFile } from "@/core/http/showFile";
 import { machineService } from "./api";
 import { useMachineMutations } from "./hooks";
 import { ServiceBill, ServiceBillKind } from "./types";
@@ -35,10 +36,7 @@ function fmtSize(bytes: number): string {
 async function openBill(bill: ServiceBill, onError: (msg: string) => void) {
   try {
     const blob = await machineService.serviceBillFile(bill._id);
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener");
-    // The tab keeps its own reference; release ours once it has loaded.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    showFile(blob, bill.filename || "service-bill");
   } catch (e) {
     onError(e instanceof ApiError ? e.message : "Couldn't open the bill");
   }

@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { DescriptionList } from "@/components/ui/DescriptionList";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
+import { showFile } from "@/core/http/showFile";
 import { useQuote, useQuoteMutations } from "./hooks";
 import { quoteService } from "./api";
 import { quoteStatusTone } from "./QuoteListPage";
@@ -31,9 +32,7 @@ export function QuoteDetailPage() {
     setDownloading(true);
     try {
       const blob = await quoteService.pdfBlob(id);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      showFile(blob, `${quote?.quoteNo ?? "quotation"}.pdf`);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not generate the quotation", "error");
     } finally {

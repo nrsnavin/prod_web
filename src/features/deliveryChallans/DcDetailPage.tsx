@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
+import { showFile } from "@/core/http/showFile";
 import { useDc, useDcMutations } from "./hooks";
 import { dcService } from "./api";
 import { DcStatus } from "./types";
@@ -48,10 +49,7 @@ export function DcDetailPage() {
     setDownloading(true);
     try {
       const blob = await dcService.pdfBlob(id);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      // Revoke a little later so the new tab has time to load it.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      showFile(blob, `${dc?.dcNumber ?? "challan"}.pdf`);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not generate the PDF", "error");
     } finally {

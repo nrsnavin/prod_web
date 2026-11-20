@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { StatusChip, ChipTone } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
+import { showFile } from "@/core/http/showFile";
 import { payrollService, MonthRange } from "@/features/hr/api";
 import { cn } from "@/components/ui/cn";
 import { StatTile as UiStatTile } from "@/components/ui/StatTile";
@@ -83,9 +84,7 @@ function RangeSlips({ empId }: { empId: string }) {
     setBusy(key);
     try {
       const blob = await payrollService.slipPdf(empId, year, month);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      showFile(blob, `payslip-${year}-${String(month).padStart(2, "0")}.pdf`);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "No payslip for that month", "error");
     } finally {
@@ -297,9 +296,7 @@ export function EmployeePayrollCard({ empId }: { empId: string }) {
     setDownloading(true);
     try {
       const blob = await payrollService.slipPdf(empId, year, month);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      showFile(blob, `payslip-${year}-${String(month).padStart(2, "0")}.pdf`);
     } catch (e) {
       toast(
         e instanceof ApiError ? e.message : "No generated payslip for this month yet",

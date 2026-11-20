@@ -19,6 +19,7 @@ import { ReviewDialog } from "@/components/ui/ReviewDialog";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
+import { showFile } from "@/core/http/showFile";
 import { formatDate } from "@/core/format/date";
 import { useTrackRecent } from "@/core/ui/uiStore";
 import { useInvoice, useInvoiceMutations } from "./hooks";
@@ -88,16 +89,16 @@ export function InvoiceDetailPage() {
     setBusy(kind);
     try {
       const blob = kind === "pdf" ? await invoiceService.pdfBlob(id) : await invoiceService.einvoiceJsonBlob(id);
-      const url = URL.createObjectURL(blob);
       if (kind === "pdf") {
-        window.open(url, "_blank", "noopener");
+        showFile(blob, `${inv.invoiceNumber}.pdf`);
       } else {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
         a.download = `${inv.invoiceNumber.replace(/\//g, "-")}-einvoice.json`;
         a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
       }
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (e) {
       toast(e instanceof ApiError ? e.message : "Could not prepare the file", "error");
     } finally {
