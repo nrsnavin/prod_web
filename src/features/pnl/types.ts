@@ -130,10 +130,22 @@ export interface CostRateCard {
   overheadRatePerMeter: number;
 }
 
+/** A change of the rate card: who, when, and each figure that moved. */
+export interface RateCardChange {
+  at: string;
+  byName: string;
+  from: Partial<CostRateCard>;
+  to: Partial<CostRateCard>;
+}
+
 export interface CostSettings extends CostRateCard {
   notes: string;
   configured: boolean;
   updatedAt: string | null;
+  /** The last time a figure moved; null when nobody has changed it since this was kept. */
+  lastChange?: RateCardChange | null;
+  /** The newest few, newest first. */
+  changes?: RateCardChange[];
 }
 
 /** null clears an override and hands the line back to the rate card. */

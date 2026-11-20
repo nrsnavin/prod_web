@@ -3,7 +3,8 @@ import { Save, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { MAX_RATE } from "./format";
+import { formatDate } from "@/core/format/date";
+import { MAX_RATE, rupeePrecise } from "./format";
 import { useCostSettings, usePnlMutations } from "./hooks";
 
 // The ₹/meter conversion rate card. Finishing, checking and packing are
@@ -22,6 +23,13 @@ const FIELDS = [
 
 type FieldKey = (typeof FIELDS)[number]["key"];
 
+/** What was typed, as a rate — or null when it cannot be one. */
+const asRate = (raw: string): number | null => {
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 && n <= MAX_RATE ? n : null;
+};
+const NOT_A_RATE = `A rate per metre is between 0 and ${MAX_RATE.toLocaleString("en-IN")}.`;
+
 /** `bare` drops the card and its heading, for a panel that has its own. */
 export function RateCardPanel({ bare = false }: { bare?: boolean } = {}) {
   const { data, isLoading } = useCostSettings();
@@ -30,19 +38,27 @@ export function RateCardPanel({ bare = false }: { bare?: boolean } = {}) {
 
   const value = (k: FieldKey) => draft[k] ?? (data ? String(data[k]) : "");
 
+  // A cleared box means "leave it alone", not "set it to zero" — and this
+  // rate card re-costs every order in the factory.
+  const typed = (k: FieldKey) => { const raw = draft[k]; return raw === undefined || raw.trim() === "" ? null : raw; };
+  // A figure that cannot be a rate used to be left out of the save without
+  // a word: the other boxes were saved, the form said so and went back to
+  // the old figure in this one. Now nothing is saved until it is put right.
+  const bad = (k: FieldKey) => { const raw = typed(k); return raw !== null && asRate(raw) === null; };
+  const anyBad = FIELDS.some(({ key }) => bad(key));
+
   const save = () => {
+    if (anyBad) return;
     const body: Record<string, number> = {};
     for (const { key } of FIELDS) {
-      const raw = draft[key];
-      // A cleared box means "leave it alone", not "set it to zero" —
-      // and this rate card re-costs every order in the factory.
-      if (raw === undefined || raw.trim() === "") continue;
-      const n = Number(raw);
-      if (Number.isFinite(n) && n >= 0 && n <= MAX_RATE) body[key] = n;
+      const raw = typed(key);
+      if (raw !== null) body[key] = asRate(raw)!;
     }
     if (Object.keys(body).length === 0) return;
     saveSettings.mutate(body, { onSuccess: () => setDraft({}) });
   };
+
+  const last = data?.lastChange ?? null;
 
   const unset = data && !data.configured;
 
@@ -65,7 +81,7 @@ export function RateCardPanel({ bare = false }: { bare?: boolean } = {}) {
         <Button
           size="sm"
           loading={saveSettings.isPending}
-          disabled={Object.keys(draft).length === 0}
+          disabled={Object.keys(draft).length === 0 || anyBad}
           onClick={save}
         >
           <Save className="h-4 w-4" /> Save rate card
@@ -90,10 +106,23 @@ export function RateCardPanel({ bare = false }: { bare?: boolean } = {}) {
             min="0"
             disabled={isLoading}
             value={value(key)}
+            error={bad(key) ? NOT_A_RATE : undefined}
             onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
           />
         ))}
       </div>
+
+      {/* Who moved it, and from what: these figures cost every metre ever
+          made, and the card used to keep only the time of its last save. */}
+      {last && (
+        <p className="mt-3 text-xs text-ink-500" aria-label="Last change to the rate card">
+          Last changed on {formatDate(last.at)}{last.byName ? ` by ${last.byName}` : ""}:{" "}
+          {FIELDS.filter(({ key }) => last.to[key] !== undefined)
+            .map(({ key, label }) => `${label.replace(" ₹/m", "")} ${rupeePrecise(last.from[key] ?? 0)} → ${rupeePrecise(last.to[key] ?? 0)}`)
+            .join(" · ")}
+          . Every order is costed at the figures as they stand now.
+        </p>
+      )}
     </Shell>
   );
 }
