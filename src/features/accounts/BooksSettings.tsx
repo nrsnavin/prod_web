@@ -34,6 +34,24 @@ const LEDGERS: Array<{ key: TallyLedgerKey; label: string; placeholder?: string;
   { key: "exportSales", label: "Export / SEZ sales" }, { key: "interestReceived", label: "Interest received" }, { key: "chequeCharges", label: "Cheque return charges" },
 ];
 
+/**
+ * Fill one card from the server when THAT card's value changes there.
+ *
+ * Every card used to be refilled whenever the settings came back — which
+ * is what happens when any one of them is saved, and once a minute
+ * besides. Somebody halfway through the Tally ledger names who saved the
+ * rate tolerance above them watched the names go back to what they were.
+ * Each card now follows its own figures and nobody else's.
+ */
+function useCard<T>(loaded: boolean, value: T, fill: (v: T) => void) {
+  const key = loaded ? JSON.stringify(value ?? null) : null;
+  useEffect(() => {
+    if (key !== null) fill(value);
+    // `value` is read through `key`: a new object holding the same figures is not a change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+}
+
 /** The books lock, and the Tally ledger each kind of entry posts to. */
 export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
   const { toast } = useToast();
@@ -52,18 +70,20 @@ export function BooksSettings({ isAdmin }: { isAdmin: boolean }) {
   const [ccTally, setCcTally] = useState(false);
   const [interest, setInterest] = useState<{ interestRate: number | ""; graceDays: number | ""; interestBasis: "balance" | "payments" }>({ interestRate: "", graceDays: "", interestBasis: "balance" });
   const [lut, setLut] = useState<{ number: string; validFrom: string; validTo: string }>({ number: "", validFrom: "", validTo: "" });
-  useEffect(() => {
-    if (!settings) return;
-    setLockDate(settings.lockDate ? settings.lockDate.slice(0, 10) : "");
-    setLedgers(settings.tally ?? {});
-    setVariance(settings.bills?.rateVariancePercent ?? 2);
-    setHsnDigits(settings.gst?.hsnDigits ?? 4);
-    setJournalAbove(settings.journals?.approvalAbove ?? 0);
-    setQ194(settings.tds?.purchase194q ?? { enabled: false, limit: 5000000, rate: 0.1 });
-    setCcTally(!!settings.costCentres?.tally);
-    setInterest({ interestRate: settings.receivables?.interestRate ?? 0, graceDays: settings.receivables?.graceDays ?? 0, interestBasis: settings.receivables?.interestBasis ?? "balance" });
-    setLut({ number: settings.lut?.number ?? "", validFrom: settings.lut?.validFrom ? settings.lut.validFrom.slice(0, 10) : "", validTo: settings.lut?.validTo ? settings.lut.validTo.slice(0, 10) : "" });
-  }, [settings]);
+  const loaded = !!settings;
+  useCard(loaded, settings?.lockDate, (v) => setLockDate(v ? v.slice(0, 10) : ""));
+  useCard(loaded, settings?.tally, (v) => setLedgers(v ?? {}));
+  useCard(loaded, settings?.bills?.rateVariancePercent, (v) => setVariance(v ?? 2));
+  useCard(loaded, [settings?.gst?.hsnDigits, settings?.journals?.approvalAbove, settings?.tds?.purchase194q] as const, ([hsn, above, q]) => {
+    setHsnDigits(hsn ?? 4);
+    setJournalAbove(above ?? 0);
+    setQ194(q ?? { enabled: false, limit: 5000000, rate: 0.1 });
+  });
+  useCard(loaded, [settings?.costCentres?.tally, settings?.receivables, settings?.lut] as const, ([cc, r, l]) => {
+    setCcTally(!!cc);
+    setInterest({ interestRate: r?.interestRate ?? 0, graceDays: r?.graceDays ?? 0, interestBasis: r?.interestBasis ?? "balance" });
+    setLut({ number: l?.number ?? "", validFrom: l?.validFrom ? l.validFrom.slice(0, 10) : "", validTo: l?.validTo ? l.validTo.slice(0, 10) : "" });
+  });
   const current = settings?.lockDate ? settings.lockDate.slice(0, 10) : "";
   const goingBack = !!current && (!lockDate || lockDate < current);
   const fail = (e: unknown) => toast(e instanceof ApiError ? e.message : "Could not save", "error");

@@ -98,8 +98,11 @@ export function RefundDialog({ credit, partyType, party, onClose }: { credit: Cr
   const [account, setAccount] = useState("");
   const [date, setDate] = useState(todayYmd());
   const [reference, setReference] = useState("");
-  // Cash from the cash box; anything else through a bank account.
-  const usable = (accounts ?? []).filter((a) => (mode === "cash") === (a.kind === "cash"));
+  // Cash from the cash box; anything else through a bank account. Not a
+  // closed account, and not a credit card — the server refuses both, and
+  // with a closed account first in the list the refund went to it unasked
+  // and came back "Account not found".
+  const usable = (accounts ?? []).filter((a) => a.active !== false && a.kind !== "card" && (mode === "cash") === (a.kind === "cash"));
   const acct = usable.some((a) => a._id === account) ? account : usable[0]?._id ?? "";
   const value = Number(amount) || 0;
   const problem = value > credit.available + 0.005 ? `Only ₹${money(credit.available)} is left on ${credit.docNo}` : !acct ? "Add a bank account first" : "";

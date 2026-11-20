@@ -180,7 +180,7 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
   const { data: settings } = useDocumentSettings();
   const scanned = initialDraft?.lines ?? [];
   const [category, setCategory] = useState(initialCategory ?? "");
-  const [description, setDescription] = useState(scanned.length === 1 ? scanned[0].description : "");
+  const [description, setDescription] = useState(initialDraft?.description ?? (scanned.length === 1 ? scanned[0].description : ""));
   const [date, setDate] = useState(initialDraft?.billDate ?? today());
   const [supplier, setSupplier] = useState(initialDraft?.supplier?._id ?? "");
   const [payeeName, setPayeeName] = useState(initialDraft?.supplier?.name ?? initialDraft?.supplierName ?? "");
@@ -192,8 +192,8 @@ export function ExpenseForm({ onDone, onCancel, initialDraft, initialCategory }:
   const [lines, setLines] = useState<LineInput[]>(scanned.length > 1 ? scanned : [blankLine(0)]);
   const [payNow, setPayNow] = useState(!!initialDraft?.paidInCash);
   const [account, setAccount] = useState("");
-  const [notes, setNotes] = useState("");
-  const [costCentre, setCostCentre] = useState<CostCentreInput | undefined>(undefined);
+  const [notes, setNotes] = useState(initialDraft?.notes ?? "");
+  const [costCentre, setCostCentre] = useState<CostCentreInput | undefined>(initialDraft?.costCentre);
 
   const cat = useMemo(() => (categories ?? []).find((c) => c._id === category), [categories, category]);
   const sellerState = settings?.invoice?.stateCode || stateCodeFromGstin(settings?.gstin);

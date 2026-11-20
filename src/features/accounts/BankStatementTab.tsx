@@ -350,6 +350,21 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
 
   const toPost = useMemo(() => (result?.rows ?? []).filter((r) => r.status !== "recorded" && r.status !== "ignored" && decisions[r.index]?.use && !posted[r.index]), [result, decisions, posted]);
 
+  // The headline counts the rows as they stand now. It used to repeat what
+  // the server said when the file was read: after four lines were posted
+  // and one set aside it still read "4 matched · 2 to place" over rows that
+  // said otherwise. A line that failed to post ("✗ …") is still to be dealt
+  // with, so it stays where it was.
+  const counts = useMemo(() => {
+    const c = { recorded: 0, matched: 0, unmatched: 0, ignored: 0 };
+    for (const r of result?.rows ?? []) {
+      const said = posted[r.index];
+      const key = said && !said.startsWith("✗") ? "recorded" : r.status === "matched" && !r.suggestion ? "unmatched" : r.status;
+      if (key in c) c[key as keyof typeof c] += 1;
+    }
+    return c;
+  }, [result, posted]);
+
   const post = async () => {
     if (!result || !toPost.length) return;
     setBusy(true);
@@ -438,10 +453,10 @@ function MatchView({ account, statement = null, onClose }: { account: string; st
         <Card>
           <div className="flex flex-wrap items-center gap-2 px-5 pt-5">
             <h3 className="font-semibold">{result.file}</h3>
-            <StatusChip tone="neutral">{result.counts.recorded} already recorded</StatusChip>
-            <StatusChip tone="success">{result.counts.matched} matched</StatusChip>
-            <StatusChip tone={result.counts.unmatched ? "warning" : "neutral"}>{result.counts.unmatched} to place</StatusChip>
-            {!!result.counts.ignored && <StatusChip tone="neutral">{result.counts.ignored} set aside</StatusChip>}
+            <StatusChip tone="neutral">{counts.recorded} already recorded</StatusChip>
+            <StatusChip tone="success">{counts.matched} matched</StatusChip>
+            <StatusChip tone={counts.unmatched ? "warning" : "neutral"}>{counts.unmatched} to place</StatusChip>
+            {!!counts.ignored && <StatusChip tone="neutral">{counts.ignored} set aside</StatusChip>}
             {result.closingBalance !== null && result.closingBalance !== undefined && <span className="text-sm text-ink-500">Bank balance ₹{money(result.closingBalance)}</span>}
             {byAi > 0 && <StatusChip tone="info"><span className="inline-flex items-center gap-1"><Sparkles className="h-3 w-3" aria-hidden /> {byAi} placed by AI — check them</span></StatusChip>}
             <span className="ml-auto flex flex-wrap items-center gap-2">
@@ -544,6 +559,10 @@ export function ReconcileView({ account }: { account: string }) {
   const { data, isLoading } = useQuery({
     queryKey: [ACCOUNTS_KEY, "reconciliation", account, asOf, bankBalance],
     queryFn: () => accountsService.reconciliation(account, asOf, bankBalance),
+    // The balance is part of the question, so every digit typed asks again.
+    // The last answer stays on screen until the new one comes — the whole
+    // reconciliation used to blank out and redraw at each keystroke.
+    placeholderData: (previous) => previous,
   });
   const tick = async (e: { voucherType: "Payment" | "Contra"; _id: string; number: string }) => {
     try {

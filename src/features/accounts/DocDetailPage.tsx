@@ -25,6 +25,7 @@ import { riskFlags } from "./Flags";
 import { VoucherForm } from "./VouchersTab";
 import { ApplyCreditDialog } from "./Credits";
 import { ChequeCard } from "./Cheque";
+import { reenterBill, reenterExpense } from "./reenter";
 import { noteKindLabel } from "./NotesTab";
 import { billLabel, billTone, expenseLabel, expenseTone, money, qty } from "./shared";
 import type { Attachment, Credit, Fingerprint, TaxLine } from "./types";
@@ -152,11 +153,7 @@ export function BillDetailPage() {
       <History rows={bill.fingerprints} />
       <ReasonDialog open={reentering} onClose={() => setReentering(false)} title={`Cancel ${bill.billNo} and enter it again?`} description="The bill is cancelled with your reason, and the form opens with everything it had, to correct." confirmLabel="Cancel and re-enter" minLength={8} loading={cancelBill.isPending}
         onConfirm={(reason) => cancelBill.mutate({ id: bill._id, reason }, {
-          onSuccess: () => navigate("/accounts/bills", { state: { reenter: {
-            supplier: { _id: bill.supplier, name: bill.supplierName }, supplierName: bill.supplierName, supplierGstin: bill.supplierGstin ?? "", billNo: bill.supplierBillNo,
-            billDate: bill.billDate.slice(0, 10), purchaseOrder: bill.purchaseOrder, aiSuggestion: null, kind: "bill",
-            lines: (bill.lines ?? []).map((l) => ({ rawMaterial: l.rawMaterial, description: l.description, hsn: l.hsn, unit: l.unit, quantity: l.quantity, rate: l.rate, gstPercent: l.gstPercent })),
-          } } }),
+          onSuccess: () => navigate("/accounts/bills", { state: { reenter: reenterBill(bill) } }),
           onError: (e) => toast(e instanceof ApiError ? e.message : "Could not cancel", "error"),
         })} />
       <FormScreen open={paying} onClose={() => setPaying(false)} title={`Pay ${bill.supplierName}`} width="max-w-4xl">
@@ -218,11 +215,7 @@ export function ExpenseDetailPage() {
         onConfirm={(reason) => rejectExpense.mutate({ id: e._id, reason }, { onSuccess: () => { setDialog(null); toast("Rejected", "success"); }, onError: (err) => toast(err instanceof ApiError ? err.message : "Could not reject", "error") })} />
       <ReasonDialog open={dialog === "reenter"} onClose={() => setDialog(null)} title={`Cancel ${e.expenseNo} and enter it again?`} description="It is cancelled with your reason, and the form opens with everything it had." confirmLabel="Cancel and re-enter" minLength={8} loading={cancelExpense.isPending}
         onConfirm={(reason) => cancelExpense.mutate({ id: e._id, reason }, {
-          onSuccess: () => navigate("/accounts/expenses", { state: { category: e.category, reenter: {
-            supplier: e.supplier ? { _id: e.supplier, name: e.payeeName ?? "" } : undefined, supplierName: e.payeeName ?? "", supplierGstin: e.payeeGstin ?? "", billNo: e.refNo ?? "",
-            billDate: e.date.slice(0, 10), aiSuggestion: null, kind: "bill",
-            lines: (e.lines ?? []).map((l) => ({ description: l.description, hsn: l.hsn, unit: l.unit, quantity: l.quantity, rate: l.rate, gstPercent: l.gstPercent })),
-          } } }),
+          onSuccess: () => navigate("/accounts/expenses", { state: { category: e.category, reenter: reenterExpense(e) } }),
           onError: (err) => toast(err instanceof ApiError ? err.message : "Could not cancel", "error"),
         })} />
       <ReasonDialog open={dialog === "cancel"} onClose={() => setDialog(null)} title={`Cancel ${e.expenseNo}?`} confirmLabel="Cancel expense" minLength={8} loading={cancelExpense.isPending}
@@ -346,7 +339,7 @@ export function PaymentDetailPage() {
       </Card>
       {/* A cheque: where it stands — received, deposited, cleared — and the next step. */}
       {p.mode === "cheque" && p.cheque?.status && <ChequeCard row={{ ...p, cheque: p.cheque }} />}
-      <Attachments kind="payments" id={p._id} rows={undefined} />
+      <Attachments kind="payments" id={p._id} rows={p.attachments} />
       <History rows={p.fingerprints} />
       {applying && credit && party && <ApplyCreditDialog credit={credit} partyType={p.partyType as "customer" | "supplier"} party={party} onClose={() => setApplying(false)} />}
       {sharing && <ShareDialog what={{ kind: "payment", id: p._id }} customer={p.partyType === "customer" ? p.customer : undefined} onClose={() => setSharing(false)} />}

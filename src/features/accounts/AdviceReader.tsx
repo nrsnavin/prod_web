@@ -4,6 +4,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
+import { formatDate } from "@/core/format/date";
 import { accountsService } from "./api";
 import { money } from "./shared";
 import type { AdvicePlaced, AdviceResult } from "./types";
@@ -84,7 +85,7 @@ function AdviceDialog({ customer, onClose, onUse }: { customer?: string; onClose
               {p.customer
                 ? <StatusChip tone={p.customer.matchedBy === "name" ? "warning" : "success"}>{p.customer.matchedBy === "gstin" ? "by GSTIN" : p.customer.matchedBy === "name" ? "by name — confirm" : "as chosen"}</StatusChip>
                 : <StatusChip tone="danger">not on file</StatusChip>}
-              <span className="ml-auto tabular-nums">₹{money(p.amount ?? 0)}{p.date ? ` · ${p.date}` : ""}{p.reference ? ` · ${p.reference}` : ""}</span>
+              <span className="ml-auto tabular-nums">₹{money(p.amount ?? 0)}{p.date ? ` · ${formatDate(p.date)}` : ""}{p.reference ? ` · ${p.reference}` : ""}</span>
             </div>
             {p.allocations.length > 0 && (
               <table className="w-full">

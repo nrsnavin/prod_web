@@ -149,14 +149,15 @@ export function BillForm({ onDone, onCancel, initialPo, initialDraft, serviceBil
   const [category, setCategory] = useState(initialDraft?.category ?? "");
   const [supplierBillNo, setSupplierBillNo] = useState(initialDraft?.billNo ?? "");
   const [billDate, setBillDate] = useState(initialDraft?.billDate ?? today());
-  const [dueDate, setDueDate] = useState("");
+  const [dueDate, setDueDate] = useState(initialDraft?.dueDate ?? "");
   const [lines, setLines] = useState<LineInput[]>(initialDraft?.lines.length ? initialDraft.lines : [blankLine(settings?.invoice?.defaultGstPercent ?? 5)]);
   // A scanned bill brings the receipts its lines were matched to; the PO picker's receipts otherwise.
   const [inwards, setInwards] = useState<string[]>(initialDraft?.inwards ?? []);
-  const [itcEligible, setItcEligible] = useState(true);
-  const [tds, setTds] = useState<{ applicable: boolean; section: string; rate: number | "" }>({ applicable: false, section: "194C", rate: 2 });
-  const [notes, setNotes] = useState("");
-  const [costCentre, setCostCentre] = useState<CostCentreInput | undefined>(undefined);
+  // A bill cancelled to be entered again brings these with it (reenter.ts); a scan or a blank form takes the defaults.
+  const [itcEligible, setItcEligible] = useState(initialDraft?.itcEligible ?? true);
+  const [tds, setTds] = useState<{ applicable: boolean; section: string; rate: number | "" }>({ applicable: !!initialDraft?.tds?.applicable, section: initialDraft?.tds?.section || "194C", rate: initialDraft?.tds?.rate ?? 2 });
+  const [notes, setNotes] = useState(initialDraft?.notes ?? "");
+  const [costCentre, setCostCentre] = useState<CostCentreInput | undefined>(initialDraft?.costCentre);
   const [reverseCharge, setReverseCharge] = useState(!!initialDraft?.reverseCharge);
   // The three-way match: what the server found off the PO or the receipts.
   const [variance, setVariance] = useState<BillVariance | null>(null);

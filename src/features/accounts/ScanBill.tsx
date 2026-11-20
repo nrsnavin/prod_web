@@ -6,7 +6,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { accountsService } from "./api";
 import { money } from "./shared";
-import type { LineInput, ScanResult } from "./types";
+import type { CostCentreInput, LineInput, ScanResult } from "./types";
 import { qrFromPhoto } from "@/features/floor/photoQr";
 
 /**
@@ -47,6 +47,18 @@ export interface ScanDraft {
   billKind?: "goods" | "service";
   reverseCharge?: boolean;
   category?: string;
+  /**
+   * Carried when a bill or expense is cancelled to be entered again
+   * (reenter.ts): the rest of what the form held. A scan sets none of
+   * them, and the form's own defaults stand.
+   */
+  itcEligible?: boolean;
+  tds?: { applicable: boolean; section?: string; rate?: number };
+  dueDate?: string;
+  notes?: string;
+  costCentre?: CostCentreInput;
+  /** An expense's "what for", which is not any one line's description. */
+  description?: string;
 }
 
 /**

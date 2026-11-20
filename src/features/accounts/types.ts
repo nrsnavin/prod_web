@@ -321,6 +321,8 @@ export interface Payment {
   cancel?: { reason?: string; at?: string };
   narration?: string;
   source?: string;
+  /** The bank's advice, a signed receipt: files kept with the voucher (sent without their bytes). */
+  attachments?: Attachment[];
   fingerprints?: Fingerprint[];
 }
 /** held: received and in the drawer (a post-dated one until its date); deposited: with the bank; cleared: credited; bounced: returned. */
