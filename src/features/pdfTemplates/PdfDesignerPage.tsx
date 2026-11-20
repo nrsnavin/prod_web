@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Type, Tag, Image as ImageIcon, Minus, Square, Table as TableIcon,
+  Type, Tag, Image as ImageIcon, Minus, Square, Table as TableIcon, Hash,
   Save, Eye, Trash2, Copy, RotateCcw,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -13,7 +13,11 @@ import { cn } from "@/components/ui/cn";
 import { ApiError } from "@/core/http/httpClient";
 import { pdfTemplateService } from "./api";
 import { useDocTypes, usePdfTemplate, useSavePdfTemplate } from "./hooks";
-import { DocType, ElementType, PAGE_PT, PdfTemplate, TemplateElement } from "./types";
+import { DocType, DocTypeField, ElementType, PAGE_PT, PdfTemplate, TemplateElement } from "./types";
+
+const PAGE_NUMBER_TEXT = "Page {{n}} of {{total}}";
+// Where a server that does not say what a line can show is asked.
+const ROW_FIELDS: DocTypeField[] = ["sno", "description", "unit", "qty", "rate", "amount"].map((k) => ({ key: k, label: k }));
 
 let _idc = 0;
 const newId = () => `el-${Date.now()}-${_idc++}`;
@@ -33,6 +37,7 @@ const DEFAULTS: Record<ElementType, Partial<TemplateElement>> = {
       { field: "amount", header: "Amount", width: 1, align: "right", format: "currency" },
     ],
   },
+  pageNumber: { text: PAGE_NUMBER_TEXT, x: 380, y: 818, w: 180, h: 10, fontSize: 7, color: "#555555", align: "right" },
 };
 
 const PALETTE: { type: ElementType; label: string; icon: typeof Type }[] = [
@@ -42,6 +47,7 @@ const PALETTE: { type: ElementType; label: string; icon: typeof Type }[] = [
   { type: "line", label: "Line", icon: Minus },
   { type: "box", label: "Box", icon: Square },
   { type: "table", label: "Table", icon: TableIcon },
+  { type: "pageNumber", label: "Page no.", icon: Hash },
 ];
 
 export function PdfDesignerPage() {
@@ -71,6 +77,9 @@ export function PdfDesignerPage() {
 
   const currentDocType: DocType | undefined = docTypes?.find((d) => d.id === docType);
   const hasTable = !!tpl?.elements.some((e) => e.type === "table");
+  // One of each to a sheet: the printed page takes the first it finds.
+  const hasPageNumber = !!tpl?.elements.some((e) => e.type === "pageNumber");
+  const taken = (type: ElementType) => (type === "table" && hasTable) || (type === "pageNumber" && hasPageNumber);
 
   const [pageW, pageH] = tpl
     ? PAGE_PT[tpl.pageSize][tpl.orientation]
@@ -85,8 +94,8 @@ export function PdfDesignerPage() {
     setTpl((t) => (t ? { ...t, elements: t.elements.map((e) => (e.id === id ? { ...e, ...patch } : e)) } : t));
 
   const addEl = (type: ElementType) => {
-    if (type === "table" && hasTable) {
-      toast("A template can have only one table", "error");
+    if (taken(type)) {
+      toast(type === "table" ? "A template can have only one table" : "A template can have only one page number", "error");
       return;
     }
     const el: TemplateElement = { id: newId(), type, x: 60, y: 60, w: 160, h: 20, ...DEFAULTS[type] } as TemplateElement;
@@ -241,7 +250,7 @@ export function PdfDesignerPage() {
               <button
                 key={p.type}
                 onClick={() => addEl(p.type)}
-                disabled={p.type === "table" && hasTable}
+                disabled={taken(p.type)}
                 title={p.label}
                 className="flex flex-col items-center gap-1 rounded-lg border border-ink-100 py-2 text-[11px] text-ink-600 hover:border-brand-500 hover:text-brand-600 disabled:opacity-40"
               >
@@ -297,6 +306,7 @@ export function PdfDesignerPage() {
             key={sel.id}
             el={sel}
             fields={currentDocType?.fields ?? []}
+            rowFields={currentDocType?.rowFields ?? ROW_FIELDS}
             onChange={(patch) => patchEl(sel.id, patch)}
             onDelete={() => deleteEl(sel.id)}
             onDuplicate={() => duplicateEl(sel.id)}
@@ -330,6 +340,7 @@ function CanvasElement({
   const label =
     el.type === "field" ? `{{${el.field || "field"}}}` :
     el.type === "text" ? el.text || "Text" :
+    el.type === "pageNumber" ? el.text || PAGE_NUMBER_TEXT :
     el.type === "image" ? "◨ Logo" :
     el.type === "table" ? "▦ Table" :
     el.type === "line" ? "" : "";
@@ -377,10 +388,11 @@ function CanvasElement({
 
 // ── Properties panel ────────────────────────────────────────────────────
 function PropertiesPanel({
-  el, fields, onChange, onDelete, onDuplicate,
+  el, fields, rowFields, onChange, onDelete, onDuplicate,
 }: {
   el: TemplateElement;
   fields: DocType["fields"];
+  rowFields: DocTypeField[];
   onChange: (patch: Partial<TemplateElement>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
@@ -399,16 +411,19 @@ function PropertiesPanel({
     </label>
   );
 
-  const textish = el.type === "text" || el.type === "field";
+  const textish = el.type === "text" || el.type === "field" || el.type === "pageNumber";
 
   return (
     <Card className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">{el.type}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-ink-400">{el.type === "pageNumber" ? "page number" : el.type}</span>
         <div className="flex gap-1">
-          <button onClick={onDuplicate} title="Duplicate" className="rounded p-1 text-ink-400 hover:bg-ink-100">
-            <Copy className="h-4 w-4" />
-          </button>
+          {/* One table and one page number to a sheet: neither is copied. */}
+          {el.type !== "table" && el.type !== "pageNumber" && (
+            <button onClick={onDuplicate} title="Duplicate" className="rounded p-1 text-ink-400 hover:bg-ink-100">
+              <Copy className="h-4 w-4" />
+            </button>
+          )}
           <button onClick={onDelete} title="Delete" className="rounded p-1 text-status-danger hover:bg-status-dangerBg">
             <Trash2 className="h-4 w-4" />
           </button>
@@ -423,6 +438,21 @@ function PropertiesPanel({
             onChange={(e) => onChange({ text: e.target.value })}
             className="h-8 w-full rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500"
           />
+        </label>
+      )}
+
+      {el.type === "pageNumber" && (
+        <label className="block">
+          <span className="mb-1 block text-[11px] font-medium text-ink-500">Wording</span>
+          <input
+            aria-label="Page number wording"
+            value={el.text ?? PAGE_NUMBER_TEXT}
+            onChange={(e) => onChange({ text: e.target.value })}
+            className="h-8 w-full rounded-lg border border-ink-200 px-2 text-sm focus:outline-none focus:border-brand-500"
+          />
+          <span className="mt-1 block text-[10px] text-ink-400">
+            {"{{n}}"} is the page, {"{{total}}"} how many there are. Printed on every page.
+          </span>
         </label>
       )}
 
@@ -481,7 +511,7 @@ function PropertiesPanel({
       )}
 
       {el.type === "table" && (
-        <TableColumnsEditor el={el} onChange={onChange} />
+        <TableColumnsEditor el={el} rowFields={rowFields} onChange={onChange} />
       )}
     </Card>
   );
@@ -507,19 +537,22 @@ function ColorField({
 }
 
 function TableColumnsEditor({
-  el, onChange,
-}: { el: TemplateElement; onChange: (patch: Partial<TemplateElement>) => void }) {
+  el, rowFields, onChange,
+}: { el: TemplateElement; rowFields: DocTypeField[]; onChange: (patch: Partial<TemplateElement>) => void }) {
   const cols = el.columns ?? [];
   const setCols = (next: typeof cols) => onChange({ columns: next });
   const patchCol = (i: number, patch: Partial<(typeof cols)[number]>) =>
     setCols(cols.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
 
-  // Field options for table rows are the row keys, which differ from the
-  // letterhead field catalog; offer the common invoice row keys.
-  const rowFieldOpts = useMemo(
-    () => ["sno", "description", "qty", "rate", "amount"].map((k) => ({ value: k, label: k })),
-    []
-  );
+  // What a line of THIS document can show (a challan has unit and boxes
+  // and no rate) — plus whatever a column already binds, so its box
+  // shows what it is. A "unit" column used to read "sno": the first
+  // option, because its own was not on the list.
+  const rowFieldOpts = useMemo(() => {
+    const keys = rowFields.map((f) => f.key);
+    for (const c of cols) if (c.field && !keys.includes(c.field)) keys.push(c.field);
+    return keys.map((k) => ({ value: k, label: k }));
+  }, [rowFields, cols]);
 
   return (
     <div className="space-y-2">
@@ -551,6 +584,7 @@ function TableColumnsEditor({
               <option value="text">text</option>
               <option value="number">number</option>
               <option value="currency">currency</option>
+              <option value="currency2">currency, to the paisa</option>
             </select>
             <select aria-label="Column alignment" value={c.align} onChange={(e) => patchCol(i, { align: e.target.value as typeof c.align })}
               className="h-7 rounded border border-ink-200 px-1 text-xs">
@@ -565,7 +599,7 @@ function TableColumnsEditor({
         </div>
       ))}
       <p className="text-[10px] text-ink-400">
-        Row fields (sno, description, qty, rate, amount) bind to each line item.
+        Row fields ({rowFields.map((f) => f.key).join(", ")}) bind to each line item.
       </p>
     </div>
   );
