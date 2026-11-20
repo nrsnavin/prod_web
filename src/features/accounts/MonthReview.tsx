@@ -32,7 +32,7 @@ const delta = (c: number | null) => (c == null ? "" : `${c >= 0 ? "▲" : "▼"}
 
 export function MonthReview({ month }: { month: string }) {
   const [asked, setAsked] = useState(false);
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, isError, error, refetch } = useQuery({
     queryKey: ["accounts", "month-review", month],
     queryFn: () => httpClient.get<MonthReviewData>("/accounts/month-review", { month }, { timeoutMs: MODEL_TIMEOUT_MS }),
     enabled: asked,
@@ -47,6 +47,12 @@ export function MonthReview({ month }: { month: string }) {
         </div>
         {!asked && <Button size="sm" variant="secondary" onClick={() => setAsked(true)}><Sparkles className="h-4 w-4" /> Write the month review</Button>}
       </div>
+      {/* Asked for and not written: said, with a way to ask again — the card used to go blank, button and all. */}
+      {asked && isError && !isFetching && !data && (
+        <p role="alert" className="text-sm text-status-danger">
+          The review could not be written{error instanceof Error && error.message ? `: ${error.message}` : ""}. <button type="button" className="underline" onClick={() => void refetch()}>Try again</button>
+        </p>
+      )}
       {asked && (isFetching && !data ? <Skeleton className="h-28" /> : data && (
         <>
           <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">

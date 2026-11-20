@@ -157,6 +157,26 @@ describe("the month-end rail", () => {
     const s = monthEndSteps(all({ tally: false, lock: false }));
     expect(states(s)).toMatchObject({ tally: "current", lock: "todo" });
   });
+
+  // The checklist gained "TDS on bills booked and not yet paid" after the
+  // rail was written. The rail goes by a list of keys, did not know the new
+  // one, and read "Checklist clear" over a checklist with that item open.
+  it("counts the TDS-on-credit item the checklist gained", () => {
+    const s = monthEndSteps([...all(), item("tdsOnCredit", false, "3 bills with a TDS section unpaid at the month's end")]);
+    expect(states(s)).toMatchObject({ bank: "done", checklist: "current" });
+    expect(detail(s, "checklist")).toBe("3 bills with a TDS section unpaid at the month's end");
+  });
+
+  it("an item it has never heard of still holds the checklist open, rather than being passed over", () => {
+    const s = monthEndSteps([...all(), item("somethingNew", false, "A check added next year")]);
+    expect(states(s)).toMatchObject({ checklist: "current" });
+    expect(detail(s, "checklist")).toBe("A check added next year");
+  });
+
+  it("the GST return item sits with the GST step", () => {
+    const s = monthEndSteps([...all(), item("gst", false, "Check the GST report")]);
+    expect(states(s)).toMatchObject({ checklist: "done", gst: "current" });
+  });
 });
 
 describe("the payroll rail", () => {

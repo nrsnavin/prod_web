@@ -9,6 +9,7 @@ import { ApiError } from "@/core/http/httpClient";
 import { useAccountsMutations, useBankAccounts, useCategories, useOpenDocs } from "./hooks";
 import { accountsService } from "./api";
 import { PartyPicker, money, today } from "./shared";
+import { round2 } from "@/features/invoices/gst";
 import type { JournalDraft, JournalLineInput, JournalPurpose, OpenDoc, SettleDocType } from "./types";
 
 type Line = { kind: JournalLineInput["kind"]; ledger: string; partyType: "customer" | "supplier"; party: string; partyName: string; account: string; category: string; debit: number | ""; credit: number | ""; refs: Record<string, number>; /** What a drafted line is for, shown under it. */ hint?: string };
@@ -34,7 +35,8 @@ function Refs({ line, onChange }: { line: Line; onChange: (refs: Record<string, 
   if (!lowers) return amount > 0 ? <p className="text-xs text-status-danger">A journal cannot raise what a party owes — issue a debit note to a customer, or enter a supplier's bill or an expense.</p> : null;
   const docs = data?.docs ?? [];
   if (!docs.length) return <p className="text-xs text-status-danger">Nothing open for this party — a journal can only settle open documents.</p>;
-  const used = Object.values(line.refs).reduce((t, v) => t + v, 0);
+  // In paise throughout: 100.10 less 33.37 is 66.73, and the arithmetic's 66.72999999999999 was what the box showed.
+  const used = round2(Object.values(line.refs).reduce((t, v) => t + v, 0));
   return (
     <div className="rounded-md border border-ink-100 p-2">
       <p className={`mb-1 text-xs ${amount > 0 && Math.abs(used - amount) > 0.005 ? "text-status-danger" : "text-ink-500"}`}>Set against ({money(used)} of {money(amount)}){amount > 0 && Math.abs(used - amount) > 0.005 ? " — the whole amount must be set against documents" : ""}</p>
@@ -44,7 +46,7 @@ function Refs({ line, onChange }: { line: Line; onChange: (refs: Record<string, 
           const on = line.refs[key] !== undefined;
           return (
             <li key={key} className="flex flex-wrap items-center gap-2 text-sm">
-              <input type="checkbox" aria-label={`Set against ${d.docNo}`} checked={on} onChange={(e) => { const next = { ...line.refs }; if (e.target.checked) next[key] = Math.min(d.outstanding, Math.max(0, amount - used)); else delete next[key]; onChange(next); }} />
+              <input type="checkbox" aria-label={`Set against ${d.docNo}`} checked={on} onChange={(e) => { const next = { ...line.refs }; if (e.target.checked) next[key] = round2(Math.min(d.outstanding, Math.max(0, amount - used))); else delete next[key]; onChange(next); }} />
               <span className="min-w-0 flex-1 truncate">{d.docNo} <span className="text-ink-400">· {money(d.outstanding)} open</span></span>
               {on && <Input aria-label={`Amount against ${d.docNo}`} type="number" step="0.01" min={0} max={d.outstanding} className="w-32" value={line.refs[key]} onChange={(e) => onChange({ ...line.refs, [key]: Math.min(d.outstanding, Number(e.target.value) || 0) })} />}
             </li>
@@ -152,7 +154,7 @@ export function JournalForm({ onDone, onCancel, draft, post }: { onDone: (id: st
                   </div>
                 )}
                 {l.kind === "bank" && <Select label="Account" value={l.account} onChange={(e) => set(i, { account: e.target.value })} onCreate={() => void quickCreate("bankAccount").then((o) => o && set(i, { account: o.value }))} createLabel="account" options={(accounts ?? []).filter((a) => a.active !== false).map((a) => ({ value: a._id, label: a.name }))} placeholder="Pick the account" />}
-                {l.kind === "head" && <Select label="Head" value={l.category} onChange={(e) => set(i, { category: e.target.value })} onCreate={() => void quickCreate("expenseHead").then((o) => o && set(i, { category: o.value }))} createLabel="expense head" options={(categories ?? []).map((c) => ({ value: c._id, label: c.name }))} placeholder="Pick the head" />}
+                {l.kind === "head" && <Select label="Head" value={l.category} onChange={(e) => set(i, { category: e.target.value })} onCreate={() => void quickCreate("expenseHead").then((o) => o && set(i, { category: o.value }))} createLabel="expense head" options={(categories ?? []).filter((c) => c.active !== false).map((c) => ({ value: c._id, label: c.name }))} placeholder="Pick the head" />}
                 {l.kind === "ledger" && <Input label="Ledger, as named in Tally" value={l.ledger} onChange={(e) => set(i, { ledger: e.target.value })} placeholder="e.g. Depreciation, Salaries Payable, Bad Debts Written Off" />}
               </div>
               <Input label="Debit" type="number" step="0.01" min={0} value={l.debit} onChange={(e) => set(i, { debit: e.target.value === "" ? "" : Number(e.target.value), credit: "" })} />
