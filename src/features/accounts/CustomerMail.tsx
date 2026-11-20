@@ -37,7 +37,7 @@ const NEXT: Partial<Record<CustomerMailRow["kind"], { to: string; label: string 
 };
 
 export const customerMailService = {
-  list: () => httpClient.get<{ rows: CustomerMailRow[] }>("/accounts/customer-mail"),
+  list: () => httpClient.get<{ rows: CustomerMailRow[]; waiting?: number }>("/accounts/customer-mail"),
   status: () => httpClient.get<{ configured: boolean; mailbox: string; everyMin: number }>("/accounts/customer-mail/status"),
   act: (id: string, action: "dismiss" | "done") => httpClient.post(`/accounts/customer-mail/${id}/${action}`, {}),
 };
@@ -54,14 +54,19 @@ export function CustomerMail() {
   if (!status.data || (!status.data.configured && !rows.length)) return null;
   const waiting = rows.filter((r) => r.status === "new");
   const shown = all ? rows : waiting;
+  // How many are waiting is the mailbox's count, not the list's length:
+  // counted off the list, the mail that had waited longest was the first
+  // to stop being counted.
+  const waitingCount = list.data?.waiting ?? waiting.length;
 
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 font-semibold"><Inbox className="h-4 w-4 text-brand-500" /> Customer mail <StatusChip tone={waiting.length ? "info" : "neutral"}>{waiting.length} to look at</StatusChip></h3>
+        <h3 className="flex items-center gap-2 font-semibold"><Inbox className="h-4 w-4 text-brand-500" /> Customer mail <StatusChip tone={waitingCount ? "info" : "neutral"}>{waitingCount} to look at</StatusChip></h3>
         <button className="text-sm text-brand-600 hover:underline" onClick={() => setAll((v) => !v)}>{all ? "Only what is waiting" : `Show handled too (${rows.length - waiting.length})`}</button>
       </div>
       <p className="text-xs text-ink-500">{status.data.configured ? `Read from ${status.data.mailbox} every ${status.data.everyMin} min, with photos sent on WhatsApp` : "Photos of orders and advices sent on WhatsApp"}: orders become order requests, complaints are opened when the job is clear, advices and enquiries are read for you to finish.</p>
+      {waitingCount > waiting.length && <p className="mt-1 text-xs text-ink-500">The newest {waiting.length} of {waitingCount} waiting are listed.</p>}
       {shown.length === 0 ? <p className="mt-2 text-sm text-ink-400">Nothing waiting.</p> : (
         <ul className="mt-2 divide-y divide-ink-100 text-sm">
           {shown.map((r) => (

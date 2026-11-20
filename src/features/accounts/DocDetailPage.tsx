@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, XCircle, Check, X, Banknote, Paperclip, Wallet, RotateCcw, FileDown, FileJson, BadgeCheck, ClipboardPaste, MessageCircle } from "lucide-react";
 import { IrnDialog } from "@/features/invoices/IrnDialog";
-import { ShareDialog } from "./Share";
+import { ShareDialog, noteShareable, paymentShareable } from "./Share";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -278,7 +278,7 @@ export function NoteDetailPage() {
         <a href={accountsService.notePdfUrl(n._id)} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"><FileDown className="h-4 w-4" /> PDF</a>
         {toCustomer && <Button variant="secondary" onClick={json} loading={busy === "json"}><FileJson className="h-4 w-4" /> e-Invoice JSON</Button>}
         {toCustomer && n.status === "issued" && !registered && <><Button variant="secondary" onClick={register} loading={busy === "irn"}><BadgeCheck className="h-4 w-4" /> Register IRN</Button><Button variant="secondary" onClick={() => setIrnOpen(true)}><ClipboardPaste className="h-4 w-4" /> Paste IRN</Button></>}
-        <Button variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> WhatsApp</Button>
+        {noteShareable(n) && <Button variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> WhatsApp</Button>}
         {credit && <Button onClick={() => setApplying(true)}>Apply ₹{money(credit.available)}</Button>}
         {n.status === "issued" && <Button variant="secondary" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel note…</Button>}
       </>} />
@@ -325,7 +325,7 @@ export function PaymentDetailPage() {
       <Link to="/accounts/vouchers" className="mb-2 inline-flex items-center gap-1 text-sm text-ink-400 hover:text-ink-900"><ArrowLeft className="h-4 w-4" /> Receipts &amp; payments</Link>
       <PageHeader title={p.voucherNo} subtitle={`${p.kind === "receipt" ? "Received from" : "Paid to"} ${p.partyName} · ${formatDate(p.date)}`} actions={<>
         <a href={accountsService.paymentPdfUrl(p._id)} target="_blank" rel="noopener" className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50"><FileDown className="h-4 w-4" /> {p.kind === "receipt" ? "Receipt" : "Payment advice"}</a>
-        {p.partyType !== "other" && <Button variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> WhatsApp</Button>}
+        {paymentShareable(p) && <Button variant="secondary" onClick={() => setSharing(true)}><MessageCircle className="h-4 w-4" /> {p.status === "cancelled" ? "WhatsApp: cheque returned" : "WhatsApp"}</Button>}
         {credit && <Button onClick={() => setApplying(true)}>Apply ₹{money(credit.available)}</Button>}
         {p.status === "posted" && <Button variant="secondary" onClick={() => setCancelOpen(true)}><XCircle className="h-4 w-4" /> Cancel voucher…</Button>}
       </>} />

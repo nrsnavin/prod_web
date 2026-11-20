@@ -10,6 +10,15 @@ import { accountsService } from "./api";
 
 type What = { kind: "payment" | "note"; id: string } | { kind: "statement"; partyType: "customer" | "supplier"; party: string; from?: string; to?: string };
 
+// Whether there is anything to tell the party. The button used to be on
+// every voucher and note, and its draft thanked a customer for a cheque
+// that had come back. A voucher that stands has its receipt or advice; a
+// receipt whose cheque was returned has that to say (the server drafts
+// it); any other cancelled document has nothing.
+export const paymentShareable = (p: { status: string; partyType: string; kind?: string; cheque?: { status?: string } | null }): boolean =>
+  p.partyType !== "other" && (p.status !== "cancelled" || (p.kind === "receipt" && p.cheque?.status === "bounced"));
+export const noteShareable = (n: { status: string }): boolean => n.status !== "cancelled";
+
 /**
  * The WhatsApp message that goes with a receipt, a payment advice, a
  * note or a statement: drafted on the server from the figures, edited

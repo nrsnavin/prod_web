@@ -31,4 +31,25 @@ describe("CustomerMail", () => {
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(post).toHaveBeenCalledWith("/accounts/customer-mail/m1/done", {});
   });
+
+  // The count was of the rows listed, and the list was the newest 200 mails:
+  // what had waited longest was the first to stop being counted. The server
+  // now counts the mailbox, and the screen says its count.
+  it("says how many are waiting as the server counts them, and when the list is not all of them", async () => {
+    get.mockImplementation((url: string) => Promise.resolve(url.endsWith("/status") ? { configured: true, mailbox: "orders@balu.in", everyMin: 10 } : { waiting: 503, rows: [
+      { _id: "m1", from: "someone@gmail.com", subject: "Order for 5000 m", receivedAt: "2026-11-09T05:00:00Z", customerName: "", kind: "purchase_order", summary: "", status: "new", note: "", files: [] },
+    ] }));
+    wrap();
+    expect(await screen.findByText(/503 to look at/)).toBeInTheDocument();
+    expect(screen.getByText("The newest 1 of 503 waiting are listed.")).toBeInTheDocument();
+  });
+
+  it("an answer with no count is counted from the list, as before", async () => {
+    get.mockImplementation((url: string) => Promise.resolve(url.endsWith("/status") ? { configured: true, mailbox: "orders@balu.in", everyMin: 10 } : { rows: [
+      { _id: "m1", from: "a@b.in", subject: "Order", receivedAt: "2026-11-09T05:00:00Z", customerName: "", kind: "purchase_order", summary: "", status: "new", note: "", files: [] },
+    ] }));
+    wrap();
+    expect(await screen.findByText(/1 to look at/)).toBeInTheDocument();
+    expect(screen.queryByText(/waiting are listed/)).not.toBeInTheDocument();
+  });
 });
