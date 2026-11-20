@@ -1096,6 +1096,8 @@ export interface TallyPreview {
   problems: string[];
   /** Will go, but probably not as meant: a service bill with no head. */
   warnings?: string[];
+  /** Documents dated before `from` that have still not gone to Tally (a bill entered late for a month already sent). */
+  earlier?: { count: number; oldest: string | null };
   sample: Array<{ type: string; number: string; date: string; party: string; lines: Array<{ ledger: string; debit: number; credit: number }> }>;
 }
 export interface TallyDelivery {

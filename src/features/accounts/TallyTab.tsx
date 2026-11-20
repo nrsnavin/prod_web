@@ -22,6 +22,9 @@ const lastMonth = () => {
   return { from: iso(from), to: iso(to) };
 };
 
+/** The India day of the server's date, as the range picker writes it (YYYY-MM-DD). */
+const earlierFrom = (oldest: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(oldest));
+
 async function save(id: string, batchNo: number) {
   const blob = await accountsService.tallyXml(id);
   const url = URL.createObjectURL(blob);
@@ -96,6 +99,13 @@ export function TallyTab() {
             )}
             {p.problems.map((x) => <p key={x} className="mt-2 text-sm text-status-danger">{x}</p>)}
             {(p.warnings ?? []).map((x) => <p key={x} className="mt-2 text-sm text-status-warning">{x}</p>)}
+            {/* Dated before this period and never sent: exporting month by month, it would stay behind for good. */}
+            {p.earlier && p.earlier.count > 0 && p.earlier.oldest && (
+              <div className="mt-3 rounded-lg bg-status-warningBg px-3 py-2 text-sm" role="note" aria-label="Earlier documents not sent">
+                <p>{p.earlier.count} document{p.earlier.count === 1 ? "" : "s"} dated before {formatDate(range.from)} {p.earlier.count === 1 ? "has" : "have"} not gone to Tally (the oldest is dated {formatDate(p.earlier.oldest)}).</p>
+                <button type="button" className="mt-1 font-medium text-brand-600 hover:underline" onClick={() => setRange({ from: earlierFrom(p.earlier!.oldest!), to: range.to })}>Export from {formatDate(p.earlier.oldest)}</button>
+              </div>
+            )}
           </Card>
           <Card className="p-5 lg:col-span-2">
             <h3 className="font-semibold">Ledgers Tally must have</h3>
