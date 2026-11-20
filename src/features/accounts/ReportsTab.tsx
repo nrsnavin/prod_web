@@ -20,7 +20,7 @@ function RateTable({ title, rows, inter }: { title: string; rows: GstRateRow[]; 
     <div>
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">{title}</p>
       {rows.length === 0 ? <p className="text-sm text-ink-400">None.</p> : (
-        <table className="mt-1 w-full text-sm">
+        <table className="mt-1 w-full text-sm" aria-label={title}>
           <thead><tr className="text-xs text-ink-400"><th className="text-left font-medium">Rate</th><th className="text-right font-medium">Taxable</th><th className="text-right font-medium">CGST</th><th className="text-right font-medium">SGST</th><th className="text-right font-medium">IGST</th><th className="text-right font-medium">Tax</th></tr></thead>
           <tbody className="divide-y divide-ink-100">
             {rows.map((r) => <tr key={r.rate}><td className="py-1">{r.rate}%</td><td className="py-1 text-right tabular-nums">{money(r.taxable)}</td><td className="py-1 text-right tabular-nums">{money(r.cgst)}</td><td className="py-1 text-right tabular-nums">{money(r.sgst)}</td><td className="py-1 text-right tabular-nums">{money(r.igst)}</td><td className="py-1 text-right tabular-nums font-medium">{money(r.tax)}</td></tr>)}
@@ -48,6 +48,9 @@ export function ReportsTab() {
   const exp = useQuery({ queryKey: [ACCOUNTS_KEY, "report-expenses", range], queryFn: () => accountsService.expenseReport(range), enabled: report === "expenses" });
   const book = useQuery({ queryKey: [ACCOUNTS_KEY, "report-cashbook", acct, range], queryFn: () => accountsService.cashbook(acct, range), enabled: report === "cashbook" && !!acct });
   const daybook = useQuery({ queryKey: [ACCOUNTS_KEY, "report-daybook", day], queryFn: () => accountsService.daybook(day), enabled: report === "daybook" });
+  // Rule 37: credit given back on bills unpaid 180 days, and taken again once they are paid.
+  const rule37Reversed = gst.data?.totals.rule37?.reversed.total ?? 0;
+  const rule37Reclaimed = gst.data?.totals.rule37?.reclaimed.total ?? 0;
 
   return (
     <div className="space-y-4">
@@ -59,23 +62,34 @@ export function ReportsTab() {
 
       {report === "gst" && (gst.isLoading ? <Skeleton className="h-64 w-full" /> : gst.data && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="space-y-4 p-5">
+          <Card className="space-y-4 p-5" role="group" aria-label="Output tax">
             <h3 className="font-semibold">Output tax (what we charged)</h3>
             <RateTable title={`Sales · ${gst.data.counts.invoices} invoices`} rows={gst.data.output.sales} />
             <RateTable title={`Less credit notes · ${gst.data.counts.creditNotes}`} rows={gst.data.output.creditNotes} />
+            {/* A debit note raised on a customer (interest, a price increase) is more
+                output tax; reverse charge is tax we owe on what a supplier did not
+                charge. Both are in the net below, so both are shown when there are any. */}
+            {(gst.data.output.debitNotes?.length ?? 0) > 0 && <RateTable title={`Add debit notes to customers · ${gst.data.counts.customerDebitNotes ?? 0}`} rows={gst.data.output.debitNotes ?? []} />}
+            {(gst.data.output.reverseCharge?.length ?? 0) > 0 && <RateTable title={`Add reverse charge · ${gst.data.counts.reverseCharge ?? 0} bills`} rows={gst.data.output.reverseCharge ?? []} />}
           </Card>
-          <Card className="space-y-4 p-5">
+          <Card className="space-y-4 p-5" role="group" aria-label="Input credit">
             <h3 className="font-semibold">Input credit (what we can claim)</h3>
             <RateTable title={`Purchases · ${gst.data.counts.bills} bills`} rows={gst.data.input.purchases} />
-            <RateTable title={`Less debit notes · ${gst.data.counts.debitNotes}`} rows={gst.data.input.debitNotes} />
+            <RateTable title={`Less debit notes to suppliers · ${gst.data.counts.debitNotes}`} rows={gst.data.input.debitNotes} />
             <RateTable title={`Expenses with credit · ${gst.data.counts.expenses}`} rows={gst.data.input.expenses} />
+            {(rule37Reversed > 0 || rule37Reclaimed > 0) && (
+              <dl className="space-y-1 border-t border-ink-100 pt-3 text-sm">
+                {rule37Reversed > 0 && <div className="flex justify-between gap-3"><dt className="text-ink-500">Less credit reversed on bills unpaid 180 days (Rule 37)</dt><dd className="tabular-nums">₹{money(rule37Reversed)}</dd></div>}
+                {rule37Reclaimed > 0 && <div className="flex justify-between gap-3"><dt className="text-ink-500">Add credit re-claimed on paying them</dt><dd className="tabular-nums">₹{money(rule37Reclaimed)}</dd></div>}
+              </dl>
+            )}
           </Card>
           <Card className="p-5 lg:col-span-2">
             <h3 className="font-semibold">Net position</h3>
-            <table className="mt-2 w-full max-w-xl text-sm">
+            <table className="mt-2 w-full max-w-xl text-sm" aria-label="Net position">
               <thead><tr className="text-xs text-ink-400"><th className="text-left font-medium" /><th className="text-right font-medium">CGST</th><th className="text-right font-medium">SGST</th><th className="text-right font-medium">IGST</th></tr></thead>
               <tbody className="divide-y divide-ink-100">
-                <tr><td className="py-1">Output tax, net of credit notes</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.netOutput.cgst)}</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.netOutput.sgst)}</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.netOutput.igst)}</td></tr>
+                <tr><td className="py-1">Output tax, net of credit and debit notes</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.netOutput.cgst)}</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.netOutput.sgst)}</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.netOutput.igst)}</td></tr>
                 <tr><td className="py-1">Input credit, net of debit notes</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.netInput.cgst)}</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.netInput.sgst)}</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.netInput.igst)}</td></tr>
                 <tr className="font-semibold"><td className="py-1">Payable (negative = credit carried)</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.payable.cgst)}</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.payable.sgst)}</td><td className="py-1 text-right tabular-nums">{money(gst.data.totals.payable.igst)}</td></tr>
               </tbody>

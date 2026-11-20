@@ -21,7 +21,9 @@ export function EwaybillDialog({ docNo, mode, loading, onClose, onConfirm, defau
   const [transport, setTransport] = useState<NonNullable<EwaybillBody["mode"]>>("road");
   const [validUpto, setValidUpto] = useState("");
   const digits = number.replace(/\D/g, "");
-  const ready = (mode === "paste" ? digits.length === 12 : true) && (vehicleNo.trim() || transporterId.trim());
+  // A pasted number is an e-way bill that exists: the vehicle may be blank, for
+  // the transporter to add. Generating one needs the vehicle, or who will add it.
+  const ready = mode === "paste" ? digits.length === 12 : !!(vehicleNo.trim() || transporterId.trim());
   return (
     <Modal open onClose={onClose} title={mode === "generate" ? `E-way bill for ${docNo}` : `E-way bill number for ${docNo}`} width="max-w-lg">
       <div className="space-y-3">

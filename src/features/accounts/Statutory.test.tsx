@@ -16,7 +16,14 @@ const msme: MsmeDues = {
   rows: [{ docType: "SupplierBill", id: "b1", docNo: "PB/2026-27/0007", refNo: "SD/77", date: "2026-10-01", amount: 10500, outstanding: 10500, party: "s1", partyName: "Sri Dyers", category: "micro", udyam: "UDYAM-TN-28-0001234", days: 15, dueDate: "2026-10-16", daysLeft: -19, state: "overdue" }],
   totals: { count: 1, outstanding: 10500, overdue: 10500, overdueCount: 1, dueSoon: 0 }, suppliers: 2,
 };
-const yearEnd: MsmeYearEnd = { fy: "2026-27", rows: [], totals: { allowed: 50000, late: 10000, disallowed: 10500 } };
+const yearEnd: MsmeYearEnd = {
+  fy: "2026-27", totals: { allowed: 50000, late: 10000, disallowed: 10500 },
+  // A bill, and an expense booked to the same supplier (a repair, a job charge): each opens its own page.
+  rows: [
+    { docType: "SupplierBill", id: "b1", docNo: "PB/2026-27/0007", refNo: "SD/77", party: "s1", partyName: "Sri Dyers", category: "micro", date: "2026-10-01", dueDate: "2026-10-16", amount: 10500, paidByDue: 0, paidLate: 0, disallowed: 10500, lastPaid: null, status: "disallowed" },
+    { docType: "Expense", id: "e9", docNo: "EXP/2026-27/0031", refNo: "", party: "s1", partyName: "Sri Dyers", category: "micro", date: "2026-11-02", dueDate: "2026-11-17", amount: 2360, paidByDue: 2360, paidLate: 0, disallowed: 0, lastPaid: "2026-11-10", status: "allowed" },
+  ],
+};
 const gstr1: Gstr1 = {
   month: "2026-10", fp: "102026", gstin: "33AAECB1234F1Z5", hsnDigits: 4,
   b2b: [{ ctin: "33AAEPS1001F1Z2", name: "Sunrise Garments", inv: [{ inum: "INV/2026-27/0001", idt: "05-10-2026", val: 10500, pos: "33", itms: [{ num: 1, itm_det: { rt: 5, txval: 10000, iamt: 0, camt: 250, samt: 250, csamt: 0 } }] }] }],
@@ -96,6 +103,14 @@ describe("the statutory tab", () => {
     expect(screen.getByText(/1 past the limit, ₹10,500.00/)).toBeInTheDocument();
     expect(screen.getByText("Disallowed at year end").nextSibling).toHaveTextContent("₹10,500.00");
     expect(screen.getByRole("link", { name: /MSME Form I/ })).toHaveAttribute("href", expect.stringContaining("form1"));
+  });
+
+  it("opens a year-end row on its own page: a bill on the bill, an expense on the expense", async () => {
+    wrap(<StatutoryTab />);
+    const table = await screen.findByRole("table", { name: "MSME year end" });
+    expect(within(table).getByRole("link", { name: "PB/2026-27/0007" })).toHaveAttribute("href", "/accounts/bills/b1");
+    // An expense used to be sent to /accounts/bills/<its id>: "Bill not found".
+    expect(within(table).getByRole("link", { name: "EXP/2026-27/0031" })).toHaveAttribute("href", "/accounts/expenses/e9");
   });
 
   it("shows GSTR-1 tables with the preparer's checks and the downloads", async () => {

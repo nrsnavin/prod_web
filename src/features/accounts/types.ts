@@ -459,17 +459,20 @@ export interface GstRateRow { rate: number; taxable: number; cgst: number; sgst:
 export interface GstReport {
   from: string;
   to: string;
-  output: { sales: GstRateRow[]; creditNotes: GstRateRow[] };
+  /** `debitNotes`: raised on customers (more output tax). `reverseCharge`: tax we owe on what a supplier did not charge. */
+  output: { sales: GstRateRow[]; creditNotes: GstRateRow[]; debitNotes?: GstRateRow[]; reverseCharge?: GstRateRow[] };
+  /** `debitNotes`: raised on suppliers (less input credit). */
   input: { purchases: GstRateRow[]; debitNotes: GstRateRow[]; expenses: GstRateRow[] };
   totals: {
     output: GstRateRow; creditNotes: GstRateRow; purchases: GstRateRow; debitNotes: GstRateRow; expenses: GstRateRow;
+    customerDebitNotes?: GstRateRow; reverseCharge?: GstRateRow;
     /** Rule 37: credit reversed on bills unpaid 180 days, and re-claimed once paid. */
     rule37?: { reversed: { cgst: number; sgst: number; igst: number; total: number }; reclaimed: { cgst: number; sgst: number; igst: number; total: number } };
     netOutput: { cgst: number; sgst: number; igst: number };
     netInput: { cgst: number; sgst: number; igst: number };
     payable: { cgst: number; sgst: number; igst: number };
   };
-  counts: { invoices: number; creditNotes: number; bills: number; debitNotes: number; expenses: number };
+  counts: { invoices: number; creditNotes: number; bills: number; debitNotes: number; expenses: number; customerDebitNotes?: number; reverseCharge?: number };
 }
 export interface TdsReport {
   from: string;
@@ -963,7 +966,8 @@ export interface MsmeDue {
 export interface MsmeDues { rows: MsmeDue[]; totals: { count: number; outstanding: number; overdue: number; overdueCount: number; dueSoon: number }; suppliers: number }
 export interface MsmeYearEnd {
   fy: string; from?: string; to?: string;
-  rows: Array<{ id: string; docNo: string; refNo: string; party: string; partyName: string; category: string; date: string; dueDate: string; amount: number; paidByDue: number; paidLate: number; disallowed: number; lastPaid: string | null; status: "allowed" | "late" | "disallowed" }>;
+  /** `docType`: a supplier expense is in the statement beside the bills (an older server sends bills only, and no type). */
+  rows: Array<{ docType?: "SupplierBill" | "Expense"; id: string; docNo: string; refNo: string; party: string; partyName: string; category: string; date: string; dueDate: string; amount: number; paidByDue: number; paidLate: number; disallowed: number; lastPaid: string | null; status: "allowed" | "late" | "disallowed" }>;
   totals: { allowed: number; late: number; disallowed: number; count?: number; disallowedCount?: number };
 }
 export interface Gstr2bRow {

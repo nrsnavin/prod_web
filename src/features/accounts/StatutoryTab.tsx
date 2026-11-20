@@ -377,7 +377,7 @@ function MsmeSection() {
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h3 className="font-semibold">Year end: s.43B(h)</h3>
-            <p className="text-sm text-ink-500">Each MSME bill of the year: paid in time, paid late (allowed, interest owed), or unpaid at 31 March past its day (disallowed this year, allowed when paid).</p>
+            <p className="text-sm text-ink-500">Each bill or expense of an MSME supplier in the year: paid in time, paid late (allowed, interest owed), or unpaid at 31 March past its day (disallowed this year, allowed when paid).</p>
           </div>
           <Input label="Financial year" value={fy} onChange={(e) => setFy(e.target.value)} placeholder="2026-27" />
         </div>
@@ -396,7 +396,7 @@ function MsmeSection() {
                     {ye.data.rows.map((r) => (
                       <tr key={r.id}>
                         <td className="py-2">{r.partyName}</td>
-                        <td className="py-2"><Link to={`/accounts/bills/${r.id}`} className="text-brand-600 hover:underline">{r.docNo}</Link></td>
+                        <td className="py-2"><Link to={r.docType === "Expense" ? `/accounts/expenses/${r.id}` : `/accounts/bills/${r.id}`} className="text-brand-600 hover:underline">{r.docNo}</Link></td>
                         <td className="py-2 whitespace-nowrap">{formatDate(r.dueDate)}</td>
                         <td className={num}>{money(r.amount)}</td>
                         <td className="py-2 pl-3 whitespace-nowrap">{r.lastPaid ? formatDate(r.lastPaid) : "—"}</td>
