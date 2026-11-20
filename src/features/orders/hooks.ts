@@ -145,6 +145,9 @@ export function useOrderRaisePo(orderId: string | undefined) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY, "purchase-orders", orderId] });
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
+      // The MRP named above was left out: its "on order" column stood at
+      // the old figure until the minute's refresh, beside the new PO.
+      qc.invalidateQueries({ queryKey: [KEY, "mrp", orderId] });
     },
   });
 }

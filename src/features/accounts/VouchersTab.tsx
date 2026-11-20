@@ -20,7 +20,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { formatDate } from "@/core/format/date";
 import { round2 } from "@/features/invoices/gst";
-import { useAccountsMutations, useBankAccounts, useContras, useJournals, useOpenDocs, usePayments } from "./hooks";
+import { useAccountsMutations, useBankAccounts, useContras, useJournal, useJournals, useOpenDocs, usePayments } from "./hooks";
 import { JournalForm } from "./JournalForm";
 import { PartyPicker, money, today } from "./shared";
 import { CreditsCard } from "./Credits";
@@ -120,13 +120,18 @@ function ContrasList() {
 
 const PURPOSE_LABEL: Record<Journal["purpose"], string> = { setoff: "Set-off", writeoff: "Write-off", accrual: "Accrual", salary: "Salary", depreciation: "Depreciation", stock: "Closing stock", reclass: "Reclassification", other: "Journal" };
 
-function JournalsList({ open, onOpen }: { open: string | null; onOpen: (id: string | null) => void }) {
+export function JournalsList({ open, onOpen }: { open: string | null; onOpen: (id: string | null) => void }) {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useJournals({ page });
   const { cancelJournal } = useAccountsMutations();
   const { toast } = useToast();
   const [cancelling, setCancelling] = useState<Journal | null>(null);
-  const opened = open ? data?.journals.find((j) => j._id === open) : null;
+  // The one asked for is usually a row on this page. A ledger links to any
+  // journal there has ever been, so one that is not here is fetched by its id
+  // — it used to open nothing, as if the link had not been clicked.
+  const onPage = open ? data?.journals.find((j) => j._id === open) : undefined;
+  const fetched = useJournal(open, !!open && !!data && !onPage);
+  const opened = open ? onPage ?? fetched.data ?? null : null;
   const cols: Column<Journal>[] = [
     { key: "no", header: "Journal", render: (j) => <span className="font-medium">{j.journalNo}</span> },
     { key: "date", header: "Date", render: (j) => formatDate(j.date) },
@@ -142,6 +147,11 @@ function JournalsList({ open, onOpen }: { open: string | null; onOpen: (id: stri
       <DataTable columns={cols} rows={data?.journals ?? []} rowKey={(j) => j._id} loading={isLoading} onRowClick={(j) => onOpen(j._id)}
         emptyTitle="No journals yet" emptyDescription="A set-off between a party's two sides, a write-off, an accrual, salary payable, depreciation: entries with no cash in them." />
       <Pagination page={page} totalPages={data?.pages ?? 1} total={data?.total} onChange={setPage} />
+      {open && !opened && fetched.isError && (
+        <p role="alert" className="px-4 pb-3 text-sm text-status-danger">
+          That journal could not be opened{fetched.error instanceof ApiError ? ` — ${fetched.error.message}` : ""}. <button type="button" className="underline" onClick={() => onOpen(null)}>Dismiss</button>
+        </p>
+      )}
       <FormScreen open={!!opened} onClose={() => onOpen(null)} title={opened ? `${opened.journalNo} · ${formatDate(opened.date)}` : ""} width="max-w-3xl" confirmDirtyClose={false}>
         {opened && (
           <div className="space-y-3 text-sm">

@@ -49,6 +49,7 @@ import { useTrackRecent } from "@/core/ui/uiStore";
 import { OrderEtaCard } from "@/features/analytics/breakdown/OrderEtaCard";
 import { OrderSuggestedPlan } from "./OrderSuggestedPlan";
 import { ForceApprovalDialog } from "./ForceApprovalDialog";
+import { shortfallsOf } from "./shortfall";
 import { formatDate } from "@/core/format/date";
 import { Section, SectionNav } from "@/components/layout/SectionNav";
 
@@ -345,7 +346,7 @@ export function OrderDetailPage() {
   const [confirm, setConfirm] = useState<null | "approve" | "cancel" | "start" | "complete">(null);
   // Force-approve state: set from the backend's INSUFFICIENT_STOCK 400 so
   // the admin can override the stock guard with a reason.
-  const [forceShortfall, setForceShortfall] = useState<{ shortfall: StockShortfall | null; message: string } | null>(null);
+  const [forceShortfall, setForceShortfall] = useState<{ shortfall: StockShortfall | null; shortfalls: StockShortfall[]; message: string } | null>(null);
   const [jobOpen, setJobOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
@@ -401,8 +402,12 @@ export function OrderDetailPage() {
             // Swap the confirm dialog for the force-approve prompt,
             // seeded with the backend's shortfall payload.
             setConfirm(null);
+            // Every short material, not only the first: forcing draws
+            // down all of them, so all of them are what is being agreed to.
+            const all = shortfallsOf(e);
             setForceShortfall({
-              shortfall: (e.data?.shortfall as StockShortfall) ?? null,
+              shortfall: all[0] ?? null,
+              shortfalls: all,
               message: e.message,
             });
             return;
@@ -741,6 +746,7 @@ export function OrderDetailPage() {
       <ForceApprovalDialog
         open={!!forceShortfall}
         shortfall={forceShortfall?.shortfall ?? null}
+        shortfalls={(forceShortfall?.shortfalls.length ?? 0) > 1 ? forceShortfall?.shortfalls : undefined}
         originalMessage={forceShortfall?.message}
         loading={approve.isPending}
         onClose={() => setForceShortfall(null)}

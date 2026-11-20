@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ApiError } from "@/core/http/httpClient";
 import { elasticService } from "@/features/elastics/api";
 import { ForceApprovalDialog } from "./ForceApprovalDialog";
+import { shortfallsOf } from "./shortfall";
 import { useOrderMutations } from "./hooks";
 import { OrderDetail, StockShortfall } from "./types";
 import { addable } from "@/features/common/quickCreateStore";
@@ -32,7 +33,7 @@ export function OrderAddElasticModal({ order, open, onClose }: { order: OrderDet
   const [quantity, setQuantity] = useState("");
   const [rate, setRate] = useState("");
   const [reason, setReason] = useState("");
-  const [shortfall, setShortfall] = useState<{ shortfall: StockShortfall | null; message: string } | null>(null);
+  const [shortfall, setShortfall] = useState<{ shortfall: StockShortfall | null; shortfalls: StockShortfall[]; message: string } | null>(null);
 
   const onOrder = new Set(order.elastics.map((e) => String(e.id)));
   const loadElastics = useCallback(
@@ -69,7 +70,8 @@ export function OrderAddElasticModal({ order, open, onClose }: { order: OrderDet
         },
         onError: (e) => {
           if (e instanceof ApiError && e.code === "INSUFFICIENT_STOCK") {
-            setShortfall({ shortfall: (e.data?.shortfall as StockShortfall) ?? null, message: e.message });
+            const all = shortfallsOf(e);
+            setShortfall({ shortfall: all[0] ?? null, shortfalls: all, message: e.message });
             return;
           }
           setShortfall(null);
@@ -124,6 +126,7 @@ export function OrderAddElasticModal({ order, open, onClose }: { order: OrderDet
       <ForceApprovalDialog
         open={!!shortfall}
         shortfall={shortfall?.shortfall ?? null}
+        shortfalls={(shortfall?.shortfalls.length ?? 0) > 1 ? shortfall?.shortfalls : undefined}
         originalMessage={shortfall?.message}
         loading={addElastic.isPending}
         onClose={() => setShortfall(null)}

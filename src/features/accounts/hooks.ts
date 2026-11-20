@@ -37,6 +37,9 @@ export const useCredits = (partyType?: "customer" | "supplier", party?: string) 
   useQuery({ queryKey: [ACCOUNTS_KEY, "credits", partyType, party], queryFn: () => accountsService.credits(partyType!, party!), enabled: !!partyType && !!party });
 export const useJournals = (q: Record<string, unknown>, enabled = true) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "journals", q], queryFn: () => accountsService.journals(q), enabled });
+/** One journal by its id — the one a ledger links to, which need not be on the page the list is showing. */
+export const useJournal = (id: string | null, enabled = true) =>
+  useQuery({ queryKey: [ACCOUNTS_KEY, "journals", "one", id], queryFn: () => accountsService.journal(id as string), enabled: !!id && enabled, retry: false });
 export const useContras = (q: Record<string, unknown>, enabled = true) =>
   useQuery({ queryKey: [ACCOUNTS_KEY, "contras", q], queryFn: () => accountsService.contras(q), placeholderData: (p) => p, enabled });
 export const useOpeningOnboarding = (q: { partyType?: string; search?: string; limit?: number }, enabled = true) =>
