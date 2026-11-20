@@ -21,7 +21,7 @@ import type { OrderPnl, PnlJobRow } from "./types";
 const COST_LINES = [
   { key: "material", label: "Yarn issued", hint: "At the price captured when it was issued" },
   { key: "booked", label: "Bought for this order", hint: "Dyeing, job work, transport billed to it (cost centre), net of GST claimed" },
-  { key: "labour", label: "Wages", hint: "Scheduled shift hours × the operator's rate" },
+  { key: "labour", label: "Wages", hint: "Scheduled shift hours × the operator's rate, shared across the looms they mind" },
   { key: "jobWork", label: "Outsourced job-work", hint: "Vendor rate × metres returned" },
   { key: "finishing", label: "Finishing", hint: "Rate card, or the job's own figure" },
   { key: "checking", label: "Checking", hint: "Rate card, or the job's own figure" },
