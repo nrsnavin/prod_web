@@ -29,7 +29,7 @@ const entry = {
 const remind = (enabled: boolean) => ({
   success: true, whatsapp: true, more: 0,
   settings: { enabled, hour: 11, everyDays: 7, minOverdueDays: 3, acknowledgeReplies: false },
-  send: [{ party: "c2", partyName: "Kumar Knits", overdue: 21000, oldestDays: 12, tone: "gentle", phone: "9840022222" }],
+  send: [{ party: "c2", partyName: "Kumar Knits", overdue: 21000, oldestDays: 12, tone: "gentle", phone: "+919840022222" }],
   skip: [{ party: "c1", partyName: "Sunrise Garments", overdue: 52500, why: "contacted in the last 7 days" }],
 });
 const wrap = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><CollectionsTab /></MemoryRouter></QueryClientProvider>);
@@ -50,7 +50,9 @@ describe("reminders on a schedule", () => {
     expect(card).toHaveTextContent("Today: 1 to remind, 1 left.");
     await userEvent.click(within(card).getByRole("button", { name: "Who" }));
     const who = within(card).getByLabelText("Today's reminders");
-    expect(who).toHaveTextContent("Kumar Knits · ₹21,000.00 · 12 days · gentle");
+    // The number it will go to: the timer picks it (the accountant's when
+    // there is one), and nothing on the screen used to say which.
+    expect(who).toHaveTextContent("Kumar Knits · ₹21,000.00 · 12 days · gentle · to +919840022222");
     expect(who).toHaveTextContent("Sunrise Garments — contacted in the last 7 days");
 
     await userEvent.click(within(card).getByLabelText("Send reminders on a schedule"));

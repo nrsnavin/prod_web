@@ -252,7 +252,7 @@ function ScheduledReminders() {
       </p>
       {showWho && (
         <ul className="mt-2 space-y-1 text-sm" aria-label="Today's reminders">
-          {data.send.map((r) => <li key={r.party}>{r.partyName} · ₹{money(r.overdue)} · {r.oldestDays} days · {r.tone}</li>)}
+          {data.send.map((r) => <li key={r.party}>{r.partyName} · ₹{money(r.overdue)} · {r.oldestDays} days · {r.tone}{r.phone ? ` · to ${r.phone}` : ""}</li>)}
           {data.skip.map((r) => <li key={r.party} className="text-ink-400">{r.partyName} — {r.why}</li>)}
         </ul>
       )}
