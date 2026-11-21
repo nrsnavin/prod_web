@@ -303,6 +303,12 @@ export function MaterialDetailPage() {
             },
             { label: "Category", value: material.category },
             { label: "Total consumed", value: (material.totalConsumption ?? 0).toLocaleString("en-IN") },
+            { label: "HSN", value: material.hsn || "—" },
+            {
+              label: "GST % on purchase",
+              value:
+                material.gstPercent != null ? `${material.gstPercent}%` : "Default in Settings → Invoice",
+            },
           ]}
         />
       </Card>

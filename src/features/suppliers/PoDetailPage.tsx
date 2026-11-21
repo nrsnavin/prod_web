@@ -28,6 +28,9 @@ import { InwardRecord, PoItem, poItemPending, poItemReceived } from "./types";
 import { poStatusTone } from "./PoListPage";
 import { formatDate } from "@/core/format/date";
 import { addable } from "@/features/common/quickCreateStore";
+import { useDocumentSettings } from "@/features/settings/hooks";
+import { lineGst, oneRate, pct, pricePoLines, purchaseTaxSettings, rateOf } from "./poTax";
+import { PoTaxSummary } from "./PoTaxSummary";
 
 function materialName(item: PoItem): string {
   return typeof item.rawMaterial === "object" && item.rawMaterial
@@ -40,7 +43,12 @@ function materialId(item: PoItem): string {
     : (item.rawMaterial as string);
 }
 
-const itemColumns: Column<PoItem>[] = [
+// Whole rupees as they are; paise, where there are any, to two places.
+const money2 = (n: number) =>
+  n.toLocaleString("en-IN", Number.isInteger(n) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** The lines, with the GST the server priced each at. No rate is shown where the supplier charges none. */
+const itemColumns = (noGst: boolean): Column<PoItem>[] => [
   { key: "mat", header: "Material", render: (it) => <span className="font-medium">{materialName(it)}</span> },
   { key: "qty", header: "Ordered", align: "right", render: (it) => it.quantity.toLocaleString("en-IN") },
   {
@@ -62,12 +70,25 @@ const itemColumns: Column<PoItem>[] = [
       );
     },
   },
+  { key: "hsn", header: "HSN", render: (it) => it.hsn || <span className="text-ink-400">—</span> },
   { key: "price", header: "Price (₹)", align: "right", render: (it) => it.price.toLocaleString("en-IN") },
   {
-    key: "total",
-    header: "Total (₹)",
+    key: "gst",
+    header: "GST",
     align: "right",
-    render: (it) => (it.price * it.quantity).toLocaleString("en-IN"),
+    render: (it) => (noGst || it.gstPercent == null ? <span className="text-ink-400">—</span> : pct(it.gstPercent)),
+  },
+  {
+    key: "total",
+    header: "Amount (₹)",
+    align: "right",
+    render: (it) => money2(it.taxable ?? it.price * it.quantity),
+  },
+  {
+    key: "withGst",
+    header: "With GST (₹)",
+    align: "right",
+    render: (it) => (it.amount != null ? money2(it.amount) : <span className="text-ink-400">—</span>),
   },
 ];
 
@@ -403,7 +424,7 @@ export function InwardForm({
   );
 }
 
-type EditLine = { rawMaterial: string; quantity: string; price: string };
+type EditLine = { rawMaterial: string; quantity: string; price: string; hsn: string; gstPercent: string };
 
 function PoEditModal({
   po,
@@ -411,8 +432,11 @@ function PoEditModal({
   onClose,
   update,
 }: {
-  /** `supplier`: whose PO it is, so a line above what they quoted is flagged. */
-  po: { _id: string; supplier?: string; expectedDate?: string; notes?: string; items: PoItem[]; __v?: number };
+  /**
+   * `supplier`: whose PO it is, so a line above what they quoted is
+   * flagged. `supplierGstin` and `noGst` price the GST as the server will.
+   */
+  po: { _id: string; supplier?: string; supplierGstin?: string; noGst?: string; expectedDate?: string; notes?: string; items: PoItem[]; __v?: number };
   open: boolean;
   onClose: () => void;
   update: ReturnType<typeof usePoMutations>["update"];
@@ -423,24 +447,44 @@ function PoEditModal({
   const [notes, setNotes] = useState(po.notes ?? "");
   const [auditReason, setAuditReason] = useState("");
   const [lines, setLines] = useState<EditLine[]>(
-    po.items.map((it) => ({ rawMaterial: materialId(it), quantity: String(it.quantity), price: String(it.price) }))
+    po.items.map((it) => ({
+      rawMaterial: materialId(it), quantity: String(it.quantity), price: String(it.price),
+      hsn: it.hsn ?? "", gstPercent: it.gstPercent != null ? String(it.gstPercent) : "",
+    }))
+  );
+  const { data: docSettings } = useDocumentSettings();
+  const taxSettings = purchaseTaxSettings(docSettings);
+  const materialOf = (id: string) => (materials.data ?? []).find((m) => m._id === id);
+  // A material picked on a line brings its HSN and rate, as on a new PO.
+  const pickMaterial = (i: number, id: string) => {
+    const m = materialOf(id);
+    setLine(i, { rawMaterial: id, hsn: m?.hsn || "", gstPercent: String(rateOf(m?.gstPercent) ?? taxSettings.defaultGst) });
+  };
+  const priced = pricePoLines(
+    lines.map((l) => ({ quantity: l.quantity, rate: l.price, gstPercent: lineGst(l, materialOf(l.rawMaterial), taxSettings.defaultGst) })),
+    { supplierGstin: po.supplierGstin, ourState: taxSettings.ourState, noGst: !!po.noGst }
   );
 
   const materialOptions = (materials.data ?? []).map((m) => ({ value: m._id, label: `${m.name} (${m.category})` }));
   const rateFlags = useRateFlags(po.supplier, lines.map((l) => ({ rawMaterial: l.rawMaterial, rate: Number(l.price) || 0, description: (materials.data ?? []).find((m) => m._id === l.rawMaterial)?.name })));
   const setLine = (i: number, patch: Partial<EditLine>) =>
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-  const addLine = () => setLines((ls) => [...ls, { rawMaterial: "", quantity: "", price: "" }]);
+  const addLine = () => setLines((ls) => [...ls, { rawMaterial: "", quantity: "", price: "", hsn: "", gstPercent: "" }]);
   const removeLine = (i: number) => setLines((ls) => (ls.length > 1 ? ls.filter((_, idx) => idx !== i) : ls));
-  const total = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.price) || 0), 0);
-
   const save = () => {
     if (auditReason.trim().length < 3) { toast("Give a reason (min 3 chars) for the edit", "error"); return; }
     const items = lines
       .filter((l) => l.rawMaterial)
-      .map((l) => ({ rawMaterial: l.rawMaterial, quantity: Number(l.quantity) || 0, price: Number(l.price) || 0 }));
+      .map((l) => ({
+        rawMaterial: l.rawMaterial, quantity: Number(l.quantity) || 0, price: Number(l.price) || 0,
+        hsn: l.hsn.trim(), gstPercent: rateOf(l.gstPercent.trim()),
+      }));
     if (items.length === 0) { toast("Add at least one line item", "error"); return; }
     if (items.some((it) => it.quantity <= 0)) { toast("Every line needs a quantity greater than 0", "error"); return; }
+    if (items.some((it) => it.hsn && !/^\d{4,8}$/.test(it.hsn))) { toast("An HSN is 4 to 8 digits", "error"); return; }
+    if (lines.some((l) => l.gstPercent.trim() !== "" && (rateOf(l.gstPercent.trim()) == null || Number(l.gstPercent) < 0 || Number(l.gstPercent) > 100))) {
+      toast("GST % is from 0 to 100", "error"); return;
+    }
     update.mutate(
       {
         id: po._id,
@@ -463,7 +507,7 @@ function PoEditModal({
   };
 
   return (
-    <FormScreen open={open} onClose={onClose} title="Edit purchase order" width="max-w-2xl">
+    <FormScreen open={open} onClose={onClose} title="Edit purchase order" width="max-w-3xl">
       <div className="space-y-4">
         <p className="text-xs text-ink-400">Only Open POs with no receipts can be edited.</p>
 
@@ -471,16 +515,18 @@ function PoEditModal({
           <p className="mb-1.5 text-sm font-medium text-ink-600">Line items *</p>
           {/* A table from sm up; on a phone each line is a block: material and
               Remove on top, qty, rate and amount beneath, each labelled. */}
-          <div className="hidden grid-cols-[minmax(0,1fr)_90px_100px_90px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+          <div className="hidden grid-cols-[minmax(0,1fr)_80px_90px_84px_64px_90px_32px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
             <span>Material</span>
             <span className="text-right">Qty</span>
             <span className="text-right">Rate (₹)</span>
+            <span>HSN</span>
+            <span className="text-right">GST %</span>
             <span className="text-right">Amount</span>
             <span />
           </div>
           <div className="space-y-2">
             {lines.map((l, i) => (
-              <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_90px_100px_90px_32px] sm:rounded-none sm:border-0 sm:p-0">
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2 rounded-lg border border-ink-100 p-2 sm:grid-cols-[minmax(0,1fr)_80px_90px_84px_64px_90px_32px] sm:rounded-none sm:border-0 sm:p-0">
                 <div className="col-span-3 min-w-0 sm:col-span-1">
                   <Combobox
                     {...addable("material")}
@@ -488,7 +534,7 @@ function PoEditModal({
                     placeholder={materials.isLoading ? "Loading…" : "Material"}
                     options={materialOptions}
                     value={l.rawMaterial}
-                    onChange={(v) => setLine(i, { rawMaterial: v })}
+                    onChange={(v) => (v ? pickMaterial(i, v) : setLine(i, { rawMaterial: v }))}
                   />
                 </div>
                 <div className="min-w-0">
@@ -502,13 +548,23 @@ function PoEditModal({
                     value={l.price} onChange={(e) => setLine(i, { price: e.target.value })} />
                 </div>
                 <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">HSN</span>
+                  <Input inputMode="numeric" aria-label="HSN" placeholder="HSN"
+                    value={l.hsn} onChange={(e) => setLine(i, { hsn: e.target.value })} />
+                </div>
+                <div className="min-w-0">
+                  <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden">GST %</span>
+                  <Input type="number" step="0.01" aria-label="GST %" placeholder="GST %"
+                    value={l.gstPercent} onChange={(e) => setLine(i, { gstPercent: e.target.value })} />
+                </div>
+                <div className="min-w-0">
                   <span aria-hidden className="mb-1 block text-xs font-medium text-ink-400 sm:hidden text-right">Amount</span>
                   <div className="flex h-10 items-center justify-end text-sm tabular-nums text-ink-600">
                     {((Number(l.quantity) || 0) * (Number(l.price) || 0)).toLocaleString("en-IN")}
                   </div>
                 </div>
                 {rateFlags.filter((f) => f.line === i).map((f) => (
-                  <p key={f.message} role="status" className="order-last col-span-4 text-xs text-status-warning sm:col-span-5">{f.message}</p>
+                  <p key={f.message} role="status" className="order-last col-span-4 text-xs text-status-warning sm:col-span-7">{f.message}</p>
                 ))}
                 <button
                   type="button"
@@ -522,11 +578,16 @@ function PoEditModal({
               </div>
             ))}
           </div>
-          <div className="mt-2 flex items-center justify-between">
+          <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
             <Button type="button" variant="ghost" size="sm" onClick={addLine}>
               <Plus className="h-4 w-4" /> Add item
             </Button>
-            <span className="text-sm font-semibold tabular-nums">Total ₹{total.toLocaleString("en-IN")}</span>
+            <PoTaxSummary
+              className="w-full sm:w-64"
+              grandClassName="font-semibold"
+              tax={{ supplyType: priced.supplyType, noGst: po.noGst ?? "", totals: priced.totals }}
+              rate={oneRate(priced.lines)}
+            />
           </div>
         </div>
 
@@ -620,8 +681,11 @@ export function PoDetailPage() {
   }
 
   const { po, inwardHistory } = data;
-  const supplierName = typeof po.supplier === "object" && po.supplier ? po.supplier.name : "—";
+  const supplierRef = typeof po.supplier === "object" && po.supplier ? po.supplier : null;
+  const supplierName = supplierRef ? supplierRef.name : "—";
   const total = po.items.reduce((s, it) => s + it.price * it.quantity, 0);
+  // What it comes to with GST, as the server priced it.
+  const withGst = po.tax?.totals.grand;
   const editable = po.status === "Open" && !po.items.some((it) => poItemReceived(it) > 0);
 
   return (
@@ -631,7 +695,7 @@ export function PoDetailPage() {
       </Link>
       <PageHeader
         title={`PO #${po.poNo}`}
-        subtitle={`${supplierName} · ₹${total.toLocaleString("en-IN")}`}
+        subtitle={`${supplierName} · ₹${(withGst ?? total).toLocaleString("en-IN")}${withGst != null ? " with GST" : ""}`}
         actions={
           <>
             <Button variant="secondary" onClick={() => setPrintOpen(true)}>
@@ -676,7 +740,14 @@ export function PoDetailPage() {
       />
 
       <PoEditModal
-        po={{ _id: po._id, supplier: typeof po.supplier === "string" ? po.supplier : po.supplier?._id, expectedDate: po.expectedDate, notes: po.notes, items: po.items }}
+        // __v: the version this page loaded, sent back as expectedVersion
+        // so a save over someone else's edit is refused. It was never
+        // passed, so the check the edit sends was always skipped.
+        key={`${po._id}-${po.__v ?? 0}-${editOpen ? 1 : 0}`}
+        po={{
+          _id: po._id, supplier: supplierRef?._id ?? (po.supplier as string), supplierGstin: supplierRef?.gstin,
+          noGst: po.tax?.noGst, expectedDate: po.expectedDate, notes: po.notes, items: po.items, __v: po.__v,
+        }}
         open={editOpen}
         onClose={() => setEditOpen(false)}
         update={update}
@@ -710,7 +781,16 @@ export function PoDetailPage() {
 
       <Card>
         <h3 className="font-semibold px-5 pt-5">Items</h3>
-        <DataTable columns={itemColumns} rows={po.items} rowKey={materialId} emptyTitle="No items" />
+        <DataTable columns={itemColumns(!!po.tax?.noGst)} rows={po.items} rowKey={materialId} emptyTitle="No items" />
+        {po.tax && (
+          <div className="flex justify-end border-t border-ink-100 px-5 py-4">
+            <PoTaxSummary
+              className="w-full sm:w-72"
+              tax={po.tax}
+              rate={oneRate(po.items.map((it) => ({ taxable: it.taxable ?? 0, gstPercent: it.gstPercent ?? 0 })))}
+            />
+          </div>
+        )}
       </Card>
 
       <Card className="mt-4 p-5">

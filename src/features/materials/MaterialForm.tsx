@@ -36,6 +36,15 @@ const schema = z.object({
   stock: z.coerce.number().min(0).optional(),
   minStock: z.coerce.number().min(0).optional(),
   price: z.coerce.number().min(0).optional(),
+  // What a purchase order line for this material takes unless it says
+  // otherwise. The same rules as the elastic's tax fields and the server
+  // (prod/services/purchaseTax.js).
+  hsn: z.string().trim().regex(/^(\d{4,8})?$/, "HSN is 4 to 8 digits").optional(),
+  // Blank means "the Settings default"; sent as null so an edit clears it.
+  gstPercent: z
+    .union([z.literal(""), z.null(), z.coerce.number().min(0, "GST % is 0 to 100").max(100, "GST % is 0 to 100")])
+    .optional()
+    .transform((v) => (v === "" || v === undefined || v === null ? null : v)),
 });
 
 export function MaterialForm({
@@ -93,7 +102,9 @@ export function MaterialForm({
     watch,
     formState: { errors },
   } = useForm<MaterialFormValues>({
-    resolver: formResolver(schema),
+    // The tax rate goes in as typed text and comes out a number or null
+    // (blank: the default), as on the elastic form.
+    resolver: formResolver<MaterialFormValues>(schema as unknown as z.ZodType<MaterialFormValues>),
     defaultValues: {
       name: initial?.name ?? defaultName ?? "",
       category: source?.category ?? "",
@@ -109,6 +120,9 @@ export function MaterialForm({
       stock: initial?.stock ?? 0,
       minStock: source?.minStock ?? 0,
       price: source?.price ?? 0,
+      // A copy is the same goods, taxed the same way.
+      hsn: source?.hsn ?? "",
+      gstPercent: source?.gstPercent ?? "",
     },
   });
 
@@ -193,6 +207,17 @@ export function MaterialForm({
           <Input label="Opening stock" type="number" step="0.01" {...register("stock")} />
         )}
         <Input label="Min stock" type="number" step="0.01" {...register("minStock")} />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-ink-600">GST on buying it</p>
+        <p className="text-xs text-ink-400">
+          What a purchase order line takes unless the line says otherwise. Leave the rate blank
+          to use the default in Settings → Invoice.
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <Input label="HSN" inputMode="numeric" placeholder="e.g. 5402" error={errors.hsn?.message} {...register("hsn")} />
+          <Input label="GST %" type="number" step="0.01" placeholder="default" error={errors.gstPercent?.message} {...register("gstPercent")} />
+        </div>
       </div>
       <div className="flex justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onCancel}>

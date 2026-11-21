@@ -2,6 +2,8 @@ import { Card } from "@/components/ui/Card";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { useDocumentSettings } from "@/features/settings/hooks";
 import { PurchaseOrder, PoItem, PoSupplierRef } from "./types";
+import { lineGst, noGstReason, oneRate, pct, pricePoLines, purchaseTaxSettings } from "./poTax";
+import { PoTaxSummary } from "./PoTaxSummary";
 
 const inr = (n: number) => n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -51,11 +53,22 @@ function amountInWords(num: number): string {
 
 export function PoDocument({ po }: { po: PurchaseOrder }) {
   const s = supplier(po);
-  const total = po.items.reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 0), 0);
   // Buyer details come from Settings → Document settings — the same source
   // the generated PDF uses. They were previously hardcoded placeholders,
   // so this sheet printed a different (fictional) company from the PDF.
   const { data: doc } = useDocumentSettings();
+  // The GST as the server priced it (the detail route); worked out the
+  // same way here for a PO that came without it.
+  const local = pricePoLines(
+    po.items.map((it) => ({
+      quantity: it.quantity, rate: it.price,
+      gstPercent: lineGst(it, typeof it.rawMaterial === "object" ? it.rawMaterial : undefined, purchaseTaxSettings(doc).defaultGst),
+    })),
+    { supplierGstin: s?.gstin, ourState: purchaseTaxSettings(doc).ourState, noGst: !!noGstReason(s) }
+  );
+  const tax = po.tax ?? { supplyType: local.supplyType, noGst: noGstReason(s), totals: local.totals };
+  const lineRate = (it: PoItem, i: number) => it.gstPercent ?? local.lines[i].gstPercent;
+  const rate = oneRate(po.items.map((it, i) => ({ taxable: (it.price || 0) * (it.quantity || 0), gstPercent: lineRate(it, i) })));
   const company = {
     name: doc?.companyName ?? "",
     addressLines: (doc?.addressLines ?? []).filter(Boolean),
@@ -133,9 +146,11 @@ export function PoDocument({ po }: { po: PurchaseOrder }) {
               <tr className="border-b-2 border-ink-300 text-xs uppercase tracking-wide text-ink-500">
                 <th className="py-2 text-left w-8">#</th>
                 <th className="py-2 text-left">Material</th>
-                <th className="py-2 text-left w-16">Unit</th>
+                <th className="py-2 text-left w-20">HSN</th>
+                <th className="py-2 text-left w-14">Unit</th>
                 <th className="py-2 text-right w-20">Qty</th>
                 <th className="py-2 text-right w-24">Rate (₹)</th>
+                <th className="py-2 text-right w-14">GST</th>
                 <th className="py-2 text-right w-28">Amount (₹)</th>
               </tr>
             </thead>
@@ -144,26 +159,24 @@ export function PoDocument({ po }: { po: PurchaseOrder }) {
                 <tr key={i} className="border-b border-ink-100 print-label">
                   <td className="py-2">{i + 1}</td>
                   <td className="py-2 font-medium">{itemName(it)}</td>
+                  <td className="py-2 text-ink-600">{it.hsn || "—"}</td>
                   <td className="py-2 text-ink-600">{itemUnit(it) || "—"}</td>
                   <td className="py-2 text-right tabular-nums">{(it.quantity || 0).toLocaleString("en-IN")}</td>
                   <td className="py-2 text-right tabular-nums">{inr(it.price || 0)}</td>
+                  <td className="py-2 text-right tabular-nums">{tax.noGst ? "—" : pct(lineRate(it, i))}</td>
                   <td className="py-2 text-right tabular-nums">{inr((it.price || 0) * (it.quantity || 0))}</td>
                 </tr>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-ink-300 font-semibold">
-                <td className="py-2" colSpan={5}>Grand total</td>
-                <td className="py-2 text-right tabular-nums">₹{inr(total)}</td>
-              </tr>
-            </tfoot>
           </table>
         </TableScroll>
 
-        <p className="mt-2 text-xs text-ink-500">
-          Amount in words: <span className="font-medium text-ink-700">{amountInWords(total)} only</span>
-        </p>
-        <p className="text-[10px] text-ink-400">Amounts in ₹, exclusive of applicable taxes unless stated.</p>
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+          <p className="max-w-sm text-xs text-ink-500">
+            Amount in words: <span className="font-medium text-ink-700">{amountInWords(tax.totals.grand)} only</span>
+          </p>
+          <PoTaxSummary className="w-64" grandClassName="text-base font-bold" tax={tax} rate={rate} />
+        </div>
 
         {/* Terms */}
         <div className="mt-4 text-sm">

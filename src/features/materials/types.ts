@@ -183,6 +183,10 @@ export interface RawMaterial {
   supplier?: { _id: string; name: string } | string | null;
   /** The LATEST purchase price — what a new PO defaults to. */
   price: number;
+  /** HSN for buying it; "" when none is set. */
+  hsn?: string;
+  /** GST rate a PO line takes unless it says otherwise; null means the default in Settings. */
+  gstPercent?: number | null;
   /**
    * The weighted average of what the stock on hand actually cost, and
    * what issues are costed at. 0 means the material has not been
@@ -334,6 +338,10 @@ export interface LotTrace {
 }
 
 export interface MaterialFormValues {
+  /** 4 to 8 digits, or blank. */
+  hsn?: string;
+  /** What a purchase order line takes unless it says otherwise. Blank: the default in Settings. */
+  gstPercent?: number | string | null;
   name: string;
   /** One of the fixed five. Required — the engine reads it. */
   category: string;

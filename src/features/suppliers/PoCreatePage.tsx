@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UnsavedChangesGuard } from "@/components/ui/UnsavedChangesGuard";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
@@ -19,6 +19,9 @@ import { PoFormValues, Supplier } from "./types";
 import { usePoMutations } from "./hooks";
 import { useRateFlags } from "./rateFlags";
 import { addable } from "@/features/common/quickCreateStore";
+import { useDocumentSettings } from "@/features/settings/hooks";
+import { lineGst, noGstReason, oneRate, pricePoLines, purchaseTaxSettings, rateOf } from "./poTax";
+import { PoTaxSummary } from "./PoTaxSummary";
 
 const schema = z.object({
   supplier: z.string().min(1, "Select a supplier"),
@@ -30,6 +33,13 @@ const schema = z.object({
         rawMaterial: z.string().min(1, "Select material"),
         quantity: z.coerce.number().positive("Qty > 0"),
         price: z.coerce.number().positive("Rate > 0"),
+        // Filled from the material when it is picked; either can be
+        // typed over. The same rules the server holds the line to.
+        hsn: z.string().trim().regex(/^(\d{4,8})?$/, "4–8 digits").optional(),
+        gstPercent: z
+          .union([z.literal(""), z.null(), z.coerce.number().min(0, "0–100").max(100, "0–100")])
+          .optional()
+          .transform((v) => (v === "" || v === undefined || v === null ? null : v)),
       })
     )
     .min(1, "Add at least one item"),
@@ -88,17 +98,20 @@ export function PoCreatePage() {
     control,
     handleSubmit,
     watch,
+    setValue,
+    getValues,
     formState: { errors, isDirty, isSubmitSuccessful },
   } = useForm<PoFormValues>({
-    resolver: formResolver(schema),
+    // The GST rate goes in as typed text and comes out a number or null.
+    resolver: formResolver<PoFormValues>(schema as unknown as z.ZodType<PoFormValues>),
     defaultValues: {
       supplier: prefill?.supplier ?? "",
       expectedDate: prefill?.expectedDate ?? "",
       notes: prefill?.notes ?? "",
       items:
         prefill?.items && prefill.items.length > 0
-          ? prefill.items
-          : [{ rawMaterial: "", quantity: 0, price: 0 }],
+          ? prefill.items.map((it) => ({ ...it, hsn: "", gstPercent: "" }))
+          : [{ rawMaterial: "", quantity: 0, price: 0, hsn: "", gstPercent: "" }],
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
@@ -112,12 +125,57 @@ export function PoCreatePage() {
   const lineCount = items.filter((i) => i.rawMaterial && Number(i.quantity) > 0).length;
 
   const selectedSupplier = supplierId ? supplierCache.get(supplierId) : undefined;
+  // A supplier that arrived with the prefill was never searched for, so
+  // its record (GSTIN, registration, address) is fetched once: the GST
+  // preview needs its state, and the vendor card and summary its name.
+  useEffect(() => {
+    if (!supplierId || supplierCache.has(supplierId)) return;
+    let live = true;
+    Promise.resolve()
+      .then(() => supplierService.getById(supplierId))
+      .then((s) => { if (live && s?._id) setSupplierCache((prev) => new Map(prev).set(s._id, s)); })
+      .catch(() => { /* the preview falls back to CGST + SGST; the server prices it for real */ });
+    return () => { live = false; };
+  }, [supplierId, supplierCache]);
 
   const materialById = useMemo(() => {
-    const m = new Map<string, { name: string; unit?: string }>();
-    for (const it of materials.data ?? []) m.set(it._id, { name: it.name, unit: (it as { unit?: string }).unit });
+    const m = new Map<string, { name: string; unit?: string; hsn?: string; gstPercent?: number | null }>();
+    for (const it of materials.data ?? []) m.set(it._id, { name: it.name, unit: it.unit, hsn: it.hsn, gstPercent: it.gstPercent });
     return m;
   }, [materials.data]);
+
+  // ── GST ────────────────────────────────────────────────────────
+  // Each line takes its material's HSN and rate (else the default in
+  // Settings) when the material is picked, and the buyer can type over
+  // either. Worked out here the way the server will work it out.
+  const { data: docSettings } = useDocumentSettings();
+  const taxSettings = purchaseTaxSettings(docSettings);
+  const fillTax = (i: number, materialId: string) => {
+    const m = materialById.get(materialId);
+    setValue(`items.${i}.hsn`, m?.hsn || "");
+    setValue(`items.${i}.gstPercent`, rateOf(m?.gstPercent) ?? taxSettings.defaultGst);
+  };
+  // Lines that arrived filled in (from a shortfall or the forecast) get
+  // their materials' rates once the materials and the settings are in —
+  // once: a refetch must not refill a rate the buyer has since cleared.
+  const prefilledTax = useRef(false);
+  useEffect(() => {
+    if (prefilledTax.current || !materials.data || !docSettings) return;
+    prefilledTax.current = true;
+    getValues("items").forEach((it, i) => {
+      if (it.rawMaterial && (it.gstPercent === "" || it.gstPercent == null)) fillTax(i, it.rawMaterial);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materials.data, docSettings]);
+  const noGst = noGstReason(selectedSupplier);
+  const priced = pricePoLines(
+    items.map((it) => ({
+      quantity: it.quantity,
+      rate: it.price,
+      gstPercent: lineGst(it, materialById.get(it.rawMaterial), taxSettings.defaultGst),
+    })),
+    { supplierGstin: selectedSupplier?.gstin, ourState: taxSettings.ourState, noGst: !!noGst }
+  );
 
   // A line above what this supplier quoted is flagged as it is typed; nothing is refused for it.
   const rateFlags = useRateFlags(supplierId, items.map((it) => ({ rawMaterial: it.rawMaterial, rate: Number(it.price) || 0, description: materialById.get(it.rawMaterial)?.name })));
@@ -233,10 +291,12 @@ export function PoCreatePage() {
           <Card className="p-5">
             <h3 className="mb-3 font-semibold">Line items</h3>
             {/* Column header */}
-            <div className="hidden grid-cols-[minmax(0,1fr)_90px_110px_120px_36px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
+            <div className="hidden grid-cols-[minmax(0,1fr)_72px_92px_80px_64px_104px_36px] gap-2 px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-ink-400 sm:grid">
               <span>Material</span>
               <span className="text-right">Qty</span>
               <span className="text-right">Rate (₹)</span>
+              <span>HSN</span>
+              <span className="text-right">GST %</span>
               <span className="text-right">Amount (₹)</span>
               <span />
             </div>
@@ -247,7 +307,7 @@ export function PoCreatePage() {
                 return (
                   <div
                     key={field.id}
-                    className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_90px_110px_120px_36px] sm:items-start"
+                    className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1fr)_72px_92px_80px_64px_104px_36px] sm:items-start"
                   >
                     <div className="col-span-2 sm:col-span-1">
                       <Controller
@@ -259,7 +319,10 @@ export function PoCreatePage() {
                             options={materialOptions}
                             error={errors.items?.[i]?.rawMaterial?.message}
                             value={field.value}
-                            onChange={field.onChange}
+                            onChange={(v) => {
+                              field.onChange(v);
+                              if (v) fillTax(i, v);
+                            }}
                           />
                         )}
                       />
@@ -278,12 +341,25 @@ export function PoCreatePage() {
                       error={errors.items?.[i]?.price?.message}
                       {...register(`items.${i}.price`)}
                     />
+                    <Input aria-label="HSN"
+                      inputMode="numeric"
+                      placeholder="HSN"
+                      error={errors.items?.[i]?.hsn?.message}
+                      {...register(`items.${i}.hsn`)}
+                    />
+                    <Input aria-label="GST %"
+                      type="number"
+                      step="0.01"
+                      placeholder="GST %"
+                      error={errors.items?.[i]?.gstPercent?.message}
+                      {...register(`items.${i}.gstPercent`)}
+                    />
                     <div className="flex h-10 items-center justify-end rounded-lg bg-canvas px-3 text-sm tabular-nums">
                       {amount > 0 ? `₹${inr(amount)}` : <span className="text-ink-400">—</span>}
                       {unit && amount > 0 && <span className="ml-1 text-xs text-ink-400">/{unit}</span>}
                     </div>
                     {rateFlags.filter((f) => f.line === i).map((f) => (
-                      <p key={f.message} role="status" className="col-span-2 order-last text-xs text-status-warning sm:col-span-5">{f.message}</p>
+                      <p key={f.message} role="status" className="col-span-2 order-last text-xs text-status-warning sm:col-span-7">{f.message}</p>
                     ))}
                     <button
                       type="button"
@@ -308,7 +384,7 @@ export function PoCreatePage() {
               variant="ghost"
               size="sm"
               className="mt-2"
-              onClick={() => append({ rawMaterial: "", quantity: 0, price: 0 })}
+              onClick={() => append({ rawMaterial: "", quantity: 0, price: 0, hsn: "", gstPercent: "" })}
             >
               <Plus className="h-4 w-4" /> Add item
             </Button>
@@ -345,11 +421,17 @@ export function PoCreatePage() {
                 </p>
               )}
               <div className="my-2 border-t border-ink-100" />
-              <div className="flex items-baseline justify-between">
-                <dt className="text-ink-600">Order total</dt>
-                <dd className="text-2xl font-bold tabular-nums">₹{inr(total)}</dd>
-              </div>
             </dl>
+            <PoTaxSummary
+              tax={{ supplyType: priced.supplyType, noGst, totals: priced.totals }}
+              rate={oneRate(priced.lines)}
+              grandClassName="text-2xl font-bold"
+            />
+            {total > 0 && selectedSupplier && !selectedSupplier.gstin && !noGst && (
+              <p className="mt-2 text-xs text-ink-400">
+                This supplier has no GSTIN on record, so the tax is shown as CGST + SGST.
+              </p>
+            )}
             <Button type="submit" className="mt-4 w-full" loading={create.isPending}>
               <ShoppingCart className="h-4 w-4" /> Create PO
             </Button>

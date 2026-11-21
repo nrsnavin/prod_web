@@ -1,3 +1,5 @@
+import type { PoTax } from "./poTax";
+
 export interface Supplier {
   _id: string;
   name: string;
@@ -66,9 +68,23 @@ export type PoStatus = "Open" | "Partial" | "Completed";
 
 export interface PoItem {
   _id?: string;
-  rawMaterial: { _id: string; name: string; category?: string; unit?: string } | string;
+  rawMaterial: { _id: string; name: string; category?: string; unit?: string; hsn?: string; gstPercent?: number | null } | string;
   price: number;
   quantity: number;
+  /**
+   * The line's GST. Stored on the line when the PO is raised (from the
+   * material unless typed); the detail route sends the rate the line is
+   * priced at — its own, else its material's, else the default — and
+   * the tax on it.
+   */
+  hsn?: string;
+  gstPercent?: number | null;
+  taxable?: number;
+  cgst?: number;
+  sgst?: number;
+  igst?: number;
+  /** The line with its GST. */
+  amount?: number;
   /**
    * How much has actually arrived. The document field is
    * `receivedQuantity`; the detail route also emits it under this name,
@@ -100,6 +116,7 @@ export interface PoSupplierRef {
   _id: string;
   name: string;
   gstin?: string;
+  gstRegistration?: "regular" | "composition" | "unregistered";
   phoneNumber?: string;
   email?: string;
   address?: string;
@@ -108,6 +125,8 @@ export interface PoSupplierRef {
 
 export interface PurchaseOrder {
   _id: string;
+  /** Sent back as `expectedVersion` on an edit, so a stale form is refused. */
+  __v?: number;
   poNo: number | string;
   supplier: PoSupplierRef | string;
   items: PoItem[];
@@ -116,6 +135,8 @@ export interface PurchaseOrder {
   notes?: string;
   date?: string;
   createdAt?: string;
+  /** What it comes to with GST, worked out by the server (prod/services/purchaseTax.js). */
+  tax?: PoTax;
 }
 
 export interface InwardRecord {
@@ -136,6 +157,10 @@ export interface PoFormItem {
   rawMaterial: string;
   price: number;
   quantity: number;
+  /** Blank: the material's. */
+  hsn?: string;
+  /** Blank: the material's, else the default in Settings. 0 is a rate (exempt). */
+  gstPercent?: number | string | null;
 }
 
 export interface PoFormValues {

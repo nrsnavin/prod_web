@@ -46,6 +46,13 @@ const columns: Column<PurchaseOrder>[] = [
     render: (po) => poValue(po).toLocaleString("en-IN"),
   },
   {
+    // What the supplier's bill will come to, priced by the server.
+    key: "withGst",
+    header: "With GST (₹)",
+    align: "right",
+    render: (po) => (po.tax ? po.tax.totals.grand.toLocaleString("en-IN") : "—"),
+  },
+  {
     key: "received",
     header: "Received",
     align: "right",
