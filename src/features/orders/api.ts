@@ -32,6 +32,14 @@ export const orderService = {
     return httpClient.get<OrderListPage>("/order/list", { status, page, limit });
   },
 
+  /**
+   * Every order still in hand (Open, Approved, In progress) as an Excel
+   * sheet: the customer and the first few elastics, one row per order.
+   */
+  exportOpen(): Promise<Blob> {
+    return httpClient.getBlob("/order/export/open");
+  },
+
   async getById(id: string): Promise<OrderDetail> {
     const res = await httpClient.get<{ success: boolean; data: OrderDetail }>(
       "/order/get-orderDetail",

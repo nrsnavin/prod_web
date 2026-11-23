@@ -25,6 +25,7 @@ import { formatDate } from "@/core/format/date";
 import { rupees } from "@/core/format/money";
 import { useUrlFlag, useUrlState, useOpenOnArrival } from "@/core/hooks/useUrlState";
 import { SavedViews, type ListView } from "@/components/ui/SavedViews";
+import { ExportOpenOrders } from "./ExportOpenOrders";
 
 // ══════════════════════════════════════════════════════════════════
 //  THE ORDER BOOK
@@ -185,6 +186,7 @@ export function OrderListPage() {
         }
         actions={
           <>
+            <ExportOpenOrders />
             {/* Secondary on purpose: typing the order is still the
                 normal path, and reading a document is the shortcut. */}
             <Button variant="secondary" onClick={() => setIntakeOpen(true)}>
